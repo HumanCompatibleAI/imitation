@@ -22,6 +22,7 @@ from imitation.scripts.config.train_preference_comparisons import (
     train_preference_comparisons_ex,
 )
 
+
 def save_model(
     agent_trainer: preference_comparisons.AgentTrainer,
     save_path: pathlib.Path,
@@ -160,7 +161,7 @@ def train_preference_comparisons(
 
     post_wrappers = common.setup_video_saving(
         base_dir=checkpoint_dir,
-        video_save_interval=video_save_interval
+        video_save_interval=video_save_interval,
     )
 
     with common.make_venv(post_wrappers=post_wrappers) as venv:

@@ -3,19 +3,19 @@
 import contextlib
 import logging
 import pathlib
-from typing import Any, Generator, Mapping, Sequence, Tuple, Union, Optional, Callable
+from typing import Any, Callable, Generator, Mapping, Optional, Sequence, Tuple, Union
 
 import gym
 import numpy as np
 import sacred
 from stable_baselines3.common import vec_env
 
+import imitation.util.video_wrapper as video_wrapper
 from imitation.data import types
 from imitation.scripts.common import wb
 from imitation.util import logger as imit_logger
 from imitation.util import sacred as sacred_util
 from imitation.util import util
-import imitation.util.video_wrapper as video_wrapper
 
 common_ingredient = sacred.Ingredient("common", ingredients=[wb.wandb_ingredient])
 logger = logging.getLogger(__name__)

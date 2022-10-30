@@ -74,7 +74,7 @@ OLD_FMT_ROLLOUT_TEST_DATA_PATH = TEST_DATA_PATH / "old_format_rollout.pkl"
 @pytest.fixture(autouse=True)
 def sacred_capture_use_sys():
     """Set Sacred capture mode to "sys" because default "fd" option leads to error.
-    
+
     See https://github.com/IDSIA/sacred/issues/289.
 
     Yields:

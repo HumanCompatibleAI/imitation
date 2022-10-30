@@ -1,17 +1,17 @@
 """Wrapper to record rendered video frames from an environment."""
 
 import pathlib
-import gym
+from typing import Callable, Optional
 
-from typing import Optional, Callable
-from gym.wrappers.monitoring import video_recorder
+import gym
+from gym.wrappers.monitoring.video_recorder import VideoRecorder
 
 
 class VideoWrapper(gym.Wrapper):
     """Creates videos from wrapped environment by calling render after each timestep."""
 
     episode_id: int
-    video_recorder: Optional[video_recorder.VideoRecorder]
+    video_recorder: Optional[VideoRecorder]
     single_video: bool
     directory: pathlib.Path
     video_save_interval: int
@@ -70,7 +70,7 @@ class VideoWrapper(gym.Wrapper):
         time_to_record = self.should_record or on_interval_boundary
         if self.video_recorder is None and time_to_record:
             # No video recorder -- start a new one.
-            self.video_recorder = video_recorder.VideoRecorder(
+            self.video_recorder = VideoRecorder(
                 env=self.env,
                 base_path=str(self.directory / f"video.{self.episode_id:06}"),
                 metadata={"episode_id": self.episode_id},
@@ -101,25 +101,30 @@ class VideoWrapper(gym.Wrapper):
 def video_wrapper_factory(
     video_dir: pathlib.Path,
     video_save_interval: int,
-    **kwargs
-    ) -> Callable:
+    **kwargs,
+) -> Callable:
     def f(env: gym.Env, i: int) -> VideoWrapper:
-        """
-        Returns a wrapper around a gym environment records a video if and only if i is 0
+        """Returns a wrapper around a gym environment records a video if and only if i is 0.
 
         Args:
             env: the environment to be wrapped around
-            i: the index of the environment. This is to make the video wrapper compatible with
-                    vectorized environments. Only environments with i=0 actually attach the VideoWrapper
+            i: the index of the environment. This is to make the video wrapper
+                compatible with vectorized environments. Only environments with
+                i=0 actually attach the VideoWrapper
 
         Returns:
             A video wrapper around the original environment if the index is 0.
             Otherwise, the original environment is just returned.
         """
-        return VideoWrapper(
-            env,
-            directory=video_dir,
-            video_save_interval=video_save_interval,
-            **kwargs,
-        ) if i == 0 else env
+        return (
+            VideoWrapper(
+                env,
+                directory=video_dir,
+                video_save_interval=video_save_interval,
+                **kwargs,
+            )
+            if i == 0
+            else env
+        )
+
     return f
