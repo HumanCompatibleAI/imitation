@@ -165,7 +165,8 @@ def example_bc():
     run_name = "bc_tuning_hc"
     base_named_configs = ["common.wandb_logging", "seals_half_cheetah"]
     base_config_updates = {
-        "common": {"wandb": {"wandb_kwargs": {"project": "algorithm-benchmark"}}},
+        # "common": {"wandb": {"wandb_kwargs": {"project": "algorithm-benchmark"}}},
+        "common": {"num_vec": 1},
     }
     search_space = {
         "config_updates": {
@@ -186,7 +187,7 @@ def example_bc():
     eval_best_trial = True
     eval_trial_seeds = 5
     repeat = 3
-    resources_per_trial = dict(cpu=2)
+    resources_per_trial = dict(cpu=1)
 
 
 @parallel_ex.named_config
@@ -195,7 +196,8 @@ def example_dagger():
     run_name = "dagger_tuning_hc"
     base_named_configs = ["common.wandb_logging", "seals_half_cheetah"]
     base_config_updates = {
-        "common": {"wandb": {"wandb_kwargs": {"project": "algorithm-benchmark"}}},
+        # "common": {"wandb": {"wandb_kwargs": {"project": "algorithm-benchmark"}}},
+        "common": {"num_vec": 1},
         "dagger": {"total_timesteps": 1e5},
         "bc_kwargs": {
             "batch_size": 16,
@@ -222,7 +224,7 @@ def example_dagger():
     repeat = 3
     eval_best_trial = True
     eval_trial_seeds = 5
-    resources_per_trial = dict(cpu=2)
+    resources_per_trial = dict(cpu=1)
 
 
 @parallel_ex.named_config
@@ -231,7 +233,7 @@ def example_gail():
     run_name = "gail_tuning_hc"
     base_named_configs = ["common.wandb_logging"]
     base_config_updates = {
-        "common": {"wandb": {"wandb_kwargs": {"project": "algorithm-benchmark"}}},
+        "common": {"num_vec": 1},
         "total_timesteps": 1e7,
     }
     search_space = {
@@ -260,7 +262,7 @@ def example_gail():
     eval_trial_seeds = 5
     repeat = 3
     # experiment_checkpoint_path = f"/home/taufeeque/ray_results/{run_name}"
-    resources_per_trial = dict(cpu=2)
+    resources_per_trial = dict(cpu=1)
 
 
 @parallel_ex.named_config
@@ -270,7 +272,7 @@ def example_airl():
     # n_seeds = 1
     base_named_configs = ["common.wandb_logging"]
     base_config_updates = {
-        "common": {"wandb": {"wandb_kwargs": {"project": "algorithm-benchmark"}}},
+        "common": {"num_vec": 1},
         "total_timesteps": 1e7,
     }
     search_space = {
@@ -299,7 +301,7 @@ def example_airl():
     eval_trial_seeds = 5
     repeat = 3
     # experiment_checkpoint_path = f"/home/taufeeque/ray_results/{run_name}"
-    resources_per_trial = dict(cpu=2)
+    resources_per_trial = dict(cpu=1)
 
 
 @parallel_ex.named_config
@@ -308,7 +310,7 @@ def example_pc():
     run_name = "pc_tuning"
     base_named_configs = ["common.wandb_logging", "seals_half_cheetah"]
     base_config_updates = {
-        "common": {"wandb": {"wandb_kwargs": {"project": "algorithm-benchmark"}}},
+        "common": {"num_vec": 1},
         "total_timesteps": 2e7,
         "total_comparisons": 5000,
         "query_schedule": "hyperbolic",
@@ -335,7 +337,7 @@ def example_pc():
     eval_best_trial = True
     eval_trial_seeds = 5
     repeat = 3
-    resources_per_trial = dict(cpu=2)
+    resources_per_trial = dict(cpu=1)
 
 
 @parallel_ex.named_config

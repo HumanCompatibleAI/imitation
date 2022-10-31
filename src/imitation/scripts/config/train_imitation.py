@@ -84,15 +84,15 @@ def seals_ant():
     common = dict(env_name="seals/Ant-v0")
     expert_dir = str(
         pathlib.Path.home() / "imitation/output/train_experts/"
-        "2022-09-05T18:27:27-07:00/seals_ant_1/"
+        "2022-09-05T18:27:27-07:00/seals_ant_1"
     )
     demonstrations = dict(
-        rollout_path=expert_dir + "rollouts/final.pkl",
+        rollout_path=expert_dir + "/rollouts/final.pkl",
     )
     expert = {
         "policy_type": "ppo",
         "loader_kwargs": {
-            "path": expert_dir + "policies/final/",
+            "path": expert_dir + "/policies/final/",
         },
     }
     del expert_dir
@@ -112,15 +112,15 @@ def seals_half_cheetah():
     dagger = dict(total_timesteps=60000)
     expert_dir = str(
         pathlib.Path.home() / "imitation/output/train_experts/"
-        "2022-09-05T18:27:27-07:00/seals_half_cheetah_1/"
+        "2022-09-05T18:27:27-07:00/seals_half_cheetah_1"
     )
     demonstrations = dict(
-        rollout_path=expert_dir + "rollouts/final.pkl",
+        rollout_path=expert_dir + "/rollouts/final.pkl",
     )
     expert = {
         "policy_type": "ppo",
         "loader_kwargs": {
-            "path": expert_dir + "policies/final/",
+            "path": expert_dir + "/policies/final/",
         },
     }
     del expert_dir
@@ -131,15 +131,15 @@ def seals_hopper():
     common = dict(env_name="seals/Hopper-v0")
     expert_dir = str(
         pathlib.Path.home() / "imitation/output/train_experts/"
-        "2022-10-11T06:27:42-07:00/seals_hopper_2/"
+        "2022-10-11T06:27:42-07:00/seals_hopper_2"
     )
     demonstrations = dict(
-        rollout_path=expert_dir + "rollouts/final.pkl",
+        rollout_path=expert_dir + "/rollouts/final.pkl",
     )
     expert = {
         "policy_type": "ppo",
         "loader_kwargs": {
-            "path": expert_dir + "policies/final/",
+            "path": expert_dir + "/policies/final/",
         },
     }
     del expert_dir
@@ -150,15 +150,15 @@ def seals_swimmer():
     common = dict(env_name="seals/Swimmer-v0")
     expert_dir = str(
         pathlib.Path.home() / "/imitation/output/train_experts/"
-        "2022-10-11T06:27:42-07:00/seals_swimmer_4/"
+        "2022-10-11T06:27:42-07:00/seals_swimmer_4"
     )
     demonstrations = dict(
-        rollout_path=expert_dir + "rollouts/final.pkl",
+        rollout_path=expert_dir + "/rollouts/final.pkl",
     )
     expert = {
         "policy_type": "ppo",
         "loader_kwargs": {
-            "path": expert_dir + "policies/final/",
+            "path": expert_dir + "/policies/final/",
         },
     }
     del expert_dir
@@ -169,15 +169,15 @@ def seals_walker():
     common = dict(env_name="seals/Walker2d-v0")
     expert_dir = str(
         pathlib.Path.home() / "imitation/output/train_experts/"
-        "2022-10-11T06:27:42-07:00/seals_walker_8/"
+        "2022-10-11T06:27:42-07:00/seals_walker_8"
     )
     demonstrations = dict(
-        rollout_path=expert_dir + "rollouts/final.pkl",
+        rollout_path=expert_dir + "/rollouts/final.pkl",
     )
     expert = {
         "policy_type": "ppo",
         "loader_kwargs": {
-            "path": expert_dir + "policies/final/",
+            "path": expert_dir + "/policies/final/",
         },
     }
     del expert_dir
