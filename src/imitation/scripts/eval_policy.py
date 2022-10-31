@@ -46,7 +46,7 @@ def video_wrapper_factory(log_dir: pathlib.Path, **kwargs):
         """Wraps `env` in a recorder saving videos to `{log_dir}/videos/{i}`."""
         directory = log_dir / "videos" / str(i)
         return video_wrapper.VideoWrapper(
-            env, single_video=False, directory=directory, **kwargs,
+            env, directory=directory, **kwargs,
         )
 
     return f
