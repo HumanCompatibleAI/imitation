@@ -1,6 +1,6 @@
 """Uses RL to train a policy from scratch, saving rollouts and policy.
 
-This can be used:
+    This can be used:
     1. To train a policy on a ground-truth reward function, as a source of
        synthetic "expert" demonstrations to train IRL or imitation learning
        algorithms.

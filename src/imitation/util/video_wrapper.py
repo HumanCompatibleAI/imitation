@@ -22,7 +22,7 @@ class VideoWrapper(gym.Wrapper):
         self,
         env: gym.Env,
         directory: pathlib.Path,
-        single_video: bool = False,
+        single_video: bool = True,
         video_save_interval: int = 1,
     ):
         """Builds a VideoWrapper.
@@ -120,6 +120,7 @@ def video_wrapper_factory(
             VideoWrapper(
                 env,
                 directory=video_dir,
+                single_video=True,
                 video_save_interval=video_save_interval,
                 **kwargs,
             )
