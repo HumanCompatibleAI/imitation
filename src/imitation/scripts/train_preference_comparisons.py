@@ -18,7 +18,7 @@ from imitation.policies import serialize
 from imitation.scripts.config.train_preference_comparisons import (
     train_preference_comparisons_ex,
 )
-from imitation.scripts.ingredients import common, reward
+from imitation.scripts.ingredients import common, environment, reward
 from imitation.scripts.ingredients import rl as rl_common
 from imitation.scripts.ingredients import train
 
@@ -151,7 +151,7 @@ def train_preference_comparisons(
     custom_logger, log_dir = common.setup_logging()
     rng = common.make_rng()
 
-    with common.make_venv() as venv:
+    with environment.make_venv() as venv:
         reward_net = reward.make_reward_net(venv)
         relabel_reward_fn = functools.partial(
             reward_net.predict_processed,

@@ -97,16 +97,16 @@ def test_main_console(script_mod):
 
 ALGO_FAST_CONFIGS = {
     "adversarial": [
-        "common.fast",
+        "environment.fast",
         "demonstrations.fast",
         "rl.fast",
         "train.fast",
         "fast",
     ],
-    "eval_policy": ["common.fast", "fast"],
-    "imitation": ["common.fast", "demonstrations.fast", "train.fast", "fast"],
-    "preference_comparison": ["common.fast", "rl.fast", "train.fast", "fast"],
-    "rl": ["common.fast", "rl.fast", "train.fast", "fast"],
+    "eval_policy": ["environment.fast", "fast"],
+    "imitation": ["environment.fast", "demonstrations.fast", "train.fast", "fast"],
+    "preference_comparison": ["environment.fast", "rl.fast", "train.fast", "fast"],
+    "rl": ["environment.fast", "rl.fast", "train.fast", "fast"],
 }
 
 RL_SAC_NAMED_CONFIGS = ["rl.sac", "train.sac"]
@@ -134,7 +134,7 @@ def preference_comparison_config(request):
             # FIXME(yawen): the policy we load was trained on 8 parallel environments
             #  and for some reason using it breaks if we use just 1 (like would be the
             #  default with the fast named_config)
-            "common": dict(num_vec=8),
+            "environment": dict(num_vec=8),
         },
         with_checkpoints={
             # Test that we can save checkpoints
@@ -384,7 +384,7 @@ def rl_train_ppo_config(request, tmpdir):
         #  and for some reason using it breaks if we use just 1 (like would be the
         #  default with the fast named_config)
         config["agent_path"] = CARTPOLE_TEST_POLICY_PATH / "model.zip"
-        config["common"] = dict(num_vec=8)
+        config["environment"] = dict(num_vec=8)
     return config
 
 

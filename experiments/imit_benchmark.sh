@@ -28,7 +28,7 @@ while true; do
     -f | --fast)
       CONFIG_CSV="tests/testdata/imit_benchmark_config.csv"
       SEEDS=(0)
-      extra_configs=("${extra_configs[@]}" common.fast demonstrations.fast rl.fast train.fast fast)
+      extra_configs=("${extra_configs[@]}" environment.fast demonstrations.fast rl.fast train.fast fast)
       shift
       ;;
     -w | --wandb)

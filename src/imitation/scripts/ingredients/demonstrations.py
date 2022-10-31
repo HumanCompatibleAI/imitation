@@ -5,12 +5,16 @@ from typing import Optional, Sequence
 
 import sacred
 
-from imitation.data import rollout, types, wrappers
-from imitation.scripts.ingredients import common, expert
+from imitation.data import rollout, types
+from imitation.scripts.ingredients import common, environment, expert
 
 demonstrations_ingredient = sacred.Ingredient(
     "demonstrations",
-    ingredients=[expert.expert_ingredient, common.common_ingredient],
+    ingredients=[
+        expert.expert_ingredient,
+        common.common_ingredient,
+        environment.environment_ingredient,
+    ],
 )
 logger = logging.getLogger(__name__)
 
@@ -60,10 +64,7 @@ def generate_expert_trajs(
     if n_expert_demos is None:
         raise ValueError("n_expert_demos must be specified when rollout_path is None")
 
-    with common.make_venv(
-        log_dir=None,
-        post_wrappers=[lambda env, i: wrappers.RolloutInfoWrapper(env)],
-    ) as rollout_env:
+    with environment.make_rollout_venv() as rollout_env:
         return rollout.rollout(
             expert.get_expert_policy(rollout_env),
             rollout_env,

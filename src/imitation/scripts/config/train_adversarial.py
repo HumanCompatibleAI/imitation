@@ -6,6 +6,7 @@ from imitation.rewards import reward_nets
 from imitation.scripts.ingredients import (
     common,
     demonstrations,
+    environment,
     expert,
     reward,
     rl,
@@ -21,6 +22,7 @@ train_adversarial_ex = sacred.Experiment(
         rl.rl_ingredient,
         train.train_ingredient,
         expert.expert_ingredient,
+        environment.environment_ingredient,
     ],
 )
 
@@ -65,36 +67,36 @@ ANT_SHARED_LOCALS = dict(
 
 @train_adversarial_ex.named_config
 def acrobot():
-    env_name = "Acrobot-v1"
+    environment_name = dict(gym_id="Acrobot-v1")
     algorithm_kwargs = {"allow_variable_horizon": True}
 
 
 @train_adversarial_ex.named_config
 def cartpole():
-    common = dict(env_name="CartPole-v1")
+    environment_name = dict(gym_id="CartPole-v1")
     algorithm_kwargs = {"allow_variable_horizon": True}
 
 
 @train_adversarial_ex.named_config
 def seals_cartpole():
-    common = dict(env_name="seals/CartPole-v0")
+    environment_name = dict(gym_id="seals/CartPole-v0")
     total_timesteps = int(1.4e6)
 
 
 @train_adversarial_ex.named_config
 def mountain_car():
-    common = dict(env_name="MountainCar-v0")
+    environment_name = dict(gym_id="MountainCar-v0")
     algorithm_kwargs = {"allow_variable_horizon": True}
 
 
 @train_adversarial_ex.named_config
 def seals_mountain_car():
-    common = dict(env_name="seals/MountainCar-v0")
+    environment_name = dict(gym_id="seals/MountainCar-v0")
 
 
 @train_adversarial_ex.named_config
 def pendulum():
-    common = dict(env_name="Pendulum-v1")
+    environment_name = dict(gym_id="Pendulum-v1")
 
 
 # Standard MuJoCo Gym environment named configs
@@ -104,7 +106,7 @@ def pendulum():
 def seals_ant():
     locals().update(**MUJOCO_SHARED_LOCALS)
     locals().update(**ANT_SHARED_LOCALS)
-    common = dict(env_name="seals/Ant-v0")
+    environment_name = dict(gym_id="seals/Ant-v0")
 
 
 CHEETAH_SHARED_LOCALS = dict(
@@ -138,45 +140,45 @@ CHEETAH_SHARED_LOCALS = dict(
 @train_adversarial_ex.named_config
 def half_cheetah():
     locals().update(**CHEETAH_SHARED_LOCALS)
-    common = dict(env_name="HalfCheetah-v2")
+    environment_name = dict(gym_id="HalfCheetah-v2")
 
 
 @train_adversarial_ex.named_config
 def seals_half_cheetah():
     locals().update(**CHEETAH_SHARED_LOCALS)
-    common = dict(env_name="seals/HalfCheetah-v0")
+    environment_name = dict(gym_id="seals/HalfCheetah-v0")
 
 
 @train_adversarial_ex.named_config
 def seals_hopper():
     locals().update(**MUJOCO_SHARED_LOCALS)
-    common = dict(env_name="seals/Hopper-v0")
+    environment_name = dict(gym_id="seals/Hopper-v0")
 
 
 @train_adversarial_ex.named_config
 def seals_humanoid():
     locals().update(**MUJOCO_SHARED_LOCALS)
-    common = dict(env_name="seals/Humanoid-v0")
+    environment_name = dict(gym_id="seals/Humanoid-v0")
     total_timesteps = int(4e6)
 
 
 @train_adversarial_ex.named_config
 def reacher():
-    common = dict(env_name="Reacher-v2")
+    environment_name = dict(gym_id="Reacher-v2")
     algorithm_kwargs = {"allow_variable_horizon": True}
 
 
 @train_adversarial_ex.named_config
 def seals_swimmer():
     locals().update(**MUJOCO_SHARED_LOCALS)
-    common = dict(env_name="seals/Swimmer-v0")
+    environment_name = dict(gym_id="seals/Swimmer-v0")
     total_timesteps = int(2e6)
 
 
 @train_adversarial_ex.named_config
 def seals_walker():
     locals().update(**MUJOCO_SHARED_LOCALS)
-    common = dict(env_name="seals/Walker2d-v0")
+    environment_name = dict(gym_id="seals/Walker2d-v0")
 
 
 # Debug configs

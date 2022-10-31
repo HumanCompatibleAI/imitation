@@ -16,7 +16,7 @@ from imitation.data import rollout
 from imitation.policies import serialize
 from imitation.scripts.config.train_adversarial import train_adversarial_ex
 from imitation.scripts.ingredients import common as common_config
-from imitation.scripts.ingredients import demonstrations, reward, rl, train
+from imitation.scripts.ingredients import demonstrations, environment, reward, rl, train
 
 logger = logging.getLogger("imitation.scripts.train_adversarial")
 
@@ -113,7 +113,7 @@ def train_adversarial(
     custom_logger, log_dir = common_config.setup_logging()
     expert_trajs = demonstrations.get_expert_trajectories()
 
-    with common_config.make_venv() as venv:
+    with environment.make_venv() as venv:
         reward_net = reward.make_reward_net(venv)
         relabel_reward_fn = functools.partial(
             reward_net.predict_processed,

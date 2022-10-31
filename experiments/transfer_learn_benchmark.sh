@@ -28,7 +28,7 @@ while true; do
       REWARD_MODELS_DIR="tests/testdata/reward_models"
       NEED_TEST_FILES="true"
       SEEDS=(0)
-      extra_configs=("${extra_configs[@]}" common.fast rl.fast train.fast fast)
+      extra_configs=("${extra_configs[@]}" environment.fast rl.fast train.fast fast)
       shift
       ;;
     -w | --wandb)

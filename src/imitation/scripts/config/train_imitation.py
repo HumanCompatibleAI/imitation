@@ -5,7 +5,7 @@ import torch as th
 
 from imitation.scripts.ingredients import common
 from imitation.scripts.ingredients import demonstrations as demos_common
-from imitation.scripts.ingredients import expert, train
+from imitation.scripts.ingredients import environment, expert, train
 
 train_imitation_ex = sacred.Experiment(
     "train_imitation",
@@ -14,6 +14,7 @@ train_imitation_ex = sacred.Experiment(
         demos_common.demonstrations_ingredient,
         train.train_ingredient,
         expert.expert_ingredient,
+        environment.environment_ingredient,
     ],
 )
 
@@ -42,67 +43,67 @@ def config():
 
 @train_imitation_ex.named_config
 def mountain_car():
-    common = dict(env_name="MountainCar-v0")
+    environment_name = dict(gym_id="MountainCar-v0")
     bc_kwargs = dict(l2_weight=0.0)
     dagger = dict(total_timesteps=20000)
 
 
 @train_imitation_ex.named_config
 def seals_mountain_car():
-    common = dict(env_name="seals/MountainCar-v0")
+    environment_name = dict(gym_id="seals/MountainCar-v0")
     bc_kwargs = dict(l2_weight=0.0)
     dagger = dict(total_timesteps=20000)
 
 
 @train_imitation_ex.named_config
 def cartpole():
-    common = dict(env_name="CartPole-v1")
+    environment_name = dict(gym_id="CartPole-v1")
     dagger = dict(total_timesteps=20000)
 
 
 @train_imitation_ex.named_config
 def seals_cartpole():
-    common = dict(env_name="seals/CartPole-v0")
+    environment_name = dict(gym_id="seals/CartPole-v0")
     dagger = dict(total_timesteps=20000)
 
 
 @train_imitation_ex.named_config
 def pendulum():
-    common = dict(env_name="Pendulum-v1")
+    environment_name = dict(gym_id="Pendulum-v1")
 
 
 @train_imitation_ex.named_config
 def ant():
-    common = dict(env_name="Ant-v2")
+    environment_name = dict(gym_id="Ant-v2")
 
 
 @train_imitation_ex.named_config
 def seals_ant():
-    common = dict(env_name="seals/Ant-v0")
+    environment_name = dict(gym_id="seals/Ant-v0")
 
 
 @train_imitation_ex.named_config
 def half_cheetah():
-    common = dict(env_name="HalfCheetah-v2")
+    environment_name = dict(gym_id="HalfCheetah-v2")
     bc_kwargs = dict(l2_weight=0.0)
     dagger = dict(total_timesteps=60000)
 
 
 @train_imitation_ex.named_config
 def seals_half_cheetah():
-    common = dict(env_name="seals/HalfCheetah-v0")
+    environment_name = dict(gym_id="seals/HalfCheetah-v0")
     bc_kwargs = dict(l2_weight=0.0)
     dagger = dict(total_timesteps=60000)
 
 
 @train_imitation_ex.named_config
 def humanoid():
-    common = dict(env_name="Humanoid-v2")
+    environment_name = dict(gym_id="Humanoid-v2")
 
 
 @train_imitation_ex.named_config
 def seals_humanoid():
-    common = dict(env_name="seals/Humanoid-v0")
+    environment_name = dict(gym_id="seals/Humanoid-v0")
 
 
 @train_imitation_ex.named_config

@@ -13,7 +13,13 @@ from imitation.algorithms import bc as bc_algorithm
 from imitation.algorithms.dagger import SimpleDAggerTrainer
 from imitation.data import rollout, types
 from imitation.scripts.config.train_imitation import train_imitation_ex
-from imitation.scripts.ingredients import common, demonstrations, expert, train
+from imitation.scripts.ingredients import (
+    common,
+    demonstrations,
+    environment,
+    expert,
+    train,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -89,7 +95,7 @@ def train_imitation(
     rng = common.make_rng()
     custom_logger, log_dir = common.setup_logging()
 
-    with common.make_venv() as venv:
+    with environment.make_venv() as venv:
         imit_policy = make_policy(venv, agent_path=agent_path)
 
         expert_trajs: Optional[Sequence[types.Trajectory]] = None

@@ -1,21 +1,26 @@
 """Common configuration elements for scripts."""
 
-import contextlib
 import logging
 import pathlib
-from typing import Any, Generator, Mapping, Sequence, Tuple, Union
+from typing import Sequence, Tuple, Union
 
+import huggingface_sb3 as hfsb3
 import numpy as np
 import sacred
-from stable_baselines3.common import vec_env
 
 from imitation.data import types
-from imitation.scripts.ingredients import wb
+from imitation.scripts.ingredients import environment_name, wb
 from imitation.util import logger as imit_logger
 from imitation.util import sacred as sacred_util
 from imitation.util import util
 
-common_ingredient = sacred.Ingredient("common", ingredients=[wb.wandb_ingredient])
+common_ingredient = sacred.Ingredient(
+    "common",
+    ingredients=[
+        wb.wandb_ingredient,
+        environment_name.environment_name_ingredient,
+    ],
+)
 logger = logging.getLogger(__name__)
 
 
@@ -30,14 +35,7 @@ def config():
     # This allows named configs to add format strings, without changing the defaults.
     log_format_strs_additional = {}
 
-    # Environment config
-    env_name = "seals/CartPole-v0"  # environment to train on
-    num_vec = 8  # number of environments in VecEnv
-    parallel = True  # Use SubprocVecEnv rather than DummyVecEnv
-    max_episode_steps = None  # Set to positive int to limit episode horizons
-    env_make_kwargs = {}  # The kwargs passed to `spec.make`.
-
-    locals()  # quieten flake8
+    locals()  # silence flake8 unused variable warning
 
 
 @common_ingredient.config
@@ -50,10 +48,10 @@ def hook(config, command_name: str, logger):
     del logger
     updates = {}
     if config["common"]["log_dir"] is None:
-        env_sanitized = config["common"]["env_name"].replace("/", "_")
-        assert isinstance(env_sanitized, str)
         config_log_root = config["common"]["log_root"] or "output"
         log_root = types.parse_path(config_log_root)
+        env_sanitized = hfsb3.EnvironmentName(config["environment_name"]["gym_id"])
+        assert isinstance(env_sanitized, str)
         log_dir = log_root / command_name / env_sanitized / util.make_unique_timestamp()
         updates["log_dir"] = log_dir
     return updates
@@ -62,15 +60,6 @@ def hook(config, command_name: str, logger):
 @common_ingredient.named_config
 def wandb_logging():
     log_format_strs_additional = {"wandb": None}  # noqa: F841
-
-
-@common_ingredient.named_config
-def fast():
-    num_vec = 2
-    parallel = False  # easier to debug with everything in one process
-    max_episode_steps = 5
-
-    locals()  # quieten flake8
 
 
 @common_ingredient.capture
@@ -131,50 +120,3 @@ def setup_logging(
         format_strs=log_format_strs,
     )
     return custom_logger, log_dir
-
-
-@contextlib.contextmanager
-@common_ingredient.capture
-def make_venv(
-    env_name: str,
-    num_vec: int,
-    parallel: bool,
-    log_dir: str,
-    max_episode_steps: int,
-    env_make_kwargs: Mapping[str, Any],
-    **kwargs,
-) -> Generator[vec_env.VecEnv, None, None]:
-    """Builds the vector environment.
-
-    Args:
-        env_name: The environment to train in.
-        num_vec: Number of `gym.Env` instances to combine into a vector environment.
-        parallel: Whether to use "true" parallelism. If True, then use `SubProcVecEnv`.
-            Otherwise, use `DummyVecEnv` which steps through environments serially.
-        max_episode_steps: If not None, then a TimeLimit wrapper is applied to each
-            environment to artificially limit the maximum number of timesteps in an
-            episode.
-        log_dir: Logs episode return statistics to a subdirectory 'monitor`.
-        env_make_kwargs: The kwargs passed to `spec.make` of a gym environment.
-        kwargs: Passed through to `util.make_vec_env`.
-
-    Yields:
-        The constructed vector environment.
-    """
-    rng = make_rng()
-    # Note: we create the venv outside the try -- finally block for the case that env
-    #     creation fails.
-    venv = util.make_vec_env(
-        env_name,
-        rng=rng,
-        n_envs=num_vec,
-        parallel=parallel,
-        max_episode_steps=max_episode_steps,
-        log_dir=log_dir,
-        env_make_kwargs=env_make_kwargs,
-        **kwargs,
-    )
-    try:
-        yield venv
-    finally:
-        venv.close()
