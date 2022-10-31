@@ -63,12 +63,6 @@ def wandb_logging():
 
 
 @common_ingredient.capture
-def make_rng(_seed) -> np.random.Generator:
-    """Creates a `np.random.Generator` with the given seed."""
-    return np.random.default_rng(_seed)
-
-
-@common_ingredient.capture
 def make_log_dir(
     _run,
     log_dir: str,

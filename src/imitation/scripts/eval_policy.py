@@ -6,6 +6,7 @@ import time
 from typing import Any, Mapping, Optional
 
 import gym
+import numpy as np
 from sacred.observers import FileStorageObserver
 from stable_baselines3.common.vec_env import VecEnvWrapper
 
@@ -52,13 +53,14 @@ def video_wrapper_factory(log_dir: pathlib.Path, **kwargs):
 
 @eval_policy_ex.main
 def eval_policy(
-    _run,
     eval_n_timesteps: Optional[int],
     eval_n_episodes: Optional[int],
     render: bool,
     render_fps: int,
     videos: bool,
     video_kwargs: Mapping[str, Any],
+    _run,
+    _rnd: np.random.Generator,
     reward_type: Optional[str] = None,
     reward_path: Optional[str] = None,
     rollout_save_path: Optional[str] = None,
@@ -75,6 +77,7 @@ def eval_policy(
         render_fps: The target number of frames per second to render on screen.
         videos: If True, saves videos to `log_dir`.
         video_kwargs: Keyword arguments passed through to `video_wrapper.VideoWrapper`.
+        _rnd: Random number generator provided by Sacred.
         reward_type: If specified, overrides the environment reward with
             a reward of this.
         reward_path: If reward_type is specified, the path to a serialized reward
@@ -88,7 +91,6 @@ def eval_policy(
     Returns:
         Return value of `imitation.util.rollout.rollout_stats()`.
     """
-    rng = common.make_rng()
     log_dir = common.make_log_dir()
     sample_until = rollout.make_sample_until(eval_n_timesteps, eval_n_episodes)
     post_wrappers = [video_wrapper_factory(log_dir, **video_kwargs)] if videos else None
@@ -106,14 +108,14 @@ def eval_policy(
             policy = ExplorationWrapper(
                 policy,
                 venv,
-                rng=rng,
+                rng=_rnd,
                 **explore_kwargs,
             )
             log_str = (
                 f"Wrapped policy in ExplorationWrapper with kwargs {explore_kwargs}"
             )
             logging.info(log_str)
-        trajs = rollout.generate_trajectories(policy, venv, sample_until, rng=rng)
+        trajs = rollout.generate_trajectories(policy, venv, sample_until, rng=_rnd)
 
     if rollout_save_path:
         types.save(log_dir / rollout_save_path.replace("{log_dir}/", ""), trajs)

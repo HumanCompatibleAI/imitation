@@ -3,6 +3,7 @@
 import logging
 from typing import Any, Mapping, Union
 
+import numpy as np
 import sacred
 from stable_baselines3.common import base_class, policies, torch_layers, vec_env
 
@@ -74,6 +75,7 @@ def eval_policy(
     rl_algo: Union[base_class.BaseAlgorithm, policies.BasePolicy],
     venv: vec_env.VecEnv,
     n_episodes_eval: int,
+    _rnd: np.random.Generator,
 ) -> Mapping[str, float]:
     """Evaluation of imitation learned policy.
 
@@ -85,6 +87,7 @@ def eval_policy(
         venv: Environment to evaluate on.
         n_episodes_eval: The number of episodes to average over when calculating
             the average episode reward of the imitation policy for return.
+        _rnd: Random number generator provided by Sacred.
 
     Returns:
         A dictionary with two keys. "imit_stats" gives the return value of
@@ -93,7 +96,6 @@ def eval_policy(
         "monitor_return" key). "expert_stats" gives the return value of
         `rollout_stats()` on the expert demonstrations loaded from `rollout_path`.
     """
-    rng = common.make_rng()
     sample_until_eval = rollout.make_min_episodes(n_episodes_eval)
     if isinstance(rl_algo, base_class.BaseAlgorithm):
         # Set RL algorithm's env to venv, removing any cruft wrappers that the RL
@@ -110,7 +112,7 @@ def eval_policy(
         rl_algo,
         train_env,
         sample_until=sample_until_eval,
-        rng=rng,
+        rng=_rnd,
     )
     return rollout.rollout_stats(trajs)
 

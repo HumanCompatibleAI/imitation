@@ -13,6 +13,7 @@ import pathlib
 import warnings
 from typing import Any, Mapping, Optional
 
+import numpy as np
 from sacred.observers import FileStorageObserver
 from stable_baselines3.common import callbacks
 from stable_baselines3.common.vec_env import VecNormalize
@@ -40,6 +41,7 @@ def train_rl(
     policy_save_interval: int,
     policy_save_final: bool,
     agent_path: Optional[str],
+    _rnd: np.random.Generator,
 ) -> Mapping[str, float]:
     """Trains an expert policy from scratch and saves the rollouts and policy.
 
@@ -82,11 +84,11 @@ def train_rl(
         policy_save_final: If True, then save the policy right after training is
             finished.
         agent_path: Path to load warm-started agent.
+        _rnd: Random number generator provided by Sacred.
 
     Returns:
         The return value of `rollout_stats()` using the final policy.
     """
-    rng = common.make_rng()
     custom_logger, log_dir = common.setup_logging()
     rollout_dir = log_dir / "rollouts"
     policy_dir = log_dir / "policies"
@@ -146,7 +148,7 @@ def train_rl(
             )
             types.save(
                 save_path,
-                rollout.rollout(rl_algo, rl_algo.get_env(), sample_until, rng=rng),
+                rollout.rollout(rl_algo, rl_algo.get_env(), sample_until, rng=_rnd),
             )
         if policy_save_final:
             output_dir = policy_dir / "final"

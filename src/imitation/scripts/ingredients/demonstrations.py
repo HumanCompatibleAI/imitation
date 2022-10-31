@@ -3,6 +3,7 @@
 import logging
 from typing import Optional, Sequence
 
+import numpy as np
 import sacred
 
 from imitation.data import rollout, types
@@ -47,12 +48,14 @@ def get_expert_trajectories(
 @demonstrations_ingredient.capture
 def generate_expert_trajs(
     n_expert_demos: Optional[int],
+    _rnd: np.random.Generator,
 ) -> Optional[Sequence[types.Trajectory]]:
     """Generates expert demonstrations.
 
     Args:
         n_expert_demos: The number of trajectories to load.
             Dataset is truncated to this length if specified.
+        _rnd: Random number generator provided by Sacred.
 
     Returns:
         The expert trajectories.
@@ -60,7 +63,6 @@ def generate_expert_trajs(
     Raises:
         ValueError: If n_expert_demos is None.
     """
-    rng = common.make_rng()
     if n_expert_demos is None:
         raise ValueError("n_expert_demos must be specified when rollout_path is None")
 
@@ -69,7 +71,7 @@ def generate_expert_trajs(
             expert.get_expert_policy(rollout_env),
             rollout_env,
             rollout.make_sample_until(min_episodes=n_expert_demos),
-            rng=rng,
+            rng=_rnd,
         )
 
 

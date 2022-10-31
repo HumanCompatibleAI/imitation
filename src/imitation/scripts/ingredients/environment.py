@@ -2,10 +2,11 @@
 import contextlib
 from typing import Any, Generator, Mapping
 
+import numpy as np
 import sacred
 from stable_baselines3.common import vec_env
 
-import imitation.scripts.ingredients.common as common_pck
+import imitation.scripts.ingredients.common as common
 from imitation.data import wrappers
 from imitation.scripts.ingredients.environment_name import environment_name_ingredient
 from imitation.util import util
@@ -14,7 +15,7 @@ environment_ingredient = sacred.Ingredient(
     "environment",
     ingredients=[
         environment_name_ingredient,
-        common_pck.common_ingredient,
+        common.common_ingredient,
     ],
 )
 
@@ -32,6 +33,7 @@ def config():
 @contextlib.contextmanager
 @environment_ingredient.capture
 def make_venv(
+    _rnd: np.random.Generator,
     environment_name: dict,
     common: dict,
     num_vec: int,
@@ -57,12 +59,11 @@ def make_venv(
     Yields:
         The constructed vector environment.
     """
-    rng = common_pck.make_rng()
     # Note: we create the venv outside the try -- finally block for the case that env
     #     creation fails.
     venv = util.make_vec_env(
         environment_name["gym_id"],
-        rng=rng,
+        rng=_rnd,
         n_envs=num_vec,
         parallel=parallel,
         max_episode_steps=max_episode_steps,
@@ -84,6 +85,7 @@ def make_rollout_venv(
     parallel: bool,
     max_episode_steps: int,
     env_make_kwargs: Mapping[str, Any],
+    _rnd: np.random.Generator,
 ) -> Generator[vec_env.VecEnv, None, None]:
     """Builds the vector environment for rollouts.
 
@@ -98,16 +100,16 @@ def make_rollout_venv(
             environment to artificially limit the maximum number of timesteps in an
             episode.
         env_make_kwargs: The kwargs passed to `spec.make` of a gym environment.
+        _rnd: Random number generator provided by Sacred.
 
     Yields:
         The constructed vector environment.
     """
-    rng = common_pck.make_rng()
     # Note: we create the venv outside the try -- finally block for the case that env
     #     creation fails.
     venv = util.make_vec_env(
         environment_name["gym_id"],
-        rng=rng,
+        rng=_rnd,
         n_envs=num_vec,
         parallel=parallel,
         max_episode_steps=max_episode_steps,
