@@ -979,7 +979,7 @@ def test_train_rl_video_saving(tmpdir):
     config_updates = dict(
         common=dict(log_root=tmpdir),
         video_save_interval=1,
-        )
+    )
     run = train_rl.train_rl_ex.run(
         named_configs=["cartpole"] + ALGO_FAST_CONFIGS["rl"],
         config_updates=config_updates,
@@ -997,7 +997,7 @@ def test_train_adversarial_video_saving(tmpdir):
         common=dict(log_root=tmpdir),
         demonstrations=dict(rollout_path=PENDULUM_TEST_ROLLOUT_PATH),
         video_save_interval=1,
-        )
+    )
     run = train_adversarial.train_adversarial_ex.run(
         command_name="gail",
         named_configs=named_configs,
