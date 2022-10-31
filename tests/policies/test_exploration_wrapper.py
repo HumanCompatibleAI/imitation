@@ -11,24 +11,25 @@ def constant_policy(obs):
     return np.zeros(len(obs), dtype=int)
 
 
-def make_wrapper(random_prob, switch_prob):
+def make_wrapper(random_prob, switch_prob, rng):
     venv = util.make_vec_env(
         "seals/CartPole-v0",
         n_envs=1,
+        rng=rng,
     )
     return (
         exploration_wrapper.ExplorationWrapper(
-            policy_callable=constant_policy,
+            policy=constant_policy,
             venv=venv,
             random_prob=random_prob,
             switch_prob=switch_prob,
-            seed=0,
+            rng=rng,
         ),
         venv,
     )
 
 
-def test_random_prob():
+def test_random_prob(rng):
     """Test that `random_prob` produces right behaviors of policy switching.
 
     The policy always makes an initial switch when ExplorationWrapper is applied.
@@ -39,22 +40,25 @@ def test_random_prob():
     (2) `random_prob=1.0`: Initial and following policies are always random policies.
     (3) `random_prob=0.5`: Around half-half for constant and random policies.
 
+    Args:
+        rng (np.random.Generator): random number generator.
+
     Raises:
         ValueError: Unknown policy type to switch.
     """
-    wrapper, _ = make_wrapper(random_prob=0.0, switch_prob=0.5)
+    wrapper, _ = make_wrapper(random_prob=0.0, switch_prob=0.5, rng=rng)
     assert wrapper.current_policy == constant_policy
     for _ in range(100):
         wrapper._switch()
         assert wrapper.current_policy == constant_policy
 
-    wrapper, _ = make_wrapper(random_prob=1.0, switch_prob=0.5)
+    wrapper, _ = make_wrapper(random_prob=1.0, switch_prob=0.5, rng=rng)
     assert wrapper.current_policy == wrapper._random_policy
     for _ in range(100):
         wrapper._switch()
         assert wrapper.current_policy == wrapper._random_policy
 
-    wrapper, _ = make_wrapper(random_prob=0.5, switch_prob=0.5)
+    wrapper, _ = make_wrapper(random_prob=0.5, switch_prob=0.5, rng=rng)
     num_random = 0
     num_constant = 0
     for _ in range(1000):
@@ -70,7 +74,7 @@ def test_random_prob():
     assert num_constant > 450
 
 
-def test_switch_prob():
+def test_switch_prob(rng):
     """Test that `switch_prob` produces right behaviors of policy switching.
 
     The policy always makes an initial switch when ExplorationWrapper is applied.
@@ -80,8 +84,11 @@ def test_switch_prob():
     (1) `switch_prob=0.0`: The policy never switches after initial switch.
     (2) `switch_prob=1.0`: The policy always switches and the distribution of
         policies is determined by `random_prob`.
+
+    Args:
+        rng (np.random.Generator): random number generator.
     """
-    wrapper, venv = make_wrapper(random_prob=0.5, switch_prob=0.0)
+    wrapper, venv = make_wrapper(random_prob=0.5, switch_prob=0.0, rng=rng)
     policy = wrapper.current_policy
     np.random.seed(0)
     obs = np.random.rand(100, 2)
@@ -90,7 +97,7 @@ def test_switch_prob():
         assert wrapper.current_policy == policy
 
     def _always_switch(random_prob, num_steps, seed):
-        wrapper, _ = make_wrapper(random_prob=random_prob, switch_prob=1.0)
+        wrapper, _ = make_wrapper(random_prob=random_prob, switch_prob=1.0, rng=rng)
         np.random.seed(seed)
         num_random = 0
         num_constant = 0
@@ -116,10 +123,10 @@ def test_switch_prob():
     assert num_constant == 1000
 
 
-def test_valid_output():
+def test_valid_output(rng):
     """Ensure that we test both the random and the wrapped policy at least once."""
     for random_prob in [0.0, 0.5, 1.0]:
-        wrapper, venv = make_wrapper(random_prob=random_prob, switch_prob=0.5)
+        wrapper, venv = make_wrapper(random_prob=random_prob, switch_prob=0.5, rng=rng)
         np.random.seed(0)
         obs = np.random.rand(100, 2)
         for action in wrapper(obs):

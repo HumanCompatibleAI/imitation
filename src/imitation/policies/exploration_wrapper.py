@@ -1,11 +1,10 @@
 """Wrapper to turn a policy into a more exploratory version."""
 
-from typing import Optional
-
 import numpy as np
 from stable_baselines3.common import vec_env
 
 from imitation.data import rollout
+from imitation.util import util
 
 
 class ExplorationWrapper:
@@ -21,27 +20,33 @@ class ExplorationWrapper:
 
     def __init__(
         self,
-        policy_callable: rollout.PolicyCallable,
+        policy: rollout.AnyPolicy,
         venv: vec_env.VecEnv,
         random_prob: float,
         switch_prob: float,
-        seed: Optional[int] = None,
+        rng: np.random.Generator,
+        deterministic_policy: bool = False,
     ):
         """Initializes the ExplorationWrapper.
 
         Args:
-            policy_callable: The policy callable to randomize.
+            policy: The policy to randomize.
             venv: The environment to use (needed for sampling random actions).
             random_prob: The probability of picking the random policy when switching.
             switch_prob: The probability of switching away from the current policy.
-            seed: The random seed to use.
+            rng: The random state to use for seeding the environment and for
+                switching policies.
+            deterministic_policy: Whether to make the policy deterministic when not
+                exploring. This must be False when ``policy`` is a ``PolicyCallable``.
         """
+        policy_callable = rollout.policy_to_callable(policy, venv, deterministic_policy)
         self.wrapped_policy = policy_callable
         self.random_prob = random_prob
         self.switch_prob = switch_prob
         self.venv = venv
 
-        self.rng = np.random.RandomState(seed)
+        self.rng = rng
+        seed = util.make_seeds(self.rng)
         self.venv.action_space.seed(seed)
 
         self.current_policy = policy_callable
@@ -54,13 +59,13 @@ class ExplorationWrapper:
 
     def _switch(self) -> None:
         """Pick a new policy at random."""
-        if self.rng.rand() < self.random_prob:
+        if self.rng.random() < self.random_prob:
             self.current_policy = self._random_policy
         else:
             self.current_policy = self.wrapped_policy
 
     def __call__(self, obs: np.ndarray) -> np.ndarray:
         acts = self.current_policy(obs)
-        if self.rng.rand() < self.switch_prob:
+        if self.rng.random() < self.switch_prob:
             self._switch()
         return acts

@@ -1,13 +1,12 @@
 """Tests of `imitation.data.types`."""
 
-
 import contextlib
 import copy
 import dataclasses
 import os
 import pathlib
 import pickle
-from typing import Any, Callable
+from typing import Any, Callable, Sequence
 
 import gym
 import numpy as np
@@ -27,7 +26,7 @@ ACT_SPACES = SPACES
 LENGTHS = [0, 1, 2, 10]
 
 
-def _check_1d_shape(fn: Callable[[np.ndarray], Any], length: float, expected_msg: str):
+def _check_1d_shape(fn: Callable[[np.ndarray], Any], length: int, expected_msg: str):
     for shape in [(), (length, 1), (length, 2), (length - 1,), (length + 1,)]:
         with pytest.raises(ValueError, match=expected_msg):
             fn(np.zeros(shape))
@@ -111,7 +110,7 @@ def _check_transitions_get_item(trans, key):
 @contextlib.contextmanager
 def pushd(dir_path):
     """Change directory temporarily inside context."""
-    orig_dir = os.getcwd()
+    orig_dir = pathlib.Path.cwd()
     try:
         os.chdir(dir_path)
         yield
@@ -208,19 +207,21 @@ class TestData:
         use_rewards,
         type_safe,
     ):
+        chdir_context: contextlib.AbstractContextManager
         """Check that trajectories are properly saved."""
         if use_chdir:
             # Test no relative path without directory edge-case.
             chdir_context = pushd(tmpdir)
-            save_dir = ""
+            save_dir_str = ""
         else:
             chdir_context = contextlib.nullcontext()
-            save_dir = tmpdir
-
-        trajs = [trajectory_rew if use_rewards else trajectory]
-        save_path = pathlib.Path(save_dir, "trajs")
+            save_dir_str = tmpdir
 
         with chdir_context:
+            save_dir = types.parse_path(save_dir_str)
+            trajs = [trajectory_rew if use_rewards else trajectory]
+            save_path = save_dir / "trajs"
+
             if use_pickle:
                 # Pickle format
                 with open(save_path, "wb") as f:
@@ -234,12 +235,13 @@ class TestData:
                     with pytest.raises(ValueError):
                         types.save(save_path, [trajectory, trajectory_rew])
 
+            loaded_trajs: Sequence[types.Trajectory]
             if type_safe:
                 if use_rewards:
                     loaded_trajs = types.load_with_rewards(save_path)
                 else:
                     with pytest.raises(ValueError):
-                        loaded_trajs = types.load_with_rewards(save_path)
+                        types.load_with_rewards(save_path)
                     loaded_trajs = types.load(save_path)
             else:
                 loaded_trajs = types.load(save_path)
@@ -271,6 +273,7 @@ class TestData:
                 ValueError,
                 match=r"infos when present must be present for each action.*",
             ):
+                assert traj.infos is not None
                 dataclasses.replace(traj, infos=traj.infos[:-1])
             with pytest.raises(
                 ValueError,
@@ -387,12 +390,46 @@ def test_zero_length_fails():
         types.Trajectory(obs=np.array([42]), acts=empty, infos=None, terminal=True)
 
 
-def test_path_to_str():
-    assert types.path_to_str("") == ""
-    assert types.path_to_str(b"") == ""
-    assert types.path_to_str("foo") == "foo"
-    assert types.path_to_str(b"foo") == "foo"
-    assert types.path_to_str(pathlib.Path("foo")) == "foo"
-    assert types.path_to_str("/foo/bar") == "/foo/bar"
-    assert types.path_to_str(b"/foo/bar") == "/foo/bar"
-    assert types.path_to_str(pathlib.Path("/foo", "bar"))
+def test_parse_path():
+    if os.name == "nt":  # pragma: no cover
+        pytest.skip(
+            "Windows uses path.WindowsPath instead when paths are resolved, which"
+            "cannot be compared directly to pathlib.Path objects.",
+        )
+    # absolute paths
+    assert types.parse_path("/foo/bar") == pathlib.Path("/foo/bar")
+    assert types.parse_path(pathlib.Path("/foo/bar")) == pathlib.Path("/foo/bar")
+    assert types.parse_path(b"/foo/bar") == pathlib.Path("/foo/bar")
+
+    # relative paths. implicit conversion to cwd
+    assert types.parse_path("foo/bar") == pathlib.Path.cwd() / "foo/bar"
+    assert types.parse_path(pathlib.Path("foo/bar")) == pathlib.Path.cwd() / "foo/bar"
+    assert types.parse_path(b"foo/bar") == pathlib.Path.cwd() / "foo/bar"
+
+    # relative paths. conversion using custom base directory
+    base_dir = pathlib.Path("/foo/bar")
+    assert types.parse_path("baz", base_directory=base_dir) == base_dir / "baz"
+    assert (
+        types.parse_path(pathlib.Path("baz"), base_directory=base_dir)
+        == base_dir / "baz"
+    )
+    assert types.parse_path(b"baz", base_directory=base_dir) == base_dir / "baz"
+
+    # pass a relative path but disallowing relative paths. should raise error.
+    with pytest.raises(ValueError, match="Path .* is not absolute"):
+        types.parse_path("foo/bar", allow_relative=False)
+
+    # pass a base direectory but disallowing relative paths. should raise error.
+    with pytest.raises(
+        ValueError,
+        match="If `base_directory` is specified, then `allow_relative` must be True.",
+    ):
+        types.parse_path(
+            "foo/bar",
+            base_directory=pathlib.Path("/foo/bar"),
+            allow_relative=False,
+        )
+
+    # Parse optional path. Works the same way but passes None down the line.
+    assert types.parse_optional_path(None) is None
+    assert types.parse_optional_path("/foo/bar") == types.parse_path("/foo/bar")

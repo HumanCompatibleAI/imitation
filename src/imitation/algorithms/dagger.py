@@ -7,7 +7,6 @@ policy.
 """
 
 import abc
-import dataclasses
 import logging
 import os
 import pathlib
@@ -21,7 +20,8 @@ from torch.utils import data as th_data
 
 from imitation.algorithms import base, bc
 from imitation.data import rollout, types
-from imitation.util import logger, util
+from imitation.util import logger as imit_logger
+from imitation.util import util
 
 
 class BetaSchedule(abc.ABC):
@@ -69,7 +69,7 @@ class LinearBetaSchedule(BetaSchedule):
 def reconstruct_trainer(
     scratch_dir: types.AnyPath,
     venv: vec_env.VecEnv,
-    custom_logger: Optional[logger.HierarchicalLogger] = None,
+    custom_logger: Optional[imit_logger.HierarchicalLogger] = None,
     device: Union[th.device, str] = "auto",
 ) -> "DAggerTrainer":
     """Reconstruct trainer from the latest snapshot in some working directory.
@@ -88,8 +88,9 @@ def reconstruct_trainer(
     Returns:
         A deserialized `DAggerTrainer`.
     """
-    custom_logger = custom_logger or logger.configure()
-    checkpoint_path = pathlib.Path(scratch_dir, "checkpoint-latest.pt")
+    custom_logger = custom_logger or imit_logger.configure()
+    scratch_dir = types.parse_path(scratch_dir)
+    checkpoint_path = scratch_dir / "checkpoint-latest.pt"
     trainer = th.load(checkpoint_path, map_location=utils.get_device(device))
     trainer.venv = venv
     trainer._logger = custom_logger
@@ -101,37 +102,15 @@ def _save_dagger_demo(
     save_dir: types.AnyPath,
     prefix: str = "",
 ) -> None:
-    # TODO(shwang): This is possibly redundant with types.save(). Note
-    #   however that NPZ save here is likely more space efficient than
-    #   pickle from types.save(), and types.save only accepts
-    #   TrajectoryWithRew right now (subclass of Trajectory).
-    save_dir = pathlib.Path(save_dir)
+    save_dir = types.parse_path(save_dir)
     assert isinstance(trajectory, types.Trajectory)
     actual_prefix = f"{prefix}-" if prefix else ""
     timestamp = util.make_unique_timestamp()
     filename = f"{actual_prefix}dagger-demo-{timestamp}.npz"
 
-    save_dir.mkdir(parents=True, exist_ok=True)
-    npz_path = pathlib.Path(save_dir, filename)
-    np.savez_compressed(npz_path, **dataclasses.asdict(trajectory))
+    npz_path = save_dir / filename
+    types.save(npz_path, [trajectory])
     logging.info(f"Saved demo at '{npz_path}'")
-
-
-def _load_trajectory(npz_path: str) -> types.Trajectory:
-    """Load a single trajectory from a compressed Numpy file."""
-    np_data = np.load(npz_path, allow_pickle=True)
-    has_rew = "rews" in np_data
-    dict_data = dict(np_data.items())
-
-    # infos=None is saved as array(None) which leads to a type checking error upon
-    # `Trajectory` initialization. Convert to None to prevent error.
-    infos = dict_data["infos"]
-    if infos.shape == ():
-        assert infos.item() is None
-        dict_data["infos"] = None
-
-    cls = types.TrajectoryWithRew if has_rew else types.Trajectory
-    return cls(**dict_data)
 
 
 class InteractiveTrajectoryCollector(vec_env.VecEnvWrapper):
@@ -146,12 +125,17 @@ class InteractiveTrajectoryCollector(vec_env.VecEnvWrapper):
     of every episode.
     """
 
+    traj_accum: Optional[rollout.TrajectoryAccumulator]
+    _last_obs: Optional[np.ndarray]
+    _last_user_actions: Optional[np.ndarray]
+
     def __init__(
         self,
         venv: vec_env.VecEnv,
         get_robot_acts: Callable[[np.ndarray], np.ndarray],
         beta: float,
         save_dir: types.AnyPath,
+        rng: np.random.Generator,
     ):
         """Builds InteractiveTrajectoryCollector.
 
@@ -164,6 +148,7 @@ class InteractiveTrajectoryCollector(vec_env.VecEnvWrapper):
                 robot action. The choice of robot or human action is independently
                 randomized for each individual `Env` at every timestep.
             save_dir: directory to save collected trajectories in.
+            rng: random state for random number generation.
         """
         super().__init__(venv)
         self.get_robot_acts = get_robot_acts
@@ -175,7 +160,7 @@ class InteractiveTrajectoryCollector(vec_env.VecEnvWrapper):
         self._done_before = True
         self._is_reset = False
         self._last_user_actions = None
-        self.rng = np.random.RandomState()
+        self.rng = rng
 
     def seed(self, seed=Optional[int]) -> List[Union[None, int]]:
         """Set the seed for the DAgger random number generator and wrapped VecEnv.
@@ -190,7 +175,7 @@ class InteractiveTrajectoryCollector(vec_env.VecEnvWrapper):
             A list containing the seeds for each individual env. Note that all list
             elements may be None, if the env does not return anything when seeded.
         """
-        self.rng = np.random.RandomState(seed=seed)
+        self.rng = np.random.default_rng(seed=seed)
         return self.venv.seed(seed)
 
     def reset(self) -> np.ndarray:
@@ -201,6 +186,7 @@ class InteractiveTrajectoryCollector(vec_env.VecEnvWrapper):
         """
         self.traj_accum = rollout.TrajectoryAccumulator()
         obs = self.venv.reset()
+        assert isinstance(obs, np.ndarray)
         for i, ob in enumerate(obs):
             self.traj_accum.add_step({"obs": ob}, key=i)
         self._last_obs = obs
@@ -228,6 +214,7 @@ class InteractiveTrajectoryCollector(vec_env.VecEnvWrapper):
                 and executed instead via `self.get_robot_act`.
         """
         assert self._is_reset, "call .reset() before .step()"
+        assert self._last_obs is not None
 
         # Replace each given action with a robot action 100*(1-beta)% of the time.
         actual_acts = np.array(actions)
@@ -248,6 +235,9 @@ class InteractiveTrajectoryCollector(vec_env.VecEnvWrapper):
             Observation, reward, dones (is terminal?) and info dict.
         """
         next_obs, rews, dones, infos = self.venv.step_wait()
+        assert isinstance(next_obs, np.ndarray)
+        assert self.traj_accum is not None
+        assert self._last_user_actions is not None
         self._last_obs = next_obs
         fresh_demos = self.traj_accum.add_steps_and_auto_finish(
             obs=next_obs,
@@ -278,11 +268,11 @@ class DAggerTrainer(base.BaseImitationAlgorithm):
     directory with the following structure::
 
        scratch-dir-name/
-           checkpoint-001.pkl
-           checkpoint-002.pkl
+           checkpoint-001.pt
+           checkpoint-002.pt
            …
-           checkpoint-XYZ.pkl
-           checkpoint-latest.pkl
+           checkpoint-XYZ.pt
+           checkpoint-latest.pt
            demos/
                round-000/
                    demos_round_000_000.npz
@@ -296,6 +286,8 @@ class DAggerTrainer(base.BaseImitationAlgorithm):
                    …
     """
 
+    _all_demos: List[types.Trajectory]
+
     DEFAULT_N_EPOCHS: int = 4
     """The default number of BC training epochs in `extend_and_update`."""
 
@@ -304,9 +296,10 @@ class DAggerTrainer(base.BaseImitationAlgorithm):
         *,
         venv: vec_env.VecEnv,
         scratch_dir: types.AnyPath,
+        rng: np.random.Generator,
         beta_schedule: Optional[Callable[[int], float]] = None,
         bc_trainer: bc.BC,
-        custom_logger: Optional[logger.HierarchicalLogger] = None,
+        custom_logger: Optional[imit_logger.HierarchicalLogger] = None,
     ):
         """Builds DAggerTrainer.
 
@@ -314,6 +307,7 @@ class DAggerTrainer(base.BaseImitationAlgorithm):
             venv: Vectorized training environment.
             scratch_dir: Directory to use to store intermediate training
                 information (e.g. for resuming training).
+            rng: random state for random number generation.
             beta_schedule: Provides a value of `beta` (the probability of taking
                 expert action in any given state) at each round of training. If
                 `None`, then `linear_beta_schedule` will be used instead.
@@ -325,11 +319,12 @@ class DAggerTrainer(base.BaseImitationAlgorithm):
         if beta_schedule is None:
             beta_schedule = LinearBetaSchedule(15)
         self.beta_schedule = beta_schedule
-        self.scratch_dir = pathlib.Path(scratch_dir)
+        self.scratch_dir = types.parse_path(scratch_dir)
         self.venv = venv
         self.round_num = 0
         self._last_loaded_round = -1
         self._all_demos = []
+        self.rng = rng
 
         utils.check_for_correct_spaces(
             self.venv,
@@ -346,8 +341,13 @@ class DAggerTrainer(base.BaseImitationAlgorithm):
         del d["_logger"]
         return d
 
-    @base.BaseImitationAlgorithm.logger.setter
-    def logger(self, value: logger.HierarchicalLogger) -> None:
+    @property
+    def logger(self) -> imit_logger.HierarchicalLogger:
+        """Returns logger for this object."""
+        return super().logger
+
+    @logger.setter
+    def logger(self, value: imit_logger.HierarchicalLogger) -> None:
         # DAgger and inner-BC logger should stay in sync
         self._logger = value
         self.bc_trainer.logger = value
@@ -365,18 +365,14 @@ class DAggerTrainer(base.BaseImitationAlgorithm):
         for round_num in range(self._last_loaded_round + 1, self.round_num + 1):
             round_dir = self._demo_dir_path_for_round(round_num)
             demo_paths = self._get_demo_paths(round_dir)
-            self._all_demos.extend(_load_trajectory(p) for p in demo_paths)
+            self._all_demos.extend(types.load(p)[0] for p in demo_paths)
             num_demos_by_round.append(len(demo_paths))
         logging.info(f"Loaded {len(self._all_demos)} total")
         demo_transitions = rollout.flatten_trajectories(self._all_demos)
         return demo_transitions, num_demos_by_round
 
     def _get_demo_paths(self, round_dir):
-        return [
-            os.path.join(round_dir, p)
-            for p in os.listdir(round_dir)
-            if p.endswith(".npz")
-        ]
+        return [round_dir / p for p in os.listdir(round_dir) if p.endswith(".npz")]
 
     def _demo_dir_path_for_round(self, round_num: Optional[int] = None) -> pathlib.Path:
         if round_num is None:
@@ -386,7 +382,7 @@ class DAggerTrainer(base.BaseImitationAlgorithm):
     def _try_load_demos(self) -> None:
         """Load the dataset for this round into self.bc_trainer as a DataLoader."""
         demo_dir = self._demo_dir_path_for_round()
-        demo_paths = self._get_demo_paths(demo_dir) if os.path.isdir(demo_dir) else []
+        demo_paths = self._get_demo_paths(demo_dir) if demo_dir.is_dir() else []
         if len(demo_paths) == 0:
             raise NeedsDemosException(
                 f"No demos found for round {self.round_num} in dir '{demo_dir}'. "
@@ -471,6 +467,7 @@ class DAggerTrainer(base.BaseImitationAlgorithm):
             get_robot_acts=lambda acts: self.bc_trainer.policy.predict(acts)[0],
             beta=beta,
             save_dir=save_dir,
+            rng=self.rng,
         )
         return collector
 
@@ -525,6 +522,7 @@ class SimpleDAggerTrainer(DAggerTrainer):
         venv: vec_env.VecEnv,
         scratch_dir: types.AnyPath,
         expert_policy: policies.BasePolicy,
+        rng: np.random.Generator,
         expert_trajs: Optional[Sequence[types.Trajectory]] = None,
         **dagger_trainer_kwargs,
     ):
@@ -538,6 +536,7 @@ class SimpleDAggerTrainer(DAggerTrainer):
             scratch_dir: Directory to use to store intermediate training
                 information (e.g. for resuming training).
             expert_policy: The expert policy used to generate synthetic demonstrations.
+            rng: Random state to use for the random number generator.
             expert_trajs: Optional starting dataset that is inserted into the round 0
                 dataset.
             dagger_trainer_kwargs: Other keyword arguments passed to the
@@ -547,7 +546,12 @@ class SimpleDAggerTrainer(DAggerTrainer):
             ValueError: The observation or action space does not match between
                 `venv` and `expert_policy`.
         """
-        super().__init__(venv=venv, scratch_dir=scratch_dir, **dagger_trainer_kwargs)
+        super().__init__(
+            venv=venv,
+            scratch_dir=scratch_dir,
+            rng=rng,
+            **dagger_trainer_kwargs,
+        )
         self.expert_policy = expert_policy
         if expert_policy.observation_space != self.venv.observation_space:
             raise ValueError(

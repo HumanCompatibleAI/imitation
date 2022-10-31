@@ -25,6 +25,15 @@ def replay_defaults():
 
     rollout_save_path = None  # where to save rollouts to -- if None, do not save
 
+    explore_kwargs = (
+        None  # kwargs to feed to ExplorationWrapper -- if None, do not wrap
+    )
+
+
+@eval_policy_ex.named_config
+def explore_eps_greedy():
+    explore_kwargs = dict(switch_prob=1.0, random_prob=0.1)
+
 
 @eval_policy_ex.named_config
 def render():
@@ -55,6 +64,11 @@ def seals_cartpole():
 @eval_policy_ex.named_config
 def half_cheetah():
     common = dict(env_name="HalfCheetah-v2")
+
+
+@eval_policy_ex.named_config
+def seals_half_cheetah():
+    common = dict(env_name="seals/HalfCheetah-v0")
 
 
 @eval_policy_ex.named_config

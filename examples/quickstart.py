@@ -4,6 +4,7 @@ Refer to the jupyter notebooks for more detailed examples of how to use the algo
 """
 
 import gym
+import numpy as np
 from stable_baselines3 import PPO
 from stable_baselines3.common.evaluation import evaluate_policy
 from stable_baselines3.common.vec_env import DummyVecEnv
@@ -14,6 +15,7 @@ from imitation.data import rollout
 from imitation.data.wrappers import RolloutInfoWrapper
 
 env = gym.make("CartPole-v1")
+rng = np.random.default_rng(0)
 
 
 def train_expert():
@@ -40,6 +42,7 @@ def sample_expert_transitions():
         expert,
         DummyVecEnv([lambda: RolloutInfoWrapper(env)]),
         rollout.make_sample_until(min_timesteps=None, min_episodes=50),
+        rng=rng,
     )
     return rollout.flatten_trajectories(rollouts)
 
@@ -49,13 +52,24 @@ bc_trainer = bc.BC(
     observation_space=env.observation_space,
     action_space=env.action_space,
     demonstrations=transitions,
+    rng=rng,
 )
 
-reward, _ = evaluate_policy(bc_trainer.policy, env, n_eval_episodes=3, render=True)
+reward, _ = evaluate_policy(
+    bc_trainer.policy,  # type: ignore[arg-type]
+    env,
+    n_eval_episodes=3,
+    render=True,
+)
 print(f"Reward before training: {reward}")
 
 print("Training a policy using Behavior Cloning")
 bc_trainer.train(n_epochs=1)
 
-reward, _ = evaluate_policy(bc_trainer.policy, env, n_eval_episodes=3, render=True)
+reward, _ = evaluate_policy(
+    bc_trainer.policy,  # type: ignore[arg-type]
+    env,
+    n_eval_episodes=3,
+    render=True,
+)
 print(f"Reward after training: {reward}")

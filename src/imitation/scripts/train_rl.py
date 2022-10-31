@@ -9,8 +9,7 @@ This can be used:
 """
 
 import logging
-import os
-import os.path as osp
+import pathlib
 import warnings
 from typing import Any, Mapping, Optional
 
@@ -49,7 +48,7 @@ def train_rl(
       "final"):
 
         - Policies are saved to `{log_dir}/policies/{step}/`.
-        - Rollouts are saved to `{log_dir}/rollouts/{step}.pkl`.
+        - Rollouts are saved to `{log_dir}/rollouts/{step}.npz`.
 
     Args:
         total_timesteps: Number of training timesteps in `model.learn()`.
@@ -87,11 +86,12 @@ def train_rl(
     Returns:
         The return value of `rollout_stats()` using the final policy.
     """
+    rng = common.make_rng()
     custom_logger, log_dir = common.setup_logging()
-    rollout_dir = osp.join(log_dir, "rollouts")
-    policy_dir = osp.join(log_dir, "policies")
-    os.makedirs(rollout_dir, exist_ok=True)
-    os.makedirs(policy_dir, exist_ok=True)
+    rollout_dir = log_dir / "rollouts"
+    policy_dir = log_dir / "policies"
+    rollout_dir.mkdir(parents=True, exist_ok=True)
+    policy_dir.mkdir(parents=True, exist_ok=True)
 
     post_wrappers = [lambda env, idx: wrappers.RolloutInfoWrapper(env)]
     with common.make_venv(post_wrappers=post_wrappers) as venv:
@@ -120,7 +120,9 @@ def train_rl(
                 )
 
         if policy_save_interval > 0:
-            save_policy_callback = serialize.SavePolicyCallback(policy_dir)
+            save_policy_callback: callbacks.EventCallback = (
+                serialize.SavePolicyCallback(policy_dir)
+            )
             save_policy_callback = callbacks.EveryNTimesteps(
                 policy_save_interval,
                 save_policy_callback,
@@ -137,17 +139,17 @@ def train_rl(
 
         # Save final artifacts after training is complete.
         if rollout_save_final:
-            save_path = osp.join(rollout_dir, "final.pkl")
+            save_path = rollout_dir / "final.npz"
             sample_until = rollout.make_sample_until(
                 rollout_save_n_timesteps,
                 rollout_save_n_episodes,
             )
             types.save(
                 save_path,
-                rollout.rollout(rl_algo, rl_algo.get_env(), sample_until),
+                rollout.rollout(rl_algo, rl_algo.get_env(), sample_until, rng=rng),
             )
         if policy_save_final:
-            output_dir = os.path.join(policy_dir, "final")
+            output_dir = policy_dir / "final"
             serialize.save_stable_model(output_dir, rl_algo)
 
         # Final evaluation of expert policy.
@@ -155,7 +157,8 @@ def train_rl(
 
 
 def main_console():
-    observer = FileStorageObserver(osp.join("output", "sacred", "train_rl"))
+    observer_path = pathlib.Path.cwd() / "output" / "sacred" / "train_rl"
+    observer = FileStorageObserver(observer_path)
     train_rl_ex.observers.append(observer)
     train_rl_ex.run_commandline()
 

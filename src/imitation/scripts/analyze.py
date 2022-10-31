@@ -1,20 +1,19 @@
 """Commands to analyze experimental results."""
 
-import collections
 import itertools
 import json
 import logging
 import os
-import os.path as osp
+import pathlib
 import tempfile
 import warnings
-from collections import OrderedDict
-from typing import Any, Callable, List, Mapping, Optional, Sequence, Set
+from typing import Any, Callable, Iterable, List, Mapping, Optional, Sequence, Set
 
 import pandas as pd
 from sacred.observers import FileStorageObserver
 
 import imitation.util.sacred as sacred_util
+from imitation.data import types
 from imitation.scripts.config.analyze import analysis_ex
 from imitation.util.sacred import dict_get_nested as get
 
@@ -47,16 +46,18 @@ def _gather_sacred_dicts(
     # e.g. chain.from_iterable([["pathone", "pathtwo"], [], ["paththree"]]) =>
     # ("pathone", "pathtwo", "paththree")
     sacred_dirs = itertools.chain.from_iterable(
-        sacred_util.filter_subdirs(source_dir) for source_dir in source_dirs
+        sacred_util.filter_subdirs(types.parse_path(source_dir))
+        for source_dir in source_dirs
     )
-    sacred_dicts = []
+    sacred_dicts_list = []
 
     for sacred_dir in sacred_dirs:
         try:
-            sacred_dicts.append(sacred_util.SacredDicts.load_from_dir(sacred_dir))
+            sacred_dicts_list.append(sacred_util.SacredDicts.load_from_dir(sacred_dir))
         except json.JSONDecodeError:
             warnings.warn(f"Invalid JSON file in {sacred_dir}", RuntimeWarning)
 
+    sacred_dicts: Iterable = sacred_dicts_list
     if run_name is not None:
         sacred_dicts = filter(
             lambda sd: get(sd.run, "experiment.name") == run_name,
@@ -97,17 +98,17 @@ def gather_tb_directories() -> dict:
     Raises:
         OSError: If the symlink cannot be created.
     """
-    os.makedirs("/tmp/analysis_tb", exist_ok=True)
-    tmp_dir = tempfile.mkdtemp(dir="/tmp/analysis_tb/")
+    tb_analysis_dir = pathlib.Path("/tmp/analysis_tb")
+    tb_analysis_dir.mkdir(exist_ok=True)
+    tmp_dir = pathlib.Path(tempfile.mkdtemp(dir=tb_analysis_dir))
 
     tb_dirs_count = 0
     for sd in _gather_sacred_dicts():
         # Expecting a path like "~/ray_results/{run_name}/sacred/1".
         # Want to search for all Tensorboard dirs inside
         # "~/ray_results/{run_name}".
-        sacred_dir = sd.sacred_dir.rstrip("/")
-        run_dir = osp.dirname(osp.dirname(sacred_dir))
-        run_name = osp.basename(run_dir)
+        run_dir = sd.sacred_dir.parent.parent
+        run_name = run_dir.name
 
         # log is what we use as subdirectory in new code.
         # rl, tb, sb_tb all appear in old versions.
@@ -115,19 +116,19 @@ def gather_tb_directories() -> dict:
             tb_src_dirs = tuple(
                 sacred_util.filter_subdirs(
                     run_dir,
-                    lambda path: osp.basename(path) == basename,
+                    lambda path: path.name == basename,
                 ),
             )
             if tb_src_dirs:
                 assert len(tb_src_dirs) == 1, "expect at most one TB dir of each type"
                 tb_src_dir = tb_src_dirs[0]
 
-                symlinks_dir = osp.join(tmp_dir, basename)
-                os.makedirs(symlinks_dir, exist_ok=True)
+                symlinks_dir = tmp_dir / basename
+                symlinks_dir.mkdir(exist_ok=True)
 
-                tb_symlink = osp.join(symlinks_dir, run_name)
+                tb_symlink = symlinks_dir / run_name
                 try:
-                    os.symlink(tb_src_dir, tb_symlink)
+                    tb_symlink.symlink_to(tb_src_dir)
                 except OSError as e:
                     if os.name == "nt":  # Windows
                         msg = (
@@ -195,33 +196,24 @@ def _return_summaries(sd: sacred_util.SacredDicts) -> dict:
 
 sd_to_table_entry_type = Mapping[str, Callable[[sacred_util.SacredDicts], Any]]
 
-# This OrderedDict maps column names to functions that get table entries, given the
+# This dict maps column names to functions that get table entries, given the
 # row's unique SacredDicts object.
-table_entry_fns: sd_to_table_entry_type = collections.OrderedDict(
-    [
-        ("status", lambda sd: get(sd.run, "status")),
-        ("exp_command", _get_exp_command),
-        ("algo", _get_algo_name),
-        ("env_name", lambda sd: get(sd.config, "common.env_name")),
-        ("n_expert_demos", lambda sd: get(sd.config, "demonstrations.n_expert_demos")),
-        ("run_name", lambda sd: get(sd.run, "experiment.name")),
-        (
-            "expert_return_summary",
-            lambda sd: _return_summaries(sd)["expert_return_summary"],
-        ),
-        (
-            "imit_return_summary",
-            lambda sd: _return_summaries(sd)["imit_return_summary"],
-        ),
-        ("imit_expert_ratio", lambda sd: _return_summaries(sd)["imit_expert_ratio"]),
-    ],
-)
-
+table_entry_fns: sd_to_table_entry_type = {
+    "status": lambda sd: get(sd.run, "status"),
+    "exp_command": _get_exp_command,
+    "algo": _get_algo_name,
+    "env_name": lambda sd: get(sd.config, "common.env_name"),
+    "n_expert_demos": lambda sd: get(sd.config, "demonstrations.n_expert_demos"),
+    "run_name": lambda sd: get(sd.run, "experiment.name"),
+    "expert_return_summary": lambda sd: _return_summaries(sd)["expert_return_summary"],
+    "imit_return_summary": lambda sd: _return_summaries(sd)["imit_return_summary"],
+    "imit_expert_ratio": lambda sd: _return_summaries(sd)["imit_expert_ratio"],
+}
 
 # If `verbosity` is at least the length of this list, then we use all table_entry_fns
 # as columns of table.
 # Otherwise, use only the subset at index `verbosity`. The subset of columns is
-# still arranged in the same order as in the `table_entry_fns` OrderedDict.
+# still arranged in the same order as in the `table_entry_fns` dict.
 table_verbosity_mapping: List[Set[str]] = []
 
 # verbosity 0
@@ -250,12 +242,7 @@ def _get_table_entry_fns_subset(table_verbosity: int) -> sd_to_table_entry_type:
         return table_entry_fns
     else:
         keys_subset = table_verbosity_mapping[table_verbosity]
-        result = OrderedDict()
-        for k, v in table_entry_fns.items():
-            if k not in keys_subset:
-                continue
-            result[k] = v
-        return result
+        return {k: v for k, v in table_entry_fns.items() if k in keys_subset}
 
 
 @analysis_ex.command
@@ -285,7 +272,7 @@ def analyze_imitation(
 
     rows = []
     for sd in _gather_sacred_dicts():
-        row = OrderedDict()
+        row = {}
         for col_name, make_entry_fn in table_entry_fns_subset.items():
             row[col_name] = make_entry_fn(sd)
         rows.append(row)
@@ -318,7 +305,8 @@ def _make_return_summary(stats: dict, prefix="") -> str:
 
 
 def main_console():
-    observer = FileStorageObserver(osp.join("output", "sacred", "analyze"))
+    observer_path = pathlib.Path.cwd() / "output" / "sacred" / "analyze"
+    observer = FileStorageObserver(observer_path)
     analysis_ex.observers.append(observer)
     analysis_ex.run_commandline()
 
