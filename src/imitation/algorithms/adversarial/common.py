@@ -356,9 +356,9 @@ class AdversarialTrainer(base.DemonstrationAlgorithm[types.Transitions]):
                     batch["labels_expert_is_one"].float(),
                 )
 
-                # Renormalise the loss to be averaged over the whole batch size
-                # instead of the minibatch size.
-                assert len(batch["state"]) == self.demo_minibatch_size
+                # Renormalise the loss to be averaged over the whole
+                # (doubled) batch size instead of the minibatch size.
+                assert len(batch["state"]) == 2 * self.demo_minibatch_size
                 loss *= self.demo_minibatch_size / self.demo_batch_size
                 loss.backward()
 
