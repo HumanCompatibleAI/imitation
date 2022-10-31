@@ -45,8 +45,8 @@ def train_rl(
     """Trains an expert policy from scratch and saves the rollouts and policy.
 
     Checkpoints:
-      At applicable training steps `step` (where step is either an integer or
-      "final"):
+        At applicable training steps `step` (where step is either an integer or
+        "final"):
         - Policies are saved to `{log_dir}/policies/{step}/`.
         - Rollouts are saved to `{log_dir}/rollouts/{step}.npz`.
 
