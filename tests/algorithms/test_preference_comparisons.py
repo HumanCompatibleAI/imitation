@@ -163,11 +163,12 @@ def test_trajectory_dataset_too_long(
         dataset.sample(100000)
 
 
-def test_trajectory_dataset_shuffle(
+def test_trajectory_dataset_not_static(
     cartpole_expert_trajectories: Sequence[TrajectoryWithRew],
     rng,
     num_steps: int = 400,
 ):
+    """Tests sample() doesn't always return the same value."""
     dataset = preference_comparisons.TrajectoryDataset(
         cartpole_expert_trajectories,
         rng,
@@ -175,12 +176,13 @@ def test_trajectory_dataset_shuffle(
     n_trajectories = len(cartpole_expert_trajectories)
     flakiness_prob = 1 / n_trajectories
     max_flakiness = 1e-6
-    # Choose num_samples s.t. flakiness_prob**num_samples <= max_flakiness
-    num_samples = math.ceil(math.log(max_flakiness) / math.log(flakiness_prob))
-    samples = [dataset.sample(num_steps) for _ in range(num_samples)]
+    # Choose max_samples s.t. flakiness_prob**max_samples <= max_flakiness
+    max_samples = math.ceil(math.log(max_flakiness) / math.log(flakiness_prob))
+    sample = dataset.sample(num_steps)
     with pytest.raises(AssertionError):
-        for sample in samples[1:]:
-            _check_trajs_equal(samples[0], sample)
+        for _ in range(max_samples):
+            sample2 = dataset.sample(num_steps)
+            _check_trajs_equal(sample, sample2)
 
 
 def test_transitions_left_in_buffer(agent_trainer):
