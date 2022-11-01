@@ -113,50 +113,35 @@ EASY_ENVS = ["cartpole", "pendulum", "mountain_car"]
 
 
 @parallel_ex.named_config
-def example_rl_easy():
+def example_rl():
     sacred_ex_name = "train_rl"
-    run_name = "example-rl-easy"
-    n_seeds = 2
+    run_name = "rl_tuning"
+    # n_seeds = 2
+    base_named_configs = ["common.wandb_logging", "seals_half_cheetah"]
+    base_config_updates = {
+        "common": {
+            "wandb": {"wandb_kwargs": {"project": "algorithm-benchmark"}},
+            "num_vec": 1,
+        },
+    }
     search_space = {
-        "named_configs": tune.choice([[env] for env in EASY_ENVS]),
+        # "named_configs": tune.choice([[env] for env in EASY_ENVS]),
         "config_updates": {
             "rl": {
+                "batch_size": tune.choice([512, 1024, 2048, 4096, 8192]),
                 "rl_kwargs": {
-                    "learning_rate": tune.choice(np.logspace(3e-6, 1e-1, num=3)),
-                    "nminibatches": tune.choice([16, 32, 64]),
+                    "learning_rate": tune.loguniform(1e-5, 1e-2),
+                    "batch_size": tune.choice([64, 128, 256, 512]),
+                    "n_epochs": tune.choice([5, 10, 20]),
                 },
             },
         },
     }
-    resources_per_trial = dict(cpu=4)
-
-
-@parallel_ex.named_config
-def example_gail_easy():
-    sacred_ex_name = "train_adversarial"
-    run_name = "example-gail-easy"
-    n_seeds = 1
-    search_space = {
-        "named_configs": tune.choice([[env] for env in EASY_ENVS]),
-        "config_updates": {
-            "init_trainer_kwargs": {
-                "rl": {
-                    "rl_kwargs": {
-                        "learning_rate": tune.choice(
-                            np.logspace(3e-6, 1e-1, num=3),
-                        ),
-                        "nminibatches": tune.choice([16, 32, 64]),
-                    },
-                },
-            },
-        },
-    }
-    search_space = {
-        "command_name": "gail",
-    }
-
-
-MY_ENVS = ["seals_ant", "seals_half_cheetah"]
+    num_samples = 100
+    eval_best_trial = True
+    eval_trial_seeds = 5
+    repeat = 1
+    resources_per_trial = dict(cpu=1)
 
 
 @parallel_ex.named_config
@@ -356,7 +341,7 @@ def debug_eval():
         "fragment_length": 2,
     }
     search_space = {
-        "named_configs": tune.choice([[env] for env in MY_ENVS]),
+        # "named_configs": tune.choice([[env] for env in MY_ENVS]),
         "config_updates": {
             # "num_iterations": tune.choice([5, 20, 50]),
             "initial_comparison_frac": tune.choice([0.1, 0.2]),

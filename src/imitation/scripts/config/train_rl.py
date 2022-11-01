@@ -239,7 +239,7 @@ def seals_swimmer():
     train = dict(
         policy_cls="MlpPolicy",
         policy_kwargs=dict(
-            activation_fn=nn.Tanh,
+            activation_fn=nn.ReLU,
             net_arch=[dict(pi=[64, 64], vf=[64, 64])],
         ),
     )
@@ -271,7 +271,7 @@ def seals_walker():
         policy_cls="MlpPolicy",
         policy_kwargs=dict(
             activation_fn=nn.ReLU,
-            net_arch=[dict(pi=[256, 256], vf=[256, 256])],
+            net_arch=[dict(pi=[64, 64], vf=[64, 64])],
         ),
     )
 
