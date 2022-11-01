@@ -19,7 +19,7 @@ def make_wrapper(random_prob, switch_prob, rng):
     )
     return (
         exploration_wrapper.ExplorationWrapper(
-            policy_callable=constant_policy,
+            policy=constant_policy,
             venv=venv,
             random_prob=random_prob,
             switch_prob=switch_prob,
