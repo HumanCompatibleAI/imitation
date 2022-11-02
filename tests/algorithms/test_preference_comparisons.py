@@ -469,6 +469,7 @@ def test_gradient_accumulation(
     )
 
     for step in range(8):
+        print("Step", step)
         seed = rng.integers(2**32)
 
         th.manual_seed(seed)
@@ -485,7 +486,7 @@ def test_gradient_accumulation(
         atol = 1e-5
         rtol = 1e-4
         for p1, p2 in zip(reward_net1.parameters(), reward_net2.parameters()):
-            th.testing.assert_close(p1, p2, atol=atol, rtol=rtol, msg=step)
+            th.testing.assert_close(p1, p2, atol=atol, rtol=rtol)
 
 
 def test_synthetic_gatherer_deterministic(

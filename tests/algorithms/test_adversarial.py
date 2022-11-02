@@ -321,6 +321,7 @@ def test_gradient_accumulation(
 
     with trainer_ctx() as trainer1, trainer_ctx(minibatch_size) as trainer2:
         for step in range(8):
+            print("Step", step)
             for trainer in (trainer1, trainer2):
                 trainer.train_disc(
                     gen_samples=gen_samples,
@@ -337,7 +338,7 @@ def test_gradient_accumulation(
                 trainer2._reward_net.parameters(),
             )
             for p1, p2 in params:
-                th.testing.assert_close(p1, p2, atol=1e-5, rtol=1e-5, msg=step)
+                th.testing.assert_close(p1, p2, atol=1e-5, rtol=1e-5)
 
 
 @pytest.fixture(params=ENV_NAMES)

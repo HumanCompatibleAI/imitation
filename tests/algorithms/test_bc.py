@@ -247,6 +247,7 @@ def test_gradient_accumulation(
     trainers = (make_trainer(), make_trainer(minibatch_size=minibatch_size))
 
     for step in range(8):
+        print("Step", step)
         seed = rng.integers(2**32)
 
         for trainer in trainers:
@@ -260,7 +261,7 @@ def test_gradient_accumulation(
         # this could fail.
         params = zip(trainers[0].policy.parameters(), trainers[1].policy.parameters())
         for p1, p2 in params:
-            th.testing.assert_allclose(p1, p2, atol=1e-5, msg=step)
+            th.testing.assert_allclose(p1, p2, atol=1e-5)
 
 
 def test_that_policy_reconstruction_preserves_parameters(
