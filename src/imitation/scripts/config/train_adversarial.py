@@ -240,17 +240,24 @@ def seals_swimmer():
         rollout_path="/home/taufeeque/imitation/output/train_experts/"
         "2022-10-11T06:27:42-07:00/seals_swimmer_4/rollouts/final.pkl",
     )
+    train = dict(
+        policy_cls="MlpPolicy",
+        policy_kwargs=dict(
+            activation_fn=nn.ReLU,
+            net_arch=[dict(pi=[64, 64], vf=[64, 64])],
+        ),
+    )
     rl = dict(
         batch_size=2048,
         rl_kwargs=dict(
-            batch_size=8,
+            batch_size=64,
             clip_range=0.1,
             ent_coef=5.167107294612664e-08,
             gae_lambda=0.95,
             gamma=0.999,
-            learning_rate=0.0001214437022727675,
+            learning_rate=0.000414936134792374,
             max_grad_norm=2,
-            n_epochs=20,
+            n_epochs=5,
             # policy_kwargs are same as the defaults
             vf_coef=0.6162112311062333,
         ),
@@ -269,20 +276,21 @@ def seals_walker():
         policy_cls="MlpPolicy",
         policy_kwargs=dict(
             activation_fn=nn.ReLU,
-            net_arch=[dict(pi=[256, 256], vf=[256, 256])],
+            net_arch=[dict(pi=[64, 64], vf=[64, 64])],
         ),
     )
     rl = dict(
-        batch_size=2048,
+        batch_size=8192,
         rl_kwargs=dict(
-            batch_size=8,
+            batch_size=128,
             clip_range=0.4,
             ent_coef=0.00013057334805552262,
             gae_lambda=0.92,
             gamma=0.98,
-            learning_rate=3.791707778339674e-05,
+            learning_rate=0.000138575372312869,
             max_grad_norm=0.6,
-            n_epochs=5,
+            n_epochs=20,
+            # policy_kwargs are same as the defaults
             vf_coef=0.6167177795726859,
         ),
     )

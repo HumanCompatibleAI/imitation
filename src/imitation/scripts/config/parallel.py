@@ -11,6 +11,7 @@ search spaces to the config like `"seed": tune.choice([0, 1, 2, 3])`.
 import numpy as np
 import ray.tune as tune
 import sacred
+from torch import nn
 
 from imitation.algorithms.dagger import ExponentialBetaSchedule, LinearBetaSchedule
 from imitation.util.util import make_unique_timestamp
@@ -308,10 +309,13 @@ def example_pc():
             ],
         ),
         "config_updates": {
+            "train": {
+                "policy_kwargs": {"activation_fn": tune.choice([nn.ReLU, nn.tanh])}
+            },
             "num_iterations": tune.choice([5, 20, 50]),
             "initial_comparison_frac": tune.choice([0.1, 0.2]),
             "reward_trainer_kwargs": {
-                "epochs": tune.choice([1, 5, 10, 15]),
+                "epochs": tune.choice([5, 10, 15]),
             },
             # "query_schedule": tune.choice(
             #     ["constant", "hyperbolic", "inverse_quadratic"],

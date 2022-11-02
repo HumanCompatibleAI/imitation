@@ -139,11 +139,13 @@ def parallel(
             )
         print("Best config:")
         key = (
-            "rollout"
+            "rollout/"
             if sacred_ex_name == "train_preference_comparisons"
-            else "imit_stats"
+            else ""
+            if sacred_ex_name == "train_rl"
+            else "imit_stats/"
         )
-        key += "/monitor_return_mean"
+        key += "monitor_return_mean"
         if eval_best_trial:
             df = result.results_df
             df = df[df["config/named_configs"].notna()]
@@ -183,7 +185,7 @@ def parallel(
                 best_config["config_updates"].update(
                     seed=ray.tune.grid_search(list(range(100, 100 + eval_trial_seeds))),
                 )
-                resources_per_trial = {k: 8 * v for k, v in resources_per_trial.items()}
+                resources_per_trial = {k: 2 * v for k, v in resources_per_trial.items()}
                 eval_result = ray.tune.run(
                     trainable,
                     config={
