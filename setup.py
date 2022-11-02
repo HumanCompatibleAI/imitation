@@ -58,6 +58,7 @@ TESTS_REQUIRE = (
         "scipy~=1.9.0",
         "wandb==0.12.21",
         "setuptools_scm~=7.0.5",
+        "pre-commit>=2.20.0",
     ]
     + PARALLEL_REQUIRE
     + ATARI_REQUIRE
