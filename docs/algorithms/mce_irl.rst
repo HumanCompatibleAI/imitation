@@ -71,7 +71,7 @@ Detailed example notebook: :doc:`../tutorials/6_train_mce`
 
 .. testoutput::
     :hide:
-    
+
     ...
 
 API

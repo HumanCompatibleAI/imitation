@@ -22,7 +22,7 @@
       from {{ fullname }} import *
 
    .. doctest::
-      
+
       # empty test needed in case the module has no example usage.
       # otherwise, testsetup throws an error
       pass
