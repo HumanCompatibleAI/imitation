@@ -259,7 +259,8 @@ def test_gradient_accumulation(
         # theoretically possible that with very unlucky seeding,
         # this could fail.
         params = zip(trainers[0].policy.parameters(), trainers[1].policy.parameters())
-        assert all(th.allclose(p1, p2, atol=1e-5) for p1, p2 in params), step
+        for p1, p2 in params:
+            th.testing.assert_allclose(p1, p2, atol=1e-5, msg=step)
 
 
 def test_that_policy_reconstruction_preserves_parameters(
@@ -278,7 +279,7 @@ def test_that_policy_reconstruction_preserves_parameters(
     reconstructed_parameters = list(reconstructed_policy.parameters())
     assert len(original_parameters) == len(reconstructed_parameters)
     for original, reconstructed in zip(original_parameters, reconstructed_parameters):
-        assert th.allclose(original, reconstructed)
+        th.testing.assert_close(original, reconstructed)
 
 
 #############################################

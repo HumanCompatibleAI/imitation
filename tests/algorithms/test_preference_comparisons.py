@@ -482,10 +482,10 @@ def test_gradient_accumulation(
         # over the short time frame we test over; however, it is
         # theoretically possible that with very unlucky seeding,
         # this could fail.
-        atol = (1 + step) * 1e-7
-        rtol = (1 + step) * 1e-5
-        params = zip(reward_net1.parameters(), reward_net2.parameters())
-        assert all(th.allclose(p1, p2, rtol, atol) for p1, p2 in params), step
+        atol = 1e-5
+        rtol = 1e-4
+        for p1, p2 in zip(reward_net1.parameters(), reward_net2.parameters()):
+            th.testing.assert_close(p1, p2, atol=atol, rtol=rtol, msg=step)
 
 
 def test_synthetic_gatherer_deterministic(

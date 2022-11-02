@@ -332,13 +332,12 @@ def test_gradient_accumulation(
             # over the short time frame we test over; however, it is
             # theoretically possible that with very unlucky seeding,
             # this could fail.
-            atol = (1 + step) * 1e-7
-            rtol = (1 + step) * 1e-5
             params = zip(
                 trainer1._reward_net.parameters(),
                 trainer2._reward_net.parameters(),
             )
-            assert all(th.allclose(p1, p2, rtol, atol) for p1, p2 in params), step
+            for p1, p2 in params:
+                th.testing.assert_close(p1, p2, atol=1e-5, rtol=1e-5, msg=step)
 
 
 @pytest.fixture(params=ENV_NAMES)
