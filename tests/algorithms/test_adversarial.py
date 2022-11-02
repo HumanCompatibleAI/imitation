@@ -288,8 +288,10 @@ def test_gradient_accumulation(
     expert_transitions,
     rng,
     cartpole_venv,
-    batch_size: int = 12,
 ):
+    batch_size = 6
+    minibatch_size = 3
+
     expert_samples = expert_transitions[:batch_size]
     expert_samples = types.dataclass_quick_asdict(expert_samples)
 
@@ -317,8 +319,10 @@ def test_gradient_accumulation(
             **kwargs,
         )
 
-    with trainer_ctx() as trainer1, trainer_ctx(demo_minibatch_size=3) as trainer2:
-        for _ in range(5):
+    with trainer_ctx() as trainer1, trainer_ctx(
+        demo_minibatch_size=minibatch_size,
+    ) as trainer2:
+        for step in range(8):
             for trainer in (trainer1, trainer2):
                 trainer.train_disc(
                     gen_samples=gen_samples,
@@ -330,13 +334,13 @@ def test_gradient_accumulation(
             # over the short time frame we test over; however, it is
             # theoretically possible that with very unlucky seeding,
             # this could fail.
-            assert all(
-                th.allclose(p1, p2, atol=5e-8, rtol=5e-5)
-                for p1, p2 in zip(
-                    trainer1._reward_net.parameters(),
-                    trainer2._reward_net.parameters(),
-                )
+            atol = (1 + step) * 1e-7
+            rtol = (1 + step) * 1e-5
+            params = zip(
+                trainer1._reward_net.parameters(),
+                trainer2._reward_net.parameters(),
             )
+            assert all(th.allclose(p1, p2, rtol, atol) for p1, p2 in params)
 
 
 @pytest.fixture(params=ENV_NAMES)

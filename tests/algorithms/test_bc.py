@@ -217,13 +217,17 @@ def test_gradient_accumulation(
     rng,
     pytestconfig,
 ):
+    batch_size = 6
+    minibatch_size = 3
+    num_trajectories = 5
+
     demonstrations = make_expert_transition_loader(
         cache_dir=pytestconfig.cache.makedir("experts"),
         batch_size=6,
         expert_data_type="transitions",
         env_name="seals/CartPole-v0",
         rng=None,
-        num_trajectories=17,
+        num_trajectories=num_trajectories,
     )
 
     seed = rng.integers(2**32)
@@ -233,16 +237,16 @@ def test_gradient_accumulation(
         return bc.BC(
             observation_space=cartpole_venv.observation_space,
             action_space=cartpole_venv.action_space,
-            batch_size=12,
+            batch_size=batch_size,
             demonstrations=demonstrations,
             custom_logger=None,
             rng=None,
             **kwargs,
         )
 
-    trainers = (make_trainer(), make_trainer(minibatch_size=3))
+    trainers = (make_trainer(), make_trainer(minibatch_size=minibatch_size))
 
-    for _ in range(5):
+    for step in range(8):
         seed = rng.integers(2**32)
 
         for trainer in trainers:
@@ -254,8 +258,10 @@ def test_gradient_accumulation(
         # over the short time frame we test over; however, it is
         # theoretically possible that with very unlucky seeding,
         # this could fail.
+        atol = (1 + step) * 1e-6
+        rtol = (1 + step) * 1e-4
         params = zip(trainers[0].policy.parameters(), trainers[1].policy.parameters())
-        assert all(th.allclose(p1, p2, atol=1e-5) for p1, p2 in params)
+        assert all(th.allclose(p1, p2, rtol, atol) for p1, p2 in params), step
 
 
 def test_that_policy_reconstruction_preserves_parameters(
