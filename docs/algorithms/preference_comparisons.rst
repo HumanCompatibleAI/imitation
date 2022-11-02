@@ -21,6 +21,7 @@ Example
 Detailed example notebook: :doc:`../tutorials/5_train_preference_comparisons`
 
 .. testcode::
+   :skipif: os.getenv("SKIP_DOCTEST")
 
     import numpy as np
 

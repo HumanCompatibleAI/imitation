@@ -84,7 +84,7 @@ repos:
     name: docs
     language: system
     types_or: [python, rst]
-    entry: bash -c "cd docs/ && make clean && make html"
+    entry: bash -c "cd docs/ && make clean && SKIP_DOCTEST=True NB_EXECUTION_MODE=off make html"
     require_serial: true
     verbose: true
     pass_filenames: false
