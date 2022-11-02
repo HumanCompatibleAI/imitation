@@ -186,9 +186,9 @@ def test_that_bc_improves_rewards(
     cartpole_venv: vec_env.VecEnv,
 ):
     # GIVEN
-    # TODO(GH#600): the upstream annotation for this function is overly-conservative
-    # but passing the policy at runtime works, so this should be changed
-    # upstream (the ignore can subsequently be removed)
+    # TODO(https://github.com/HumanCompatibleAI/imitation/issues/600): the upstream
+    # annotation for this function is overly-conservative but passing the policy at
+    # runtime works, the ignore can be removed once fixed upstream.
     novice_rewards, _ = evaluation.evaluate_policy(
         cartpole_bc_trainer.policy,  # type: ignore[arg-type]
         cartpole_venv,
