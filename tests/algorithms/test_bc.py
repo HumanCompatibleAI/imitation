@@ -261,7 +261,7 @@ def test_gradient_accumulation(
         # this could fail.
         params = zip(trainers[0].policy.parameters(), trainers[1].policy.parameters())
         for p1, p2 in params:
-            th.testing.assert_allclose(p1, p2, atol=1e-5)
+            th.testing.assert_allclose(p1, p2, atol=1e-5, rtol=1e-5)
 
 
 def test_that_policy_reconstruction_preserves_parameters(

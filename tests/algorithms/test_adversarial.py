@@ -337,8 +337,10 @@ def test_gradient_accumulation(
                 trainer1._reward_net.parameters(),
                 trainer2._reward_net.parameters(),
             )
+            atol = (1 + step) * 2e-4
+            rtol = (1 + step) * 1e-5
             for p1, p2 in params:
-                th.testing.assert_close(p1, p2, atol=1e-5, rtol=1e-5)
+                th.testing.assert_close(p1, p2, atol=atol, rtol=rtol)
 
 
 @pytest.fixture(params=ENV_NAMES)
