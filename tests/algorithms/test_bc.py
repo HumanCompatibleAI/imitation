@@ -258,10 +258,8 @@ def test_gradient_accumulation(
         # over the short time frame we test over; however, it is
         # theoretically possible that with very unlucky seeding,
         # this could fail.
-        atol = (1 + step) * 1e-6
-        rtol = (1 + step) * 1e-4
         params = zip(trainers[0].policy.parameters(), trainers[1].policy.parameters())
-        assert all(th.allclose(p1, p2, rtol, atol) for p1, p2 in params), step
+        assert all(th.allclose(p1, p2, atol=1e-5) for p1, p2 in params), step
 
 
 def test_that_policy_reconstruction_preserves_parameters(
