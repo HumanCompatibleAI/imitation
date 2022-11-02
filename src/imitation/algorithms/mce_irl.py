@@ -506,7 +506,7 @@ class MCEIRL(base.DemonstrationAlgorithm[types.TransitionsMinimal]):
                 grads = []
                 for p in self.reward_net.parameters():
                     assert p.grad is not None
-                    grads.append(p)
+                    grads.append(p.grad)
                 grad_norm = util.tensor_iter_norm(grads).item()
                 linf_delta = np.max(np.abs(self.demo_state_om - visitations))
 
