@@ -2,7 +2,7 @@
 
 import contextlib
 import os
-from typing import Any, Mapping, Type, Union
+from typing import Any, Mapping, Optional, Type, Union
 
 import numpy as np
 import pytest
@@ -307,7 +307,7 @@ def test_gradient_accumulation(
 
     seed = rng.integers(2**32)
 
-    def trainer_ctx(**kwargs: Any):
+    def trainer_ctx(minibatch_size: Optional[int] = None):
         rng = np.random.default_rng(seed)
         th.manual_seed(seed)
         return make_trainer(
@@ -316,12 +316,10 @@ def test_gradient_accumulation(
             expert_transitions,
             rng,
             batch_size,
-            **kwargs,
+            demo_minibatch_size=minibatch_size,
         )
 
-    with trainer_ctx() as trainer1, trainer_ctx(
-        demo_minibatch_size=minibatch_size,
-    ) as trainer2:
+    with trainer_ctx() as trainer1, trainer_ctx(minibatch_size) as trainer2:
         for step in range(8):
             for trainer in (trainer1, trainer2):
                 trainer.train_disc(
