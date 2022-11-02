@@ -19,6 +19,14 @@ repos:
     rev: 5.10.1
     hooks:
     -   id: isort
+-   repo: local
+    hooks:
+        - id: check-notebooks
+          name: check-notebooks
+          entry: ./ci/clean_notebooks.py --check ./docs/tutorials/
+          language: script
+          types: [jupyter]
+          pass_filenames: false
 # Python static analysis
 -   repo: https://github.com/pycqa/flake8
     rev: '5.0.4'
