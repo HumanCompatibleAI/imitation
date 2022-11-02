@@ -338,7 +338,7 @@ def test_gradient_accumulation(
                 trainer1._reward_net.parameters(),
                 trainer2._reward_net.parameters(),
             )
-            assert all(th.allclose(p1, p2, rtol, atol) for p1, p2 in params)
+            assert all(th.allclose(p1, p2, rtol, atol) for p1, p2 in params), step
 
 
 @pytest.fixture(params=ENV_NAMES)
