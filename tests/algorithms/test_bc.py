@@ -2,7 +2,7 @@
 
 import dataclasses
 import os
-from typing import Callable, Optional, Sequence
+from typing import Any, Callable, Optional, Sequence
 
 import hypothesis
 import hypothesis.strategies as st
@@ -212,6 +212,58 @@ def test_that_bc_improves_rewards(
     )
 
 
+def test_gradient_accumulation(
+    cartpole_venv: vec_env.VecEnv,
+    rng,
+    pytestconfig,
+):
+    batch_size = 6
+    minibatch_size = 3
+    num_trajectories = 5
+
+    demonstrations = make_expert_transition_loader(
+        cache_dir=pytestconfig.cache.makedir("experts"),
+        batch_size=6,
+        expert_data_type="transitions",
+        env_name="seals/CartPole-v0",
+        rng=None,
+        num_trajectories=num_trajectories,
+    )
+
+    seed = rng.integers(2**32)
+
+    def make_trainer(**kwargs: Any) -> bc.BC:
+        th.manual_seed(seed)
+        return bc.BC(
+            observation_space=cartpole_venv.observation_space,
+            action_space=cartpole_venv.action_space,
+            batch_size=batch_size,
+            demonstrations=demonstrations,
+            custom_logger=None,
+            rng=None,
+            **kwargs,
+        )
+
+    trainers = (make_trainer(), make_trainer(minibatch_size=minibatch_size))
+
+    for step in range(8):
+        print("Step", step)
+        seed = rng.integers(2**32)
+
+        for trainer in trainers:
+            th.manual_seed(seed)
+            trainer.train(n_batches=1)
+
+        # Note: due to numerical instability, the models are
+        # bound to diverge at some point, but should be stable
+        # over the short time frame we test over; however, it is
+        # theoretically possible that with very unlucky seeding,
+        # this could fail.
+        params = zip(trainers[0].policy.parameters(), trainers[1].policy.parameters())
+        for p1, p2 in params:
+            th.testing.assert_allclose(p1, p2, atol=1e-5, rtol=1e-5)
+
+
 def test_that_policy_reconstruction_preserves_parameters(
     cartpole_bc_trainer: bc.BC,
     tmpdir,
@@ -228,7 +280,7 @@ def test_that_policy_reconstruction_preserves_parameters(
     reconstructed_parameters = list(reconstructed_policy.parameters())
     assert len(original_parameters) == len(reconstructed_parameters)
     for original, reconstructed in zip(original_parameters, reconstructed_parameters):
-        assert th.allclose(original, reconstructed)
+        th.testing.assert_close(original, reconstructed)
 
 
 #############################################

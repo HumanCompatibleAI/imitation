@@ -2,7 +2,7 @@
 
 import math
 import re
-from typing import Sequence
+from typing import Any, Sequence
 
 import numpy as np
 import pytest
@@ -421,6 +421,80 @@ def test_discount_rate_no_crash(
         custom_logger=custom_logger,
     )
     main_trainer.train(100, 10)
+
+
+def create_reward_trainer(
+    venv,
+    seed: int,
+    batch_size: int,
+    **kwargs: Any,
+):
+    th.manual_seed(seed)
+    reward_net = reward_nets.BasicRewardNet(venv.observation_space, venv.action_space)
+    preference_model = preference_comparisons.PreferenceModel(model=reward_net)
+    loss = preference_comparisons.CrossEntropyRewardLoss()
+    rng = np.random.default_rng(seed)
+    reward_trainer = preference_comparisons.BasicRewardTrainer(
+        preference_model,
+        loss,
+        rng=rng,
+        batch_size=batch_size,
+        **kwargs,
+    )
+    return reward_trainer, reward_net
+
+
+def test_gradient_accumulation(
+    agent_trainer,
+    venv,
+    random_fragmenter,
+    custom_logger,
+    rng,
+):
+    # Test that training steps on the same dataset with different minibatch sizes
+    # result in the same reward network.
+    batch_size = 6
+    minibatch_size = 3
+    num_trajectories = 5
+
+    preference_gatherer = preference_comparisons.SyntheticGatherer(
+        custom_logger=custom_logger,
+        rng=rng,
+    )
+    dataset = preference_comparisons.PreferenceDataset()
+    trajectory = agent_trainer.sample(num_trajectories)
+    fragments = random_fragmenter(trajectory, 1, num_trajectories)
+    preferences = preference_gatherer(fragments)
+    dataset.push(fragments, preferences)
+
+    seed = rng.integers(2**32)
+    reward_trainer1, reward_net1 = create_reward_trainer(venv, seed, batch_size)
+    reward_trainer2, reward_net2 = create_reward_trainer(
+        venv,
+        seed,
+        batch_size,
+        minibatch_size=minibatch_size,
+    )
+
+    for step in range(8):
+        print("Step", step)
+        seed = rng.integers(2**32)
+
+        th.manual_seed(seed)
+        reward_trainer1.train(dataset)
+
+        th.manual_seed(seed)
+        reward_trainer2.train(dataset)
+
+        # Note: due to numerical instability, the models are
+        # bound to diverge at some point, but should be stable
+        # over the short time frame we test over; however, it is
+        # theoretically possible that with very unlucky seeding,
+        # this could fail.
+        atol = 1e-5
+        rtol = 1e-4
+        for p1, p2 in zip(reward_net1.parameters(), reward_net2.parameters()):
+            th.testing.assert_close(p1, p2, atol=atol, rtol=rtol)
 
 
 def test_synthetic_gatherer_deterministic(
