@@ -137,7 +137,7 @@ def parallel(
                 metric="mean_return",
                 mode="max",
             )
-        print("Best config:")
+
         key = (
             "rollout/"
             if sacred_ex_name == "train_preference_comparisons"
@@ -147,6 +147,7 @@ def parallel(
         )
         key += "monitor_return_mean"
         if eval_best_trial:
+            print("Best config:")
             df = result.results_df
             df = df[df["config/named_configs"].notna()]
             print(df.columns)

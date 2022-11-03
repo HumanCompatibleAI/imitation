@@ -46,14 +46,14 @@ done
 
 OUTPUT_DIR="output/train_experts/${TIMESTAMP}"
 
-echo "Writing logs in ${OUTPUT_DIR}, and saving rollouts in ${OUTPUT_DIR}/expert_models/*/rollouts/"
+echo "Writing logs in ${OUTPUT_DIR}"
 
 parallel -j 25% --header : --results "${OUTPUT_DIR}/parallel_rollout/" --progress --colsep , \
   python3 -m imitation.scripts.eval_policy \
   --capture=sys \
   with \
   '{env_config_name}' \
-  common.log_root="${OUTPUT_DIR}" \
+  common.log_dir="" \
   expert.policy_type="ppo" \
   expert.loader_kwargs.path="${OUTPUT_DIR}/{env_config_name}_{best_seed}/policies/final/" \
   rollout_save_path="${OUTPUT_DIR}/{env_config_name}_{best_seed}/rollouts/final.pkl" \

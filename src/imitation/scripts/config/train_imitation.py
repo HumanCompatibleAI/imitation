@@ -149,8 +149,8 @@ def seals_hopper():
 def seals_swimmer():
     common = dict(env_name="seals/Swimmer-v0")
     expert_dir = str(
-        pathlib.Path.home() / "/imitation/output/train_experts/"
-        "2022-10-11T06:27:42-07:00/seals_swimmer_4"
+        pathlib.Path.home() / "imitation/output/train_experts/"
+        "2022-10-11T06:27:42-07:00/seals_swimmer_0"
     )
     demonstrations = dict(
         rollout_path=expert_dir + "/rollouts/final.pkl",
@@ -169,7 +169,7 @@ def seals_walker():
     common = dict(env_name="seals/Walker2d-v0")
     expert_dir = str(
         pathlib.Path.home() / "imitation/output/train_experts/"
-        "2022-10-11T06:27:42-07:00/seals_walker_8"
+        "2022-10-11T06:27:42-07:00/seals_swimmer_3"
     )
     demonstrations = dict(
         rollout_path=expert_dir + "/rollouts/final.pkl",

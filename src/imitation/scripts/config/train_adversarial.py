@@ -1,5 +1,7 @@
 """Configuration for imitation.scripts.train_adversarial."""
 
+import pathlib
+
 import sacred
 from torch import nn
 
@@ -100,8 +102,10 @@ def seals_ant():
     # locals().update(**ANT_SHARED_LOCALS)
     common = dict(env_name="seals/Ant-v0")
     demonstrations = dict(
-        rollout_path="/home/taufeeque/imitation/output/train_experts/"
-        "2022-09-05T18:27:27-07:00/seals_ant_1/rollouts/final.pkl",
+        rollout_path=str(
+            pathlib.Path.home() / "imitation/output/train_experts/"
+            "2022-09-05T18:27:27-07:00/seals_ant_1/rollouts/final.pkl"
+        ),
     )
     rl = dict(
         batch_size=2048,
@@ -159,8 +163,10 @@ def seals_half_cheetah():
     # locals().update(**MUJOCO_SHARED_LOCALS)
     common = dict(env_name="seals/HalfCheetah-v0")
     demonstrations = dict(
-        rollout_path="/home/taufeeque/imitation/output/train_experts/"
-        "2022-09-05T18:27:27-07:00/seals_half_cheetah_1/rollouts/final.pkl",
+        rollout_path=str(
+            pathlib.Path.home() / "imitation/output/train_experts/"
+            "2022-09-05T18:27:27-07:00/seals_half_cheetah_1/rollouts/final.pkl"
+        ),
     )
     rl = dict(
         batch_size=512,
@@ -205,8 +211,10 @@ def seals_hopper():
     # locals().update(**MUJOCO_SHARED_LOCALS)
     common = dict(env_name="seals/Hopper-v0")
     demonstrations = dict(
-        rollout_path="/home/taufeeque/imitation/output/train_experts/"
-        "2022-10-11T06:27:42-07:00/seals_hopper_2/rollouts/final.pkl",
+        rollout_path=str(
+            pathlib.Path.home() / "imitation/output/train_experts/"
+            "2022-10-11T06:27:42-07:00/seals_hopper_2/rollouts/final.pkl"
+        ),
     )
     train = dict(
         policy_cls="MlpPolicy",
@@ -237,8 +245,10 @@ def seals_swimmer():
     common = dict(env_name="seals/Swimmer-v0")
     total_timesteps = int(2e6)
     demonstrations = dict(
-        rollout_path="/home/taufeeque/imitation/output/train_experts/"
-        "2022-10-11T06:27:42-07:00/seals_swimmer_4/rollouts/final.pkl",
+        rollout_path=str(
+            pathlib.Path.home() / "imitation/output/train_experts/"
+            "2022-10-11T06:27:42-07:00/seals_swimmer_0/rollouts/final.pkl"
+        ),
     )
     train = dict(
         policy_cls="MlpPolicy",
@@ -269,8 +279,10 @@ def seals_walker():
     # locals().update(**MUJOCO_SHARED_LOCALS)
     common = dict(env_name="seals/Walker2d-v0")
     demonstrations = dict(
-        rollout_path="/home/taufeeque/imitation/output/train_experts/"
-        "2022-10-11T06:27:42-07:00/seals_walker_8/rollouts/final.pkl",
+        rollout_path=str(
+            pathlib.Path.home() / "imitation/output/train_experts/"
+            "2022-10-11T06:27:42-07:00/seals_walker_3/rollouts/final.pkl"
+        ),
     )
     train = dict(
         policy_cls="MlpPolicy",
