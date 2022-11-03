@@ -5,12 +5,12 @@ repos:
 - repo: https://github.com/pre-commit/pre-commit-hooks
   rev: v4.3.0
   hooks:
+  - id: check-ast
   - id: trailing-whitespace
   - id: end-of-file-fixer
     exclude_types: [jupyter]
   - id: check-toml
   - id: check-added-large-files
-  - id: check-ast
 - repo: https://github.com/psf/black
   rev: 22.6.0
   hooks:
