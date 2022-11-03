@@ -194,6 +194,10 @@ setup(
     #   for our users.
     install_requires=[
         "gym[classic_control]" + GYM_VERSION_SPECIFIER,
+        # TODO(adam): remove pyglet dependency once Gym upgraded to >0.21
+        # Workaround for https://github.com/openai/gym/issues/2986
+        # Discussed in https://github.com/HumanCompatibleAI/imitation/pull/603
+        "pyglet==1.5.27",
         "matplotlib",
         "numpy>=1.15",
         "torch>=1.4.0",
