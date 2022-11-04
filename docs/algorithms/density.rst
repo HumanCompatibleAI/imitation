@@ -8,7 +8,7 @@ Example
 Detailed example notebook: :doc:`../tutorials/7_train_density`
 
 .. testcode::
-   :skipif: os.getenv("SKIP_DOCTEST")
+    :skipif: skip_doctests
 
     import pprint
     import numpy as np

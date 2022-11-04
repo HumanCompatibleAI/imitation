@@ -17,7 +17,7 @@
    {% if functions %}
    .. rubric:: {{ _('Functions') }}
    .. testsetup::
-      :skipif: os.getenv("SKIP_DOCTEST")
+      :skipif: skip_doctests
 
       # import all functions from module since examples don't import them
       from {{ fullname }} import *

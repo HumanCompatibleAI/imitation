@@ -10,7 +10,7 @@ Example
 Detailed example notebook: :doc:`../tutorials/6_train_mce`
 
 .. testcode::
-   :skipif: os.getenv("SKIP_DOCTEST")
+    :skipif: skip_doctests
 
     from functools import partial
 

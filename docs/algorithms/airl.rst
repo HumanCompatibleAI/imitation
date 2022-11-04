@@ -20,7 +20,7 @@ Example
 Detailed example notebook: :doc:`../tutorials/4_train_airl`
 
 .. testcode::
-   :skipif: os.getenv("SKIP_DOCTEST")
+    :skipif: skip_doctests
 
     import numpy as np
     import gym

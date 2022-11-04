@@ -18,7 +18,7 @@ Example
 Detailed example notebook: :doc:`../tutorials/3_train_gail`
 
 .. testcode::
-   :skipif: os.getenv("SKIP_DOCTEST")
+    :skipif: skip_doctests
 
     import numpy as np
     import gym
