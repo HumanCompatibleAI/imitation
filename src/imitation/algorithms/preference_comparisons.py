@@ -971,7 +971,9 @@ class PreferenceDataset(data_th.Dataset):
         pass
 
     @overload
-    def __getitem__(self, key: slice) -> Tuple[Sequence[TrajectoryWithRewPair], Sequence[float]]:
+    def __getitem__(
+        self, key: slice
+    ) -> Tuple[types.Pair[Sequence[TrajectoryWithRew]], Sequence[float]]:
         pass
 
     def __getitem__(self, key):
