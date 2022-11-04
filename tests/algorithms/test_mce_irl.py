@@ -438,7 +438,5 @@ def test_mce_irl_reasonable_mdp(
         stats = rollout.rollout_stats(trajs)
         if discount > 0.0:  # skip check when discount==0.0 (random policy)
             eps = 1e-6  # avoid test failing due to rounding error
-            assert (
-                isinstance(mdp.horizon, int)
-                and stats["return_mean"] >= (mdp.horizon - 1) * 2 * 0.8 - eps
-            )
+            assert mdp.horizon is not None
+            assert stats["return_mean"] >= (mdp.horizon - 1) * 2 * 0.8 - eps

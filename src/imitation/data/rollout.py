@@ -268,7 +268,7 @@ PolicyCallable = Callable[[np.ndarray], np.ndarray]
 AnyPolicy = Union[BaseAlgorithm, BasePolicy, PolicyCallable, None]
 
 
-def _policy_to_callable(
+def policy_to_callable(
     policy: AnyPolicy,
     venv: VecEnv,
     deterministic_policy: bool = False,
@@ -349,7 +349,7 @@ def generate_trajectories(
         may be collected to avoid biasing process towards short episodes; the user
         should truncate if required.
     """
-    get_actions = _policy_to_callable(policy, venv, deterministic_policy)
+    get_actions = policy_to_callable(policy, venv, deterministic_policy)
 
     # Collect rollout tuples.
     trajectories = []

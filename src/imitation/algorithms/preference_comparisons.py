@@ -190,17 +190,13 @@ class AgentTrainer(TrajectoryGenerator):
         # of `venv` when interacting with `algorithm`.
         algo_venv = self.algorithm.get_env()
         assert algo_venv is not None
-        policy_callable = rollout._policy_to_callable(
-            self.algorithm,
-            algo_venv,
-            # By setting deterministic_policy to False, we ensure that the rollouts
-            # are collected from a deterministic policy only if self.algorithm is
-            # deterministic. If self.algorithm is stochastic, then policy_callable
-            # will also be stochastic.
-            deterministic_policy=False,
-        )
+        # This wrapper will be used to ensure that rollouts are collected from a mixture
+        # of `self.algorithm` and a policy that acts randomly. The samples from
+        # `self.algorithm` are themselves stochastic if `self.algorithm` is stochastic.
+        # Otherwise, they are deterministic, and action selection is only stochastic
+        # when sampling from the random policy.
         self.exploration_wrapper = exploration_wrapper.ExplorationWrapper(
-            policy_callable=policy_callable,
+            policy=self.algorithm,
             venv=algo_venv,
             random_prob=random_prob,
             switch_prob=switch_prob,
@@ -1137,6 +1133,7 @@ class BasicRewardTrainer(RewardTrainer):
         loss: RewardLoss,
         rng: np.random.Generator,
         batch_size: int = 32,
+        minibatch_size: Optional[int] = None,
         epochs: int = 1,
         lr: float = 1e-3,
         custom_logger: Optional[imit_logger.HierarchicalLogger] = None,
@@ -1150,6 +1147,14 @@ class BasicRewardTrainer(RewardTrainer):
             rng: the random number generator to use for splitting the dataset into
                 training and validation.
             batch_size: number of fragment pairs per batch
+            minibatch_size: size of minibatch to calculate gradients over.
+                The gradients are accumulated until `batch_size` examples
+                are processed before making an optimization step. This
+                is useful in GPU training to reduce memory usage, since
+                fewer examples are loaded into memory at once,
+                facilitating training with larger batch sizes, but is
+                generally slower. Must be a factor of `batch_size`.
+                Optional, defaults to `batch_size`.
             epochs: number of epochs in each training iteration (can be adjusted
                 on the fly by specifying an `epoch_multiplier` in `self.train()`
                 if longer training is desired in specific cases).
@@ -1159,10 +1164,16 @@ class BasicRewardTrainer(RewardTrainer):
                 training, specify a regularizer factory here. The factory will be
                 used to construct a regularizer. See
                 ``imitation.regularization.RegularizerFactory`` for more details.
+
+        Raises:
+            ValueError: if the batch size is not a multiple of the minibatch size.
         """
         super().__init__(preference_model, custom_logger)
         self.loss = loss
         self.batch_size = batch_size
+        self.minibatch_size = minibatch_size or batch_size
+        if self.batch_size % self.minibatch_size != 0:
+            raise ValueError("Batch size must be a multiple of minibatch size.")
         self.epochs = epochs
         self.optim = th.optim.AdamW(self._preference_model.parameters(), lr=lr)
         self.rng = rng
@@ -1176,7 +1187,7 @@ class BasicRewardTrainer(RewardTrainer):
         """Make a dataloader."""
         return data_th.DataLoader(
             dataset,
-            batch_size=self.batch_size,
+            batch_size=self.minibatch_size,
             shuffle=True,
             collate_fn=preference_collate_fn,
         )
@@ -1226,19 +1237,35 @@ class BasicRewardTrainer(RewardTrainer):
             for epoch_num in tqdm(range(epochs), desc="Training reward model"):
                 with self.logger.add_key_prefix(f"epoch-{epoch_num}"):
                     train_loss = 0.0
+                    accumulated_size = 0
+                    self.optim.zero_grad()
                     for fragment_pairs, preferences in dataloader:
-                        self.optim.zero_grad()
                         with self.logger.add_key_prefix("train"):
                             loss = self._training_inner_loop(
                                 fragment_pairs,
                                 preferences,
                             )
+
+                            # Renormalise the loss to be averaged over
+                            # the whole batch size instead of the
+                            # minibatch size. If there is an incomplete
+                            # batch, its gradients will be smaller,
+                            # which may be helpful for stability.
+                            loss *= len(fragment_pairs) / self.batch_size
+
                         train_loss += loss.item()
                         if self.regularizer:
                             self.regularizer.regularize_and_backward(loss)
                         else:
                             loss.backward()
-                        self.optim.step()
+
+                        accumulated_size += len(fragment_pairs)
+                        if accumulated_size >= self.batch_size:
+                            self.optim.step()
+                            self.optim.zero_grad()
+                            accumulated_size = 0
+                    if accumulated_size != 0:
+                        self.optim.step()  # if there remains an incomplete batch
 
                     if not self.requires_regularizer_update:
                         continue
@@ -1291,6 +1318,7 @@ class EnsembleTrainer(BasicRewardTrainer):
         loss: RewardLoss,
         rng: np.random.Generator,
         batch_size: int = 32,
+        minibatch_size: Optional[int] = None,
         epochs: int = 1,
         lr: float = 1e-3,
         custom_logger: Optional[imit_logger.HierarchicalLogger] = None,
@@ -1303,6 +1331,14 @@ class EnsembleTrainer(BasicRewardTrainer):
             loss: the loss to use
             rng: random state for the internal RNG used in bagging
             batch_size: number of fragment pairs per batch
+            minibatch_size: size of minibatch to calculate gradients over.
+                The gradients are accumulated until `batch_size` examples
+                are processed before making an optimization step. This
+                is useful in GPU training to reduce memory usage, since
+                fewer examples are loaded into memory at once,
+                facilitating training with larger batch sizes, but is
+                generally slower. Must be a factor of `batch_size`.
+                Optional, defaults to `batch_size`.
             epochs: number of epochs in each training iteration (can be adjusted
                 on the fly by specifying an `epoch_multiplier` in `self.train()`
                 if longer training is desired in specific cases).
@@ -1323,6 +1359,7 @@ class EnsembleTrainer(BasicRewardTrainer):
             preference_model,
             loss=loss,
             batch_size=batch_size,
+            minibatch_size=minibatch_size,
             epochs=epochs,
             lr=lr,
             custom_logger=custom_logger,
@@ -1335,6 +1372,7 @@ class EnsembleTrainer(BasicRewardTrainer):
                 member_pref_model,
                 loss=loss,
                 batch_size=batch_size,
+                minibatch_size=minibatch_size,
                 epochs=epochs,
                 lr=lr,
                 custom_logger=self.logger,
