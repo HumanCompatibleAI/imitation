@@ -233,7 +233,7 @@ def test_gradient_accumulation(
         batch_size=6,
         expert_data_type="transitions",
         env_name="seals/CartPole-v0",
-        rng=None,
+        rng=rng,
         num_trajectories=num_trajectories,
     )
 
@@ -247,7 +247,7 @@ def test_gradient_accumulation(
             batch_size=batch_size,
             demonstrations=demonstrations,
             custom_logger=None,
-            rng=None,
+            rng=rng,
             **kwargs,
         )
 
