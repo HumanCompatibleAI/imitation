@@ -225,7 +225,6 @@ class TrajectoryWithRew(Trajectory):
         _rews_validation(self.rews, self.acts)
 
 
-T = TypeVar("T")
 Pair = Tuple[T, T]
 TrajectoryPair = Pair[Trajectory]
 TrajectoryWithRewPair = Pair[TrajectoryWithRew]
