@@ -21,6 +21,7 @@ from typing import (
     Tuple,
     Union,
     cast,
+    overload,
 )
 
 import numpy as np
@@ -965,8 +966,16 @@ class PreferenceDataset(data_th.Dataset):
                 self.fragments2 = self.fragments2[extra:]
                 self.preferences = self.preferences[extra:]
 
-    def __getitem__(self, i: int) -> Tuple[TrajectoryWithRewPair, float]:
-        return (self.fragments1[i], self.fragments2[i]), self.preferences[i]
+    @overload
+    def __getitem__(self, key: int) -> Tuple[TrajectoryWithRewPair, float]:
+        pass
+
+    @overload
+    def __getitem__(self, key: slice) -> Tuple[Sequence[TrajectoryWithRewPair], Sequence[float]]:
+        pass
+
+    def __getitem__(self, key):
+        return (self.fragments1[key], self.fragments2[key]), self.preferences[key]
 
     def __len__(self) -> int:
         assert len(self.fragments1) == len(self.fragments2) == len(self.preferences)
