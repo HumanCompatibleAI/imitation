@@ -10,6 +10,7 @@ import numpy as np
 import ray
 import ray.tune
 import sacred
+from pandas.api.types import is_object_dtype
 from ray.tune import search
 from ray.tune.search import optuna
 from sacred.observers import FileStorageObserver
@@ -150,6 +151,10 @@ def parallel(
             print("Best config:")
             df = result.results_df
             df = df[df["config/named_configs"].notna()]
+            for col in df.columns:
+                if is_object_dtype(df[col]):
+                    df[col] = df[col].astype("str")
+
             print(df.columns)
             print(df.head())
             print(df[["config/named_configs", key]])
@@ -158,19 +163,20 @@ def parallel(
                 c for c in df.columns if c.startswith("config") and "seed" not in c
             ]
             print("groups keys:", grp_keys)
-            df["config/named_configs"] = df["config/named_configs"].map(
-                lambda x: tuple(x)
-            )
+            # df["config/named_configs"] = df["config/named_configs"].map(
+            #     lambda x: tuple(x)
+            # )
             # df[key] = df[key].map(lambda x: x["last"])
             grps = df.groupby(grp_keys)
             print(grps[key])
             df["mean_return"] = grps[key].transform(lambda x: x.mean())
             # print("df_avg cols:", df_avg.columns, df_avg)
-            idx = (
-                df.groupby("config/named_configs")["mean_return"].transform(max)
-                == df["mean_return"]
-            )
-            best_config_df = df[idx]
+            # idx = (
+            #     df.groupby("config/named_configs")["mean_return"].transform(max)
+            #     == df["mean_return"]
+            # )
+            # best_config_df = df[idx]
+            best_config_df = df[df["mean_return"] == df["mean_return"].max()]
             envs_processed = set()
             for i, row in best_config_df.iterrows():
                 tag = row["experiment_tag"]

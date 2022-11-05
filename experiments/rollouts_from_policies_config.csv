@@ -1,7 +1,7 @@
 env_config_name,n_demonstrations,best_seed
+pendulum,100,4
 seals_half_cheetah,100,1
 seals_ant,100,1
 seals_hopper,100,2
-seals_swimmer,100,4
-seals_walker,100,8
-pendulum,100,4
+seals_swimmer,100,0
+seals_walker,100,3

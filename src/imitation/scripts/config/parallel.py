@@ -310,7 +310,7 @@ def example_pc():
         ),
         "config_updates": {
             "train": {
-                "policy_kwargs": {"activation_fn": tune.choice([nn.ReLU, nn.tanh])}
+                "policy_kwargs": {"activation_fn": tune.choice([nn.ReLU, nn.Tanh])}
             },
             "num_iterations": tune.choice([5, 20, 50]),
             "initial_comparison_frac": tune.choice([0.1, 0.2]),
@@ -322,7 +322,7 @@ def example_pc():
             # ),
         },
     }
-    num_samples = 36
+    num_samples = 72
     eval_best_trial = True
     eval_trial_seeds = 5
     repeat = 3
