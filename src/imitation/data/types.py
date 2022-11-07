@@ -225,8 +225,9 @@ class TrajectoryWithRew(Trajectory):
         _rews_validation(self.rews, self.acts)
 
 
-TrajectoryPair = Tuple[Trajectory, Trajectory]
-TrajectoryWithRewPair = Tuple[TrajectoryWithRew, TrajectoryWithRew]
+Pair = Tuple[T, T]
+TrajectoryPair = Pair[Trajectory]
+TrajectoryWithRewPair = Pair[TrajectoryWithRew]
 
 
 def transitions_collate_fn(

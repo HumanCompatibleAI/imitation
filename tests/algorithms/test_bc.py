@@ -127,10 +127,12 @@ def test_smoke_bc_creation(
     rng: np.random.Generator,
     pytestconfig: pytest.Config,
 ):
+    cache = pytestconfig.cache
+    assert cache is not None
     bc.BC(
         **bc_args,
         demonstrations=make_expert_transition_loader(
-            cache_dir=pytestconfig.cache.makedir("experts"),
+            cache_dir=cache.mkdir("experts"),
             batch_size=bc_args["batch_size"],
             expert_data_type=expert_data_type,
             env_name=env_name,
@@ -156,11 +158,13 @@ def test_smoke_bc_training(
     rng: np.random.Generator,
     pytestconfig: pytest.Config,
 ):
+    cache = pytestconfig.cache
+    assert cache is not None
     # GIVEN
     trainer = bc.BC(
         **bc_args,
         demonstrations=make_expert_transition_loader(
-            cache_dir=pytestconfig.cache.makedir("experts"),
+            cache_dir=cache.mkdir("experts"),
             batch_size=bc_args["batch_size"],
             expert_data_type=expert_data_type,
             env_name=env_name,
@@ -182,8 +186,11 @@ def test_that_bc_improves_rewards(
     cartpole_venv: vec_env.VecEnv,
 ):
     # GIVEN
+    # TODO(https://github.com/HumanCompatibleAI/imitation/issues/600): the upstream
+    # annotation for this function is overly-conservative but passing the policy at
+    # runtime works, the ignore can be removed once fixed upstream.
     novice_rewards, _ = evaluation.evaluate_policy(
-        cartpole_bc_trainer.policy,
+        cartpole_bc_trainer.policy,  # type: ignore[arg-type]
         cartpole_venv,
         15,
         return_episode_rewards=True,
@@ -193,7 +200,7 @@ def test_that_bc_improves_rewards(
     # WHEN
     cartpole_bc_trainer.train(n_epochs=1)
     rewards_after_training, _ = evaluation.evaluate_policy(
-        cartpole_bc_trainer.policy,
+        cartpole_bc_trainer.policy,  # type: ignore[arg-type]
         cartpole_venv,
         15,
         return_episode_rewards=True,
@@ -226,7 +233,7 @@ def test_gradient_accumulation(
         batch_size=6,
         expert_data_type="transitions",
         env_name="seals/CartPole-v0",
-        rng=None,
+        rng=rng,
         num_trajectories=num_trajectories,
     )
 
@@ -240,7 +247,7 @@ def test_gradient_accumulation(
             batch_size=batch_size,
             demonstrations=demonstrations,
             custom_logger=None,
-            rng=None,
+            rng=rng,
             **kwargs,
         )
 
