@@ -5,7 +5,7 @@ set -x # echo on
 
 __usage="launch_docker-dev.sh - Launching humancompatibleai/imitation:python-req
 
-Usage: launch_docker-dev.sh [options] 
+Usage: launch_docker-dev.sh [options]
 
 options:
   -p, --pull                pull the image to DockerHub

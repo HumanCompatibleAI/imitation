@@ -18,6 +18,7 @@ Example
 Detailed example notebook: :doc:`../tutorials/1_train_bc`
 
 .. testcode::
+    :skipif: skip_doctests
 
     import numpy as np
     import gym
