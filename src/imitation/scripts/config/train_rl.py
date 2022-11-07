@@ -1,8 +1,6 @@
 """Configuration settings for train_rl, training a policy with RL."""
 
 import sacred
-from stable_baselines3.common.torch_layers import NatureCNN
-from stable_baselines3.ppo import CnnPolicy
 
 from imitation.scripts.common import common, rl, train
 
@@ -44,16 +42,6 @@ def default_end_cond(rollout_save_n_timesteps, rollout_save_n_episodes):
     # without getting an error that `rollout_save_n_timesteps is not None`.
     if rollout_save_n_timesteps is None and rollout_save_n_episodes is None:
         rollout_save_n_timesteps = 2000  # Min timesteps saved per file, optional.
-
-
-# Default config for CNN Policies
-@train_rl_ex.named_config
-def cnn_policy():
-    train = dict(
-        policy_cls=CnnPolicy,
-        policy_kwargs=dict(features_extractor_class=NatureCNN),
-    )
-    locals()  # make flake8 happy
 
 
 # Standard Gym env configs

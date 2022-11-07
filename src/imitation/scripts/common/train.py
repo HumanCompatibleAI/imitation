@@ -60,13 +60,10 @@ def normalize_running():
     policy_kwargs = NORMALIZE_RUNNING_POLICY_KWARGS  # noqa: F841
 
 
-@train_ingredient.config_hook
-def config_hook(config, command_name, logger):
-    """Sets defaults equivalent to `normalize_running`."""
-    del command_name, logger
-    if "features_extractor_class" not in config["train"]["policy_kwargs"]:
-        return {"policy_kwargs": NORMALIZE_RUNNING_POLICY_KWARGS}
-    return {}
+# Default config for CNN Policies
+@train_ingredient.named_config
+def cnn_policy():
+    policy_cls = policies.ActorCriticCnnPolicy  # noqa: F841
 
 
 @train_ingredient.capture
