@@ -38,4 +38,5 @@ Installation from source is useful if you wish to contribute to the development 
 There are also a number of dependencies used for running tests and building the documentation, which can be installed with:
 
 .. code-block:: bash
+
     pip install -e ".[dev]"
