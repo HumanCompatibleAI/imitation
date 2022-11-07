@@ -58,6 +58,7 @@ TESTS_REQUIRE = (
         "scipy~=1.9.0",
         "wandb==0.12.21",
         "setuptools_scm~=7.0.5",
+        "pre-commit>=2.20.0",
     ]
     + PARALLEL_REQUIRE
     + ATARI_REQUIRE
@@ -193,6 +194,10 @@ setup(
     #   for our users.
     install_requires=[
         "gym[classic_control]" + GYM_VERSION_SPECIFIER,
+        # TODO(adam): remove pyglet dependency once Gym upgraded to >0.21
+        # Workaround for https://github.com/openai/gym/issues/2986
+        # Discussed in https://github.com/HumanCompatibleAI/imitation/pull/603
+        "pyglet==1.5.27",
         "matplotlib",
         "numpy>=1.15",
         "torch>=1.4.0",

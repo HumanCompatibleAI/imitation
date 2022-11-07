@@ -37,7 +37,7 @@ executors:
       # If you change these, also change ci/code_checks.sh
       SRC_FILES: src/ tests/ experiments/ examples/ docs/conf.py setup.py ci/
       NUM_CPUS: 2
-      EXCLUDE_MYPY: | 
+      EXCLUDE_MYPY: |
         (?x)(
           src/imitation/algorithms/preference_comparisons.py$
           | src/imitation/rewards/serialize.py$

@@ -225,10 +225,10 @@ class RewardNet(nn.Module, abc.ABC):
 
 
 class RewardNetWrapper(RewardNet):
-    """Abstract class representing a wrapper that modifies a `RewardNet`'s functionality.
+    """Abstract class representing a wrapper modifying a ``RewardNet``'s functionality.
 
-    In general `RewardNetWrapper`s should either subclass `ForwardWrapper`
-    or `PredictProcessedWrapper`.
+    In general ``RewardNetWrapper``s should either subclass ``ForwardWrapper``
+    or ``PredictProcessedWrapper``.
     """
 
     def __init__(
