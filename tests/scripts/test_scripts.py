@@ -723,6 +723,29 @@ def test_train_rl_double_normalization(tmpdir: str, rng):
         )
 
 
+def test_train_rl_cnn_policy(tmpdir: str, rng):
+    venv = util.make_vec_env(
+        "AsteroidsNoFrameskip-v4",
+        n_envs=1,
+        parallel=False,
+        rng=rng,
+    )
+    print(venv)
+    net = reward_nets.CnnRewardNet(venv.observation_space, venv.action_space)
+    tmppath = os.path.join(tmpdir, "reward.pt")
+    th.save(net, tmppath)
+
+    log_dir_data = os.path.join(tmpdir, "train_rl")
+    with pytest.warns(RuntimeWarning):
+        train_rl.train_rl_ex.run(
+            named_configs=["train.cnn_policy"] + ALGO_FAST_CONFIGS["rl"],
+            config_updates=dict(
+                common=dict(log_dir=log_dir_data, env_name="AsteroidsNoFrameskip-v4"),
+                reward_path=tmppath,
+            ),
+        )
+
+
 PARALLEL_CONFIG_UPDATES = [
     dict(
         sacred_ex_name="train_rl",
