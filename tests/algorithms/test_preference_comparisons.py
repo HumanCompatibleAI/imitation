@@ -2,10 +2,8 @@
 
 import math
 import re
-
 from functools import partial
 from typing import Any, Sequence
-
 
 import gym
 import numpy as np
@@ -817,7 +815,6 @@ def ensemble_preference_model(venv) -> preference_comparisons.PreferenceModel:
             for _ in range(2)
         ],
     )
-
     return preference_comparisons.PreferenceModel(
         model=reward_net,
         noise_prob=0.1,
@@ -940,7 +937,7 @@ class ActionIsRewardEnv(gym.Env):
     def step(self, action):
         obs = np.array([0])
         reward = action
-        # Some algorithms expect at least two step trajectories,
+        # Some algorithms expect trajectories at least two steps long,
         # so we allow two steps to be taken.
         done = self.steps > 0
         info = {}
