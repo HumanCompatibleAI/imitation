@@ -28,7 +28,6 @@ UNCERTAINTY_ON = ["logit", "probability", "label"]
 
 @pytest.fixture
 def venv(rng):
-    rng
     return util.make_vec_env(
         "seals/CartPole-v0",
         n_envs=1,
@@ -1027,7 +1026,7 @@ def action_is_reward_trainer(
     ["Basic", "Ensemble"],
     indirect=True,
 )
-def test_that_BasicTrainer_improves_rewards(
+def test_that_trainer_improves_rewards(
     action_is_reward_venv,
     action_is_reward_agent,
     action_is_reward_trainer,
