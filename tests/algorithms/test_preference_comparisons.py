@@ -817,6 +817,7 @@ def ensemble_preference_model(venv) -> preference_comparisons.PreferenceModel:
             for _ in range(2)
         ],
     )
+
     return preference_comparisons.PreferenceModel(
         model=reward_net,
         noise_prob=0.1,
@@ -928,8 +929,6 @@ def test_agent_trainer_sample_image_observations(rng):
 class ActionIsRewardEnv(gym.Env):
     """Two step environment where the reward is the sum of actions."""
 
-    metadata = {"render.modes": ["human"]}
-
     def __init__(self):
         """Initialize environment."""
         super(ActionIsRewardEnv, self).__init__()
@@ -941,6 +940,8 @@ class ActionIsRewardEnv(gym.Env):
     def step(self, action):
         obs = np.array([0])
         reward = action
+        # Some algorithms expect at least two step trajectories,
+        # so we allow two steps to be taken.
         done = self.steps > 0
         info = {}
         self.steps += 1
@@ -951,54 +952,113 @@ class ActionIsRewardEnv(gym.Env):
         return np.array([0])
 
 
-def test_that_BasicTrainer_improves_rewards(
-    random_fragmenter,
-    custom_logger,
-    rng,
-):
-    venv = DummyVecEnv(
+@pytest.fixture
+def action_is_reward_venv(rng):
+    return DummyVecEnv(
         [partial(ActionIsRewardEnv)],
     )
-    agent = stable_baselines3.PPO(
+
+
+@pytest.fixture
+def action_is_reward_agent(action_is_reward_venv, rng):
+    return stable_baselines3.PPO(
         "MlpPolicy",
-        venv,
+        action_is_reward_venv,
         n_epochs=1,
         batch_size=2,
         n_steps=10,
     )
 
-    reward_net = reward_nets.BasicRewardNet(venv.observation_space, venv.action_space)
-    agent_trainer = preference_comparisons.AgentTrainer(agent, reward_net, venv, rng)
 
-    preference_model = preference_comparisons.PreferenceModel(
-        model=reward_net,
-        noise_prob=0.1,
-        discount_factor=0.9,
-        threshold=50,
-    )
+@pytest.fixture
+def action_is_reward_trainer(
+    action_is_reward_venv,
+    rng,
+    request,
+):
+
     loss = preference_comparisons.CrossEntropyRewardLoss()
-    reward_trainer = preference_comparisons.BasicRewardTrainer(
-        preference_model,
-        loss,
-        rng=rng,
-        lr=1e-4,
+
+    if request.param == "Basic":
+        reward_net = reward_nets.BasicRewardNet(
+            action_is_reward_venv.observation_space,
+            action_is_reward_venv.action_space,
+        )
+        preference_model = preference_comparisons.PreferenceModel(
+            model=reward_net,
+            noise_prob=0.1,
+            discount_factor=0.9,
+            threshold=50,
+        )
+        return preference_comparisons.BasicRewardTrainer(
+            preference_model,
+            loss,
+            rng=rng,
+            lr=1e-4,
+        )
+
+    if request.param == "Ensemble":
+        reward_net = reward_nets.RewardEnsemble(
+            action_is_reward_venv.observation_space,
+            action_is_reward_venv.action_space,
+            members=[
+                reward_nets.BasicRewardNet(
+                    action_is_reward_venv.observation_space,
+                    action_is_reward_venv.action_space,
+                )
+                for _ in range(3)
+            ],
+        )
+        preference_model = preference_comparisons.PreferenceModel(
+            model=reward_net,
+            noise_prob=0.1,
+            discount_factor=0.9,
+            threshold=50,
+        )
+        return preference_comparisons.EnsembleTrainer(
+            preference_model,
+            loss,
+            rng=rng,
+            lr=1e-4,
+        )
+
+    assert False, f"Unexpected reward trainer type: {request.param}"
+
+
+@pytest.mark.parametrize(
+    "action_is_reward_trainer",
+    ["Basic", "Ensemble"],
+    indirect=True,
+)
+def test_that_BasicTrainer_improves_rewards(
+    action_is_reward_venv,
+    action_is_reward_agent,
+    action_is_reward_trainer,
+    random_fragmenter,
+    custom_logger,
+    rng,
+):
+    agent_trainer = preference_comparisons.AgentTrainer(
+        action_is_reward_agent,
+        action_is_reward_trainer._preference_model.model,
+        action_is_reward_venv,
+        rng,
     )
 
     main_trainer = preference_comparisons.PreferenceComparisons(
         agent_trainer,
-        reward_net,
+        action_is_reward_trainer._preference_model.model,
         num_iterations=2,
         transition_oversampling=2,
         fragment_length=2,
         fragmenter=random_fragmenter,
         rng=rng,
-        reward_trainer=reward_trainer,
+        reward_trainer=action_is_reward_trainer,
         custom_logger=custom_logger,
     )
 
     # Train the net for a short period of time, and then again.
     # We expect it to have improved over that period.
     first_rewards = main_trainer.train(20, 20)
-
     later_rewards = main_trainer.train(20, 20)
     assert first_rewards["reward_loss"] > later_rewards["reward_loss"]
