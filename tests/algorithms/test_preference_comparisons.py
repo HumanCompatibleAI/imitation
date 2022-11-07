@@ -1,13 +1,16 @@
 """Tests for the preference comparisons reward learning implementation."""
 
 import re
+from functools import partial
 from typing import Sequence
 
+import gym
 import numpy as np
 import pytest
 import seals  # noqa: F401
 import stable_baselines3
 import torch as th
+from gym import spaces
 from stable_baselines3.common.envs import FakeImageEnv
 from stable_baselines3.common.vec_env import DummyVecEnv
 
@@ -838,20 +841,50 @@ def test_agent_trainer_sample_image_observations(rng):
     )
 
 
+class ActionIsRewardEnv(gym.Env):
+    """Two step environment where the reward is the sum of actions."""
+
+    metadata = {"render.modes": ["human"]}
+
+    def __init__(self):
+        """Initialize environment."""
+        super(ActionIsRewardEnv, self).__init__()
+        self.action_space = spaces.Discrete(50)
+        self.observation_space = gym.spaces.Box(np.array([0]), np.array([1]))
+        self.reward = 0.0
+        self.steps = 0
+
+    def step(self, action):
+        obs = np.array([0])
+        reward = action
+        done = self.steps > 0
+        info = {}
+        self.steps += 1
+        return obs, reward, done, info
+
+    def reset(self):
+        self.steps = 0.0
+        return np.array([0])
+
+
 def test_that_BasicTrainer_improves_rewards(
-    agent_trainer,
-    venv,
     random_fragmenter,
     custom_logger,
     rng,
 ):
-    # GIVEN
-    reward_net = reward_nets.BasicRewardNet(venv.observation_space, venv.action_space)
-    mock_reward_net = testing_reward_nets.MockRewardNet(
-        venv.observation_space,
-        venv.action_space,
-        value=12,
+    venv = DummyVecEnv(
+        [partial(ActionIsRewardEnv)],
     )
+    agent = stable_baselines3.PPO(
+        "MlpPolicy",
+        venv,
+        n_epochs=1,
+        batch_size=2,
+        n_steps=10,
+    )
+
+    reward_net = reward_nets.BasicRewardNet(venv.observation_space, venv.action_space)
+    agent_trainer = preference_comparisons.AgentTrainer(agent, reward_net, venv, rng)
 
     preference_model = preference_comparisons.PreferenceModel(
         model=reward_net,
@@ -864,12 +897,12 @@ def test_that_BasicTrainer_improves_rewards(
         preference_model,
         loss,
         rng=rng,
+        lr=1e-4,
     )
 
-    # WHEN
     main_trainer = preference_comparisons.PreferenceComparisons(
         agent_trainer,
-        mock_reward_net,
+        reward_net,
         num_iterations=2,
         transition_oversampling=2,
         fragment_length=2,
@@ -878,9 +911,10 @@ def test_that_BasicTrainer_improves_rewards(
         reward_trainer=reward_trainer,
         custom_logger=custom_logger,
     )
-    first_rewards = main_trainer.train(10, 20)
 
-    # TODO ask for suggestions on how to make this
-    #      test not flaky w/o training for so long
-    later_rewards = main_trainer.train(5000, 20)
+    # Train the net for a short period of time, and then again.
+    # We expect it to have improved over that period.
+    first_rewards = main_trainer.train(20, 20)
+
+    later_rewards = main_trainer.train(20, 20)
     assert first_rewards["reward_loss"] > later_rewards["reward_loss"]
