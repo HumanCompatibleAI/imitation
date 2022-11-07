@@ -1,0 +1,87 @@
+# See https://pre-commit.com for more information
+# See https://pre-commit.com/hooks.html for more hooks
+repos:
+# Linting
+- repo: https://github.com/pre-commit/pre-commit-hooks
+  rev: v4.3.0
+  hooks:
+  - id: check-ast
+  - id: trailing-whitespace
+  - id: end-of-file-fixer
+    exclude_types: [jupyter]
+  - id: check-toml
+  - id: check-added-large-files
+- repo: https://github.com/psf/black
+  rev: 22.6.0
+  hooks:
+  - id: black
+  - id: black-jupyter
+- repo: https://github.com/PyCQA/isort
+  rev: 5.10.1
+  hooks:
+  - id: isort
+# Python static analysis
+- repo: https://github.com/pycqa/flake8
+  rev: '5.0.4'
+  hooks:
+  - id: flake8
+    additional_dependencies:
+      - darglint~=1.8.1
+      - flake8-blind-except==0.2.1
+      - flake8-builtins~=1.5.3
+      - flake8-commas~=2.1.0
+      - flake8-debugger~=4.1.2
+      - flake8-docstrings~=1.6.0
+# Shell static analysis
+- repo: https://github.com/koalaman/shellcheck-precommit
+  rev: v0.8.0
+  hooks:
+  - id: shellcheck
+# Misc
+- repo: https://github.com/codespell-project/codespell
+  rev: v2.2.2
+  hooks:
+  - id: codespell
+    args: ["--skip=*.pyc,tests/testdata/*,*.ipynb,*.csv"]
+- repo: https://github.com/syntaqx/git-hooks
+  rev: v0.0.17
+  hooks:
+  - id: circleci-config-validate
+# Hooks that run in local environment (not isolated venv) as they need
+# same dependencies as our package.
+- repo: local
+  hooks:
+  - id: check-notebooks
+    name: check-notebooks
+    entry: ./ci/clean_notebooks.py --check ./docs/tutorials/
+    language: script
+    types: [jupyter]
+    pass_filenames: false
+  # Run mypy directly from local repo rather than using mirror-mypy
+  # so that it uses installed dependencies. Adapted from:
+  # https://jaredkhan.com/blog/mypy-pre-commit
+  - id: mypy
+    name: mypy
+    language: system
+    types: [python]
+    entry: mypy --follow-imports=silent --show-error-codes
+    # use require_serial so that script
+    # is only called once per commit
+    require_serial: true
+    # Print the number of files as a sanity-check
+    verbose: true
+  - id: pytype
+    name: pytype
+    language: system
+    types: [python]
+    entry: pytype -j auto
+    require_serial: true
+    verbose: true
+  - id: docs
+    name: docs
+    language: system
+    types_or: [python, rst]
+    entry: bash -c "cd docs/ && make clean && SKIP_DOCTEST=True NB_EXECUTION_MODE=off make html"
+    require_serial: true
+    verbose: true
+    pass_filenames: false

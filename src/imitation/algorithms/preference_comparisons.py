@@ -485,7 +485,7 @@ class PreferenceModel(nn.Module):
         return rews
 
     def probability(self, rews1: th.Tensor, rews2: th.Tensor) -> th.Tensor:
-        """Computes the Boltzmann rational probability that the first trajectory is best.
+        """Computes the Boltzmann rational probability the first trajectory is best.
 
         Args:
             rews1: array/matrix of rewards for the first trajectory fragment.
