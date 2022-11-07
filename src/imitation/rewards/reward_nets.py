@@ -318,7 +318,7 @@ class PredictProcessedWrapper(RewardNetWrapper):
         next_state: th.Tensor,
         done: th.Tensor,
     ) -> th.Tensor:
-        __doc__ = super().forward.__doc__  # type: ignore[safe-super] # noqa: F841
+        """Compute rewards for a batch of transitions and keep gradients."""
         return self.base.forward(state, action, next_state, done)
 
     @abc.abstractmethod
