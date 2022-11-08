@@ -1,3 +1,5 @@
+.. _mce irl docs:
+
 ===============================================================
 Maximum Causal Entropy Inverse Reinforcement Learning (MCE IRL)
 ===============================================================
