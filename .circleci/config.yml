@@ -239,7 +239,6 @@ jobs:
 
       - run:
           name: flake8
-          # How to pass num CPUs here?
           command: |
             flake8 --version
             pre-commit run --all flake8
@@ -258,6 +257,14 @@ jobs:
       - run:
           name: codespell
           command: pre-commit run --all codespell
+
+      - run:
+          name: lint-misc
+          command: |
+            pre-commit run --all check-ast
+            pre-commit run --all trailing-whitespace 
+            pre-commit run --all end-of-file-fixer 
+            pre-commit run --all check-toml 
 
   doctest:
     executor: static-analysis-medium
