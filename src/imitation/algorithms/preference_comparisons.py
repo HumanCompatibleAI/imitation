@@ -675,7 +675,7 @@ class ActiveSelectionFragmenter(Fragmenter):
         preference_model: PreferenceModel,
         base_fragmenter: Fragmenter,
         fragment_sample_factor: float,
-        uncertainty_on: str = "logits",
+        uncertainty_on: str = "logit",
         custom_logger: Optional[imit_logger.HierarchicalLogger] = None,
     ) -> None:
         """Initialize the active selection fragmenter.
