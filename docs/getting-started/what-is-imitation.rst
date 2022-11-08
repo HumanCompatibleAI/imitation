@@ -11,4 +11,4 @@ In addition to providing reliable baselines, ``imitation`` aims to simplify the 
 Our goal for ``imitation`` is to make it easier to use, develop, and compare imitation and reward learning algorithms. The library is in active development, and we welcome contributions and feedback.
 
 Check out our recommended
-:ref:`First Steps <First Steps>` or check out out one of our tutorials, such as this one on behavioral cloning: :doc:`../tutorials/1_train_bc`. For contributing, we suggest you refer to the :ref:`Developer Guide <DevGuide>` as well as more specific guidelines for :ref:`Contributing <Contributing>`.
+:ref:`First Steps <First Steps>` for an overview of how to use the library. We also have tutorials, such as :doc:`../tutorials/1_train_bc`, that provide detailed examples of specific algorithms. If you are interested in helping develop ``imitation`` then we suggest you refer to the :ref:`Developer Guide <DevGuide>` as well as more specific guidelines for :ref:`Contributing <Contributing>`.
