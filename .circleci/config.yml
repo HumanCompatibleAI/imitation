@@ -239,7 +239,8 @@ jobs:
 
       - run:
           name: flake8
-          command: flake8 --version && flake8 -j "${NUM_CPUS}" ${SRC_FILES}
+          # How to pass num CPUs here?
+          command: pre-commit run --all flake8 -j "${NUM_CPUS}"
 
       - run:
           name: black
