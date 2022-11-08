@@ -241,7 +241,7 @@ jobs:
       - run:
           name: flake8
           # How to pass num CPUs here?
-          command: pre-commit run --all flake8 -j "${NUM_CPUS}"
+          command: pre-commit run --all flake8
 
       - run:
           name: black
