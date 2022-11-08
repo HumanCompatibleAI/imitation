@@ -4,7 +4,7 @@ import logging
 from typing import Any, Mapping, Union
 
 import sacred
-from stable_baselines3.common import base_class, policies, torch_layers, vec_env
+from stable_baselines3.common import base_class, policies, vec_env
 
 import imitation.util.networks
 from imitation.data import rollout
