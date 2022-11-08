@@ -11,6 +11,7 @@ import seals  # noqa: F401
 import stable_baselines3
 import torch as th
 from gym import spaces
+from stable_baselines3.common import evaluation
 from stable_baselines3.common.envs import FakeImageEnv
 from stable_baselines3.common.vec_env import DummyVecEnv
 
@@ -1052,4 +1053,54 @@ def test_that_trainer_improves_rewards(
     assert first_rewards["reward_loss"] > later_rewards["reward_loss"]
 
 
-# TODO(#562) add test that training improves agent performance
+@pytest.mark.parametrize(
+    "action_is_reward_trainer_func",
+    [basic_reward_trainer, ensemble_reward_trainer],
+)
+def test_that_trainer_improves_agent(
+    action_is_reward_venv,
+    action_is_reward_agent,
+    action_is_reward_trainer_func,
+    random_fragmenter,
+    custom_logger,
+    rng,
+):
+    """Tests that training improves performance of the agent."""
+    action_is_reward_trainer = action_is_reward_trainer_func(action_is_reward_venv, rng)
+    agent_trainer = preference_comparisons.AgentTrainer(
+        action_is_reward_agent,
+        action_is_reward_trainer._preference_model.model,
+        action_is_reward_venv,
+        rng,
+    )
+
+    main_trainer = preference_comparisons.PreferenceComparisons(
+        agent_trainer,
+        action_is_reward_trainer._preference_model.model,
+        num_iterations=2,
+        transition_oversampling=2,
+        fragment_length=2,
+        fragmenter=random_fragmenter,
+        rng=rng,
+        reward_trainer=action_is_reward_trainer,
+        custom_logger=custom_logger,
+    )
+
+    novice_rewards, _ = evaluation.evaluate_policy(
+        agent_trainer.algorithm.policy,
+        action_is_reward_venv,
+        15,
+        return_episode_rewards=True,
+    )
+
+    # Train for a while, expecting the agent to have improved.
+    main_trainer.train(100, 20)
+
+    trained_rewards, _ = evaluation.evaluate_policy(
+        agent_trainer.algorithm.policy,
+        action_is_reward_venv,
+        15,
+        return_episode_rewards=True,
+    )
+
+    assert np.mean(trained_rewards) > np.mean(novice_rewards)
