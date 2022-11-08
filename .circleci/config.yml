@@ -251,7 +251,7 @@ jobs:
             pre-commit run --all black-jupyter
 
       - run:
-          name: isort 
+          name: isort
           command: pre-commit run --all isort
 
       - run:
@@ -262,9 +262,9 @@ jobs:
           name: lint-misc
           command: |
             pre-commit run --all check-ast
-            pre-commit run --all trailing-whitespace 
-            pre-commit run --all end-of-file-fixer 
-            pre-commit run --all check-toml 
+            pre-commit run --all trailing-whitespace
+            pre-commit run --all end-of-file-fixer
+            pre-commit run --all check-toml
 
   doctest:
     executor: static-analysis-medium
