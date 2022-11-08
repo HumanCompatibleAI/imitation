@@ -487,7 +487,7 @@ def _check_train_ex_result(result: dict):
     (
         [],
         ["train.normalize_running", "reward.normalize_input_running"],
-        ["train.normalize_disable", "reward.normalize_input_disable"],
+        ["reward.normalize_input_disable"],
     ),
 )
 @pytest.mark.parametrize("command", ("airl", "gail"))
