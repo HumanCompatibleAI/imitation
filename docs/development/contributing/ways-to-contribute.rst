@@ -1,3 +1,4 @@
+.. _Ways To Contribute:
 
 Ways to contribute
 ==================

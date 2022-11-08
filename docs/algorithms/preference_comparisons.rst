@@ -1,3 +1,5 @@
+.. _preference comparisons docs:
+
 ======================
 Preference comparisons
 ======================

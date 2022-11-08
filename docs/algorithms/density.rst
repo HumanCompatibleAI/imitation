@@ -1,3 +1,5 @@
+.. _density docs:
+
 =============================
 Density-based reward modeling
 =============================
