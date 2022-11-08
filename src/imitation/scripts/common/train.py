@@ -37,15 +37,6 @@ def sac():
     policy_cls = base.SAC1024Policy  # noqa: F841
 
 
-@train_ingredient.named_config
-def normalize_disable():
-    policy_kwargs = {  # noqa: F841
-        # FlattenExtractor is the default for SB3; but we specify it here
-        # explicitly
-        "features_extractor_class": torch_layers.FlattenExtractor,
-    }
-
-
 NORMALIZE_RUNNING_POLICY_KWARGS = {
     "features_extractor_class": base.NormalizeFeaturesExtractor,
     "features_extractor_kwargs": {
