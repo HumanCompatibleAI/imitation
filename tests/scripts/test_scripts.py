@@ -711,7 +711,7 @@ def test_train_rl_double_normalization(tmpdir: str, rng):
     th.save(net, tmppath)
 
     log_dir_data = os.path.join(tmpdir, "train_rl")
-    with pytest.warns(RuntimeWarning):
+    with pytest.warns(RuntimeWarning) as record:
         train_rl.train_rl_ex.run(
             named_configs=["cartpole"] + ALGO_FAST_CONFIGS["rl"],
             config_updates=dict(
@@ -721,6 +721,16 @@ def test_train_rl_double_normalization(tmpdir: str, rng):
                 reward_path=tmppath,
             ),
         )
+
+    filtered_warnings = filter(
+        lambda warning: warning.message.args[  # type: ignore[union-attr, arg-type]
+            0
+        ].startswith(
+            "Applying normalization to already normalized reward function.",
+        ),
+        record,
+    )
+    assert len(list(filtered_warnings)) == 1
 
 
 def test_train_rl_cnn_policy(tmpdir: str, rng):
