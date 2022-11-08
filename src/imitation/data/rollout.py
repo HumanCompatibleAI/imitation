@@ -31,7 +31,7 @@ def unwrap_traj(traj: types.TrajectoryWithRew) -> types.TrajectoryWithRew:
     `obs` and `rews`.
 
     Fails if `infos` is None or if the trajectory was generated from an
-    environment without imitation.util.rollout.RolloutInfoWrapper
+    environment without imitation.data.wrappers.RolloutInfoWrapper
 
     Args:
         traj: A trajectory generated from `RolloutInfoWrapper`-wrapped Environments.
