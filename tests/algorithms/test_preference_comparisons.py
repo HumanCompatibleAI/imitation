@@ -1094,7 +1094,7 @@ def test_that_trainer_improves_agent(
     )
 
     # Train for a while, expecting the agent to have improved.
-    main_trainer.train(100, 20)
+    main_trainer.train(1000, 20)
 
     trained_rewards, _ = evaluation.evaluate_policy(
         agent_trainer.algorithm.policy,
