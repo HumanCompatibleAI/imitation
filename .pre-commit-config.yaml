@@ -42,7 +42,7 @@ repos:
   rev: v2.2.2
   hooks:
   - id: codespell
-    args: ["--skip=*.pyc,tests/testdata/*,*.ipynb,*.csvi --ignore-words-list=reacher"]
+    args: ["--skip=*.pyc,tests/testdata/*,*.ipynb,*.csvi","--ignore-words-list=reacher"]
 - repo: https://github.com/syntaqx/git-hooks
   rev: v0.0.17
   hooks:
