@@ -964,10 +964,7 @@ def action_is_reward_agent(action_is_reward_venv, rng):
     )
 
 
-def basic_reward_trainer(
-    venv,
-    rng,
-):
+def basic_reward_trainer(venv, rng):
     loss = preference_comparisons.CrossEntropyRewardLoss()
     reward_net = reward_nets.BasicRewardNet(
         venv.observation_space,
@@ -987,10 +984,7 @@ def basic_reward_trainer(
     )
 
 
-def ensemble_reward_trainer(
-    venv,
-    rng,
-):
+def ensemble_reward_trainer(venv, rng):
     loss = preference_comparisons.CrossEntropyRewardLoss()
     reward_net = reward_nets.RewardEnsemble(
         venv.observation_space,
