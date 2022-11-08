@@ -222,7 +222,6 @@ jobs:
             rm -rf shellcheck-stable
             chmod a+x /usr/local/bin/shellcheck
 
-      # TODO can this be combined?
       - shellcheck/check:
           dir: .
           # Orb invokes shellcheck once per file. shellcheck complains if file
@@ -241,12 +240,14 @@ jobs:
       - run:
           name: flake8
           # How to pass num CPUs here?
-          command: pre-commit run --all flake8
+          command: |
+            flake8 --version
+            pre-commit run --all flake8
 
       - run:
           name: black
-          # Unsure if removing the --diff arg is OK here
           command: |
+            black --version
             pre-commit run --all black
             pre-commit run --all black-jupyter
 
@@ -256,7 +257,6 @@ jobs:
 
       - run:
           name: codespell
-          # How to pass SRC files?
           command: pre-commit run --all codespell
 
   doctest:
