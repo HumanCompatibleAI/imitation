@@ -41,8 +41,7 @@ def sac():
 def normalize_disable():
     policy_kwargs = {  # noqa: F841
         # FlattenExtractor is the default for SB3; but we specify it here
-        # explicitly as no entry will be set to normalization by default
-        # via the config hook.
+        # explicitly
         "features_extractor_class": torch_layers.FlattenExtractor,
     }
 
