@@ -222,6 +222,7 @@ jobs:
             rm -rf shellcheck-stable
             chmod a+x /usr/local/bin/shellcheck
 
+      # TODO can this be combined?
       - shellcheck/check:
           dir: .
           # Orb invokes shellcheck once per file. shellcheck complains if file
@@ -231,7 +232,7 @@ jobs:
 
       - run:
           name: ipynb-check
-          command: ./ci/clean_notebooks.py --check ./docs/tutorials
+          command: pre-commit run --all check-notebooks
 
       - run:
           name: typeignore-check
@@ -244,11 +245,19 @@ jobs:
 
       - run:
           name: black
-          command: black --version && black --check --diff ${SRC_FILES}
+          # Unsure if removing the --diff arg is OK here
+          command: |
+            pre-commit run --all black
+            pre-commit run --all black-jupyter
+
+      - run:
+          name: isort 
+          command: pre-commit run --all isort
 
       - run:
           name: codespell
-          command: codespell -I .codespell.skip --skip='*.pyc,tests/testdata/*,*.ipynb,*.csv' ${SRC_FILES}
+          # How to pass SRC files?
+          command: pre-commit run --all codespell
 
   doctest:
     executor: static-analysis-medium
@@ -270,11 +279,11 @@ jobs:
 
       - run:
           name: pytype
-          command: pytype --version && pytype -j "${NUM_CPUS}" ${SRC_FILES[@]}
+          command: pytype --version && pre-commit run --all pytype
 
       - run:
           name: mypy
-          command: mypy --version && mypy ${SRC_FILES[@]} --follow-imports=silent --show-error-codes
+          command: mypy --version && pre-commit run --all mypy
 
   unit-test-linux:
     executor: unit-test-linux
