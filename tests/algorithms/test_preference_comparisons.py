@@ -72,6 +72,21 @@ def agent_trainer(agent, reward_net, venv, rng):
     return preference_comparisons.AgentTrainer(agent, reward_net, venv, rng)
 
 
+def assert_info_arrs_equal(arr1: np.ndarray, arr2: np.ndarray):
+    for item1, item2 in zip(arr1, arr2):
+        if isinstance(item1, dict):
+            assert isinstance(item2, dict)
+            for key, val in item1.items():
+                assert key in item2
+                if isinstance(val, dict):
+                    assert isinstance(item2[key], dict)
+                    for key2, val2 in val.items():
+                        assert key2 in item2[key]
+                        assert np.array_equal(val2, item2[key][key2])
+                else:
+                    assert np.array_equal(val, item2[key])
+
+
 def _check_trajs_equal(
     trajs1: Sequence[types.TrajectoryWithRew],
     trajs2: Sequence[types.TrajectoryWithRew],
@@ -83,7 +98,7 @@ def _check_trajs_equal(
         assert np.array_equal(traj1.rews, traj2.rews)
         assert traj1.infos is not None
         assert traj2.infos is not None
-        assert np.array_equal(traj1.infos, traj2.infos)
+        assert_info_arrs_equal(traj1.infos, traj2.infos)
         assert traj1.terminal == traj2.terminal
 
 
