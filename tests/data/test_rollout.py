@@ -340,7 +340,7 @@ def test_rollout_verbose_error_for_image_environments(rng):
         rollout.rollout(
             expert,
             # Note that this should be expert.get_env(), which rearranges
-            # the channel dimenstion to the first position.
+            # the channel dimension to the first position.
             env,
             rollout.make_sample_until(min_timesteps=None, min_episodes=2),
             rng=rng,
