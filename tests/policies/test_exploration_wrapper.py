@@ -90,37 +90,65 @@ def test_switch_prob(rng):
     """
     wrapper, venv = make_wrapper(random_prob=0.5, switch_prob=0.0, rng=rng)
     policy = wrapper.current_policy
-    np.random.seed(0)
-    obs = np.random.rand(100, 2)
-    for action in wrapper(obs):
-        assert venv.action_space.contains(action)
-        assert wrapper.current_policy == policy
 
-    def _always_switch(random_prob, num_steps, seed):
-        wrapper, _ = make_wrapper(random_prob=random_prob, switch_prob=1.0, rng=rng)
-        np.random.seed(seed)
-        num_random = 0
-        num_constant = 0
-        for _ in range(num_steps):
-            obs = np.random.rand(1, 2)
-            wrapper(obs)
-            if wrapper.current_policy == wrapper._random_policy:
-                num_random += 1
-            elif wrapper.current_policy == constant_policy:
-                num_constant += 1
-            else:  # pragma: no cover
-                raise ValueError("Unknown policy")
-        return num_random, num_constant
+    num_randoms_prob_one = []
+    num_constants_prob_one = []
+    num_randoms_prob_half = []
+    num_constants_prob_half = []
+    num_randoms_prob_zero = []
+    num_constants_prob_zero = []
 
-    num_random, num_constant = _always_switch(random_prob=1.0, num_steps=1000, seed=0)
-    assert num_random == 1000
-    assert num_constant == 0
-    num_random, num_constant = _always_switch(random_prob=0.5, num_steps=1000, seed=0)
-    assert num_random > 450
-    assert num_constant > 450
-    num_random, num_constant = _always_switch(random_prob=0.0, num_steps=1000, seed=0)
-    assert num_random == 0
-    assert num_constant == 1000
+    for s in range(5):
+        np.random.seed(s)
+        obs = np.random.rand(100, 2)
+        for action in wrapper(obs):
+            assert venv.action_space.contains(action)
+            assert wrapper.current_policy == policy
+
+        def _always_switch(random_prob, num_steps, seed):
+            wrapper, _ = make_wrapper(random_prob=random_prob, switch_prob=1.0, rng=rng)
+            np.random.seed(seed)
+            num_random = 0
+            num_constant = 0
+            for _ in range(num_steps):
+                obs = np.random.rand(1, 2)
+                wrapper(obs)
+                if wrapper.current_policy == wrapper._random_policy:
+                    num_random += 1
+                elif wrapper.current_policy == constant_policy:
+                    num_constant += 1
+                else:  # pragma: no cover
+                    raise ValueError("Unknown policy")
+            return num_random, num_constant
+
+        num_random_prob_one, num_constant_prob_one = _always_switch(
+            random_prob=1.0,
+            num_steps=1000,
+            seed=s,
+        )
+        num_random_prob_half, num_constant_prob_half = _always_switch(
+            random_prob=0.5,
+            num_steps=1000,
+            seed=s,
+        )
+        num_random_prob_zero, num_constant_prob_zero = _always_switch(
+            random_prob=0.0,
+            num_steps=1000,
+            seed=s,
+        )
+        num_randoms_prob_one.append(num_random_prob_one)
+        num_constants_prob_one.append(num_constant_prob_one)
+        num_randoms_prob_half.append(num_random_prob_half)
+        num_constants_prob_half.append(num_constant_prob_half)
+        num_randoms_prob_zero.append(num_random_prob_zero)
+        num_constants_prob_zero.append(num_constant_prob_zero)
+
+    assert np.mean(num_randoms_prob_one) == 1000
+    assert np.mean(num_constants_prob_one) == 0
+    assert (np.array(num_randoms_prob_half) > 450).any()
+    assert (np.array(num_constants_prob_half) > 450).any()
+    assert np.mean(num_randoms_prob_zero) == 0
+    assert np.mean(num_constants_prob_zero) == 1000
 
 
 def test_valid_output(rng):

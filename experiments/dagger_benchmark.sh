@@ -4,7 +4,8 @@ source experiments/common.sh
 
 ENVS=(seals_cartpole)
 SEEDS=(0 1 2 3 4)
-LOG_ROOT="output/dagger_benchmark/${TIMESTAMP}"
+# To prevent race conditions, we use a different log root for each process id.
+LOG_ROOT="output/dagger_benchmark/${TIMESTAMP}/$BASHPID"
 extra_configs=()
 extra_options=()
 extra_parallel_options=()

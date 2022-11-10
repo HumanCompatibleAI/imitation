@@ -72,7 +72,7 @@ def agent_trainer(agent, reward_net, venv, rng):
     return preference_comparisons.AgentTrainer(agent, reward_net, venv, rng)
 
 
-def assert_info_arrs_equal(arr1: np.ndarray, arr2: np.ndarray):
+def assert_info_arrs_equal(arr1, arr2):  # pragma: no cover
     for item1, item2 in zip(arr1, arr2):
         if isinstance(item1, dict):
             assert isinstance(item2, dict)
