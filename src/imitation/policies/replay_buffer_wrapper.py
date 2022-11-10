@@ -62,20 +62,16 @@ class ReplayBufferRewardWrapper(ReplayBuffer):
         _base_kwargs = {k: v for k, v in kwargs.items() if k in ["device", "n_envs"]}
         super().__init__(buffer_size, observation_space, action_space, **_base_kwargs)
 
-    # TODO(juan) remove the type ignore once the merged PR
-    #  https://github.com/python/mypy/pull/13475
-    #  is released into a mypy version on pypi.
-
-    @property  # type: ignore[override]
-    def pos(self) -> int:  # type: ignore[override]
+    @property
+    def pos(self) -> int:
         return self.replay_buffer.pos
 
     @pos.setter
     def pos(self, pos: int):
         self.replay_buffer.pos = pos
 
-    @property  # type: ignore[override]
-    def full(self) -> bool:  # type: ignore[override]
+    @property
+    def full(self) -> bool:
         return self.replay_buffer.full
 
     @full.setter
