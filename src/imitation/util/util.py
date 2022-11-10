@@ -359,3 +359,44 @@ def get_first_iter_element(iterable: Iterable[T]) -> Tuple[T, Iterable[T]]:
         return_iterable = iterable
 
     return first_element, return_iterable
+
+
+class RunningMeanAndVar:
+    """Stores a running mean and variance using Wellford's algorithm."""
+
+    def __init__(
+        self,
+        shape: Tuple[int, ...] = (),
+        device: Optional[str] = None,
+    ):
+        """Initialize blank mean, variance, count."""
+        self.mean = th.zeros(shape, device=device)
+        self.M2 = th.zeros(shape, device=device)
+        self.count = 0
+
+    def update(self, x: th.Tensor):
+        with th.no_grad():
+            batch_mean = th.mean(x, dim=0)
+            batch_var = th.var(x, dim=0, unbiased=False)
+            batch_count = x.shape[0]
+            batch_M2 = batch_var * batch_count
+            if self.count == 0:
+                self.count = batch_count
+                self.mean = batch_mean
+                self.M2 = batch_M2
+                return
+
+            delta = batch_mean - self.mean
+            total_count = self.count + batch_count
+            self.mean += delta * batch_count / total_count
+
+            self.M2 += (
+                batch_M2 + delta * delta * (self.count * batch_count) / total_count
+            )
+
+            self.count = total_count
+
+    @property
+    def var(self):
+        """Returns the unbiased estimate of the variance."""
+        return self.M2 / (self.count - 1)
