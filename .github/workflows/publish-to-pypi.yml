@@ -2,7 +2,12 @@
 
 name: Publish imitation distributions 📦 to PyPI and TestPyPI
 
-on: push
+on:
+  push:
+    paths:
+      # This requires that 'some' file is changed, to avoid running
+      # on new branch creation.
+      - '**'
 
 jobs:
   build-n-publish:
