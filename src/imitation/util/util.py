@@ -368,13 +368,13 @@ class RunningMeanAndVar:
         self,
         shape: Tuple[int, ...] = (),
         device: Optional[str] = None,
-    ):
+    ) -> None:
         """Initialize blank mean, variance, count."""
         self.mean = th.zeros(shape, device=device)
         self.M2 = th.zeros(shape, device=device)
         self.count = 0
 
-    def update(self, x: th.Tensor):
+    def update(self, x: th.Tensor) -> None:
         with th.no_grad():
             batch_mean = th.mean(x, dim=0)
             batch_var = th.var(x, dim=0, unbiased=False)
@@ -390,13 +390,49 @@ class RunningMeanAndVar:
             total_count = self.count + batch_count
             self.mean += delta * batch_count / total_count
 
-            self.M2 += (
-                batch_M2 + delta * delta * (self.count * batch_count) / total_count
-            )
+            self.M2 += batch_M2 + delta * delta * self.count * batch_count / total_count
 
             self.count = total_count
 
     @property
-    def var(self):
-        """Returns the unbiased estimate of the variance."""
+    def var(self) -> th.Tensor:
+        """Returns the unbiased estimate of the variances."""
         return self.M2 / (self.count - 1)
+
+
+def compute_state_entropy(
+    obs: th.Tensor,
+    all_obs: th.Tensor,
+    k: int,
+    batch_size: int = 500,
+) -> th.Tensor:
+    """Compute the state entropy given by KNN distance.
+
+    Args:
+        obs: The tensor of states to compute entropy for.
+        all_obs: The tensor of all states in our experience,
+                 generally from a replay buffer.
+        k: the number of neighbors to consider
+        batch_size: when computing distances, how many to consider at once.
+
+    Returns:
+        A tensor containing the state entropy for `obs`.
+    """
+    with th.no_grad():
+        distances = []
+        for i in range(len(all_obs) // batch_size + 1):
+            start = i * batch_size
+            end = min((i + 1) * batch_size, obs.shape[1])
+            # TODO what is going on w/ these shapes?
+            # TODO use a non-deprecated norm function
+            distance = th.norm(
+                obs[:, None, :] - all_obs[None, start:end, :],
+                dim=-1,
+                p=2,
+            )
+            distances.append(distance)
+
+        distances_tensor = th.cat(distances, dim=1)
+        knn_dists = th.kthvalue(distances_tensor, k=k + 1, dim=1).values
+        state_entropy = knn_dists
+    return state_entropy.unsqueeze(1)
