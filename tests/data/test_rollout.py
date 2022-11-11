@@ -359,8 +359,8 @@ def test_rollout_normal_error_for_other_shape_mismatch(rng):
     unrelated_env = vec_env.DummyVecEnv(
         [functools.partial(TerminalSentinelEnv, 5)],
     )
-    other_3_shaped_obs_env = make_vec_env("Pendulum-v1", n_envs=1, rng=rng)
-    for bad_env in [unrelated_env, other_3_shaped_obs_env]:
+    other_image_env = make_atari_env("Adventure-v4", n_envs=1, seed=seed)
+    for bad_env in [unrelated_env, other_image_env]:
         with pytest.raises(
             ValueError,
             match=r"Observation spaces do not match.*",
