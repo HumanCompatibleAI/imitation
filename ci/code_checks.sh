@@ -8,7 +8,7 @@ EXCLUDE_MYPY="(?x)(
   | src/imitation/algorithms/base.py$
   | src/imitation/scripts/train_preference_comparisons.py$
   | src/imitation/rewards/serialize.py$
-  | src/imitation/scripts/common/train.py$
+  | src/imitation/scripts/ingredients/train.py$
   | src/imitation/algorithms/mce_irl.py$
   | src/imitation/algorithms/density.py$
   | tests/algorithms/test_bc.py$
