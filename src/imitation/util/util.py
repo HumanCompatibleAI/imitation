@@ -404,35 +404,28 @@ def compute_state_entropy(
     obs: th.Tensor,
     all_obs: th.Tensor,
     k: int,
-    batch_size: int = 500,
 ) -> th.Tensor:
     """Compute the state entropy given by KNN distance.
 
     Args:
-        obs: The tensor of states to compute entropy for.
-        all_obs: The tensor of all states in our experience,
-                 generally from a replay buffer.
+        obs: A single observation.
+        all_obs: The tensor of all states to compare to.
         k: the number of neighbors to consider
-        batch_size: when computing distances, how many to consider at once.
 
     Returns:
         A tensor containing the state entropy for `obs`.
     """
+    assert obs.shape == all_obs.shape[1:]
     with th.no_grad():
-        distances = []
-        for i in range(len(all_obs) // batch_size + 1):
-            start = i * batch_size
-            end = min((i + 1) * batch_size, obs.shape[1])
-            # TODO what is going on w/ these shapes?
-            # TODO use a non-deprecated norm function
-            distance = th.norm(
-                obs[:, None, :] - all_obs[None, start:end, :],
-                dim=-1,
-                p=2,
-            )
-            distances.append(distance)
+        non_batch_dimensions = tuple(range(1, len(obs.shape) + 1))
+        distances_tensor = th.linalg.vector_norm(
+            obs[None] - all_obs,
+            dim=non_batch_dimensions,
+            ord=2,
+        )
 
-        distances_tensor = th.cat(distances, dim=1)
-        knn_dists = th.kthvalue(distances_tensor, k=k + 1, dim=1).values
+        # Note that we take the k+1'th value because the closest neighbor to
+        # a point is itself, which we want to skip.
+        knn_dists = th.kthvalue(distances_tensor, k=k + 1, dim=0).values
         state_entropy = knn_dists
-    return state_entropy.unsqueeze(1)
+    return state_entropy.unsqueeze(0)

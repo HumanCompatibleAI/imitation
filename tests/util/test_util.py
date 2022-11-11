@@ -152,3 +152,29 @@ def test_RunningMeanAndVar():
         atol=1e-5,
         rtol=1e-4,
     )
+
+
+def test_compute_state_entropy_1d():
+    all_obs = th.arange(10, dtype=th.float).unsqueeze(1)
+    obs = all_obs[5]
+    assert util.compute_state_entropy(obs, all_obs, k=1) == 1
+    assert util.compute_state_entropy(obs, all_obs, k=2) == 1
+    assert util.compute_state_entropy(obs, all_obs, k=3) == 2
+    assert util.compute_state_entropy(obs, all_obs, k=4) == 2
+    assert util.compute_state_entropy(obs, all_obs, k=5) == 3
+
+
+def test_compute_state_entropy_2d():
+    all_obs_x = th.arange(10, dtype=th.float)
+    all_obs_y = th.arange(0, 100, step=10, dtype=th.float)
+    all_obs = th.stack((all_obs_x, all_obs_y), dim=1)
+
+    obs = all_obs[5]
+    np.testing.assert_allclose(
+        util.compute_state_entropy(obs, all_obs, k=1),
+        np.sqrt(10**2 + 1**2),
+    )
+    np.testing.assert_allclose(
+        util.compute_state_entropy(obs, all_obs, k=3),
+        np.sqrt(20**2 + 2**2),
+    )
