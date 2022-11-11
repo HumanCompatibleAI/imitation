@@ -41,6 +41,31 @@ def rollouts(env, n=10, seed=None):
     return rv
 
 
+@pytest.fixture
+def random_mdp():
+    return random_trans.RandomTransitionEnv(
+        n_states=5,
+        n_actions=3,
+        branch_factor=2,
+        horizon=10,
+        random_obs=False,
+        obs_dim=None,
+        generator_seed=42,
+    )
+
+
+def make_reward_net(env: gym.Env) -> reward_nets.BasicRewardNet:
+    """Makes linear reward model."""
+    return reward_nets.BasicRewardNet(
+        env.observation_space,
+        env.action_space,
+        use_action=False,
+        use_next_state=False,
+        use_done=False,
+        hid_sizes=[],
+    )
+
+
 def test_random_mdp():
     for i in range(3):
         n_states = 4 * (i + 3)
@@ -85,6 +110,18 @@ def test_random_mdp():
         # make sure trajectories ARE all the same if we do specify the same
         # seed each time
         assert len(set(map(str, trajectories))) == 1
+
+
+def test_infinite_horizon_error(random_mdp, rng):
+    random_mdp.horizon = None
+    check_raises = pytest.raises(ValueError, match="Only finite-horizon.*")
+    with check_raises:
+        mce_partition_fh(random_mdp)
+    with check_raises:
+        mce_occupancy_measures(random_mdp)
+    reward_net = make_reward_net(random_mdp)
+    with check_raises:
+        MCEIRL(None, random_mdp, reward_net, rng)
 
 
 FEW_DISCOUNT_RATES = [0.0, 0.99, 1.0]
@@ -304,17 +341,8 @@ def test_tabular_policy_randomness(rng):
     np.testing.assert_equal(actions, 0)
 
 
-def test_mce_irl_demo_formats(rng):
-    mdp = random_trans.RandomTransitionEnv(
-        n_states=5,
-        n_actions=3,
-        branch_factor=2,
-        horizon=10,
-        random_obs=False,
-        obs_dim=None,
-        generator_seed=42,
-    )
-    state_env = base_envs.ExposePOMDPStateWrapper(mdp)
+def test_mce_irl_demo_formats(rng, random_mdp):
+    state_env = base_envs.ExposePOMDPStateWrapper(random_mdp)
     state_venv = vec_env.DummyVecEnv([lambda: state_env])
     trajs = rollout.generate_trajectories(
         policy=None,
@@ -337,22 +365,15 @@ def test_mce_irl_demo_formats(rng):
         with th.random.fork_rng():
             th.random.manual_seed(715298)
             # create reward network so we can be sure it's seeded identically
-            reward_net = reward_nets.BasicRewardNet(
-                mdp.observation_space,
-                mdp.action_space,
-                use_action=False,
-                use_next_state=False,
-                use_done=False,
-                hid_sizes=[],
-            )
+            reward_net = make_reward_net(random_mdp)
             mce_irl = MCEIRL(
                 demo,
-                mdp,
+                random_mdp,
                 reward_net,
                 linf_eps=1e-3,
                 rng=rng,
             )
-            assert np.allclose(mce_irl.demo_state_om.sum(), mdp.horizon + 1)
+            assert np.allclose(mce_irl.demo_state_om.sum(), random_mdp.horizon + 1)
             final_counts[kind] = mce_irl.train(max_iter=5)
 
             # make sure weights have non-insane norm
@@ -417,4 +438,5 @@ def test_mce_irl_reasonable_mdp(
         stats = rollout.rollout_stats(trajs)
         if discount > 0.0:  # skip check when discount==0.0 (random policy)
             eps = 1e-6  # avoid test failing due to rounding error
+            assert mdp.horizon is not None
             assert stats["return_mean"] >= (mdp.horizon - 1) * 2 * 0.8 - eps

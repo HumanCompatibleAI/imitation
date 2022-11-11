@@ -225,10 +225,10 @@ class RewardNet(nn.Module, abc.ABC):
 
 
 class RewardNetWrapper(RewardNet):
-    """Abstract class representing a wrapper that modifies a `RewardNet`'s functionality.
+    """Abstract class representing a wrapper modifying a ``RewardNet``'s functionality.
 
-    In general `RewardNetWrapper`s should either subclass `ForwardWrapper`
-    or `PredictProcessedWrapper`.
+    In general ``RewardNetWrapper``s should either subclass ``ForwardWrapper``
+    or ``PredictProcessedWrapper``.
     """
 
     def __init__(
@@ -318,7 +318,7 @@ class PredictProcessedWrapper(RewardNetWrapper):
         next_state: th.Tensor,
         done: th.Tensor,
     ) -> th.Tensor:
-        __doc__ = super().forward.__doc__  # noqa: F841
+        """Compute rewards for a batch of transitions and keep gradients."""
         return self.base.forward(state, action, next_state, done)
 
     @abc.abstractmethod

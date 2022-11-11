@@ -1,4 +1,8 @@
+
 ================================================
+Limitations on Horizon Length
+================================================
+
 Variable Horizon Environments Considered Harmful
 ================================================
 
@@ -64,3 +68,8 @@ See this `GitHub issue`_ for further discussion.
 
 .. _GitHub issue:
     https://github.com/HumanCompatibleAI/imitation/issues/324
+
+
+Non-Support for Infinite Length Horizons
+================================================
+At the moment, we do not support infinite-length horizons. Many of the imitation algorithms, especially those relying on RL, do not easily port over to infinite-horizon setups. Similarly, much of the logging and reward calculation logic assumes the existence of a finite horizon. Although we may explore workarounds in the future, this is not a feature that we can currently support.
