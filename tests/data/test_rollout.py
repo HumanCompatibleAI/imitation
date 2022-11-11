@@ -15,6 +15,7 @@ from stable_baselines3.ppo import MlpPolicy
 from imitation.data import rollout, types, wrappers
 from imitation.policies import serialize
 from imitation.policies.base import RandomPolicy
+from imitation.util.util import make_vec_env
 
 
 class TerminalSentinelEnv(gym.Env):
@@ -358,13 +359,15 @@ def test_rollout_normal_error_for_other_shape_mismatch(rng):
     unrelated_env = vec_env.DummyVecEnv(
         [functools.partial(TerminalSentinelEnv, 5)],
     )
-    with pytest.raises(
-        ValueError,
-        match=r"Observation spaces do not match.*",
-    ):
-        rollout.rollout(
-            expert,
-            unrelated_env,
-            rollout.make_sample_until(min_timesteps=None, min_episodes=2),
-            rng=rng,
-        )
+    other_3_shaped_obs_env = make_vec_env("Pendulum-v1", n_envs=1, rng=rng)
+    for bad_env in [unrelated_env, other_3_shaped_obs_env]:
+        with pytest.raises(
+            ValueError,
+            match=r"Observation spaces do not match.*",
+        ):
+            rollout.rollout(
+                expert,
+                unrelated_env,
+                rollout.make_sample_until(min_timesteps=None, min_episodes=2),
+                rng=rng,
+            )
