@@ -17,7 +17,7 @@ source experiments/common.sh
 
 CONFIG_CSV=${CONFIG_CSV:-experiments/rollouts_from_policies_config.csv}
 # To prevent race conditions, we use a different output dir for each process id.
-OUTPUT_DIR="output/train_experts/${TIMESTAMP}/$BASHPID"
+OUTPUT_DIR="output/train_experts/${TIMESTAMP}-${BASHPID}"
 
 if ! TEMP=$($GNU_GETOPT -o f -l fast -- "$@"); then
   exit 1
