@@ -9,7 +9,7 @@ SEEDS=(0 1 2)
 CONFIG_CSV="experiments/imit_benchmark_config.csv"
 REWARD_MODELS_DIR="data/reward_models"
 # To prevent race conditions, we use a different log root for each process id.
-LOG_ROOT="output/train_experts/${TIMESTAMP}/$BASHPID"
+LOG_ROOT="output/train_experts/${TIMESTAMP}-${BASHPID}"
 RESULTS_FILE="results.txt"
 ALGORITHM="gail"
 NEED_TEST_FILES="false"
