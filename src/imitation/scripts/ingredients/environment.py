@@ -6,7 +6,7 @@ import numpy as np
 import sacred
 from stable_baselines3.common import vec_env
 
-import imitation.scripts.ingredients.common as common
+import imitation.scripts.ingredients.logging as logging_ing
 from imitation.data import wrappers
 from imitation.scripts.ingredients.environment_name import environment_name_ingredient
 from imitation.util import util
@@ -15,7 +15,7 @@ environment_ingredient = sacred.Ingredient(
     "environment",
     ingredients=[
         environment_name_ingredient,
-        common.common_ingredient,
+        logging_ing.logging_ingredient,
     ],
 )
 
@@ -35,7 +35,7 @@ def config():
 def make_venv(
     _rnd: np.random.Generator,
     environment_name: dict,
-    common: dict,
+    logging: dict,
     num_vec: int,
     parallel: bool,
     max_episode_steps: int,
@@ -46,7 +46,7 @@ def make_venv(
 
     Args:
         environment_name: The environment name ingredient to use.
-        common: The common ingredient to use for the log directory.
+        logging: The logging ingredient to use for the log directory.
         num_vec: Number of `gym.Env` instances to combine into a vector environment.
         parallel: Whether to use "true" parallelism. If True, then use `SubProcVecEnv`.
             Otherwise, use `DummyVecEnv` which steps through environments serially.
@@ -67,7 +67,7 @@ def make_venv(
         n_envs=num_vec,
         parallel=parallel,
         max_episode_steps=max_episode_steps,
-        log_dir=common["log_dir"],
+        log_dir=logging["log_dir"],
         env_make_kwargs=env_make_kwargs,
         **kwargs,
     )

@@ -1,1 +1,1 @@
-"""Common configuration elements for scripts."""
+"""Ingredients for scripts."""

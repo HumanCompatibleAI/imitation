@@ -34,8 +34,8 @@ while true; do
       shift
       ;;
     -w | --wandb)
-      # activate wandb logging by adding 'wandb' format string to common.log_format_strs
-      extra_configs=("${extra_configs[@]}" "common.wandb_logging")
+      # activate wandb logging by adding 'wandb' format string to logging.log_format_strs
+      extra_configs=("${extra_configs[@]}" "logging.wandb_logging")
       shift
       ;;
     --run_name)
@@ -69,6 +69,6 @@ parallel -j 25% --header : --results "${OUTPUT_DIR}/parallel/" --colsep , --prog
   '{env_config_name}' \
   "${extra_configs[@]}" \
   'seed={seed}' \
-  common.log_root="${OUTPUT_DIR}" \
+  logging.log_root="${OUTPUT_DIR}" \
   ::: env_config_name "${ENVS[@]}" \
   ::: seed "${SEEDS[@]}"

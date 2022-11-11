@@ -23,7 +23,9 @@ from imitation.policies import serialize
 from imitation.rewards.reward_wrapper import RewardVecEnvWrapper
 from imitation.rewards.serialize import load_reward
 from imitation.scripts.config.train_rl import train_rl_ex
-from imitation.scripts.ingredients import common, environment, rl, train
+from imitation.scripts.ingredients import environment
+from imitation.scripts.ingredients import logging as logging_ing
+from imitation.scripts.ingredients import rl, train
 
 
 @train_rl_ex.main
@@ -89,7 +91,7 @@ def train_rl(
     Returns:
         The return value of `rollout_stats()` using the final policy.
     """
-    custom_logger, log_dir = common.setup_logging()
+    custom_logger, log_dir = logging_ing.setup_logging()
     rollout_dir = log_dir / "rollouts"
     policy_dir = log_dir / "policies"
     rollout_dir.mkdir(parents=True, exist_ok=True)

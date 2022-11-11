@@ -10,9 +10,12 @@ from stable_baselines3.common import base_class, policies, vec_env
 import imitation.util.networks
 from imitation.data import rollout
 from imitation.policies import base
-from imitation.scripts.ingredients import common
+from imitation.scripts.ingredients import logging as logging_ing
 
-train_ingredient = sacred.Ingredient("train", ingredients=[common.common_ingredient])
+train_ingredient = sacred.Ingredient(
+    "train",
+    ingredients=[logging_ing.logging_ingredient],
+)
 logger = logging.getLogger(__name__)
 
 

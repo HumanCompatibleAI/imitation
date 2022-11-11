@@ -112,7 +112,7 @@ available in ``scripts/``. You can take a look at the following doc links to und
 - `Ingredients <https://sacred.readthedocs.io/en/stable/ingredients.html>`_: Explains how to use ingredients to avoid code duplication across experiments. The ingredients used in our experiments are defined in ``scripts/ingredients/``:
 
   .. autosummary::
-    imitation.scripts.ingredients.common
+    imitation.scripts.ingredients.logging
     imitation.scripts.ingredients.demonstrations
     imitation.scripts.ingredients.environment
     imitation.scripts.ingredients.environment_name

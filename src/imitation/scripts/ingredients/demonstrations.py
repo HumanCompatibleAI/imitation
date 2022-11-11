@@ -1,4 +1,4 @@
-"""Common configuration element for scripts learning from demonstrations."""
+"""Ingredient for scripts learning from demonstrations."""
 
 import logging
 from typing import Optional, Sequence
@@ -7,13 +7,14 @@ import numpy as np
 import sacred
 
 from imitation.data import rollout, types
-from imitation.scripts.ingredients import common, environment, expert
+from imitation.scripts.ingredients import environment, expert
+from imitation.scripts.ingredients import logging as logging_ing
 
 demonstrations_ingredient = sacred.Ingredient(
     "demonstrations",
     ingredients=[
         expert.expert_ingredient,
-        common.common_ingredient,
+        logging_ing.logging_ingredient,
         environment.environment_ingredient,
     ],
 )

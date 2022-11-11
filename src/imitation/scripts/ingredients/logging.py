@@ -1,4 +1,4 @@
-"""Common configuration elements for scripts."""
+"""Logging ingredient for scripts."""
 
 import logging
 import pathlib
@@ -13,8 +13,8 @@ from imitation.util import logger as imit_logger
 from imitation.util import sacred as sacred_util
 from imitation.util import util
 
-common_ingredient = sacred.Ingredient(
-    "common",
+logging_ingredient = sacred.Ingredient(
+    "logging",
     ingredients=[
         wb.wandb_ingredient,
         environment_name.environment_name_ingredient,
@@ -23,7 +23,7 @@ common_ingredient = sacred.Ingredient(
 logger = logging.getLogger(__name__)
 
 
-@common_ingredient.config
+@logging_ingredient.config
 def config():
     # Logging
     log_root = None
@@ -37,17 +37,17 @@ def config():
     locals()  # silence flake8 unused variable warning
 
 
-@common_ingredient.config
+@logging_ingredient.config
 def update_log_format_strs(log_format_strs, log_format_strs_additional):
     log_format_strs = log_format_strs + list(log_format_strs_additional.keys())
 
 
-@common_ingredient.config_hook
+@logging_ingredient.config_hook
 def hook(config, command_name: str, logger):
     del logger
     updates = {}
-    if config["common"]["log_dir"] is None:
-        config_log_root = config["common"]["log_root"] or "output"
+    if config["logging"]["log_dir"] is None:
+        config_log_root = config["logging"]["log_root"] or "output"
         log_root = types.parse_path(config_log_root)
         env_sanitized = hfsb3.EnvironmentName(config["environment_name"]["gym_id"])
         assert isinstance(env_sanitized, str)
@@ -56,12 +56,12 @@ def hook(config, command_name: str, logger):
     return updates
 
 
-@common_ingredient.named_config
+@logging_ingredient.named_config
 def wandb_logging():
     log_format_strs_additional = {"wandb": None}  # noqa: F841
 
 
-@common_ingredient.capture
+@logging_ingredient.capture
 def make_log_dir(
     _run,
     log_dir: str,
@@ -91,7 +91,7 @@ def make_log_dir(
     return parsed_log_dir
 
 
-@common_ingredient.capture
+@logging_ingredient.capture
 def setup_logging(
     _run,
     log_format_strs: Sequence[str],

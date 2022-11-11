@@ -5,7 +5,7 @@ from typing import Any, Mapping, Optional
 
 import sacred
 
-wandb_ingredient = sacred.Ingredient("common.wandb")
+wandb_ingredient = sacred.Ingredient("logging.wandb")
 logger = logging.getLogger(__name__)
 
 

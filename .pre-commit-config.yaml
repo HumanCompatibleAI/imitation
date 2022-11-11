@@ -37,12 +37,13 @@ repos:
   rev: v0.8.0
   hooks:
   - id: shellcheck
+    args: ["-x"]
 # Misc
 - repo: https://github.com/codespell-project/codespell
   rev: v2.2.2
   hooks:
   - id: codespell
-    args: ["--skip=*.pyc,tests/testdata/*,*.ipynb,*.csv"]
+    args: ["--skip=*.pyc,tests/testdata/*,*.ipynb,*.csv", "-L=reacher"]
 - repo: https://github.com/syntaqx/git-hooks
   rev: v0.0.17
   hooks:

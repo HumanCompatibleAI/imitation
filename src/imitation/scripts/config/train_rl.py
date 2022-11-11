@@ -2,12 +2,14 @@
 
 import sacred
 
-from imitation.scripts.ingredients import common, environment, rl, train
+from imitation.scripts.ingredients import environment
+from imitation.scripts.ingredients import logging as logging_ing
+from imitation.scripts.ingredients import rl, train
 
 train_rl_ex = sacred.Experiment(
     "train_rl",
     ingredients=[
-        common.common_ingredient,
+        logging_ing.logging_ingredient,
         environment.environment_ingredient,
         train.train_ingredient,
         rl.rl_ingredient,

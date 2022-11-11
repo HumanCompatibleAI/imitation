@@ -32,8 +32,8 @@ while true; do
       shift
       ;;
     -w | --wandb)
-      # activate wandb logging by adding 'wandb' format string to common.log_format_strs
-      extra_configs=("${extra_configs[@]}" "common.wandb_logging")
+      # activate wandb logging by adding 'wandb' format string to logging.log_format_strs
+      extra_configs=("${extra_configs[@]}" "logging.wandb_logging")
       shift
       ;;
     --mvp_seals)
@@ -104,7 +104,7 @@ parallel -j 25% --header : --results "${LOG_ROOT}/parallel/" --colsep , --progre
   "${ALGORITHM}" \
   with \
   '{env_config_name}' seed='{seed}' \
-  common.log_dir="${LOG_ROOT}/{env_config_name}_{seed}/n_expert_demos_{n_expert_demos}" \
+  logging.log_dir="${LOG_ROOT}/{env_config_name}_{seed}/n_expert_demos_{n_expert_demos}" \
   demonstrations.n_expert_demos='{n_expert_demos}' \
   checkpoint_interval=0 \
   "${extra_configs[@]}" \

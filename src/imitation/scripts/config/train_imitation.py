@@ -3,14 +3,15 @@
 import sacred
 import torch as th
 
-from imitation.scripts.ingredients import common
 from imitation.scripts.ingredients import demonstrations as demos_common
-from imitation.scripts.ingredients import environment, expert, train
+from imitation.scripts.ingredients import environment, expert
+from imitation.scripts.ingredients import logging as logging_ing
+from imitation.scripts.ingredients import train
 
 train_imitation_ex = sacred.Experiment(
     "train_imitation",
     ingredients=[
-        common.common_ingredient,
+        logging_ing.logging_ingredient,
         demos_common.demonstrations_ingredient,
         train.train_ingredient,
         expert.expert_ingredient,

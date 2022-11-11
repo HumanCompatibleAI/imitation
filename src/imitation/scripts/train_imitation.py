@@ -14,13 +14,9 @@ from imitation.algorithms import bc as bc_algorithm
 from imitation.algorithms.dagger import SimpleDAggerTrainer
 from imitation.data import rollout, types
 from imitation.scripts.config.train_imitation import train_imitation_ex
-from imitation.scripts.ingredients import (
-    common,
-    demonstrations,
-    environment,
-    expert,
-    train,
-)
+from imitation.scripts.ingredients import demonstrations, environment, expert
+from imitation.scripts.ingredients import logging as logging_ing
+from imitation.scripts.ingredients import train
 
 logger = logging.getLogger(__name__)
 
@@ -95,7 +91,7 @@ def train_imitation(
     Returns:
         Statistics for rollouts from the trained policy and demonstration data.
     """
-    custom_logger, log_dir = common.setup_logging()
+    custom_logger, log_dir = logging_ing.setup_logging()
 
     with environment.make_venv() as venv:
         imit_policy = make_policy(venv, agent_path=agent_path)

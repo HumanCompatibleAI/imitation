@@ -3,12 +3,14 @@
 import sacred
 
 from imitation.algorithms import preference_comparisons
-from imitation.scripts.ingredients import common, environment, reward, rl, train
+from imitation.scripts.ingredients import environment
+from imitation.scripts.ingredients import logging as logging_ing
+from imitation.scripts.ingredients import reward, rl, train
 
 train_preference_comparisons_ex = sacred.Experiment(
     "train_preference_comparisons",
     ingredients=[
-        common.common_ingredient,
+        logging_ing.logging_ingredient,
         environment.environment_ingredient,
         reward.reward_ingredient,
         rl.rl_ingredient,
