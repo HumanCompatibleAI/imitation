@@ -115,6 +115,7 @@ class ReplayBufferEntropyRewardWrapper(ReplayBuffer):
         replay_buffer_class: Type[ReplayBuffer],
         reward_fn: RewardFn,
         entropy_as_reward_samples: int,
+        k: int = 5,
         **kwargs,
     ):
         """Builds ReplayBufferRewardWrapper.
@@ -127,6 +128,7 @@ class ReplayBufferEntropyRewardWrapper(ReplayBuffer):
             reward_fn: Reward function for reward relabeling.
             entropy_as_reward_samples: Number of samples to use entropy as the reward,
                 before switching to using the reward_fn for relabeling.
+            k: Use the k'th nearest neighbor's distance when computing state entropy.
             **kwargs: keyword arguments for ReplayBuffer.
         """
         super().__init__(
@@ -141,14 +143,32 @@ class ReplayBufferEntropyRewardWrapper(ReplayBuffer):
         #      or number of observations returned?
         self.samples = 0
         self.entropy_as_reward_samples = entropy_as_reward_samples
+        self.k = k
 
     def sample(self, *args, **kwargs):
         self.samples += 1
         samples = super().sample(*args, **kwargs)
         if self.samples > self.entropy_as_reward_samples:
             return samples
+        # TODO we really ought to reset the reward network when we are done w/ entropy,
+        #      and we have no business training it before then
 
-        # TODO make the state entropy function accept batches
-        # TODO compute state entropy for each reward
-        # TODO replace the reward with the entropies
-        # TODO note that we really ought to reset the reward network when we are done w/ entropy, and we have no business training it before then
+        if self.full:
+            all_obs = self.observations
+        else:
+            all_obs = self.observations[: self.pos]
+        entropies = util.compute_state_entropy(samples.observations, all_obs, self.k)
+        entropies_th = (
+            util.safe_to_tensor(entropies)
+            .reshape(samples.rewards.shape)
+            .to(samples.rewards.device)
+        )
+        # TODO normalize entropies w/ RunningMeanAndVar
+
+        return ReplayBufferSamples(
+            samples.observations,
+            samples.actions,
+            samples.next_observations,
+            samples.dones,
+            entropies_th,
+        )
