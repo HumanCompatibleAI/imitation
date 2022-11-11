@@ -103,7 +103,7 @@ class ReplayBufferRewardWrapper(ReplayBuffer):
         )
 
 
-class ReplayBufferEntropyRewardWrapper(ReplayBuffer):
+class ReplayBufferEntropyRewardWrapper(ReplayBufferRewardWrapper):
     """Relabel the rewards from a ReplayBuffer, initially using entropy as reward."""
 
     def __init__(
@@ -135,8 +135,8 @@ class ReplayBufferEntropyRewardWrapper(ReplayBuffer):
             buffer_size,
             observation_space,
             action_space,
-            replay_buffer_class,
-            reward_fn,
+            replay_buffer_class=replay_buffer_class,
+            reward_fn=reward_fn,
             **kwargs,
         )
         # TODO should we limit by number of batches (as this does)
@@ -144,26 +144,34 @@ class ReplayBufferEntropyRewardWrapper(ReplayBuffer):
         self.samples = 0
         self.entropy_as_reward_samples = entropy_as_reward_samples
         self.k = k
+        # TODO support n_envs > 1
+        self.entropy_stats = util.RunningMeanAndVar(shape=(1,))
 
     def sample(self, *args, **kwargs):
         self.samples += 1
         samples = super().sample(*args, **kwargs)
         if self.samples > self.entropy_as_reward_samples:
             return samples
-        # TODO we really ought to reset the reward network when we are done w/ entropy,
-        #      and we have no business training it before then
+        # TODO we really ought to reset the reward network once we are done w/
+        #      the entropy based pre-training. We also have no reason to train
+        #      or even use the reward network before then.
 
         if self.full:
             all_obs = self.observations
         else:
             all_obs = self.observations[: self.pos]
         entropies = util.compute_state_entropy(samples.observations, all_obs, self.k)
+
+        # Normalize to have mean of 0 and standard deviation of 1
+        self.entropy_stats.update(entropies)
+        entropies -= self.entropy_stats.mean
+        entropies /= self.entropy_stats.std
+
         entropies_th = (
             util.safe_to_tensor(entropies)
             .reshape(samples.rewards.shape)
             .to(samples.rewards.device)
         )
-        # TODO normalize entropies w/ RunningMeanAndVar
 
         return ReplayBufferSamples(
             samples.observations,

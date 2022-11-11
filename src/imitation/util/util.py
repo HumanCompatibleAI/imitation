@@ -375,6 +375,7 @@ class RunningMeanAndVar:
         self.count = 0
 
     def update(self, x: th.Tensor) -> None:
+        """Update the mean and variance with a batch `x`."""
         with th.no_grad():
             batch_mean = th.mean(x, dim=0)
             batch_var = th.var(x, dim=0, unbiased=False)
@@ -398,6 +399,11 @@ class RunningMeanAndVar:
     def var(self) -> th.Tensor:
         """Returns the unbiased estimate of the variances."""
         return self.M2 / (self.count - 1)
+
+    @property
+    def std(self) -> th.Tensor:
+        """Returns the unbiased estimate of the standard deviations."""
+        return np.sqrt(self.var)
 
 
 def compute_state_entropy(
