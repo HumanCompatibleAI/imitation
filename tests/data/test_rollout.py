@@ -15,7 +15,6 @@ from stable_baselines3.ppo import MlpPolicy
 from imitation.data import rollout, types, wrappers
 from imitation.policies import serialize
 from imitation.policies.base import RandomPolicy
-from imitation.util.util import make_vec_env
 
 
 class TerminalSentinelEnv(gym.Env):
