@@ -345,3 +345,26 @@ def test_rollout_verbose_error_for_image_environments(rng):
             rollout.make_sample_until(min_timesteps=None, min_episodes=2),
             rng=rng,
         )
+
+
+def test_rollout_normal_error_for_other_shape_mismatch(rng):
+    seed = 0
+    env = make_atari_env("BeamRiderNoFrameskip-v4", n_envs=1, seed=seed)
+    env = VecFrameStack(env, n_stack=4)
+    expert = A2C(policy=MlpPolicy, env=env, seed=seed)
+    expert.learn(1)
+
+    rng = np.random.default_rng(seed)
+    unrelated_env = vec_env.DummyVecEnv(
+        [functools.partial(TerminalSentinelEnv, 5)],
+    )
+    with pytest.raises(
+        ValueError,
+        match=r"Observation spaces do not match.*",
+    ):
+        rollout.rollout(
+            expert,
+            unrelated_env,
+            rollout.make_sample_until(min_timesteps=None, min_episodes=2),
+            rng=rng,
+        )
