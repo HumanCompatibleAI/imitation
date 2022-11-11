@@ -3,10 +3,12 @@
 import os.path as osp
 from typing import Type
 
+import gym
 import numpy as np
 import pytest
 import stable_baselines3 as sb3
 import torch as th
+from gym import spaces
 from stable_baselines3.common import buffers, off_policy_algorithm, policies
 from stable_baselines3.common.policies import BasePolicy
 from stable_baselines3.common.save_util import load_from_pkl
@@ -164,13 +166,31 @@ def test_entropy_wrapper_class_no_op(tmpdir, rng):
     assert type(tensor) is th.Tensor
 
 
+class ActionIsObsEnv(gym.Env):
+    """Simple environment where the obs is the action."""
+
+    def __init__(self):
+        """Initialize environment."""
+        super().__init__()
+        self.action_space = spaces.Discrete(50)
+        self.observation_space = spaces.Discrete(50)
+
+    def step(self, action):
+        obs = action
+        reward = 0
+        done = False
+        info = {}
+        return obs, reward, done, info
+
+    def reset(self):
+        return self.action_space.sample()
+
+
 def test_entropy_wrapper_class(tmpdir, rng):
     buffer_size = 15
     entropy_samples = 10
     total_timesteps = 20
 
-    # TODO learn w/ entropy for X timesteps on dummy environment where
-    # next observation is action, as is reward
     # TODO expect that our behavior is approximately uniformly distributed
 
     venv = util.make_vec_env("Pendulum-v1", n_envs=1, rng=rng)
