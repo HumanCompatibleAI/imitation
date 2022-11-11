@@ -5,7 +5,6 @@ import pathlib
 from typing import Sequence, Tuple, Union
 
 import huggingface_sb3 as hfsb3
-import numpy as np
 import sacred
 
 from imitation.data import types
