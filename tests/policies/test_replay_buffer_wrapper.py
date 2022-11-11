@@ -164,12 +164,11 @@ def test_entropy_wrapper_class_no_op(tmpdir, rng):
     assert type(tensor) is th.Tensor
 
 
-# Combine this with the above test via parameterization over the buffer class
 def test_entropy_wrapper_class(tmpdir, rng):
     buffer_size = 15
+    entropy_samples = 10
     total_timesteps = 20
 
-    # TODO make entropy reward wrapper
     # TODO learn w/ entropy for X timesteps on dummy environment where
     # next observation is action, as is reward
     # TODO expect that our behavior is approximately uniformly distributed
@@ -184,7 +183,7 @@ def test_entropy_wrapper_class(tmpdir, rng):
         replay_buffer_kwargs=dict(
             replay_buffer_class=buffers.ReplayBuffer,
             reward_fn=zero_reward_fn,
-            entropy_as_reward_samples=0,
+            entropy_as_reward_samples=entropy_samples,
         ),
         buffer_size=buffer_size,
     )
