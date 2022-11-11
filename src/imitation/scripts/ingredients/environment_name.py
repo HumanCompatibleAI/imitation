@@ -2,7 +2,7 @@
 
 Note: there are separate `environment_name` and `environment` ingredients to avoid
 cyclic dependencies between the logger and the environment ingredients.
-This is the new dependency structure:
+This is the dependency structure of the ingredients::
 
        ┌──────────────────┐
     ┌▶ │ environment_name │
