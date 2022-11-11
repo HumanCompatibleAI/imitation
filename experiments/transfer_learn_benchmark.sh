@@ -73,9 +73,7 @@ if [[ $NEED_TEST_FILES == "true" ]]; then
 
   # Wipe directories for writing later.
   if [[ -d ${save_dir} ]]; then
-    echo "Wiping ${save_dir}"
     rm -r "${save_dir}"
-    echo "Wiped ${save_dir}"
   fi
   mkdir -p "${save_dir}"
 
