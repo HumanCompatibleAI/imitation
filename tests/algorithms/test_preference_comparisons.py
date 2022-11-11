@@ -11,6 +11,7 @@ import seals  # noqa: F401
 import stable_baselines3
 import torch as th
 from gym import spaces
+from stable_baselines3.common import evaluation
 from stable_baselines3.common.envs import FakeImageEnv
 from stable_baselines3.common.vec_env import DummyVecEnv
 
@@ -1015,7 +1016,7 @@ def ensemble_reward_trainer(venv, rng):
     "action_is_reward_trainer_func",
     [basic_reward_trainer, ensemble_reward_trainer],
 )
-def test_that_trainer_improves_rewards(
+def test_that_trainer_improves(
     action_is_reward_venv,
     action_is_reward_agent,
     action_is_reward_trainer_func,
@@ -1023,7 +1024,7 @@ def test_that_trainer_improves_rewards(
     custom_logger,
     rng,
 ):
-    """Tests that training improves performance of the reward network."""
+    """Tests that training improves performance of the reward network and agent."""
     action_is_reward_trainer = action_is_reward_trainer_func(action_is_reward_venv, rng)
     agent_trainer = preference_comparisons.AgentTrainer(
         action_is_reward_agent,
@@ -1044,12 +1045,31 @@ def test_that_trainer_improves_rewards(
         custom_logger=custom_logger,
     )
 
+    # Get initial agent performance
+    novice_agent_rewards, _ = evaluation.evaluate_policy(
+        agent_trainer.algorithm.policy,
+        action_is_reward_venv,
+        15,
+        return_episode_rewards=True,
+    )
+
     # Train for a short period of time, and then again.
     # We expect the reward network to have a better estimate of the reward
     # after this training, and thus `later_rewards` should have lower loss.
-    first_rewards = main_trainer.train(20, 20)
-    later_rewards = main_trainer.train(20, 20)
-    assert first_rewards["reward_loss"] > later_rewards["reward_loss"]
+    first_reward_network_stats = main_trainer.train(20, 20)
 
+    later_reward_network_stats = main_trainer.train(1000, 20)
+    assert (
+        first_reward_network_stats["reward_loss"]
+        > later_reward_network_stats["reward_loss"]
+    )
 
-# TODO(#562) add test that training improves agent performance
+    # The agent should have also improved
+    trained_agent_rewards, _ = evaluation.evaluate_policy(
+        agent_trainer.algorithm.policy,
+        action_is_reward_venv,
+        15,
+        return_episode_rewards=True,
+    )
+
+    assert np.mean(trained_agent_rewards) > np.mean(novice_agent_rewards)
