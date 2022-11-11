@@ -101,3 +101,54 @@ class ReplayBufferRewardWrapper(ReplayBuffer):
             "_get_samples() is intentionally not implemented."
             "This method should not be called.",
         )
+
+
+class ReplayBufferEntropyRewardWrapper(ReplayBuffer):
+    """Relabel the rewards from a ReplayBuffer, initially using entropy as reward."""
+
+    def __init__(
+        self,
+        buffer_size: int,
+        observation_space: spaces.Space,
+        action_space: spaces.Space,
+        *,
+        replay_buffer_class: Type[ReplayBuffer],
+        reward_fn: RewardFn,
+        entropy_as_reward_samples: int,
+        **kwargs,
+    ):
+        """Builds ReplayBufferRewardWrapper.
+
+        Args:
+            buffer_size: Max number of elements in the buffer
+            observation_space: Observation space
+            action_space: Action space
+            replay_buffer_class: Class of the replay buffer.
+            reward_fn: Reward function for reward relabeling.
+            entropy_as_reward_samples: Number of samples to use entropy as the reward,
+                before switching to using the reward_fn for relabeling.
+            **kwargs: keyword arguments for ReplayBuffer.
+        """
+        super().__init__(
+            buffer_size,
+            observation_space,
+            action_space,
+            replay_buffer_class,
+            reward_fn,
+            **kwargs,
+        )
+        # TODO should we limit by number of batches (as this does)
+        #      or number of observations returned?
+        self.samples = 0
+        self.entropy_as_reward_samples = entropy_as_reward_samples
+
+    def sample(self, *args, **kwargs):
+        self.samples += 1
+        samples = super().sample(*args, **kwargs)
+        if self.samples > self.entropy_as_reward_samples:
+            return samples
+
+        # TODO make the state entropy function accept batches
+        # TODO compute state entropy for each reward
+        # TODO replace the reward with the entropies
+        # TODO note that we really ought to reset the reward network when we are done w/ entropy, and we have no business training it before then
