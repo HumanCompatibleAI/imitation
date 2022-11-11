@@ -98,12 +98,13 @@ def test_switch_prob(rng):
     num_randoms_prob_zero = []
     num_constants_prob_zero = []
 
-    for s in range(5):
-        np.random.seed(s)
-        obs = np.random.rand(100, 2)
-        for action in wrapper(obs):
-            assert venv.action_space.contains(action)
-            assert wrapper.current_policy == policy
+    obs = np.random.rand(100, 2)
+    for action in wrapper(obs):
+        assert venv.action_space.contains(action)
+        assert wrapper.current_policy == policy
+
+    for outer_seed in range(5):
+        np.random.seed(outer_seed)
 
         def _always_switch(random_prob, num_steps, seed):
             wrapper, _ = make_wrapper(random_prob=random_prob, switch_prob=1.0, rng=rng)
@@ -124,17 +125,17 @@ def test_switch_prob(rng):
         num_random_prob_one, num_constant_prob_one = _always_switch(
             random_prob=1.0,
             num_steps=1000,
-            seed=s,
+            seed=outer_seed,
         )
         num_random_prob_half, num_constant_prob_half = _always_switch(
             random_prob=0.5,
             num_steps=1000,
-            seed=s,
+            seed=outer_seed,
         )
         num_random_prob_zero, num_constant_prob_zero = _always_switch(
             random_prob=0.0,
             num_steps=1000,
-            seed=s,
+            seed=outer_seed,
         )
         num_randoms_prob_one.append(num_random_prob_one)
         num_constants_prob_one.append(num_constant_prob_one)
@@ -145,8 +146,8 @@ def test_switch_prob(rng):
 
     assert np.mean(num_randoms_prob_one) == 1000
     assert np.mean(num_constants_prob_one) == 0
-    assert (np.array(num_randoms_prob_half) > 450).any()
-    assert (np.array(num_constants_prob_half) > 450).any()
+    assert np.array(num_randoms_prob_half).mean() > 450
+    assert np.array(num_constants_prob_half).mean() > 450
     assert np.mean(num_randoms_prob_zero) == 0
     assert np.mean(num_constants_prob_zero) == 1000
 
