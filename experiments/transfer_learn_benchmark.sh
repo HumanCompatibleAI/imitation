@@ -69,7 +69,7 @@ done
 if [[ $NEED_TEST_FILES == "true" ]]; then
   # Generate quick reward models for test.
   # To prevent race conditions, we use a different save_dir for each process id.
-  save_dir=tests/testdata/reward_models/${ALGORITHM}/${TIMESTAMP}/$BASHPID
+  save_dir=tests/testdata/reward_models/${ALGORITHM}/${TIMESTAMP}-${BASHPID}
 
   # Wipe directories for writing later.
   if [[ -d ${save_dir} ]]; then
