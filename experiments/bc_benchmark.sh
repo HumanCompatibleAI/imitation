@@ -12,7 +12,7 @@ source experiments/common.sh
 ENVS=(seals_cartpole)
 SEEDS=(0 1 2)
 # To prevent race conditions, we use a different output dir for each process id.
-OUTPUT_DIR="output/bc_benchmark/${TIMESTAMP}/$BASHPID"
+OUTPUT_DIR="output/bc_benchmark/${TIMESTAMP}-${BASHPID}"
 extra_configs=()
 extra_options=()
 extra_parallel_options=()
