@@ -305,21 +305,34 @@ def example_pc():
         "named_configs": tune.choice(
             [
                 ["reward.normalize_output_disable"],
-                ["reward.normalize_output_running"],
+                # ["reward.normalize_output_running"],
             ],
         ),
         "config_updates": {
             "train": {
-                "policy_kwargs": {"activation_fn": tune.choice([nn.ReLU, nn.Tanh])}
+                "policy_kwargs": {
+                    "activation_fn": tune.choice(
+                        [
+                            nn.ReLU,
+                            # nn.Tanh,
+                        ],
+                    ),
+                },
             },
             "num_iterations": tune.choice([5, 20, 50]),
-            "initial_comparison_frac": tune.choice([0.1, 0.2]),
+            "initial_comparison_frac": tune.choice([0.1, 0.25]),
             "reward_trainer_kwargs": {
-                "epochs": tune.choice([5, 10, 15]),
+                "epochs": tune.choice([1, 3, 6]),
             },
             # "query_schedule": tune.choice(
             #     ["constant", "hyperbolic", "inverse_quadratic"],
             # ),
+            "rl": {
+                "rl_kwargs": {
+                    "learning_rate": tune.loguniform(1e-5, 1e-2),
+                    "ent_coef": tune.loguniform(1e-6, 1e-2),
+                }
+            },
         },
     }
     num_samples = 72

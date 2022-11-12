@@ -34,6 +34,7 @@ def parallel(
     eval_best_trial: bool = False,
     eval_trial_seeds: int = 5,
     experiment_checkpoint_path: str = "",
+    syncer=None,
 ) -> None:
     """Parallelize multiple runs of another Sacred Experiment using Ray Tune.
 
@@ -132,7 +133,9 @@ def parallel(
                 name=run_name,
                 local_dir=local_dir,
                 resources_per_trial=resources_per_trial,
-                sync_config=ray.tune.syncer.SyncConfig(upload_dir=upload_dir),
+                sync_config=ray.tune.syncer.SyncConfig(
+                    upload_dir=upload_dir, syncer=syncer
+                ),
                 search_alg=search_alg,
                 # scheduler=scheduler,
                 metric="mean_return",
