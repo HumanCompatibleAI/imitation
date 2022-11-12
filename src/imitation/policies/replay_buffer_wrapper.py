@@ -131,6 +131,13 @@ class ReplayBufferEntropyRewardWrapper(ReplayBufferRewardWrapper):
             k: Use the k'th nearest neighbor's distance when computing state entropy.
             **kwargs: keyword arguments for ReplayBuffer.
         """
+        # TODO should we limit by number of batches (as this does)
+        #      or number of observations returned?
+        self.sample_count = 0
+        self.entropy_as_reward_samples = entropy_as_reward_samples
+        self.k = k
+        # TODO support n_envs > 1
+        self.entropy_stats = util.RunningMeanAndVar(shape=(1,))
         super().__init__(
             buffer_size,
             observation_space,
@@ -139,18 +146,14 @@ class ReplayBufferEntropyRewardWrapper(ReplayBufferRewardWrapper):
             reward_fn=reward_fn,
             **kwargs,
         )
-        # TODO should we limit by number of batches (as this does)
-        #      or number of observations returned?
-        self.samples = 0
-        self.entropy_as_reward_samples = entropy_as_reward_samples
-        self.k = k
-        # TODO support n_envs > 1
-        self.entropy_stats = util.RunningMeanAndVar(shape=(1,))
 
+    # TODO this seems to never actually get called?
     def sample(self, *args, **kwargs):
-        self.samples += 1
+        self.sample_count += 1
         samples = super().sample(*args, **kwargs)
-        if self.samples > self.entropy_as_reward_samples:
+        print(self.sample_count)
+        print(self.entropy_as_reward_samples)
+        if self.sample_count > 500:
             return samples
         # TODO we really ought to reset the reward network once we are done w/
         #      the entropy based pre-training. We also have no reason to train
@@ -160,7 +163,12 @@ class ReplayBufferEntropyRewardWrapper(ReplayBufferRewardWrapper):
             all_obs = self.observations
         else:
             all_obs = self.observations[: self.pos]
-        entropies = util.compute_state_entropy(samples.observations, all_obs, self.k)
+        entropies = util.compute_state_entropy(
+            # TODO support multiple environments
+            samples.observations.unsqueeze(1),
+            all_obs,
+            self.k,
+        )
 
         # Normalize to have mean of 0 and standard deviation of 1
         self.entropy_stats.update(entropies)
