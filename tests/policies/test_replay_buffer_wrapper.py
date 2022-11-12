@@ -190,7 +190,7 @@ class ActionIsObsEnv(gym.Env):
 
 def test_entropy_wrapper_class(tmpdir, rng):
     buffer_size = 20
-    entropy_samples = 40
+    entropy_samples = 500
     k = 4
 
     venv = DummyVecEnv([ActionIsObsEnv])
@@ -211,8 +211,8 @@ def test_entropy_wrapper_class(tmpdir, rng):
 
     rl_algo.learn(total_timesteps=buffer_size)
     initial_entropy = util.compute_state_entropy(
-        th.Tensor(rl_algo.replay_buffer.observations),
-        th.Tensor(rl_algo.replay_buffer.observations),
+        th.Tensor(rl_algo.replay_buffer.replay_buffer.observations),
+        th.Tensor(rl_algo.replay_buffer.replay_buffer.observations),
         k=k,
     )
 
@@ -220,8 +220,8 @@ def test_entropy_wrapper_class(tmpdir, rng):
     # Expect that the entropy of our replay buffer is now higher,
     # since we trained with that as the reward.
     trained_entropy = util.compute_state_entropy(
-        th.Tensor(rl_algo.replay_buffer.observations),
-        th.Tensor(rl_algo.replay_buffer.observations),
+        th.Tensor(rl_algo.replay_buffer.replay_buffer.observations),
+        th.Tensor(rl_algo.replay_buffer.replay_buffer.observations),
         k=k,
     )
     assert trained_entropy.mean() > initial_entropy.mean()

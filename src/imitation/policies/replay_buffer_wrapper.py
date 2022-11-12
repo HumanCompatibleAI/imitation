@@ -133,11 +133,6 @@ class ReplayBufferEntropyRewardWrapper(ReplayBufferRewardWrapper):
         """
         # TODO should we limit by number of batches (as this does)
         #      or number of observations returned?
-        self.sample_count = 0
-        self.entropy_as_reward_samples = entropy_as_reward_samples
-        self.k = k
-        # TODO support n_envs > 1
-        self.entropy_stats = util.RunningMeanAndVar(shape=(1,))
         super().__init__(
             buffer_size,
             observation_space,
@@ -146,14 +141,18 @@ class ReplayBufferEntropyRewardWrapper(ReplayBufferRewardWrapper):
             reward_fn=reward_fn,
             **kwargs,
         )
+        self.sample_count = 0
+        self.k = k
+        # TODO support n_envs > 1
+        self.entropy_stats = util.RunningMeanAndVar(shape=(1,))
+        self.entropy_as_reward_samples = entropy_as_reward_samples
 
-    # TODO this seems to never actually get called?
     def sample(self, *args, **kwargs):
         self.sample_count += 1
         samples = super().sample(*args, **kwargs)
-        print(self.sample_count)
-        print(self.entropy_as_reward_samples)
-        if self.sample_count > 500:
+        # For some reason self.entropy_as_reward_samples seems to get cleared,
+        # and I have no idea why.
+        if self.sample_count > self.entropy_as_reward_samples:
             return samples
         # TODO we really ought to reset the reward network once we are done w/
         #      the entropy based pre-training. We also have no reason to train
