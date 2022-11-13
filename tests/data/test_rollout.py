@@ -358,15 +358,16 @@ def test_rollout_normal_error_for_other_shape_mismatch(rng):
     unrelated_env = vec_env.DummyVecEnv(
         [functools.partial(TerminalSentinelEnv, 5)],
     )
-    other_image_env = make_atari_env("Adventure-v4", n_envs=1, seed=seed)
-    for bad_env in [unrelated_env, other_image_env]:
+    other_image_env = make_atari_env("Atlantis-v0", n_envs=1, seed=seed)
+    print(other_image_env.observation_space.shape)
+    for bad_env in [other_image_env, unrelated_env]:
         with pytest.raises(
             ValueError,
             match=r"Observation spaces do not match.*",
         ):
             rollout.rollout(
                 expert,
-                unrelated_env,
+                bad_env,
                 rollout.make_sample_until(min_timesteps=None, min_episodes=2),
                 rng=rng,
             )
