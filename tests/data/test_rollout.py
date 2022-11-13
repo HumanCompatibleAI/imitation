@@ -6,7 +6,11 @@ from typing import Mapping, Sequence
 import gym
 import numpy as np
 import pytest
+from stable_baselines3 import A2C
 from stable_baselines3.common import monitor, vec_env
+from stable_baselines3.common.env_util import make_atari_env
+from stable_baselines3.common.vec_env import VecFrameStack
+from stable_baselines3.ppo import MlpPolicy
 
 from imitation.data import rollout, types, wrappers
 from imitation.policies import serialize
@@ -319,3 +323,51 @@ def test_generate_trajectories_value_error(rng):
             rng=rng,
             deterministic_policy=True,
         )
+
+
+def test_rollout_verbose_error_for_image_environments(rng):
+    seed = 0
+    env = make_atari_env("BeamRiderNoFrameskip-v4", n_envs=1, seed=seed)
+    env = VecFrameStack(env, n_stack=4)
+    expert = A2C(policy=MlpPolicy, env=env, seed=seed)
+    expert.learn(1)
+
+    rng = np.random.default_rng(seed)
+    with pytest.raises(
+        ValueError,
+        match=r".*expert\.get_env().*",
+    ):
+        rollout.rollout(
+            expert,
+            # Note that this should be expert.get_env(), which rearranges
+            # the channel dimension to the first position.
+            env,
+            rollout.make_sample_until(min_timesteps=None, min_episodes=2),
+            rng=rng,
+        )
+
+
+def test_rollout_normal_error_for_other_shape_mismatch(rng):
+    seed = 0
+    env = make_atari_env("BeamRiderNoFrameskip-v4", n_envs=1, seed=seed)
+    env = VecFrameStack(env, n_stack=4)
+    expert = A2C(policy=MlpPolicy, env=env, seed=seed)
+    expert.learn(1)
+
+    rng = np.random.default_rng(seed)
+    unrelated_env = vec_env.DummyVecEnv(
+        [functools.partial(TerminalSentinelEnv, 5)],
+    )
+    other_image_env = make_atari_env("Atlantis-v0", n_envs=1, seed=seed)
+    print(other_image_env.observation_space.shape)
+    for bad_env in [other_image_env, unrelated_env]:
+        with pytest.raises(
+            ValueError,
+            match=r"Observation spaces do not match.*",
+        ):
+            rollout.rollout(
+                expert,
+                bad_env,
+                rollout.make_sample_until(min_timesteps=None, min_episodes=2),
+                rng=rng,
+            )
