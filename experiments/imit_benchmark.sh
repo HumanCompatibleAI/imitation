@@ -11,7 +11,8 @@ source experiments/common.sh
 
 SEEDS=(0 1 2 3 4)
 CONFIG_CSV="experiments/imit_benchmark_config.csv"
-LOG_ROOT="output/imit_benchmark/${TIMESTAMP}"
+# To prevent race conditions, we use a different log root for each process id.
+LOG_ROOT="output/imit_benchmark/${TIMESTAMP}-${BASHPID}"
 extra_configs=()
 extra_options=()
 extra_parallel_options=()

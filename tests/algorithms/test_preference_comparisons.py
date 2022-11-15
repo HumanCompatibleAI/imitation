@@ -72,6 +72,21 @@ def agent_trainer(agent, reward_net, venv, rng):
     return preference_comparisons.AgentTrainer(agent, reward_net, venv, rng)
 
 
+def assert_info_arrs_equal(arr1, arr2):  # pragma: no cover
+    def check_possibly_nested_dicts_equal(dict1, dict2):
+        for key, val1 in dict1.items():
+            val2 = dict2[key]
+            if isinstance(val1, dict):
+                check_possibly_nested_dicts_equal(val1, val2)
+            else:
+                assert np.array_equal(val1, val2)
+
+    for item1, item2 in zip(arr1, arr2):
+        assert isinstance(item1, dict)
+        assert isinstance(item2, dict)
+        check_possibly_nested_dicts_equal(item1, item2)
+
+
 def _check_trajs_equal(
     trajs1: Sequence[types.TrajectoryWithRew],
     trajs2: Sequence[types.TrajectoryWithRew],
@@ -83,7 +98,7 @@ def _check_trajs_equal(
         assert np.array_equal(traj1.rews, traj2.rews)
         assert traj1.infos is not None
         assert traj2.infos is not None
-        assert np.array_equal(traj1.infos, traj2.infos)
+        assert_info_arrs_equal(traj1.infos, traj2.infos)
         assert traj1.terminal == traj2.terminal
 
 

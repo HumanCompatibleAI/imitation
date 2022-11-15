@@ -40,7 +40,8 @@ while true; do
       # Use this flag to quickly test a shortened benchmark and table
       fast_flag=("--fast")
       paper_flag=()
-      RUN_NAME="test-${TIMESTAMP}"
+      # To prevent race conditions, we use a different run name for each process id.
+      RUN_NAME="test-${TIMESTAMP}-$BASHPID"
       shift
       ;;
     -T | --tmux)
