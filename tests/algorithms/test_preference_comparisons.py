@@ -73,18 +73,18 @@ def agent_trainer(agent, reward_net, venv, rng):
 
 
 def assert_info_arrs_equal(arr1, arr2):  # pragma: no cover
+    def check_possibly_nested_dicts_equal(dict1, dict2):
+        for key, val1 in dict1.items():
+            val2 = dict2[key]
+            if isinstance(val1, dict):
+                check_possibly_nested_dicts_equal(val1, val2)
+            else:
+                assert np.array_equal(val1, val2)
+
     for item1, item2 in zip(arr1, arr2):
         assert isinstance(item1, dict)
         assert isinstance(item2, dict)
-        for key, val in item1.items():
-            assert key in item2
-            if isinstance(val, dict):
-                assert isinstance(item2[key], dict)
-                for key2, val2 in val.items():
-                    assert key2 in item2[key]
-                    assert np.array_equal(val2, item2[key][key2])
-            else:
-                assert np.array_equal(val, item2[key])
+        check_possibly_nested_dicts_equal(item1, item2)
 
 
 def _check_trajs_equal(
