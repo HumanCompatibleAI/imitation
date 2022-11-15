@@ -304,8 +304,9 @@ def example_pc():
     search_space = {
         "named_configs": tune.choice(
             [
-                ["reward.normalize_output_disable"],
+                # ["reward.normalize_output_disable"],
                 # ["reward.normalize_output_running"],
+                ["reward.normalize_output_ema"],
             ],
         ),
         "config_updates": {
