@@ -2,13 +2,14 @@
 import abc
 import dataclasses
 import logging
-from typing import Callable, Iterable, Iterator, Mapping, Optional, Type, overload
+from typing import Iterable, Iterator, List, Mapping, Optional, Type, overload
 
 import numpy as np
 import torch as th
 import torch.utils.tensorboard as thboard
 import tqdm
 from stable_baselines3.common import base_class, on_policy_algorithm, policies, vec_env
+from stable_baselines3.common.callbacks import BaseCallback
 from stable_baselines3.sac import policies as sac_policies
 from torch.nn import functional as F
 
@@ -421,7 +422,7 @@ class AdversarialTrainer(base.DemonstrationAlgorithm[types.Transitions]):
     def train(
         self,
         total_timesteps: int,
-        callback: Optional[Callable[[int], None]] = None,
+        callback: Optional[List[BaseCallback]] = None
     ) -> None:
         """Alternates between training the generator and discriminator.
 
@@ -434,10 +435,15 @@ class AdversarialTrainer(base.DemonstrationAlgorithm[types.Transitions]):
         Args:
             total_timesteps: An upper bound on the number of transitions to sample
                 from the environment during training.
-            callback: A function called at the end of every round which takes in a
-                single argument, the round number. Round numbers are in
-                `range(total_timesteps // self.gen_train_timesteps)`.
+            callback: List of stable_baslines3 callback to be passed to the policy
+                learning function.
         """
+        if callback is not None:
+            if self.gen_callback is None:
+                self.gen_callback = callback
+            else:
+                self.gen_callback = callback + [self.gen_callback]
+
         n_rounds = total_timesteps // self.gen_train_timesteps
         assert n_rounds >= 1, (
             "No updates (need at least "
@@ -450,8 +456,6 @@ class AdversarialTrainer(base.DemonstrationAlgorithm[types.Transitions]):
                 with networks.training(self.reward_train):
                     # switch to training mode (affects dropout, normalization)
                     self.train_disc()
-            if callback:
-                callback(r)
             self.logger.dump(self._global_step)
 
     @overload
