@@ -235,7 +235,7 @@ def example_gail():
             "rl": {
                 "batch_size": tune.choice([4096, 8192, 16384]),
                 "rl_kwargs": {
-                    "ent_coef": tune.loguniform(1e-6, 1e-2),
+                    "ent_coef": tune.loguniform(1e-7, 1e-3),
                     "learning_rate": tune.loguniform(1e-5, 1e-2),
                 },
             },
@@ -274,7 +274,7 @@ def example_airl():
             "rl": {
                 "batch_size": tune.choice([4096, 8192, 16384]),
                 "rl_kwargs": {
-                    "ent_coef": tune.loguniform(1e-6, 1e-2),
+                    "ent_coef": tune.loguniform(1e-7, 1e-3),
                     "learning_rate": tune.loguniform(1e-5, 1e-2),
                 },
             },
@@ -300,6 +300,7 @@ def example_pc():
         "total_timesteps": 2e7,
         "total_comparisons": 5000,
         "query_schedule": "hyperbolic",
+        "gatherer_kwargs": {"sample": False},
     }
     search_space = {
         "named_configs": tune.choice(
@@ -331,7 +332,7 @@ def example_pc():
             "rl": {
                 "rl_kwargs": {
                     "learning_rate": tune.loguniform(1e-5, 1e-2),
-                    "ent_coef": tune.loguniform(1e-6, 1e-2),
+                    "ent_coef": tune.loguniform(1e-7, 1e-3),
                 }
             },
         },

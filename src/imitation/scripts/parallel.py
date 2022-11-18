@@ -4,7 +4,7 @@ import collections.abc
 import copy
 import glob
 import pathlib
-from typing import Any, Callable, Dict, Mapping, Optional, Sequence
+from typing import Any, Callable, Dict, Mapping, Optional, Sequence, Union
 
 import numpy as np
 import ray
@@ -12,10 +12,19 @@ import ray.tune
 import sacred
 from pandas.api.types import is_object_dtype
 from ray.tune import search
+from ray.tune.registry import register_trainable
 from ray.tune.search import optuna
 from sacred.observers import FileStorageObserver
 
 from imitation.scripts.config.parallel import parallel_ex
+
+
+def myf(trial_cp: dict, stub: bool = True, **kwargs):
+    new_trial = ray.tune.experiment.Trial(
+        trial_cp["trainable_name"], stub=True, _setup_default_resource=False, **kwargs
+    )
+    new_trial.__setstate__(trial_cp)
+    return new_trial
 
 
 @parallel_ex.main
@@ -35,6 +44,7 @@ def parallel(
     eval_trial_seeds: int = 5,
     experiment_checkpoint_path: str = "",
     syncer=None,
+    resume: Union[str, bool] = False,
 ) -> None:
     """Parallelize multiple runs of another Sacred Experiment using Ray Tune.
 
@@ -107,8 +117,29 @@ def parallel(
     )
 
     ray.init(**init_kwargs)
+    search_alg = optuna.OptunaSearch()
+    search_alg = search.Repeater(search_alg, repeat=repeat)
     try:
         if experiment_checkpoint_path:
+            if resume:
+                # ray.tune.execution.trial_runner._load_trial_from_checkpoint = myf
+                register_trainable("inner", trainable)
+                runner = ray.tune.execution.trial_runner.TrialRunner(
+                    local_checkpoint_dir=experiment_checkpoint_path,
+                    sync_config=ray.tune.syncer.SyncConfig(
+                        upload_dir=upload_dir, syncer=syncer
+                    ),
+                    # search_alg=search_alg,
+                    # scheduler=scheduler,
+                    metric="mean_return",
+                    resume=resume,
+                )
+                print("Total trials:", len(runner._trials))
+                print("Live trials:", len(runner._live_trials))
+                while not runner.is_finished():
+                    runner.step()
+                    print("Debug:", runner.debug_string())
+
             result = ray.tune.ExperimentAnalysis(experiment_checkpoint_path)
             result._load_checkpoints_from_latest(
                 glob.glob(experiment_checkpoint_path + "/experiment_state*.json"),
@@ -116,8 +147,7 @@ def parallel(
             result.trials = None
             result.fetch_trial_dataframes()
         else:
-            search_alg = optuna.OptunaSearch()
-            search_alg = search.Repeater(search_alg, repeat=repeat)
+
             # scheduler = schedulers.ASHAScheduler(
             #     time_attr="training_iteration",
             #     max_t=10000,
