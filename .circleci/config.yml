@@ -2,6 +2,7 @@ version: 2.1
 
 orbs:
   codecov: codecov/codecov@3.2.3
+  shellcheck: circleci/shellcheck@3.1.2
   win: circleci/windows@4.1
 
 defaults: &defaults
@@ -212,9 +213,16 @@ jobs:
     steps:
       - dependencies-linux
 
-      - run:
-          name: shellcheck-check
-          command: pre-commit run --all shellcheck
+      # We use the shellcheck orb for this, not pre-commit, as the pre-commit
+      # hook for shellcheck needs Docker. Running Docker-in-Docker on CircleCI
+      # is technically possible (https://circleci.com/docs/building-docker-images/)
+      # but more complex than just using the orb.
+      - shellcheck/check:
+          dir: .
+          # Orb invokes shellcheck once per file. shellcheck complains if file
+          # includes another file not given on the command line. Ignore this,
+          # since they'll just get checked in a separate shellcheck invocation.
+          exclude: SC1091
 
       - run:
           name: ipynb-check
