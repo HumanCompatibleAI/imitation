@@ -217,6 +217,7 @@ jobs:
       # hook for shellcheck needs Docker. Running Docker-in-Docker on CircleCI
       # is technically possible (https://circleci.com/docs/building-docker-images/)
       # but more complex than just using the orb.
+      - shellcheck/install
       - shellcheck/check:
           dir: .
           # Orb invokes shellcheck once per file. shellcheck complains if file
