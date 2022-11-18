@@ -37,11 +37,10 @@ repos:
   rev: v0.8.0
   hooks:
   - id: shellcheck
-  # Orb invokes shellcheck once per file. shellcheck complains if file
-  # includes another file not given on the command line. Ignore this,
-  # since they'll just get checked in a separate shellcheck invocation.
-    exclude: SC1091
-    types: [bash]
+  # precommit invokes shellcheck once per file. shellcheck complains if file
+  # includes another file not given on the command line. Ignore this, since
+  # they'll just get checked in a separate shellcheck invocation.
+    args: ["-e", "SC1091"]
 # Misc
 - repo: https://github.com/codespell-project/codespell
   rev: v2.2.2
