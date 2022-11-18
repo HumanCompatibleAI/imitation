@@ -8,6 +8,7 @@ ARG DEBIAN_FRONTEND=noninteractive
 RUN apt-get update -q \
     && apt-get install -y --no-install-recommends \
     build-essential \
+    curl \
     wget \
     ffmpeg \
     git \
