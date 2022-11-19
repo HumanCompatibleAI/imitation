@@ -10,7 +10,7 @@ import abc
 import logging
 import os
 import pathlib
-from typing import Callable, List, Mapping, Optional, Sequence, Tuple, Union
+from typing import Any, Callable, List, Mapping, Optional, Sequence, Tuple, Union
 
 import numpy as np
 import torch as th
@@ -44,7 +44,7 @@ class BetaSchedule(abc.ABC):
 class LinearBetaSchedule(BetaSchedule):
     """Linearly-decreasing schedule for beta."""
 
-    def __init__(self, rampdown_rounds: int):
+    def __init__(self, rampdown_rounds: int) -> None:
         """Builds LinearBetaSchedule.
 
         Args:
@@ -136,7 +136,7 @@ class InteractiveTrajectoryCollector(vec_env.VecEnvWrapper):
         beta: float,
         save_dir: types.AnyPath,
         rng: np.random.Generator,
-    ):
+    ) -> None:
         """Builds InteractiveTrajectoryCollector.
 
         Args:
@@ -162,7 +162,7 @@ class InteractiveTrajectoryCollector(vec_env.VecEnvWrapper):
         self._last_user_actions = None
         self.rng = rng
 
-    def seed(self, seed=Optional[int]) -> List[Union[None, int]]:
+    def seed(self, seed: Optional[int] = None) -> List[Optional[int]]:
         """Set the seed for the DAgger random number generator and wrapped VecEnv.
 
         The DAgger RNG is used along with `self.beta` to determine whether the expert
@@ -360,7 +360,7 @@ class DAggerTrainer(base.BaseImitationAlgorithm):
     def batch_size(self) -> int:
         return self.bc_trainer.batch_size
 
-    def _load_all_demos(self):
+    def _load_all_demos(self) -> Tuple[types.Transitions, List[int]]:
         num_demos_by_round = []
         for round_num in range(self._last_loaded_round + 1, self.round_num + 1):
             round_dir = self._demo_dir_path_for_round(round_num)
@@ -371,7 +371,7 @@ class DAggerTrainer(base.BaseImitationAlgorithm):
         demo_transitions = rollout.flatten_trajectories(self._all_demos)
         return demo_transitions, num_demos_by_round
 
-    def _get_demo_paths(self, round_dir):
+    def _get_demo_paths(self, round_dir: pathlib.Path) -> List[pathlib.Path]:
         return [round_dir / p for p in os.listdir(round_dir) if p.endswith(".npz")]
 
     def _demo_dir_path_for_round(self, round_num: Optional[int] = None) -> pathlib.Path:
@@ -411,7 +411,10 @@ class DAggerTrainer(base.BaseImitationAlgorithm):
             self.bc_trainer.set_demonstrations(data_loader)
             self._last_loaded_round = self.round_num
 
-    def extend_and_update(self, bc_train_kwargs: Optional[Mapping] = None) -> int:
+    def extend_and_update(
+        self,
+        bc_train_kwargs: Optional[Mapping[str, Any]] = None,
+    ) -> int:
         """Extend internal batch of data and train BC.
 
         Specifically, this method will load new transitions (if necessary), train

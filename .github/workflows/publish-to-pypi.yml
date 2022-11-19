@@ -2,7 +2,16 @@
 
 name: Publish imitation distributions 📦 to PyPI and TestPyPI
 
-on: push
+on:
+  # This requires that some file is changed, to avoid running
+  # on new branch creation, when it would fail.
+  # Both 'branches' and 'paths' need to be specified here, per:
+  # https://docs.github.com/en/actions/using-workflows/workflow-syntax-for-github-actions#onpushbranchestagsbranches-ignoretags-ignore
+  push:
+    branches:
+      - '**'
+    paths:
+      - '**'
 
 jobs:
   build-n-publish:

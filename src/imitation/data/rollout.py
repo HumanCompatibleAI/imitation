@@ -531,7 +531,7 @@ def generate_transitions(
     rng: np.random.Generator,
     *,
     truncate: bool = True,
-    **kwargs,
+    **kwargs: Any,
 ) -> types.TransitionsWithRew:
     """Generate obs-action-next_obs-reward tuples.
 
@@ -577,7 +577,7 @@ def rollout(
     unwrap: bool = True,
     exclude_infos: bool = True,
     verbose: bool = True,
-    **kwargs,
+    **kwargs: Any,
 ) -> Sequence[types.TrajectoryWithRew]:
     """Generate policy rollouts.
 

@@ -487,7 +487,7 @@ def _check_train_ex_result(result: dict):
     (
         [],
         ["train.normalize_running", "reward.normalize_input_running"],
-        ["train.normalize_disable", "reward.normalize_input_disable"],
+        ["reward.normalize_input_disable"],
     ),
 )
 @pytest.mark.parametrize("command", ("airl", "gail"))
@@ -711,7 +711,10 @@ def test_train_rl_double_normalization(tmpdir: str, rng):
     th.save(net, tmppath)
 
     log_dir_data = os.path.join(tmpdir, "train_rl")
-    with pytest.warns(RuntimeWarning):
+    with pytest.warns(
+        RuntimeWarning,
+        match=r"Applying normalization to already normalized reward function.*",
+    ):
         train_rl.train_rl_ex.run(
             named_configs=["cartpole"] + ALGO_FAST_CONFIGS["rl"],
             config_updates=dict(
@@ -721,6 +724,29 @@ def test_train_rl_double_normalization(tmpdir: str, rng):
                 reward_path=tmppath,
             ),
         )
+
+
+def test_train_rl_cnn_policy(tmpdir: str, rng):
+    venv = util.make_vec_env(
+        "AsteroidsNoFrameskip-v4",
+        n_envs=1,
+        parallel=False,
+        rng=rng,
+    )
+    net = reward_nets.CnnRewardNet(venv.observation_space, venv.action_space)
+    tmppath = os.path.join(tmpdir, "reward.pt")
+    th.save(net, tmppath)
+
+    log_dir_data = os.path.join(tmpdir, "train_rl")
+    run = train_rl.train_rl_ex.run(
+        named_configs=["train.cnn_policy"] + ALGO_FAST_CONFIGS["rl"],
+        config_updates=dict(
+            common=dict(log_dir=log_dir_data, env_name="AsteroidsNoFrameskip-v4"),
+            reward_path=tmppath,
+        ),
+    )
+    assert run.status == "COMPLETED"
+    assert isinstance(run.result, dict)
 
 
 PARALLEL_CONFIG_UPDATES = [
