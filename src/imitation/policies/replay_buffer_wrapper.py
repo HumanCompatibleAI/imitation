@@ -28,11 +28,12 @@ def _rollout_samples_to_reward_fn_input(
     buffer: RolloutBuffer,
 ) -> Mapping[str, np.ndarray]:
     """Convert a sample from a rollout buffer to a numpy array."""
+    shape = buffer.observations.shape
     return dict(
         state=buffer.observations,
         action=buffer.actions,
-        next_state=None,
-        done=None,
+        next_state=np.full(shape, np.nan),
+        done=np.full(shape, np.nan),
     )
 
 
