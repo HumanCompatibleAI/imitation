@@ -581,6 +581,7 @@ class AdversarialTrainer(base.DemonstrationAlgorithm[types.Transitions]):
             if callback:
                 callback(r)
             self.logger.dump(self._global_step)
+            print("FINNNNNNNNNNNNNNNNNNNNNNNNNNNN")
 
     @overload
     def _torchify_array(self, ndarray: np.ndarray) -> th.Tensor:

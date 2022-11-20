@@ -28,12 +28,16 @@ def _rollout_samples_to_reward_fn_input(
     buffer: RolloutBuffer,
 ) -> Mapping[str, np.ndarray]:
     """Convert a sample from a rollout buffer to a numpy array."""
-    shape = buffer.observations.shape
+    obs_shape = buffer.observations.shape
+    done_shape = buffer.episode_starts.shape
+    print("obs:", obs_shape)
+    print("action shape:", buffer.actions.shape)
+    print("dones shape:", done_shape)
     return dict(
         state=buffer.observations,
         action=buffer.actions,
-        next_state=np.full(shape, np.nan),
-        done=np.full(shape, np.nan),
+        next_state=np.full(obs_shape, np.nan),
+        done=np.full(done_shape, np.nan),
     )
 
 
@@ -145,6 +149,7 @@ class RolloutBufferRewardWrapper(BaseBuffer):
         # inputs, and GAIL/AIRL is the only use case for RolloutBuffer relabeling. See:
         # https://github.com/HumanCompatibleAI/imitation/pull/459#issuecomment-1201997194
         assert rollout_buffer_class is RolloutBuffer, "only RolloutBuffer is supported"
+        print("HELLLLLLLLLLLLLLLLLLLLLLLLLLOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO")
         assert not isinstance(observation_space, spaces.Dict)
         self.rollout_buffer = rollout_buffer_class(
             buffer_size,
@@ -159,6 +164,34 @@ class RolloutBufferRewardWrapper(BaseBuffer):
     @property
     def pos(self) -> int:
         return self.rollout_buffer.pos
+
+    @property
+    def values(self):
+        return self.rollout_buffer.values
+
+    @property
+    def observations(self):
+        return self.rollout_buffer.observations
+
+    @property
+    def actions(self):
+        return self.rollout_buffer.actions
+
+    @property
+    def log_probs(self):
+        return self.rollout_buffer.log_probs
+
+    @property
+    def advantages(self):
+        return self.rollout_buffer.advantages
+
+    @property
+    def rewards(self):
+        return self.rollout_buffer.rewards
+
+    @property
+    def returns(self):
+        return self.rollout_buffer.returns
 
     @pos.setter
     def pos(self, pos: int):
@@ -176,12 +209,29 @@ class RolloutBufferRewardWrapper(BaseBuffer):
         self.rollout_buffer.reset()
 
     def get(self, *args, **kwargs):
-        self.rollout_buffer.rewards = self.reward_fn(
-            **_rollout_samples_to_reward_fn_input(self.rollout_buffer),
-        )
-        self.rollout_buffer.compute_returns_and_advantage(self.last_values, self.dones)
+        print("getting")
+        if not self.rollout_buffer.generator_ready:
+            print("os:", self.rollout_buffer.observations.shape)
+            input_dict = _rollout_samples_to_reward_fn_input(self.rollout_buffer)
+            print("os:", self.rollout_buffer.observations.shape)
+            rewards = np.zeros_like(self.rollout_buffer.rewards)
+            for i in range(self.buffer_size):
+                rewards[i] = self.reward_fn(**{k: v[i] for k, v in input_dict.items()})
+                print("rewards i:", rewards[i])
+                print({k: v[i] for k, v in input_dict.items()})
 
-        return self.rollout_buffer.get(*args, **kwargs)
+            print("os:", self.rollout_buffer.observations.shape)
+            self.rollout_buffer.rewards = rewards
+            print("rewards:", rewards)
+            print("values:", self.values)
+            print("lv:", self.last_values)
+            self.rollout_buffer.compute_returns_and_advantage(
+                self.last_values, self.last_dones
+            )
+            print("os:", self.rollout_buffer.observations.shape)
+        ret = self.rollout_buffer.get(*args, **kwargs)
+        print("os:", self.rollout_buffer.observations.shape)
+        return ret
 
     def add(self, *args, **kwargs):
         self.rollout_buffer.add(*args, **kwargs)
