@@ -1,6 +1,6 @@
 """Wrapper for reward labeling for transitions sampled from a replay buffer."""
 
-from typing import Mapping, Type
+from typing import Mapping, Type, Union
 
 import numpy as np
 import torch as th
@@ -201,3 +201,42 @@ class RolloutBufferRewardWrapper(BaseBuffer):
         self.last_values = last_values
         self.last_dones = dones
         self.rollout_buffer.compute_returns_and_advantage(last_values, dones)
+
+
+class AIRLRolloutBuffer(RolloutBuffer):
+    def __init__(
+        self,
+        buffer_size: int,
+        observation_space: spaces.Space,
+        action_space: spaces.Space,
+        device: Union[th.device, str] = "auto",
+        gae_lambda: float = 1,
+        gamma: float = 0.99,
+        n_envs: int = 1,
+    ):
+
+        super().__init__(
+            buffer_size,
+            observation_space,
+            action_space,
+            device,
+            gae_lambda=gae_lambda,
+            gamma=gamma,
+            n_envs=n_envs,
+        )
+
+    def add(
+        self,
+        obs: np.ndarray,
+        action: np.ndarray,
+        reward: np.ndarray,
+        episode_start: np.ndarray,
+        value: th.Tensor,
+        log_prob: th.Tensor,
+    ) -> None:
+
+        if len(log_prob.shape) == 0:
+            # Reshape 0-d tensor to avoid error
+            log_prob = log_prob.reshape(-1, 1)
+        super().add(obs, action, reward, episode_start, value, log_prob)
+        self.rewards[self.pos - 1] -= log_prob.clone().cpu().numpy()

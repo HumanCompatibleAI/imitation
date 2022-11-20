@@ -7,6 +7,7 @@ from stable_baselines3.sac import policies as sac_policies
 
 from imitation.algorithms import base
 from imitation.algorithms.adversarial import common
+from imitation.policies.replay_buffer_wrapper import AIRLRolloutBuffer
 from imitation.rewards import reward_nets
 
 STOCHASTIC_POLICIES = (sac_policies.SACPolicy, policies.ActorCriticPolicy)
@@ -63,6 +64,15 @@ class AIRL(common.AdversarialTrainer):
             raise TypeError(
                 "AIRL needs a stochastic policy to compute the discriminator output.",
             )
+        self.gen_algo.rollout_buffer = AIRLRolloutBuffer(
+            self.gen_algo.rollout_buffer.buffer_size,
+            self.gen_algo.rollout_buffer.observation_space,
+            self.gen_algo.rollout_buffer.action_space,
+            self.gen_algo.rollout_buffer.device,
+            self.gen_algo.rollout_buffer.gae_lambda,
+            self.gen_algo.rollout_buffer.gamma,
+            self.gen_algo.rollout_buffer.n_envs,
+        )
 
     def logits_expert_is_high(
         self,
