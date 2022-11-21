@@ -90,6 +90,9 @@ def load_expert_trajs(
     Raises:
         ValueError: There are fewer trajectories than `n_expert_demos`.
     """
+    if "huggingface" in rollout_path:
+        rollout_path = expert.download_expert_rollouts()
+
     expert_trajs = types.load(rollout_path)
     logger.info(f"Loaded {len(expert_trajs)} expert trajectories from '{rollout_path}'")
     if n_expert_demos is not None:

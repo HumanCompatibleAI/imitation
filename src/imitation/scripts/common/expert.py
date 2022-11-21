@@ -43,3 +43,14 @@ def config_hook(config, command_name, logger):
 @expert_ingredient.capture
 def get_expert_policy(venv, policy_type, loader_kwargs, common):
     return serialize.load_policy(policy_type, venv, **loader_kwargs)
+
+
+@expert_ingredient.capture
+def download_expert_rollouts(policy_type, loader_kwargs):
+    assert policy_type.endswith("-huggingface")
+    algo_name = policy_type.split("-")[0]
+    return serialize._load_rollouts_from_huggingface(
+        algo_name,
+        env_name=loader_kwargs["env_name"],
+        organization=loader_kwargs["organization"],
+    )
