@@ -22,6 +22,7 @@ Example
 Detailed example notebook: :doc:`../tutorials/2_train_dagger`
 
 .. testcode::
+    :skipif: skip_doctests
 
     import tempfile
     import numpy as np

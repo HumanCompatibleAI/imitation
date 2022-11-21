@@ -6,7 +6,8 @@ CONFIG_CSV=${CONFIG_CSV:-experiments/rollouts_from_policies_config.csv}
 
 ENVS=(seals_ant seals_half_cheetah)
 SEEDS=(0 1 2 3 4)
-LOG_ROOT="output/dagger_benchmark/${TIMESTAMP}"
+# To prevent race conditions, we use a different log root for each process id.
+LOG_ROOT="output/dagger_benchmark/${TIMESTAMP}-${BASHPID}"
 extra_configs=()
 extra_options=()
 extra_parallel_options=()

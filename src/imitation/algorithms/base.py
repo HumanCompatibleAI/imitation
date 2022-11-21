@@ -1,7 +1,17 @@
 """Module of base classes and helper methods for imitation learning algorithms."""
 
 import abc
-from typing import Any, Generic, Iterable, Mapping, Optional, TypeVar, Union, cast
+from typing import (
+    Any,
+    Generic,
+    Iterable,
+    Iterator,
+    Mapping,
+    Optional,
+    TypeVar,
+    Union,
+    cast,
+)
 
 import numpy as np
 import torch as th
@@ -59,7 +69,7 @@ class BaseImitationAlgorithm(abc.ABC):
         self._horizon = None
 
     @property
-    def logger(self):
+    def logger(self) -> imit_logger.HierarchicalLogger:
         return self._logger
 
     @logger.setter
@@ -191,7 +201,7 @@ class _WrappedDataLoader:
         self.data_loader = data_loader
         self.expected_batch_size = expected_batch_size
 
-    def __iter__(self):
+    def __iter__(self) -> Iterator[TransitionMapping]:
         """Yields data from `self.data_loader`, checking `self.expected_batch_size`.
 
         Yields:

@@ -318,7 +318,6 @@ def _ray_tune_sacred_wrapper(
             "train_preference_comparisons": train_preference_comparisons_ex,
         }
         ex = experiments[sacred_ex_name]
-        ex.observers = [FileStorageObserver("sacred")]
 
         # Apply base configs to get modified `named_configs` and `config_updates`.
         named_configs = base_named_configs + run_kwargs["named_configs"]

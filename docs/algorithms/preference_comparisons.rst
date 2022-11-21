@@ -1,3 +1,5 @@
+.. _preference comparisons docs:
+
 ======================
 Preference comparisons
 ======================
@@ -6,7 +8,7 @@ The preference comparison algorithm learns a reward function from preferences be
 The comparisons are modeled as being generated from a Bradley-Terry (or Boltzmann rational) model,
 where the probability of preferring trajectory A over B is proportional to the exponential of the
 difference between the return of trajectory A minus B. In other words, the difference in returns forms a logit
-for a binary classification problem, and accordingly the reward function is trained using a cross-entropy loss 
+for a binary classification problem, and accordingly the reward function is trained using a cross-entropy loss
 to predict the preference comparison.
 
 Notes
@@ -14,13 +16,14 @@ Notes
 - Our implementation is based on the  `Deep Reinforcement Learning from Human Preferences <https://arxiv.org/pdf/1706.03741.pdf>`_ algorithm.
 
 - An ensemble of reward networks can also be trained instead of a single network. The uncertainty in the preference between the member networks can be used to actively select preference queries.
-    
+
 Example
 =======
 
 Detailed example notebook: :doc:`../tutorials/5_train_preference_comparisons`
 
 .. testcode::
+    :skipif: skip_doctests
 
     import numpy as np
 
@@ -87,7 +90,7 @@ Detailed example notebook: :doc:`../tutorials/5_train_preference_comparisons`
 
 .. testoutput::
     :hide:
-    
+
     ...
 
 API

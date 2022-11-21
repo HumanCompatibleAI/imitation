@@ -225,10 +225,10 @@ class RewardNet(nn.Module, abc.ABC):
 
 
 class RewardNetWrapper(RewardNet):
-    """Abstract class representing a wrapper that modifies a `RewardNet`'s functionality.
+    """Abstract class representing a wrapper modifying a ``RewardNet``'s functionality.
 
-    In general `RewardNetWrapper`s should either subclass `ForwardWrapper`
-    or `PredictProcessedWrapper`.
+    In general ``RewardNetWrapper``s should either subclass ``ForwardWrapper``
+    or ``PredictProcessedWrapper``.
     """
 
     def __init__(
@@ -318,7 +318,7 @@ class PredictProcessedWrapper(RewardNetWrapper):
         next_state: th.Tensor,
         done: th.Tensor,
     ) -> th.Tensor:
-        __doc__ = super().forward.__doc__  # noqa: F841
+        """Compute rewards for a batch of transitions and keep gradients."""
         return self.base.forward(state, action, next_state, done)
 
     @abc.abstractmethod
@@ -723,7 +723,7 @@ class ShapedRewardNet(ForwardWrapper):
         # series of remaining potential shapings can lead to reward shaping
         # that does not preserve the optimal policy if the episodes have variable
         # length!
-        new_shaping = (1 - done.float()) * new_shaping_output
+        new_shaping = (1 - done.float().flatten()) * new_shaping_output
         final_rew = (
             base_reward_net_output
             + self.discount_factor * new_shaping

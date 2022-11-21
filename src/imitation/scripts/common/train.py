@@ -4,7 +4,7 @@ import logging
 from typing import Any, Mapping, Union
 
 import sacred
-from stable_baselines3.common import base_class, policies, torch_layers, vec_env
+from stable_baselines3.common import base_class, policies, vec_env
 
 import imitation.util.networks
 from imitation.data import rollout
@@ -37,16 +37,6 @@ def sac():
     policy_cls = base.SAC1024Policy  # noqa: F841
 
 
-@train_ingredient.named_config
-def normalize_disable():
-    policy_kwargs = {  # noqa: F841
-        # FlattenExtractor is the default for SB3; but we specify it here
-        # explicitly as no entry will be set to normalization by default
-        # via the config hook.
-        "features_extractor_class": torch_layers.FlattenExtractor,
-    }
-
-
 NORMALIZE_RUNNING_POLICY_KWARGS = {
     "features_extractor_class": base.NormalizeFeaturesExtractor,
     "features_extractor_kwargs": {
@@ -60,13 +50,10 @@ def normalize_running():
     policy_kwargs = NORMALIZE_RUNNING_POLICY_KWARGS  # noqa: F841
 
 
-@train_ingredient.config_hook
-def config_hook(config, command_name, logger):
-    """Sets defaults equivalent to `normalize_running`."""
-    del command_name, logger
-    if "features_extractor_class" not in config["train"]["policy_kwargs"]:
-        return {"policy_kwargs": NORMALIZE_RUNNING_POLICY_KWARGS}
-    return {}
+# Default config for CNN Policies
+@train_ingredient.named_config
+def cnn_policy():
+    policy_cls = policies.ActorCriticCnnPolicy  # noqa: F841
 
 
 @train_ingredient.capture

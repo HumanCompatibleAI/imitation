@@ -2,7 +2,7 @@
 
 import contextlib
 import os
-from typing import Any, Mapping, Type, Union
+from typing import Any, Mapping, Optional, Type, Union
 
 import numpy as np
 import pytest
@@ -64,6 +64,7 @@ def make_trainer(
     num_envs: int = 1,
     parallel: bool = False,
     convert_dataset: bool = False,
+    **kwargs: Any,
 ):
     expert_data: Union[th_data.DataLoader, th_data.Dataset]
     if convert_dataset:
@@ -99,6 +100,7 @@ def make_trainer(
         reward_net=reward_net,
         log_dir=tmpdir,
         custom_logger=custom_logger,
+        **kwargs,
     )
 
     try:
@@ -278,6 +280,67 @@ def test_train_disc_improve_D(
         if init_stats is None:
             init_stats = final_stats
     assert final_stats["disc_loss"] < init_stats["disc_loss"]
+
+
+def test_gradient_accumulation(
+    _algorithm_kwargs,
+    tmpdir,
+    expert_transitions,
+    rng,
+    cartpole_venv,
+):
+    batch_size = 6
+    minibatch_size = 3
+
+    expert_samples = expert_transitions[:batch_size]
+    expert_samples = types.dataclass_quick_asdict(expert_samples)
+
+    # Sample actions randomly to produce mock generator data
+    gen_samples_trans = rollout.generate_transitions(
+        policy=None,
+        venv=cartpole_venv,
+        n_timesteps=batch_size,
+        truncate=True,
+        rng=rng,
+    )
+    gen_samples = types.dataclass_quick_asdict(gen_samples_trans)
+
+    seed = rng.integers(2**32)
+
+    def trainer_ctx(minibatch_size: Optional[int] = None):
+        rng = np.random.default_rng(seed)
+        th.manual_seed(seed)
+        return make_trainer(
+            _algorithm_kwargs,
+            tmpdir,
+            expert_transitions,
+            rng,
+            batch_size,
+            demo_minibatch_size=minibatch_size,
+        )
+
+    with trainer_ctx() as trainer1, trainer_ctx(minibatch_size) as trainer2:
+        for step in range(8):
+            print("Step", step)
+            for trainer in (trainer1, trainer2):
+                trainer.train_disc(
+                    gen_samples=gen_samples,
+                    expert_samples=expert_samples,
+                )
+
+            # Note: due to numerical instability, the models are
+            # bound to diverge at some point, but should be stable
+            # over the short time frame we test over; however, it is
+            # theoretically possible that with very unlucky seeding,
+            # this could fail.
+            params = zip(
+                trainer1._reward_net.parameters(),
+                trainer2._reward_net.parameters(),
+            )
+            atol = (1 + step) * 2e-4
+            rtol = (1 + step) * 1e-5
+            for p1, p2 in params:
+                th.testing.assert_close(p1, p2, atol=atol, rtol=rtol)
 
 
 @pytest.fixture(params=ENV_NAMES)
