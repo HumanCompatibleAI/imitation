@@ -300,14 +300,14 @@ def example_pc():
         "total_timesteps": 2e7,
         "total_comparisons": 5000,
         "query_schedule": "hyperbolic",
-        "gatherer_kwargs": {"sample": False},
+        "gatherer_kwargs": {"sample": True},
     }
     search_space = {
         "named_configs": tune.choice(
             [
-                # ["reward.normalize_output_disable"],
+                ["reward.normalize_output_disable"],
                 # ["reward.normalize_output_running"],
-                ["reward.normalize_output_ema"],
+                # ["reward.normalize_output_ema"],
             ],
         ),
         "config_updates": {
@@ -321,23 +321,24 @@ def example_pc():
                     ),
                 },
             },
-            "num_iterations": tune.choice([5, 20, 50]),
-            "initial_comparison_frac": tune.choice([0.1, 0.25]),
-            "reward_trainer_kwargs": {
-                "epochs": tune.choice([1, 3, 6]),
-            },
+            "num_iterations": tune.choice([25, 50]),
+            # "initial_comparison_frac": tune.choice([0.1, 0.25]),
+            # "reward_trainer_kwargs": {
+            #     "epochs": tune.choice([1, 3, 6]),
+            # },
             # "query_schedule": tune.choice(
             #     ["constant", "hyperbolic", "inverse_quadratic"],
             # ),
             "rl": {
+                "batch_size": tune.choice([512, 2048, 8192]),
                 "rl_kwargs": {
                     "learning_rate": tune.loguniform(1e-5, 1e-2),
                     "ent_coef": tune.loguniform(1e-7, 1e-3),
-                }
+                },
             },
         },
     }
-    num_samples = 72
+    num_samples = 24
     eval_best_trial = True
     eval_trial_seeds = 5
     repeat = 3
