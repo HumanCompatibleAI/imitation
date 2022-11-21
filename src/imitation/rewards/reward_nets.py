@@ -723,7 +723,7 @@ class ShapedRewardNet(ForwardWrapper):
         # series of remaining potential shapings can lead to reward shaping
         # that does not preserve the optimal policy if the episodes have variable
         # length!
-        new_shaping = (1 - done.float()) * new_shaping_output
+        new_shaping = (1 - done.float().flatten()) * new_shaping_output
         final_rew = (
             base_reward_net_output
             + self.discount_factor * new_shaping

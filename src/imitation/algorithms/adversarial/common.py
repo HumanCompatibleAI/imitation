@@ -8,12 +8,9 @@ import numpy as np
 import torch as th
 import torch.utils.tensorboard as thboard
 import tqdm
-from stable_baselines3.common import (
-    base_class,
-    on_policy_algorithm,
-    policies,
-    type_aliases,
-)
+from stable_baselines3.common import base_class
+from stable_baselines3.common import buffers as sb3_buffers
+from stable_baselines3.common import on_policy_algorithm, policies, type_aliases
 from stable_baselines3.common import utils as sb3_utils
 from stable_baselines3.common import vec_env
 from stable_baselines3.sac import policies as sac_policies
@@ -279,7 +276,7 @@ class AdversarialTrainer(base.DemonstrationAlgorithm[types.Transitions]):
                     buffer_size=self.gen_train_timesteps,
                     observation_space=replay_buffer.observation_space,
                     action_space=replay_buffer.action_space,
-                    replay_buffer_class=replay_buffer.__class__,
+                    replay_buffer_class=sb3_buffers.ReplayBuffer,
                     reward_fn=self.reward_train.predict_processed,
                     device=replay_buffer.device,
                     n_envs=replay_buffer.n_envs,
@@ -581,7 +578,6 @@ class AdversarialTrainer(base.DemonstrationAlgorithm[types.Transitions]):
             if callback:
                 callback(r)
             self.logger.dump(self._global_step)
-            print("FINNNNNNNNNNNNNNNNNNNNNNNNNNNN")
 
     @overload
     def _torchify_array(self, ndarray: np.ndarray) -> th.Tensor:
