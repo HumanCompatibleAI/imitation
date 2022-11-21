@@ -233,7 +233,7 @@ def example_gail():
                 # gen_train_timesteps=0,
             ),
             "rl": {
-                "batch_size": tune.choice([4096, 8192, 16384]),
+                # "batch_size": tune.choice([4096, 8192, 16384]),
                 "rl_kwargs": {
                     "ent_coef": tune.loguniform(1e-7, 1e-3),
                     "learning_rate": tune.loguniform(1e-5, 1e-2),
@@ -272,7 +272,7 @@ def example_airl():
                 # gen_train_timesteps=0,
             ),
             "rl": {
-                "batch_size": tune.choice([4096, 8192, 16384]),
+                # "batch_size": tune.choice([4096, 8192, 16384]),
                 "rl_kwargs": {
                     "ent_coef": tune.loguniform(1e-7, 1e-3),
                     "learning_rate": tune.loguniform(1e-5, 1e-2),
