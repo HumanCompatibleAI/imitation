@@ -16,7 +16,7 @@ from imitation.rewards import reward_wrapper
 from imitation.rewards.serialize import load_reward
 from imitation.scripts.config.eval_policy import eval_policy_ex
 from imitation.scripts.ingredients import environment, expert
-from imitation.scripts.ingredients import logging as logging_ing
+from imitation.scripts.ingredients import logging as logging_ingredient
 from imitation.util import video_wrapper
 
 
@@ -92,7 +92,7 @@ def eval_policy(
     Returns:
         Return value of `imitation.util.rollout.rollout_stats()`.
     """
-    log_dir = logging_ing.make_log_dir()
+    log_dir = logging_ingredient.make_log_dir()
     sample_until = rollout.make_sample_until(eval_n_timesteps, eval_n_episodes)
     post_wrappers = [video_wrapper_factory(log_dir, **video_kwargs)] if videos else None
     with environment.make_venv(post_wrappers=post_wrappers) as venv:

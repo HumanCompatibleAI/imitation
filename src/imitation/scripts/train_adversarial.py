@@ -16,7 +16,7 @@ from imitation.data import rollout
 from imitation.policies import serialize
 from imitation.scripts.config.train_adversarial import train_adversarial_ex
 from imitation.scripts.ingredients import demonstrations, environment
-from imitation.scripts.ingredients import logging as logging_ing
+from imitation.scripts.ingredients import logging as logging_ingredient
 from imitation.scripts.ingredients import reward, rl, train
 
 logger = logging.getLogger("imitation.scripts.train_adversarial")
@@ -111,7 +111,7 @@ def train_adversarial(
         # So, support showing merged config from `train_adversarial {airl,gail}`.
         sacred.commands.print_config(_run)
 
-    custom_logger, log_dir = logging_ing.setup_logging()
+    custom_logger, log_dir = logging_ingredient.setup_logging()
     expert_trajs = demonstrations.get_expert_trajectories()
 
     with environment.make_venv() as venv:

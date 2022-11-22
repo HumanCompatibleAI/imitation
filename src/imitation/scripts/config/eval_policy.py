@@ -3,12 +3,12 @@
 import sacred
 
 from imitation.scripts.ingredients import environment, expert
-from imitation.scripts.ingredients import logging as logging_ing
+from imitation.scripts.ingredients import logging as logging_ingredient
 
 eval_policy_ex = sacred.Experiment(
     "eval_policy",
     ingredients=[
-        logging_ing.logging_ingredient,
+        logging_ingredient.logging_ingredient,
         environment.environment_ingredient,
         expert.expert_ingredient,
     ],

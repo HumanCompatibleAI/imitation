@@ -8,13 +8,13 @@ import sacred
 
 from imitation.data import rollout, types
 from imitation.scripts.ingredients import environment, expert
-from imitation.scripts.ingredients import logging as logging_ing
+from imitation.scripts.ingredients import logging as logging_ingredient
 
 demonstrations_ingredient = sacred.Ingredient(
     "demonstrations",
     ingredients=[
         expert.expert_ingredient,
-        logging_ing.logging_ingredient,
+        logging_ingredient.logging_ingredient,
         environment.environment_ingredient,
     ],
 )

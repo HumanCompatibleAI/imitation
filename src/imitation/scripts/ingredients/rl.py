@@ -17,12 +17,12 @@ from stable_baselines3.common import (
 from imitation.policies import serialize
 from imitation.policies.replay_buffer_wrapper import ReplayBufferRewardWrapper
 from imitation.rewards.reward_function import RewardFn
-from imitation.scripts.ingredients import logging as logging_ing
+from imitation.scripts.ingredients import logging as logging_ingredient
 from imitation.scripts.ingredients.train import train_ingredient
 
 rl_ingredient = sacred.Ingredient(
     "rl",
-    ingredients=[train_ingredient, logging_ing.logging_ingredient],
+    ingredients=[train_ingredient, logging_ingredient.logging_ingredient],
 )
 logger = logging.getLogger(__name__)
 

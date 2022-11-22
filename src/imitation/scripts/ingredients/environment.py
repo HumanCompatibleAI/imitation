@@ -6,7 +6,7 @@ import numpy as np
 import sacred
 from stable_baselines3.common import vec_env
 
-import imitation.scripts.ingredients.logging as logging_ing
+import imitation.scripts.ingredients.logging as logging_ingredient
 from imitation.data import wrappers
 from imitation.scripts.ingredients.environment_name import environment_name_ingredient
 from imitation.util import util
@@ -15,7 +15,7 @@ environment_ingredient = sacred.Ingredient(
     "environment",
     ingredients=[
         environment_name_ingredient,
-        logging_ing.logging_ingredient,
+        logging_ingredient.logging_ingredient,
     ],
 )
 
