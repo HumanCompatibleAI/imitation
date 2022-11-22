@@ -37,15 +37,16 @@ repos:
   rev: v0.8.0
   hooks:
   - id: shellcheck
-    args: ["-x"]
+  # precommit invokes shellcheck once per file. shellcheck complains if file
+  # includes another file not given on the command line. Ignore this, since
+  # they'll just get checked in a separate shellcheck invocation.
+    args: ["-e", "SC1091"]
 # Misc
 - repo: https://github.com/codespell-project/codespell
   rev: v2.2.2
   hooks:
   - id: codespell
-    args:
-    - "--skip=*.pyc,tests/testdata/*,*.ipynb,*.csv"
-    - "--ignore-words=.codespell.skip"
+    args: ["--skip=*.pyc,tests/testdata/*,*.ipynb,*.csv","--ignore-words-list=reacher,ith,iff"]
 - repo: https://github.com/syntaqx/git-hooks
   rev: v0.0.17
   hooks:
@@ -77,7 +78,7 @@ repos:
     name: pytype
     language: system
     types: [python]
-    entry: pytype -j auto
+    entry: "bash -c 'pytype -j ${NUM_CPUS:-auto}'"
     require_serial: true
     verbose: true
   - id: docs
