@@ -1,7 +1,8 @@
 """Common configuration element for scripts learning from demonstrations."""
 
 import logging
-from typing import Optional, Sequence
+import pathlib
+from typing import Optional, Sequence, Union
 
 import sacred
 
@@ -74,7 +75,7 @@ def generate_expert_trajs(
 
 @demonstrations_ingredient.capture
 def load_expert_trajs(
-    rollout_path: str,
+    rollout_path: Union[str, pathlib.Path],
     n_expert_demos: Optional[int],
 ) -> Sequence[types.Trajectory]:
     """Loads expert demonstrations.
@@ -90,8 +91,9 @@ def load_expert_trajs(
     Raises:
         ValueError: There are fewer trajectories than `n_expert_demos`.
     """
-    if "huggingface" in rollout_path:
-        rollout_path = expert.download_expert_rollouts()
+    # wrap with str() in case rollout_path is a Path object
+    if "huggingface" in str(rollout_path):
+        rollout_path = expert.download_expert_rollouts(policy_type=str(rollout_path))
 
     expert_trajs = types.load(rollout_path)
     logger.info(f"Loaded {len(expert_trajs)} expert trajectories from '{rollout_path}'")
