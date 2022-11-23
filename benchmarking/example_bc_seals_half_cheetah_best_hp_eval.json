@@ -40,5 +40,8 @@
                 }
             }
         }
+    },
+    "common": {
+        "env_name": "seals/HalfCheetah-v0"
     }
 }

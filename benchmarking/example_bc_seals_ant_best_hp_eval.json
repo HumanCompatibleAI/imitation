@@ -40,5 +40,8 @@
                 }
             }
         }
+    },
+    "common": {
+        "env_name": "seals/Ant-v0"
     }
 }
