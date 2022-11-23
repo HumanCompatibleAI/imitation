@@ -7,8 +7,11 @@ Configuration files can be loaded either from the CLI or from the Python API. Th
 ## CLI
 
 ```bash
-python -m imitation.scripts.train_rl with benchmarking/<config_name>.json
+python -m imitation.scripts.<train_script> <algo> with benchmarking/<config_name>.json
 ```
+`train_script` can be either 1) `train_imitation` with `algo` as `bc` or `dagger` or 2) `train_adversarial`  with `algo` as `gail` or `airl`.
+
+
 
 ## Python
 
