@@ -46,9 +46,14 @@ def get_expert_policy(venv, policy_type, loader_kwargs, common):
 
 
 @expert_ingredient.capture
-def download_expert_rollouts(policy_type, loader_kwargs):
-    assert policy_type.endswith("-huggingface")
-    algo_name = policy_type.split("-")[0]
+def download_expert_rollouts(rollout_path, loader_kwargs):
+    if not rollout_path.endswith("-huggingface"):
+        raise ValueError(
+            "`rollout_path` must follow the convention `{algo}-huggingface`"
+            "to download rollouts from huggingface of an expert trained using {algo}."
+            "Example: demonstrations.rollout_path=ppo-huggingface",
+        )
+    algo_name = rollout_path.split("-")[0]
     return serialize._load_rollouts_from_huggingface(
         algo_name,
         env_name=loader_kwargs["env_name"],
