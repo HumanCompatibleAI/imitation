@@ -51,7 +51,8 @@ def clean_config_file(file: pathlib.Path, write_path: pathlib.Path, /) -> None:
     config.pop("seed")
     config.get("demonstrations", {}).pop("rollout_path")
     config.get("expert", {}).get("loader_kwargs", {}).pop("path", None)
-    config.pop("common")
+    env_name = config.pop("common").pop("env_name")
+    config["common"] = {"env_name": env_name}
     config.pop("show_config", None)
 
     remove_empty_dicts(config)
