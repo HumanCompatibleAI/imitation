@@ -1,10 +1,20 @@
+"""Utilities for processing the config files of the benchmarking runs."""
+
 import pathlib
 from typing import List
 
+
 def filter_config_files(files: List[str], /) -> List[pathlib.Path]:
-    """
+    """Filter config files.
+
     Filter the list of config files to ignore the seed, and only return the last
     file per algorithm and environment.
+
+    Args:
+        files: list of config files
+
+    Returns:
+        list of config files
     """
     config_files = [pathlib.Path(config_file) for config_file in files]
     config_files = [
@@ -29,7 +39,11 @@ def filter_config_files(files: List[str], /) -> List[pathlib.Path]:
 def remove_empty_dicts(d: dict):
     """Remove empty dictionaries in place.
 
-    This is a recursive function that will remove empty dictionaries from a dictionary."""
+    This is a recursive function that will remove empty dictionaries from a dictionary.
+
+    Args:
+        d: dictionary to be filtered
+    """
     for key, value in list(d.items()):
         if isinstance(value, dict):
             remove_empty_dicts(value)
@@ -40,9 +54,15 @@ def remove_empty_dicts(d: dict):
 
 
 def clean_config_file(file: pathlib.Path, write_path: pathlib.Path, /) -> None:
+    """Clean a config file.
+
+    reads the file, loads from json to dict, removes keys related to e.g. seeds, 
+    config paths, leaving only hyperparameters, and writes back to file.
+
+    Args:
+        file: path to config file
+        write_path: path to write the cleaned config file
     """
-    reads the file, loads from json to dict, removes keys related to e.g. seeds, config paths,
-    leaving only hyperparameters, and writes back to file."""
     import json
 
     with open(file) as f:
@@ -57,15 +77,18 @@ def clean_config_file(file: pathlib.Path, write_path: pathlib.Path, /) -> None:
     config.pop("show_config", None)
 
     remove_empty_dicts(config)
-    # files are of the format /path/to/file/example_<algo>_<env>_best_hp_eval/<other_info>/sacred/1/config.json
+    # files are of the format
+    # /path/to/file/example_<algo>_<env>_best_hp_eval/<other_info>/sacred/1/config.json
     # we want to write to /<write_path>/<algo>_<env>.json
     with open(write_path / f"{file.parents[3].name}.json", "w") as f:
         json.dump(config, f, indent=4)
 
 
 if __name__ == "__main__":
-    # get two arguments from the terminal. The first positional argument contains the path to a txt file that has a list of paths to config files.
-    # The second positional argument is the path to the directory where the cleaned config files should be written.
+    # get two arguments from the terminal. The first positional argument contains the
+    # path to a txt file that has a list of paths to config files.
+    # The second positional argument is the path to the directory where
+    # the cleaned config files should be written.
     import argparse
 
     parser = argparse.ArgumentParser()
