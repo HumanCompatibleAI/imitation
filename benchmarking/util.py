@@ -1,9 +1,9 @@
 import pathlib
 
 
-def filter_config_files(files: list[str], /) -> list[str]:
+def filter_config_files(files: list[str], /) -> list[pathlib.Path]:
     """
-    Filter the list of config files to ignore the seed, and only return the last 
+    Filter the list of config files to ignore the seed, and only return the last
     file per algorithm and environment.
     """
     config_files = [pathlib.Path(config_file) for config_file in files]
@@ -26,9 +26,9 @@ def filter_config_files(files: list[str], /) -> list[str]:
     return final_config_files
 
 
-def remove_empty_dicts(d: dict) -> dict:
-    """Remove empty dictionaries.
-    
+def remove_empty_dicts(d: dict):
+    """Remove empty dictionaries in place.
+
     This is a recursive function that will remove empty dictionaries from a dictionary."""
     for key, value in list(d.items()):
         if isinstance(value, dict):
@@ -38,9 +38,10 @@ def remove_empty_dicts(d: dict) -> dict:
         elif value == {}:
             d.pop(key)
 
+
 def clean_config_file(file: pathlib.Path, write_path: pathlib.Path, /) -> None:
     """
-    reads the file, loads from json to dict, removes keys related to e.g. seeds, config paths, 
+    reads the file, loads from json to dict, removes keys related to e.g. seeds, config paths,
     leaving only hyperparameters, and writes back to file."""
     import json
 
@@ -63,7 +64,7 @@ def clean_config_file(file: pathlib.Path, write_path: pathlib.Path, /) -> None:
 
 
 if __name__ == "__main__":
-    # get two arguments from the terminal. The first positional argument contains the path to a txt file that has a list of paths to config files. 
+    # get two arguments from the terminal. The first positional argument contains the path to a txt file that has a list of paths to config files.
     # The second positional argument is the path to the directory where the cleaned config files should be written.
     import argparse
 
@@ -74,8 +75,8 @@ if __name__ == "__main__":
 
     # read the list of config files from the txt file
     with open(args.config_files) as f:
-        config_files = f.read().splitlines()
-    config_files = [pathlib.Path(file) for file in config_files]
+        config_files_str = f.read().splitlines()
+    config_files = [pathlib.Path(file) for file in config_files_str]
 
     write_path = pathlib.Path(args.write_path)
 
@@ -85,6 +86,6 @@ if __name__ == "__main__":
     for file in config_files:
         if not file.exists():
             raise ValueError(f"config file {file} does not exist")
-    
+
     for file in config_files:
         clean_config_file(file, write_path)
