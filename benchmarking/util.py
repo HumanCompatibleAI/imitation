@@ -1,7 +1,7 @@
 import pathlib
+from typing import List
 
-
-def filter_config_files(files: list[str], /) -> list[pathlib.Path]:
+def filter_config_files(files: List[str], /) -> List[pathlib.Path]:
     """
     Filter the list of config files to ignore the seed, and only return the last
     file per algorithm and environment.
