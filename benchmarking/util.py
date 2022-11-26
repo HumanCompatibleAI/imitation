@@ -1,5 +1,6 @@
 """Utilities for processing the config files of the benchmarking runs."""
 
+import argparse
 import pathlib
 from typing import List
 
@@ -84,12 +85,12 @@ def clean_config_file(file: pathlib.Path, write_path: pathlib.Path, /) -> None:
         json.dump(config, f, indent=4)
 
 
-if __name__ == "__main__":
+def main():
+    """Main function of the script."""
     # get two arguments from the terminal. The first positional argument contains the
     # path to a txt file that has a list of paths to config files.
     # The second positional argument is the path to the directory where
     # the cleaned config files should be written.
-    import argparse
 
     parser = argparse.ArgumentParser()
     parser.add_argument("config_files", type=str)
@@ -112,3 +113,7 @@ if __name__ == "__main__":
 
     for file in config_files:
         clean_config_file(file, write_path)
+
+
+if __name__ == "__main__":
+    main()
