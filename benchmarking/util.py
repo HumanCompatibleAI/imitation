@@ -56,7 +56,7 @@ def remove_empty_dicts(d: dict):
 def clean_config_file(file: pathlib.Path, write_path: pathlib.Path, /) -> None:
     """Clean a config file.
 
-    reads the file, loads from json to dict, removes keys related to e.g. seeds, 
+    reads the file, loads from json to dict, removes keys related to e.g. seeds,
     config paths, leaving only hyperparameters, and writes back to file.
 
     Args:
