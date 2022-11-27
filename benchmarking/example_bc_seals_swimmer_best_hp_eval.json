@@ -1,0 +1,45 @@
+{
+  "bc_kwargs": {
+    "batch_size": 16,
+    "l2_weight": 4.37857842825771e-5,
+    "optimizer_cls": {
+      "py/type": "torch.optim.adam.Adam"
+    },
+    "optimizer_kwargs": {
+      "lr": 0.0016370547173923296
+    }
+  },
+  "bc_train_kwargs": {
+    "log_interval": 500,
+    "n_batches": null,
+    "n_epochs": 10
+  },
+  "dagger": {
+    "rollout_round_min_episodes": null,
+    "total_timesteps": 100000.0,
+    "use_offline_rollouts": false
+  },
+  "demonstrations": {
+    "n_expert_demos": null
+  },
+
+  "train": {
+    "n_episodes_eval": 50,
+    "policy_cls": {
+      "py/type": "imitation.policies.base.FeedForward32Policy"
+    },
+    "policy_kwargs": {
+      "features_extractor_class": {
+        "py/type": "imitation.policies.base.NormalizeFeaturesExtractor"
+      },
+      "features_extractor_kwargs": {
+        "normalize_class": {
+          "py/type": "imitation.util.networks.RunningNorm"
+        }
+      }
+    }
+  },
+  "common": {
+    "env_name": "seals/Swimmer-v0"
+  }
+}
