@@ -102,7 +102,7 @@ class RunningNorm(BaseNorm):
     the current batch at train time, we use statistics from all batches.
 
     This should replicate the common practice in RL of normalizing environment
-    observations, such as using `VecNormalize` in Stable Baselines. Note that
+    observations, such as using ``VecNormalize`` in Stable Baselines. Note that
     the behavior of this class is slightly different from `VecNormalize`, e.g.,
     it works with the current reward instead of return estimate, and subtracts the mean
     reward whereas ``VecNormalize`` only rescales it.
