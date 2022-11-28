@@ -232,7 +232,7 @@ class SavePolicyCallback(callbacks.EventCallback):
         return True
 
 
-def _load_rollouts_from_huggingface(
+def load_rollouts_from_huggingface(
     algo_name: str,
     env_name: str,
     organization: str = "HumanCompatibleAI",

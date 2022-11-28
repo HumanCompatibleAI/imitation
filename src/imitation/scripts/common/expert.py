@@ -43,19 +43,3 @@ def config_hook(config, command_name, logger):
 @expert_ingredient.capture
 def get_expert_policy(venv, policy_type, loader_kwargs, common):
     return serialize.load_policy(policy_type, venv, **loader_kwargs)
-
-
-@expert_ingredient.capture
-def download_expert_rollouts(rollout_path, loader_kwargs):
-    if not rollout_path.endswith("-huggingface"):
-        raise ValueError(
-            "`rollout_path` must follow the convention `{algo}-huggingface`"
-            "to download rollouts from huggingface of an expert trained using {algo}."
-            "Example: rollout_path=ppo-huggingface",
-        )
-    algo_name = rollout_path.split("-")[0]
-    return serialize._load_rollouts_from_huggingface(
-        algo_name,
-        env_name=loader_kwargs["env_name"],
-        organization=loader_kwargs["organization"],
-    )

@@ -316,10 +316,10 @@ def test_train_bc_main_with_none_demonstrations_raises_value_error(tmpdir):
 def test_train_bc_main_with_demonstrations_from_huggingface(tmpdir):
     train_imitation.train_imitation_ex.run(
         command_name="bc",
-        named_configs=["seals_half_cheetah"] + ALGO_FAST_CONFIGS["imitation"],
+        named_configs=["seals_cartpole"] + ALGO_FAST_CONFIGS["imitation"],
         config_updates=dict(
             common=dict(log_root=tmpdir),
-            demonstrations=dict(rollout_path="ppo-huggingface"),
+            demonstrations=dict(rollout_type="ppo-huggingface"),
         ),
     )
 
@@ -329,14 +329,14 @@ def test_train_bc_main_with_demonstrations_raises_error_on_wrong_huggingface_for
 ):
     with pytest.raises(
         ValueError,
-        match="`rollout_path` must follow the convention .*-huggingface.*",
+        match="`rollout_type` must follow the convention .*-huggingface.*",
     ):
         train_imitation.train_imitation_ex.run(
             command_name="bc",
-            named_configs=["seals_half_cheetah"] + ALGO_FAST_CONFIGS["imitation"],
+            named_configs=["seals_cartpole"] + ALGO_FAST_CONFIGS["imitation"],
             config_updates=dict(
                 common=dict(log_root=tmpdir),
-                demonstrations=dict(rollout_path="huggingface-ppo"),
+                demonstrations=dict(rollout_type="huggingface-ppo"),
             ),
         )
 

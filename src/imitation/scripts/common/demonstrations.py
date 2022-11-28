@@ -7,6 +7,7 @@ from typing import Optional, Sequence, Union
 import sacred
 
 from imitation.data import rollout, types, wrappers
+from imitation.policies import serialize
 from imitation.scripts.common import common, expert
 
 demonstrations_ingredient = sacred.Ingredient(
@@ -18,7 +19,9 @@ logger = logging.getLogger(__name__)
 
 @demonstrations_ingredient.config
 def config():
-    # path to file containing rollouts. If None, they are sampled from the expert.
+    rollout_type = "disk"
+    # path to file containing rollouts. If rollout_path is None
+    # and rollout_type is disk, they are sampled from the expert.
     rollout_path = None
     n_expert_demos = None  # Num demos used or sampled. None loads every demo possible.
     locals()  # quieten flake8
@@ -33,9 +36,10 @@ def fast():
 
 @demonstrations_ingredient.capture
 def get_expert_trajectories(
+    rollout_type: str,
     rollout_path: str,
 ) -> Sequence[types.Trajectory]:
-    if rollout_path is not None:
+    if "huggingface" in rollout_type or rollout_path is not None:
         return load_expert_trajs()
     else:
         return generate_expert_trajs()
@@ -75,12 +79,16 @@ def generate_expert_trajs(
 
 @demonstrations_ingredient.capture
 def load_expert_trajs(
+    rollout_type: str,
     rollout_path: Union[str, pathlib.Path],
     n_expert_demos: Optional[int],
 ) -> Sequence[types.Trajectory]:
     """Loads expert demonstrations.
 
     Args:
+        rollout_type: Can be either `disk` to load from disk or of the format
+            `{algo}-huggingface` to load from huggingface hub of expert trained
+            using `{algo}`
         rollout_path: A path containing a pickled sequence of `types.Trajectory`.
         n_expert_demos: The number of trajectories to load.
             Dataset is truncated to this length if specified.
@@ -91,9 +99,8 @@ def load_expert_trajs(
     Raises:
         ValueError: There are fewer trajectories than `n_expert_demos`.
     """
-    # wrap with str() in case rollout_path is a Path object
-    if "huggingface" in str(rollout_path):
-        rollout_path = expert.download_expert_rollouts(rollout_path=str(rollout_path))
+    if "huggingface" in rollout_type:
+        rollout_path = _download_expert_rollouts(rollout_type)
 
     expert_trajs = types.load(rollout_path)
     logger.info(f"Loaded {len(expert_trajs)} expert trajectories from '{rollout_path}'")
@@ -106,3 +113,19 @@ def load_expert_trajs(
         expert_trajs = expert_trajs[:n_expert_demos]
         logger.info(f"Truncated to {n_expert_demos} expert trajectories")
     return expert_trajs
+
+
+@demonstrations_ingredient.capture(prefix="expert")
+def _download_expert_rollouts(rollout_type, loader_kwargs):
+    if not rollout_type.endswith("-huggingface"):
+        raise ValueError(
+            "`rollout_type` must follow the convention `{algo}-huggingface`"
+            "to download rollouts from huggingface of an expert trained using {algo}."
+            "Example: rollout_type=ppo-huggingface",
+        )
+    algo_name = rollout_type.split("-")[0]
+    return serialize.load_rollouts_from_huggingface(
+        algo_name,
+        env_name=loader_kwargs["env_name"],
+        organization=loader_kwargs["organization"],
+    )
