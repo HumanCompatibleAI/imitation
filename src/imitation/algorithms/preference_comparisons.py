@@ -510,6 +510,7 @@ class PreferenceModel(nn.Module):
             returns_diff = (rews2 - rews1).sum(axis=0)  # type: ignore[call-overload]
         else:
             device = rews1.device
+            assert device == rews2.device
             discounts = self.discount_factor ** th.arange(len(rews1), device=device)
             if self.ensemble_model is not None:
                 discounts = discounts.reshape(-1, 1)
