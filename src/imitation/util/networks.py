@@ -105,7 +105,7 @@ class RunningNorm(BaseNorm):
     observations, such as using `VecNormalize` in Stable Baselines. Note that
     the behavior of this class is slightly different from `VecNormalize`, e.g.,
     it works with the current reward instead of return estimate, and subtracts the mean
-    reward.
+    reward whereas ``VecNormalize`` only rescales it.
     """
 
     def update_stats(self, batch: th.Tensor) -> None:
