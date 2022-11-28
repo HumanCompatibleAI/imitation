@@ -98,13 +98,15 @@ We also implement a density-based reward baseline. You can find an [example note
 # Citations (BibTeX)
 
 ```
-@misc{wang2020imitation,
-  author = {Wang, Steven and Toyer, Sam and Gleave, Adam and Emmons, Scott},
-  title = {The {\tt imitation} Library for Imitation Learning and Inverse Reinforcement Learning},
-  year = {2020},
-  publisher = {GitHub},
-  journal = {GitHub repository},
-  howpublished = {\url{https://github.com/HumanCompatibleAI/imitation}},
+@misc{gleave2022imitation,
+  author = {Gleave, Adam and Taufeeque, Mohammad and Rocamonde, Juan and Jenner, Erik and Wang, Steven H. and Toyer, Sam and Ernestus, Maximilian and Belrose, Nora and Emmons, Scott and Russell, Stuart},
+  title = {imitation: Clean Imitation Learning Implementations},
+  year = {2022},
+  howPublished = {arXiv:2211.11972v1 [cs.LG]},
+  archivePrefix = {arXiv},
+  eprint = {2211.11972},
+  primaryClass = {cs.LG},
+  url = {https://arxiv.org/abs/2211.11972},
 }
 ```
 
