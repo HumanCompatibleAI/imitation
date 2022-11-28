@@ -86,6 +86,8 @@ class BaseNorm(nn.Module, abc.ABC):
             with th.no_grad():
                 self.update_stats(x)
 
+        # Note: this is different from the behavior in stable-baselines, see
+        # https://github.com/HumanCompatibleAI/imitation/issues/442
         return (x - self.running_mean) / th.sqrt(self.running_var + self.eps)
 
     @abc.abstractmethod
@@ -99,8 +101,11 @@ class RunningNorm(BaseNorm):
     Similar to BatchNorm, LayerNorm, etc. but whereas they only use statistics from
     the current batch at train time, we use statistics from all batches.
 
-    This should closely replicate the common practice in RL of normalizing environment
-    observations, such as using `VecNormalize` in Stable Baselines.
+    This should replicate the common practice in RL of normalizing environment
+    observations, such as using `VecNormalize` in Stable Baselines. Note that
+    the behavior of this class is slightly different from `VecNormalize`, e.g.,
+    it works with the current reward instead of return estimate, and subtracts the mean
+    reward.
     """
 
     def update_stats(self, batch: th.Tensor) -> None:
