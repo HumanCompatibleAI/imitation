@@ -51,7 +51,7 @@ def download_expert_rollouts(rollout_path, loader_kwargs):
         raise ValueError(
             "`rollout_path` must follow the convention `{algo}-huggingface`"
             "to download rollouts from huggingface of an expert trained using {algo}."
-            "Example: demonstrations.rollout_path=ppo-huggingface",
+            "Example: rollout_path=ppo-huggingface",
         )
     algo_name = rollout_path.split("-")[0]
     return serialize._load_rollouts_from_huggingface(

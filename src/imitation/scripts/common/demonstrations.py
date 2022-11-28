@@ -93,7 +93,7 @@ def load_expert_trajs(
     """
     # wrap with str() in case rollout_path is a Path object
     if "huggingface" in str(rollout_path):
-        rollout_path = expert.download_expert_rollouts(policy_type=str(rollout_path))
+        rollout_path = expert.download_expert_rollouts(rollout_path=str(rollout_path))
 
     expert_trajs = types.load(rollout_path)
     logger.info(f"Loaded {len(expert_trajs)} expert trajectories from '{rollout_path}'")
