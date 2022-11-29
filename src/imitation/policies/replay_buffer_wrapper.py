@@ -9,6 +9,7 @@ from stable_baselines3.common.type_aliases import ReplayBufferSamples
 
 from imitation.rewards.reward_function import RewardFn
 from imitation.util import util
+from imitation.util.networks import RunningNorm
 
 
 def _samples_to_reward_fn_input(
@@ -144,7 +145,7 @@ class ReplayBufferEntropyRewardWrapper(ReplayBufferRewardWrapper):
         self.sample_count = 0
         self.k = k
         # TODO support n_envs > 1
-        self.entropy_stats = util.RunningMeanAndVar(shape=(1,))
+        self.entropy_stats = RunningNorm(1)
         self.entropy_as_reward_samples = entropy_as_reward_samples
 
     def sample(self, *args, **kwargs):
@@ -169,10 +170,8 @@ class ReplayBufferEntropyRewardWrapper(ReplayBufferRewardWrapper):
             self.k,
         )
 
-        # Normalize to have mean of 0 and standard deviation of 1
-        self.entropy_stats.update(entropies)
-        entropies -= self.entropy_stats.running_mean
-        entropies /= self.entropy_stats.std
+        # Normalize to have mean of 0 and standard deviation of 1 according to running stats
+        entropies = self.entropy_stats.forward(entropies)
 
         entropies_th = (
             util.safe_to_tensor(entropies)

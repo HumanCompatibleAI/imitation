@@ -120,40 +120,6 @@ def test_tensor_iter_norm():
         util.tensor_iter_norm(tensor_list, ord=0.0)
 
 
-def test_RunningMeanAndVar():
-    running_stats = util.RunningMeanAndVar(shape=(3, 4))
-    data = th.normal(mean=10 * th.ones(size=(20, 3, 4), dtype=th.double))
-
-    first_half = data[:10]
-    running_stats.update(first_half)
-    np.testing.assert_allclose(
-        running_stats.running_mean,
-        first_half.mean(dim=0),
-        atol=1e-5,
-        rtol=1e-4,
-    )
-    np.testing.assert_allclose(
-        running_stats.var,
-        first_half.var(dim=0),
-        atol=1e-5,
-        rtol=1e-4,
-    )
-
-    running_stats.update(data[10:])
-    np.testing.assert_allclose(
-        running_stats.running_mean,
-        data.mean(dim=0),
-        atol=1e-5,
-        rtol=1e-4,
-    )
-    np.testing.assert_allclose(
-        running_stats.var,
-        data.var(dim=0),
-        atol=1e-5,
-        rtol=1e-4,
-    )
-
-
 def test_compute_state_entropy_1d():
     all_obs = th.arange(10, dtype=th.float).unsqueeze(1)
     obs = all_obs[4:6]

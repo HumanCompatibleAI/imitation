@@ -361,46 +361,6 @@ def get_first_iter_element(iterable: Iterable[T]) -> Tuple[T, Iterable[T]]:
     return first_element, return_iterable
 
 
-class RunningMeanAndVar:
-    """Stores a running mean and variance using Wellford's algorithm."""
-
-    def __init__(
-        self,
-        shape: Tuple[int, ...] = (),
-        device: Optional[str] = None,
-    ) -> None:
-        """Initialize blank mean, variance, count."""
-        self.running_mean = th.zeros(shape, device=device)
-        self.M2 = th.zeros(shape, device=device)
-        self.count = 0
-
-    def update(self, batch: th.Tensor) -> None:
-        """Update the mean and variance with a batch `x`."""
-        with th.no_grad():
-            batch_mean = th.mean(batch, dim=0)
-            batch_var = th.var(batch, dim=0, unbiased=False)
-            batch_count = batch.shape[0]
-
-            delta = batch_mean - self.running_mean
-            tot_count = self.count + batch_count
-            self.running_mean += delta * batch_count / tot_count
-
-            self.M2 += batch_var * batch_count
-            self.M2 += th.square(delta) * self.count * batch_count / tot_count
-
-            self.count += batch_count
-
-    @property
-    def var(self) -> th.Tensor:
-        """Returns the unbiased estimate of the variances."""
-        return self.M2 / (self.count - 1)
-
-    @property
-    def std(self) -> th.Tensor:
-        """Returns the unbiased estimate of the standard deviations."""
-        return np.sqrt(self.var)
-
-
 def compute_state_entropy(
     obs: th.Tensor,
     all_obs: th.Tensor,

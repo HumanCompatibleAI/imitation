@@ -126,12 +126,12 @@ class RunningNorm(BaseNorm):
         tot_count = self.count + batch_count
         self.running_mean += delta * batch_count / tot_count
 
-        self.running_var *= self.count
-        self.running_var += batch_var * batch_count
-        self.running_var += th.square(delta) * self.count * batch_count / tot_count
-        self.running_var /= tot_count
+        m_a = self.running_var * self.count
+        m_b = batch_var * batch_count
+        M2 = m_a + m_b + th.square(delta) * self.count * batch_count / tot_count
+        self.running_var = M2 / tot_count
 
-        self.count += batch_count
+        self.count = tot_count
 
 
 class EMANorm(BaseNorm):
