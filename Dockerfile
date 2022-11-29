@@ -9,6 +9,7 @@ RUN apt-get update -q \
     && apt-get install -y --no-install-recommends \
     build-essential \
     curl \
+    wget \
     ffmpeg \
     git \
     libgl1-mesa-dev \

@@ -20,22 +20,26 @@ class ExplorationWrapper:
 
     def __init__(
         self,
-        policy_callable: rollout.PolicyCallable,
+        policy: rollout.AnyPolicy,
         venv: vec_env.VecEnv,
         random_prob: float,
         switch_prob: float,
         rng: np.random.Generator,
+        deterministic_policy: bool = False,
     ):
         """Initializes the ExplorationWrapper.
 
         Args:
-            policy_callable: The policy callable to randomize.
+            policy: The policy to randomize.
             venv: The environment to use (needed for sampling random actions).
             random_prob: The probability of picking the random policy when switching.
             switch_prob: The probability of switching away from the current policy.
             rng: The random state to use for seeding the environment and for
                 switching policies.
+            deterministic_policy: Whether to make the policy deterministic when not
+                exploring. This must be False when ``policy`` is a ``PolicyCallable``.
         """
+        policy_callable = rollout.policy_to_callable(policy, venv, deterministic_policy)
         self.wrapped_policy = policy_callable
         self.random_prob = random_prob
         self.switch_prob = switch_prob

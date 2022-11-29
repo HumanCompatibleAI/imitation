@@ -7,7 +7,7 @@ Follows the description in chapters 9 and 10 of Brian Ziebart's `PhD thesis`_.
 """
 import collections
 import warnings
-from typing import Any, Iterable, List, Mapping, Optional, Tuple, Type, Union
+from typing import Any, Iterable, List, Mapping, NoReturn, Optional, Tuple, Type, Union
 
 import gym
 import numpy as np
@@ -43,9 +43,14 @@ def mce_partition_fh(
         (V, Q, \pi) corresponding to the soft values, Q-values and MCE policy.
         V is a 2d array, indexed V[t,s]. Q is a 3d array, indexed Q[t,s,a].
         \pi is a 3d array, indexed \pi[t,s,a].
+
+    Raises:
+        ValueError: if ``env.horizon`` is None (infinite horizon).
     """
     # shorthand
     horizon = env.horizon
+    if horizon is None:
+        raise ValueError("Only finite-horizon environments are supported.")
     n_states = env.state_dim
     n_actions = env.action_dim
     T = env.transition_matrix
@@ -99,9 +104,14 @@ def mce_occupancy_measures(
         ``(env.horizon, env.n_states)`` and records the probability of being in a
         given state at a given timestep. ``Dcum`` is of shape ``(env.n_states,)``
         and records the expected discounted number of times each state is visited.
+
+    Raises:
+        ValueError: if ``env.horizon`` is None (infinite horizon).
     """
     # shorthand
     horizon = env.horizon
+    if horizon is None:
+        raise ValueError("Only finite-horizon environments are supported.")
     n_states = env.state_dim
     n_actions = env.action_dim
     T = env.transition_matrix
@@ -150,7 +160,7 @@ class TabularPolicy(policies.BasePolicy):
         action_space: gym.Space,
         pi: np.ndarray,
         rng: np.random.Generator,
-    ):
+    ) -> None:
         """Builds TabularPolicy.
 
         Args:
@@ -182,7 +192,7 @@ class TabularPolicy(policies.BasePolicy):
         self,
         observation: th.Tensor,
         deterministic: bool = False,
-    ):
+    ) -> NoReturn:
         raise NotImplementedError("Should never be called.")  # pragma: no cover
 
     def predict(
@@ -269,7 +279,7 @@ class MCEIRL(base.DemonstrationAlgorithm[types.TransitionsMinimal]):
         log_interval: Optional[int] = 100,
         *,
         custom_logger: Optional[imit_logger.HierarchicalLogger] = None,
-    ):
+    ) -> None:
         r"""Creates MCE IRL.
 
         Args:
@@ -297,6 +307,9 @@ class MCEIRL(base.DemonstrationAlgorithm[types.TransitionsMinimal]):
             log_interval: how often to log current loss stats (using `logging`).
                 None to disable.
             custom_logger: Where to log to; if None (default), creates a new logger.
+
+        Raises:
+            ValueError: if the env horizon is not finite (or an integer).
         """
         self.discount = discount
         self.env = env
@@ -318,6 +331,8 @@ class MCEIRL(base.DemonstrationAlgorithm[types.TransitionsMinimal]):
         # Initialize policy to be uniform random. We don't use this for MCE IRL
         # training, but it gives us something to return at all times with `policy`
         # property, similar to other algorithms.
+        if self.env.horizon is None:
+            raise ValueError("Only finite-horizon environments are supported.")
         ones = np.ones((self.env.horizon, self.env.state_dim, self.env.action_dim))
         uniform_pi = ones / self.env.action_dim
         self._policy = TabularPolicy(
@@ -369,6 +384,7 @@ class MCEIRL(base.DemonstrationAlgorithm[types.TransitionsMinimal]):
             )
 
         # Normalize occupancy measure estimates
+        assert self.env.horizon is not None
         self.demo_state_om *= (self.env.horizon + 1) / self.demo_state_om.sum()
 
     def set_demonstrations(self, demonstrations: MCEDemonstrations) -> None:
@@ -381,9 +397,9 @@ class MCEIRL(base.DemonstrationAlgorithm[types.TransitionsMinimal]):
         # Demonstrations are either trajectories or transitions;
         # we must compute occupancy measure from this.
         if isinstance(demonstrations, Iterable):
-            first_item, demonstrations = util.get_first_iter_element(demonstrations)
+            first_item, demonstrations_it = util.get_first_iter_element(demonstrations)
             if isinstance(first_item, types.Trajectory):
-                self._set_demo_from_trajectories(demonstrations)
+                self._set_demo_from_trajectories(demonstrations_it)
                 return
 
         # Demonstrations are from some kind of transitions-like object. This does
@@ -427,7 +443,7 @@ class MCEIRL(base.DemonstrationAlgorithm[types.TransitionsMinimal]):
                 f"Unsupported demonstration type {type(demonstrations)}",
             )
 
-    def _train_step(self, obs_mat: th.Tensor):
+    def _train_step(self, obs_mat: th.Tensor) -> Tuple[np.ndarray, np.ndarray]:
         self.optimizer.zero_grad()
 
         # get reward predicted for each state by current model, & compute
@@ -487,9 +503,11 @@ class MCEIRL(base.DemonstrationAlgorithm[types.TransitionsMinimal]):
                 predicted_r_np, visitations = self._train_step(torch_obs_mat)
 
                 # these are just for termination conditions & debug logging
-                grad_norm = util.tensor_iter_norm(
-                    p.grad for p in self.reward_net.parameters()
-                ).item()
+                grads = []
+                for p in self.reward_net.parameters():
+                    assert p.grad is not None  # for type checker
+                    grads.append(p.grad)
+                grad_norm = util.tensor_iter_norm(grads).item()
                 linf_delta = np.max(np.abs(self.demo_state_om - visitations))
 
                 if self.log_interval is not None and 0 == (t % self.log_interval):

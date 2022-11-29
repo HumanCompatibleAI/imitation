@@ -1,3 +1,5 @@
+.. _mce irl docs:
+
 ===============================================================
 Maximum Causal Entropy Inverse Reinforcement Learning (MCE IRL)
 ===============================================================
@@ -10,6 +12,7 @@ Example
 Detailed example notebook: :doc:`../tutorials/6_train_mce`
 
 .. testcode::
+    :skipif: skip_doctests
 
     from functools import partial
 
@@ -71,7 +74,7 @@ Detailed example notebook: :doc:`../tutorials/6_train_mce`
 
 .. testoutput::
     :hide:
-    
+
     ...
 
 API

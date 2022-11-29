@@ -176,7 +176,6 @@ def _ray_tune_sacred_wrapper(
             "train_adversarial": train_adversarial_ex,
         }
         ex = experiments[sacred_ex_name]
-        ex.observers = [FileStorageObserver("sacred")]
 
         # Apply base configs to get modified `named_configs` and `config_updates`.
         named_configs = base_named_configs + run_kwargs["named_configs"]
@@ -190,7 +189,10 @@ def _ray_tune_sacred_wrapper(
             if k not in updated_run_kwargs:
                 updated_run_kwargs[k] = v
 
-        run = ex.run(**updated_run_kwargs, options={"--run": run_name})
+        run = ex.run(
+            **updated_run_kwargs,
+            options={"--run": run_name, "--file_storage": "sacred"},
+        )
 
         # Ray Tune has a string formatting error if raylet completes without
         # any calls to `reporter`.

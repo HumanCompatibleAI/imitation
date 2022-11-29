@@ -31,7 +31,7 @@ def unwrap_traj(traj: types.TrajectoryWithRew) -> types.TrajectoryWithRew:
     `obs` and `rews`.
 
     Fails if `infos` is None or if the trajectory was generated from an
-    environment without imitation.util.rollout.RolloutInfoWrapper
+    environment without imitation.data.wrappers.RolloutInfoWrapper
 
     Args:
         traj: A trajectory generated from `RolloutInfoWrapper`-wrapped Environments.
@@ -268,7 +268,7 @@ PolicyCallable = Callable[[np.ndarray], np.ndarray]
 AnyPolicy = Union[BaseAlgorithm, BasePolicy, PolicyCallable, None]
 
 
-def _policy_to_callable(
+def policy_to_callable(
     policy: AnyPolicy,
     venv: VecEnv,
     deterministic_policy: bool = False,
@@ -313,8 +313,37 @@ def _policy_to_callable(
         )
 
     if isinstance(policy, BaseAlgorithm):
-        # check that the observation and action spaces of policy and environment match
-        check_for_correct_spaces(venv, policy.observation_space, policy.action_space)
+        # Check that the observation and action spaces of policy and environment match
+        try:
+            check_for_correct_spaces(
+                venv,
+                policy.observation_space,
+                policy.action_space,
+            )
+        except ValueError as e:
+            # Check for a particularly common mistake when using image environments.
+            venv_obs_shape = venv.observation_space.shape
+            assert policy.observation_space is not None
+            policy_obs_shape = policy.observation_space.shape
+            if len(venv_obs_shape) != 3 or len(policy_obs_shape) != 3:
+                raise e
+            venv_obs_rearranged = (
+                venv_obs_shape[2],
+                venv_obs_shape[0],
+                venv_obs_shape[1],
+            )
+            if venv_obs_rearranged != policy_obs_shape:
+                raise e
+            raise ValueError(
+                "Policy and environment observation shape mismatch. "
+                "This is likely caused by "
+                "https://github.com/HumanCompatibleAI/imitation/issues/599. "
+                "If encountering this from rollout.rollout, try calling:\n"
+                "rollout.rollout(expert, expert.get_env(), ...) instead of\n"
+                "rollout.rollout(expert, env, ...)\n\n"
+                f"Policy observation shape: {policy_obs_shape} \n"
+                f"Environment observation shape: {venv_obs_shape}",
+            )
 
     return get_actions
 
@@ -349,7 +378,7 @@ def generate_trajectories(
         may be collected to avoid biasing process towards short episodes; the user
         should truncate if required.
     """
-    get_actions = _policy_to_callable(policy, venv, deterministic_policy)
+    get_actions = policy_to_callable(policy, venv, deterministic_policy)
 
     # Collect rollout tuples.
     trajectories = []
@@ -531,7 +560,7 @@ def generate_transitions(
     rng: np.random.Generator,
     *,
     truncate: bool = True,
-    **kwargs,
+    **kwargs: Any,
 ) -> types.TransitionsWithRew:
     """Generate obs-action-next_obs-reward tuples.
 
@@ -577,7 +606,7 @@ def rollout(
     unwrap: bool = True,
     exclude_infos: bool = True,
     verbose: bool = True,
-    **kwargs,
+    **kwargs: Any,
 ) -> Sequence[types.TrajectoryWithRew]:
     """Generate policy rollouts.
 

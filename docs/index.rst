@@ -1,17 +1,12 @@
-.. imitation documentation master file, created by
-   sphinx-quickstart on Wed Jun 26 10:19:27 2019.
-   You can adapt this file completely to your liking, but it should at least
-   contain the root `toctree` directive.
-
 =========
 Imitation
 =========
 
 **Imitation provides clean implementations of imitation and reward learning algorithms**, under a unified and user-friendly API.
-Currently, we have implementations of Behavioral Cloning, `DAgger <https://arxiv.org/pdf/1011.0686.pdf>`_ 
+Currently, we have implementations of Behavioral Cloning, `DAgger <https://arxiv.org/pdf/1011.0686.pdf>`_
 (with synthetic examples), density-based reward modeling, `Maximum Causal Entropy Inverse Reinforcement Learning <https://www.cs.cmu.edu/~bziebart/publications/maximum-causal-entropy.pdf>`_,
-`Adversarial Inverse Reinforcement Learning <https://arxiv.org/abs/1710.11248>`_, 
-`Generative Adversarial Imitation Learning <https://arxiv.org/abs/1606.03476>`_, and 
+`Adversarial Inverse Reinforcement Learning <https://arxiv.org/abs/1710.11248>`_,
+`Generative Adversarial Imitation Learning <https://arxiv.org/abs/1606.03476>`_, and
 `Deep RL from Human Preferences <https://arxiv.org/abs/1706.03741>`_.
 
 You can find us on GitHub at http://github.com/HumanCompatibleAI/imitation.
@@ -27,6 +22,21 @@ Main Features
 - Scripts to train policies using SB3 and save rollouts from these policies as synthetic "expert" demonstrations.
 - Data structures and scripts for loading and storing expert demonstrations.
 
+Citing imitation
+~~~~~~~~~~~~~~~~
+
+If you use ``imitation`` in your research project, please cite our paper to help us track our impact and enable readers to more easily replicate your results. You may use the following BibTeX::
+
+    @misc{gleave2022imitation,
+      author = {Gleave, Adam and Taufeeque, Mohammad and Rocamonde, Juan and Jenner, Erik and Wang, Steven H. and Toyer, Sam and Ernestus, Maximilian and Belrose, Nora and Emmons, Scott and Russell, Stuart},
+      title = {imitation: Clean Imitation Learning Implementations},
+      year = {2022},
+      howPublished = {arXiv:2211.11972v1 [cs.LG]},
+      archivePrefix = {arXiv},
+      eprint = {2211.11972},
+      primaryClass = {cs.LG},
+      url = {https://arxiv.org/abs/2211.11972},
+    }
 
 .. toctree::
    :maxdepth: 2

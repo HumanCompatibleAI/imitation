@@ -1,3 +1,5 @@
+.. _density docs:
+
 =============================
 Density-based reward modeling
 =============================
@@ -8,6 +10,7 @@ Example
 Detailed example notebook: :doc:`../tutorials/7_train_density`
 
 .. testcode::
+    :skipif: skip_doctests
 
     import pprint
     import numpy as np

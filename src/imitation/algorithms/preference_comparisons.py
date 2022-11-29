@@ -21,6 +21,7 @@ from typing import (
     Tuple,
     Union,
     cast,
+    overload,
 )
 
 import numpy as np
@@ -74,7 +75,7 @@ class TrajectoryGenerator(abc.ABC):
             be the environment rewards, not ones from a reward model).
         """  # noqa: DAR202
 
-    def train(self, steps: int, **kwargs):
+    def train(self, steps: int, **kwargs: Any) -> None:
         """Train an agent if the trajectory generator uses one.
 
         By default, this method does nothing and doesn't need
@@ -91,7 +92,7 @@ class TrajectoryGenerator(abc.ABC):
         return self._logger
 
     @logger.setter
-    def logger(self, value: imit_logger.HierarchicalLogger):
+    def logger(self, value: imit_logger.HierarchicalLogger) -> None:
         self._logger = value
 
 
@@ -118,7 +119,8 @@ class TrajectoryDataset(TrajectoryGenerator):
     def sample(self, steps: int) -> Sequence[TrajectoryWithRew]:
         # make a copy before shuffling
         trajectories = list(self._trajectories)
-        self.rng.shuffle(trajectories)
+        # NumPy's annotation here is overly-conservative, but this works at runtime
+        self.rng.shuffle(trajectories)  # type: ignore[arg-type]
         return _get_trajectories(trajectories, steps)
 
 
@@ -135,7 +137,7 @@ class AgentTrainer(TrajectoryGenerator):
         switch_prob: float = 0.5,
         random_prob: float = 0.5,
         custom_logger: Optional[imit_logger.HierarchicalLogger] = None,
-    ):
+    ) -> None:
         """Initialize the agent trainer.
 
         Args:
@@ -189,17 +191,13 @@ class AgentTrainer(TrajectoryGenerator):
         # of `venv` when interacting with `algorithm`.
         algo_venv = self.algorithm.get_env()
         assert algo_venv is not None
-        policy_callable = rollout._policy_to_callable(
-            self.algorithm,
-            algo_venv,
-            # By setting deterministic_policy to False, we ensure that the rollouts
-            # are collected from a deterministic policy only if self.algorithm is
-            # deterministic. If self.algorithm is stochastic, then policy_callable
-            # will also be stochastic.
-            deterministic_policy=False,
-        )
+        # This wrapper will be used to ensure that rollouts are collected from a mixture
+        # of `self.algorithm` and a policy that acts randomly. The samples from
+        # `self.algorithm` are themselves stochastic if `self.algorithm` is stochastic.
+        # Otherwise, they are deterministic, and action selection is only stochastic
+        # when sampling from the random policy.
         self.exploration_wrapper = exploration_wrapper.ExplorationWrapper(
-            policy_callable=policy_callable,
+            policy=self.algorithm,
             venv=algo_venv,
             random_prob=random_prob,
             switch_prob=switch_prob,
@@ -309,11 +307,11 @@ class AgentTrainer(TrajectoryGenerator):
         return trajectories
 
     @property
-    def logger(self):
+    def logger(self) -> imit_logger.HierarchicalLogger:
         return super().logger
 
     @logger.setter
-    def logger(self, value: imit_logger.HierarchicalLogger):
+    def logger(self, value: imit_logger.HierarchicalLogger) -> None:
         self._logger = value
         self.algorithm.set_logger(self.logger)
 
@@ -353,7 +351,7 @@ class PreferenceModel(nn.Module):
         noise_prob: float = 0.0,
         discount_factor: float = 1.0,
         threshold: float = 50,
-    ):
+    ) -> None:
         """Create Preference Prediction Model.
 
         Args:
@@ -487,7 +485,7 @@ class PreferenceModel(nn.Module):
         return rews
 
     def probability(self, rews1: th.Tensor, rews2: th.Tensor) -> th.Tensor:
-        """Computes the Boltzmann rational probability that the first trajectory is best.
+        """Computes the Boltzmann rational probability the first trajectory is best.
 
         Args:
             rews1: array/matrix of rewards for the first trajectory fragment.
@@ -511,7 +509,9 @@ class PreferenceModel(nn.Module):
         if self.discount_factor == 1:
             returns_diff = (rews2 - rews1).sum(axis=0)  # type: ignore[call-overload]
         else:
-            discounts = self.discount_factor ** th.arange(len(rews1))
+            device = rews1.device
+            assert device == rews2.device
+            discounts = self.discount_factor ** th.arange(len(rews1), device=device)
             if self.ensemble_model is not None:
                 discounts = discounts.reshape(-1, 1)
             returns_diff = (discounts * (rews2 - rews1)).sum(axis=0)
@@ -578,7 +578,7 @@ class RandomFragmenter(Fragmenter):
         rng: np.random.Generator,
         warning_threshold: int = 10,
         custom_logger: Optional[imit_logger.HierarchicalLogger] = None,
-    ):
+    ) -> None:
         """Initialize the fragmenter.
 
         Args:
@@ -641,7 +641,11 @@ class RandomFragmenter(Fragmenter):
 
         # we need two fragments for each comparison
         for _ in range(2 * num_pairs):
-            traj = self.rng.choice(trajectories, p=np.array(weights) / sum(weights))
+            # NumPy's annotation here is overly-conservative, but this works at runtime
+            traj = self.rng.choice(
+                trajectories,  # type: ignore[arg-type]
+                p=np.array(weights) / sum(weights),
+            )
             n = len(traj)
             start = self.rng.integers(0, n - fragment_length, endpoint=True)
             end = start + fragment_length
@@ -673,9 +677,9 @@ class ActiveSelectionFragmenter(Fragmenter):
         preference_model: PreferenceModel,
         base_fragmenter: Fragmenter,
         fragment_sample_factor: float,
-        uncertainty_on: str = "logits",
+        uncertainty_on: str = "logit",
         custom_logger: Optional[imit_logger.HierarchicalLogger] = None,
-    ):
+    ) -> None:
         """Initialize the active selection fragmenter.
 
         Args:
@@ -742,7 +746,7 @@ class ActiveSelectionFragmenter(Fragmenter):
         # return fragment pairs that have the highest uncertainty
         return [fragment_pairs[idx] for idx in fragment_idxs[:num_pairs]]
 
-    def variance_estimate(self, rews1, rews2) -> float:
+    def variance_estimate(self, rews1: th.Tensor, rews2: th.Tensor) -> float:
         """Gets the variance estimate from the rewards of a fragment pair.
 
         Args:
@@ -781,7 +785,7 @@ class PreferenceGatherer(abc.ABC):
         self,
         rng: Optional[np.random.Generator] = None,
         custom_logger: Optional[imit_logger.HierarchicalLogger] = None,
-    ):
+    ) -> None:
         """Initializes the preference gatherer.
 
         Args:
@@ -825,7 +829,7 @@ class SyntheticGatherer(PreferenceGatherer):
         rng: Optional[np.random.Generator] = None,
         threshold: float = 50,
         custom_logger: Optional[imit_logger.HierarchicalLogger] = None,
-    ):
+    ) -> None:
         """Initialize the synthetic preference gatherer.
 
         Args:
@@ -902,7 +906,7 @@ class SyntheticGatherer(PreferenceGatherer):
         return np.array(rews1, dtype=np.float32), np.array(rews2, dtype=np.float32)
 
 
-class PreferenceDataset(th.utils.data.Dataset):
+class PreferenceDataset(data_th.Dataset):
     """A PyTorch Dataset for preference comparisons.
 
     Each item is a tuple consisting of two trajectory fragments
@@ -913,7 +917,7 @@ class PreferenceDataset(th.utils.data.Dataset):
     method.
     """
 
-    def __init__(self, max_size: Optional[int] = None):
+    def __init__(self, max_size: Optional[int] = None) -> None:
         """Builds an empty PreferenceDataset.
 
         Args:
@@ -927,7 +931,11 @@ class PreferenceDataset(th.utils.data.Dataset):
         self.max_size = max_size
         self.preferences: np.ndarray = np.array([])
 
-    def push(self, fragments: Sequence[TrajectoryWithRewPair], preferences: np.ndarray):
+    def push(
+        self,
+        fragments: Sequence[TrajectoryWithRewPair],
+        preferences: np.ndarray,
+    ) -> None:
         """Add more samples to the dataset.
 
         Args:
@@ -960,8 +968,19 @@ class PreferenceDataset(th.utils.data.Dataset):
                 self.fragments2 = self.fragments2[extra:]
                 self.preferences = self.preferences[extra:]
 
-    def __getitem__(self, i) -> Tuple[TrajectoryWithRewPair, float]:
-        return (self.fragments1[i], self.fragments2[i]), self.preferences[i]
+    @overload
+    def __getitem__(self, key: int) -> Tuple[TrajectoryWithRewPair, float]:
+        pass
+
+    @overload
+    def __getitem__(
+        self,
+        key: slice,
+    ) -> Tuple[types.Pair[Sequence[TrajectoryWithRew]], Sequence[float]]:
+        pass
+
+    def __getitem__(self, key):
+        return (self.fragments1[key], self.fragments2[key]), self.preferences[key]
 
     def __len__(self) -> int:
         assert len(self.fragments1) == len(self.fragments2) == len(self.preferences)
@@ -1015,7 +1034,7 @@ class RewardLoss(nn.Module, abc.ABC):
         """
 
 
-def _trajectory_pair_includes_reward(fragment_pair: TrajectoryPair):
+def _trajectory_pair_includes_reward(fragment_pair: TrajectoryPair) -> bool:
     """Return true if and only if both fragments in the pair include rewards."""
     frag1, frag2 = fragment_pair
     return isinstance(frag1, TrajectoryWithRew) and isinstance(frag2, TrajectoryWithRew)
@@ -1024,7 +1043,7 @@ def _trajectory_pair_includes_reward(fragment_pair: TrajectoryPair):
 class CrossEntropyRewardLoss(RewardLoss):
     """Compute the cross entropy reward loss."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Create cross entropy reward loss."""
         super().__init__()
 
@@ -1083,7 +1102,7 @@ class RewardTrainer(abc.ABC):
         self,
         preference_model: PreferenceModel,
         custom_logger: Optional[imit_logger.HierarchicalLogger] = None,
-    ):
+    ) -> None:
         """Initialize the reward trainer.
 
         Args:
@@ -1094,11 +1113,11 @@ class RewardTrainer(abc.ABC):
         self._logger = custom_logger or imit_logger.configure()
 
     @property
-    def logger(self):
+    def logger(self) -> imit_logger.HierarchicalLogger:
         return self._logger
 
     @logger.setter
-    def logger(self, custom_logger):
+    def logger(self, custom_logger: imit_logger.HierarchicalLogger) -> None:
         self._logger = custom_logger
 
     def train(self, dataset: PreferenceDataset, epoch_multiplier: float = 1.0) -> None:
@@ -1128,11 +1147,12 @@ class BasicRewardTrainer(RewardTrainer):
         loss: RewardLoss,
         rng: np.random.Generator,
         batch_size: int = 32,
+        minibatch_size: Optional[int] = None,
         epochs: int = 1,
         lr: float = 1e-3,
         custom_logger: Optional[imit_logger.HierarchicalLogger] = None,
         regularizer_factory: Optional[regularizers.RegularizerFactory] = None,
-    ):
+    ) -> None:
         """Initialize the reward model trainer.
 
         Args:
@@ -1141,6 +1161,14 @@ class BasicRewardTrainer(RewardTrainer):
             rng: the random number generator to use for splitting the dataset into
                 training and validation.
             batch_size: number of fragment pairs per batch
+            minibatch_size: size of minibatch to calculate gradients over.
+                The gradients are accumulated until `batch_size` examples
+                are processed before making an optimization step. This
+                is useful in GPU training to reduce memory usage, since
+                fewer examples are loaded into memory at once,
+                facilitating training with larger batch sizes, but is
+                generally slower. Must be a factor of `batch_size`.
+                Optional, defaults to `batch_size`.
             epochs: number of epochs in each training iteration (can be adjusted
                 on the fly by specifying an `epoch_multiplier` in `self.train()`
                 if longer training is desired in specific cases).
@@ -1150,10 +1178,16 @@ class BasicRewardTrainer(RewardTrainer):
                 training, specify a regularizer factory here. The factory will be
                 used to construct a regularizer. See
                 ``imitation.regularization.RegularizerFactory`` for more details.
+
+        Raises:
+            ValueError: if the batch size is not a multiple of the minibatch size.
         """
         super().__init__(preference_model, custom_logger)
         self.loss = loss
         self.batch_size = batch_size
+        self.minibatch_size = minibatch_size or batch_size
+        if self.batch_size % self.minibatch_size != 0:
+            raise ValueError("Batch size must be a multiple of minibatch size.")
         self.epochs = epochs
         self.optim = th.optim.AdamW(self._preference_model.parameters(), lr=lr)
         self.rng = rng
@@ -1163,11 +1197,11 @@ class BasicRewardTrainer(RewardTrainer):
             else None
         )
 
-    def _make_data_loader(self, dataset: PreferenceDataset) -> data_th.DataLoader:
+    def _make_data_loader(self, dataset: data_th.Dataset) -> data_th.DataLoader:
         """Make a dataloader."""
         return data_th.DataLoader(
             dataset,
-            batch_size=self.batch_size,
+            batch_size=self.minibatch_size,
             shuffle=True,
             collate_fn=preference_collate_fn,
         )
@@ -1217,19 +1251,35 @@ class BasicRewardTrainer(RewardTrainer):
             for epoch_num in tqdm(range(epochs), desc="Training reward model"):
                 with self.logger.add_key_prefix(f"epoch-{epoch_num}"):
                     train_loss = 0.0
+                    accumulated_size = 0
+                    self.optim.zero_grad()
                     for fragment_pairs, preferences in dataloader:
-                        self.optim.zero_grad()
                         with self.logger.add_key_prefix("train"):
                             loss = self._training_inner_loop(
                                 fragment_pairs,
                                 preferences,
                             )
+
+                            # Renormalise the loss to be averaged over
+                            # the whole batch size instead of the
+                            # minibatch size. If there is an incomplete
+                            # batch, its gradients will be smaller,
+                            # which may be helpful for stability.
+                            loss *= len(fragment_pairs) / self.batch_size
+
                         train_loss += loss.item()
                         if self.regularizer:
                             self.regularizer.regularize_and_backward(loss)
                         else:
                             loss.backward()
-                        self.optim.step()
+
+                        accumulated_size += len(fragment_pairs)
+                        if accumulated_size >= self.batch_size:
+                            self.optim.step()
+                            self.optim.zero_grad()
+                            accumulated_size = 0
+                    if accumulated_size != 0:
+                        self.optim.step()  # if there remains an incomplete batch
 
                     if not self.requires_regularizer_update:
                         continue
@@ -1282,11 +1332,12 @@ class EnsembleTrainer(BasicRewardTrainer):
         loss: RewardLoss,
         rng: np.random.Generator,
         batch_size: int = 32,
+        minibatch_size: Optional[int] = None,
         epochs: int = 1,
         lr: float = 1e-3,
         custom_logger: Optional[imit_logger.HierarchicalLogger] = None,
         regularizer_factory: Optional[regularizers.RegularizerFactory] = None,
-    ):
+    ) -> None:
         """Initialize the reward model trainer.
 
         Args:
@@ -1294,6 +1345,14 @@ class EnsembleTrainer(BasicRewardTrainer):
             loss: the loss to use
             rng: random state for the internal RNG used in bagging
             batch_size: number of fragment pairs per batch
+            minibatch_size: size of minibatch to calculate gradients over.
+                The gradients are accumulated until `batch_size` examples
+                are processed before making an optimization step. This
+                is useful in GPU training to reduce memory usage, since
+                fewer examples are loaded into memory at once,
+                facilitating training with larger batch sizes, but is
+                generally slower. Must be a factor of `batch_size`.
+                Optional, defaults to `batch_size`.
             epochs: number of epochs in each training iteration (can be adjusted
                 on the fly by specifying an `epoch_multiplier` in `self.train()`
                 if longer training is desired in specific cases).
@@ -1314,6 +1373,7 @@ class EnsembleTrainer(BasicRewardTrainer):
             preference_model,
             loss=loss,
             batch_size=batch_size,
+            minibatch_size=minibatch_size,
             epochs=epochs,
             lr=lr,
             custom_logger=custom_logger,
@@ -1326,6 +1386,7 @@ class EnsembleTrainer(BasicRewardTrainer):
                 member_pref_model,
                 loss=loss,
                 batch_size=batch_size,
+                minibatch_size=minibatch_size,
                 epochs=epochs,
                 lr=lr,
                 custom_logger=self.logger,
@@ -1335,11 +1396,11 @@ class EnsembleTrainer(BasicRewardTrainer):
             self.member_trainers.append(reward_trainer)
 
     @property
-    def logger(self):
+    def logger(self) -> imit_logger.HierarchicalLogger:
         return super().logger
 
     @logger.setter
-    def logger(self, custom_logger):
+    def logger(self, custom_logger: imit_logger.HierarchicalLogger) -> None:
         self._logger = custom_logger
         for member_trainer in self.member_trainers:
             member_trainer.logger = custom_logger
@@ -1438,7 +1499,7 @@ class PreferenceComparisons(base.BaseImitationAlgorithm):
         allow_variable_horizon: bool = False,
         rng: Optional[np.random.Generator] = None,
         query_schedule: Union[str, type_aliases.Schedule] = "hyperbolic",
-    ):
+    ) -> None:
         """Initialize the preference comparison trainer.
 
         The loggers of all subcomponents are overridden with the logger used

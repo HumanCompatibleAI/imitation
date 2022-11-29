@@ -1,3 +1,4 @@
+.. _Ways To Contribute:
 
 Ways to contribute
 ==================
@@ -91,13 +92,13 @@ Once you're ready to start working on your pull request, please make sure to fol
 * Your PR includes unit tests for any new features.
 * Your PR includes type annotations, except when it would make the code significantly more complex.
 * You have run the unit tests and there are no errors. We use ``pytest`` for unit testing: run ``pytest tests/`` to run the test suite.
-* You should run ``ci/code_checks.sh`` to run linting and static type checks. We use ``pytype`` for static type analysis.
+* You should run ``pre-commit run`` to run linting and static type checks. We use ``pytype`` for static type analysis.
 
 You may wish to configure this as a Git commit hook:
 
 .. code-block:: bash
 
-   ln -s ../../ci/code_checks.sh .git/hooks/pre-commit
+   pre-commit install
 
 These checks are run on CircleCI and are required to pass before merging.
 Additionally, we track test coverage by CodeCov and require that code coverage

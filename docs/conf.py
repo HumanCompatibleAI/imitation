@@ -56,6 +56,13 @@ nb_execution_timeout = 120
 nb_merge_streams = True
 nb_output_stderr = "remove"
 
+# skip_doctests is checked in our :skipif: directives in doctest examples
+doctest_global_setup = """
+import os
+
+skip_doctests = os.getenv("SKIP_DOCTEST")
+"""
+
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ["_templates"]
 

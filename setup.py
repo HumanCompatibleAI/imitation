@@ -51,7 +51,7 @@ TESTS_REQUIRE = (
         # TODO: upgrade jupyter-client once
         #  https://github.com/jupyter/jupyter_client/issues/637 is fixed
         "jupyter-client~=6.1.12",
-        "mypy~=0.981",
+        "mypy~=0.990",
         "pandas~=1.4.3",
         "pytest~=7.1.2",
         "pytest-cov~=3.0.0",
@@ -60,6 +60,7 @@ TESTS_REQUIRE = (
         "scipy~=1.9.0",
         "wandb==0.12.21",
         "setuptools_scm~=7.0.5",
+        "pre-commit>=2.20.0",
     ]
     + PARALLEL_REQUIRE
     + IMAGE_ENV_REQUIRE
@@ -195,12 +196,16 @@ setup(
     #   for our users.
     install_requires=[
         "gym[classic_control]" + GYM_VERSION_SPECIFIER,
+        # TODO(adam): remove pyglet dependency once Gym upgraded to >0.21
+        # Workaround for https://github.com/openai/gym/issues/2986
+        # Discussed in https://github.com/HumanCompatibleAI/imitation/pull/603
+        "pyglet==1.5.27",
         "matplotlib",
         "numpy>=1.15",
         "torch>=1.4.0",
         "tqdm",
         "scikit-learn>=0.21.2",
-        "seals==0.1.4",
+        "seals>=0.1.5",
         STABLE_BASELINES3,
         # TODO(adam) switch to upstream release if they make it
         #  See https://github.com/IDSIA/sacred/issues/879

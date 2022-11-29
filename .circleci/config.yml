@@ -2,7 +2,7 @@ version: 2.1
 
 orbs:
   codecov: codecov/codecov@3.2.3
-  shellcheck: circleci/shellcheck@2.2.4
+  shellcheck: circleci/shellcheck@3.1.2
   win: circleci/windows@4.1
 
 defaults: &defaults
@@ -37,13 +37,6 @@ executors:
       # If you change these, also change ci/code_checks.sh
       SRC_FILES: src/ tests/ experiments/ examples/ docs/conf.py setup.py ci/
       NUM_CPUS: 2
-      EXCLUDE_MYPY: | 
-        (?x)(
-          src/imitation/algorithms/preference_comparisons.py$
-          | src/imitation/rewards/serialize.py$
-          | src/imitation/algorithms/mce_irl.py$
-          | tests/algorithms/test_bc.py$
-        )
 
 commands:
   dependencies-linux:
@@ -220,15 +213,11 @@ jobs:
     steps:
       - dependencies-linux
 
-      - run:
-          name: install shellcheck
-          command: |
-            curl -Lo /tmp/shellcheck.tar.xz https://github.com/koalaman/shellcheck/releases/download/stable/shellcheck-stable.linux.x86_64.tar.xz
-            tar -x shellcheck-stable/shellcheck -f /tmp/shellcheck.tar.xz
-            mv shellcheck-stable/shellcheck /usr/local/bin/shellcheck
-            rm -rf shellcheck-stable
-            chmod a+x /usr/local/bin/shellcheck
-
+      # We use the shellcheck orb for this, not pre-commit, as the pre-commit
+      # hook for shellcheck needs Docker. Running Docker-in-Docker on CircleCI
+      # is technically possible (https://circleci.com/docs/building-docker-images/)
+      # but more complex than just using the orb.
+      - shellcheck/install
       - shellcheck/check:
           dir: .
           # Orb invokes shellcheck once per file. shellcheck complains if file
@@ -238,7 +227,7 @@ jobs:
 
       - run:
           name: ipynb-check
-          command: ./ci/clean_notebooks.py --check ./docs/tutorials
+          command: pre-commit run --all check-notebooks
 
       - run:
           name: typeignore-check
@@ -246,15 +235,33 @@ jobs:
 
       - run:
           name: flake8
-          command: flake8 --version && flake8 -j "${NUM_CPUS}" ${SRC_FILES}
+          command: |
+            flake8 --version
+            pre-commit run --all flake8
 
       - run:
           name: black
-          command: black --version && black --check --diff ${SRC_FILES}
+          command: |
+            black --version
+            pre-commit run --all black
+            pre-commit run --all black-jupyter
+
+      - run:
+          name: isort
+          command: pre-commit run --all isort
 
       - run:
           name: codespell
-          command: codespell -I .codespell.skip --skip='*.pyc,tests/testdata/*,*.ipynb,*.csv' ${SRC_FILES}
+          command: pre-commit run --all codespell
+
+      - run:
+          name: lint-misc
+          command: |
+            pre-commit run --all check-ast
+            pre-commit run --all trailing-whitespace
+            pre-commit run --all end-of-file-fixer
+            pre-commit run --all check-toml
+            pre-commit run --all check-added-large-files
 
   doctest:
     executor: static-analysis-medium
@@ -276,11 +283,11 @@ jobs:
 
       - run:
           name: pytype
-          command: pytype --version && pytype -j "${NUM_CPUS}" ${SRC_FILES[@]}
+          command: pytype --version && pre-commit run --all pytype
 
       - run:
           name: mypy
-          command: mypy --version && mypy ${SRC_FILES[@]} --exclude "${EXCLUDE_MYPY}" --follow-imports=silent --show-error-codes
+          command: mypy --version && pre-commit run --all mypy
 
   unit-test-linux:
     executor: unit-test-linux
