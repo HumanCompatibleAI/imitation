@@ -370,30 +370,25 @@ class RunningMeanAndVar:
         device: Optional[str] = None,
     ) -> None:
         """Initialize blank mean, variance, count."""
-        self.mean = th.zeros(shape, device=device)
+        self.running_mean = th.zeros(shape, device=device)
         self.M2 = th.zeros(shape, device=device)
         self.count = 0
 
-    def update(self, x: th.Tensor) -> None:
+    def update(self, batch: th.Tensor) -> None:
         """Update the mean and variance with a batch `x`."""
         with th.no_grad():
-            batch_mean = th.mean(x, dim=0)
-            batch_var = th.var(x, dim=0, unbiased=False)
-            batch_count = x.shape[0]
-            batch_M2 = batch_var * batch_count
-            if self.count == 0:
-                self.count = batch_count
-                self.mean = batch_mean
-                self.M2 = batch_M2
-                return
+            batch_mean = th.mean(batch, dim=0)
+            batch_var = th.var(batch, dim=0, unbiased=False)
+            batch_count = batch.shape[0]
 
-            delta = batch_mean - self.mean
-            total_count = self.count + batch_count
-            self.mean += delta * batch_count / total_count
+            delta = batch_mean - self.running_mean
+            tot_count = self.count + batch_count
+            self.running_mean += delta * batch_count / tot_count
 
-            self.M2 += batch_M2 + delta * delta * self.count * batch_count / total_count
+            self.M2 += batch_var * batch_count
+            self.M2 += th.square(delta) * self.count * batch_count / tot_count
 
-            self.count = total_count
+            self.count += batch_count
 
     @property
     def var(self) -> th.Tensor:

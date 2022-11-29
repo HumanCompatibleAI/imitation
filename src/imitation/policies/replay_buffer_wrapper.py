@@ -171,7 +171,7 @@ class ReplayBufferEntropyRewardWrapper(ReplayBufferRewardWrapper):
 
         # Normalize to have mean of 0 and standard deviation of 1
         self.entropy_stats.update(entropies)
-        entropies -= self.entropy_stats.mean
+        entropies -= self.entropy_stats.running_mean
         entropies /= self.entropy_stats.std
 
         entropies_th = (

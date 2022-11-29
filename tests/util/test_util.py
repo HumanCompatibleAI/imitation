@@ -127,7 +127,7 @@ def test_RunningMeanAndVar():
     first_half = data[:10]
     running_stats.update(first_half)
     np.testing.assert_allclose(
-        running_stats.mean,
+        running_stats.running_mean,
         first_half.mean(dim=0),
         atol=1e-5,
         rtol=1e-4,
@@ -141,7 +141,7 @@ def test_RunningMeanAndVar():
 
     running_stats.update(data[10:])
     np.testing.assert_allclose(
-        running_stats.mean,
+        running_stats.running_mean,
         data.mean(dim=0),
         atol=1e-5,
         rtol=1e-4,
