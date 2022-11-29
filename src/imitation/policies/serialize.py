@@ -239,5 +239,5 @@ def load_rollouts_from_huggingface(
 ) -> str:
     model_name = hfsb3.ModelName(algo_name, hfsb3.EnvironmentName(env_name))
     repo_id = hfsb3.ModelRepoId(organization, model_name)
-    filename = hfsb3.load_from_hub(repo_id, "rollouts.pkl")
+    filename = hfsb3.load_from_hub(repo_id, "rollouts.npz")
     return filename
