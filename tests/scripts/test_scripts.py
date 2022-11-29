@@ -68,6 +68,10 @@ CARTPOLE_TEST_POLICY_PATH = CARTPOLE_TEST_DATA_PATH / "policies/final"
 PENDULUM_TEST_DATA_PATH = TEST_DATA_PATH / "expert_models/pendulum_0/"
 PENDULUM_TEST_ROLLOUT_PATH = PENDULUM_TEST_DATA_PATH / "rollouts/final.npz"
 
+ASTEROIDS_TEST_DATA_PATH = TEST_DATA_PATH / "expert_models/asteroids_short_episodes_0/"
+ASTEROIDS_TEST_ROLLOUT_PATH = ASTEROIDS_TEST_DATA_PATH / "rollouts/final.pkl"
+ASTEROIDS_TEST_POLICY_PATH = ASTEROIDS_TEST_DATA_PATH / "policies/final"
+
 OLD_FMT_ROLLOUT_TEST_DATA_PATH = TEST_DATA_PATH / "old_format_rollout.pkl"
 
 
@@ -110,6 +114,8 @@ ALGO_FAST_CONFIGS = {
 }
 
 RL_SAC_NAMED_CONFIGS = ["rl.sac", "train.sac"]
+
+ASTEROIDS_CNN_POLICY_CONFIG = ["asteroids_short_episodes", "train.cnn"]
 
 
 @pytest.fixture(
@@ -254,6 +260,20 @@ def test_train_preference_comparisons_reward_named_config(tmpdir, named_configs)
     assert isinstance(run.result, dict)
 
 
+def test_train_preference_comparisons_image_env(tmpdir):
+    config_updates = dict(common=dict(log_root=tmpdir))
+    run = train_preference_comparisons.train_preference_comparisons_ex.run(
+        named_configs=(
+            ["reward.cnn_reward"]
+            + ASTEROIDS_CNN_POLICY_CONFIG
+            + ALGO_FAST_CONFIGS["preference_comparison"]
+        ),
+        config_updates=config_updates,
+    )
+    assert run.status == "COMPLETED"
+    assert isinstance(run.result, dict)
+
+
 def test_train_dagger_main(tmpdir):
     with pytest.warns(None) as record:
         run = train_imitation.train_imitation_ex.run(
@@ -299,6 +319,21 @@ def test_train_dagger_warmstart(tmpdir):
     )
     assert run_warmstart.status == "COMPLETED"
     assert isinstance(run_warmstart.result, dict)
+
+
+def test_train_dagger_with_image_env(tmpdir):
+    run = train_imitation.train_imitation_ex.run(
+        command_name="dagger",
+        named_configs=(
+            ["asteroids_short_episodes", "cnn"] + ALGO_FAST_CONFIGS["imitation"]
+        ),
+        config_updates=dict(
+            common=dict(log_root=tmpdir),
+            demonstrations=dict(rollout_path=ASTEROIDS_TEST_ROLLOUT_PATH),
+        ),
+    )
+    assert run.status == "COMPLETED"
+    assert isinstance(run.result, dict)
 
 
 def test_train_bc_main_with_none_demonstrations_raises_value_error(tmpdir):
@@ -423,6 +458,16 @@ def test_train_rl_sac(tmpdir):
         ),
     )
     assert run.config["rl"]["rl_cls"] is stable_baselines3.SAC
+    assert run.status == "COMPLETED"
+    assert isinstance(run.result, dict)
+
+
+def test_train_rl_image_env(tmpdir):
+    config_updates = dict(common=dict(log_root=tmpdir))
+    run = train_rl.train_rl_ex.run(
+        named_configs=ASTEROIDS_CNN_POLICY_CONFIG + ALGO_FAST_CONFIGS["rl"],
+        config_updates=config_updates,
+    )
     assert run.status == "COMPLETED"
     assert isinstance(run.result, dict)
 
@@ -599,6 +644,27 @@ def test_train_adversarial_algorithm_value_error(tmpdir):
                 {"demonstrations.n_expert_demos": n_traj},
             ),
         )
+
+
+@pytest.mark.parametrize("command", ("airl", "gail"))
+def test_train_adversarial_image_env(tmpdir, command):
+    """Smoke test for imitation.scripts.train_adversarial on atari."""
+    named_configs = (
+        ASTEROIDS_CNN_POLICY_CONFIG
+        + ALGO_FAST_CONFIGS["adversarial"]
+        + ["reward.cnn_reward"]
+    )
+    config_updates = {
+        "common": dict(log_root=tmpdir),
+        "demonstrations": dict(rollout_path=ASTEROIDS_TEST_ROLLOUT_PATH),
+    }
+    run = train_adversarial.train_adversarial_ex.run(
+        command_name=command,
+        named_configs=named_configs,
+        config_updates=config_updates,
+    )
+    assert run.status == "COMPLETED"
+    _check_train_ex_result(run.result)
 
 
 def test_transfer_learning(tmpdir: str) -> None:

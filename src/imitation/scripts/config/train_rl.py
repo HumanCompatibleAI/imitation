@@ -1,6 +1,9 @@
 """Configuration settings for train_rl, training a policy with RL."""
 
 import sacred
+from gym.wrappers import TimeLimit
+from seals.util import AutoResetWrapper
+from stable_baselines3.common.atari_wrappers import AtariWrapper
 
 from imitation.scripts.common import common, rl, train
 
@@ -50,6 +53,30 @@ def default_end_cond(rollout_save_n_timesteps, rollout_save_n_episodes):
 @train_rl_ex.named_config
 def acrobot():
     common = dict(env_name="Acrobot-v1")
+
+
+@train_rl_ex.named_config
+def asteroids():
+    common = dict(
+        env_name="AsteroidsNoFrameskip-v4",
+        post_wrappers=[
+            lambda env, _: AutoResetWrapper(env),
+            lambda env, _: AtariWrapper(env, terminal_on_life_loss=False),
+            lambda env, _: TimeLimit(env, max_episode_steps=100_000),
+        ],
+    )
+
+
+@train_rl_ex.named_config
+def asteroids_short_episodes():
+    common = dict(
+        env_name="AsteroidsNoFrameskip-v4",
+        post_wrappers=[
+            lambda env, _: AutoResetWrapper(env),
+            lambda env, _: AtariWrapper(env, terminal_on_life_loss=False),
+            lambda env, _: TimeLimit(env, max_episode_steps=100),
+        ],
+    )
 
 
 @train_rl_ex.named_config
@@ -130,6 +157,89 @@ def seals_swimmer():
 @train_rl_ex.named_config
 def seals_walker():
     common = dict(env_name="seals/Walker2d-v0")
+
+
+# Procgen configs
+
+
+@train_rl_ex.named_config
+def coinrun():
+    common = dict(env_name="procgen:procgen-coinrun-v0")
+
+
+@train_rl_ex.named_config
+def maze():
+    common = dict(env_name="procgen:procgen-maze-v0")
+
+
+@train_rl_ex.named_config
+def bigfish():
+    common = dict(env_name="procgen:procgen-bigfish-v0")
+
+
+@train_rl_ex.named_config
+def bossfight():
+    common = dict(env_name="procgen:procgen-bossfight-v0")
+
+
+@train_rl_ex.named_config
+def caveflyer():
+    common = dict(env_name="procgen:procgen-caveflyer-v0")
+
+
+@train_rl_ex.named_config
+def chaser():
+    common = dict(env_name="procgen:procgen-chaser-v0")
+
+
+@train_rl_ex.named_config
+def climber():
+    common = dict(env_name="procgen:procgen-climber-v0")
+
+
+@train_rl_ex.named_config
+def dodgeball():
+    common = dict(env_name="procgen:procgen-dodgeball-v0")
+
+
+@train_rl_ex.named_config
+def fruitbot():
+    common = dict(env_name="procgen:procgen-fruitbot-v0")
+
+
+@train_rl_ex.named_config
+def heist():
+    common = dict(env_name="procgen:procgen-heist-v0")
+
+
+@train_rl_ex.named_config
+def jumper():
+    common = dict(env_name="procgen:procgen-jumper-v0")
+
+
+@train_rl_ex.named_config
+def leaper():
+    common = dict(env_name="procgen:procgen-leaper-v0")
+
+
+@train_rl_ex.named_config
+def miner():
+    common = dict(env_name="procgen:procgen-miner-v0")
+
+
+@train_rl_ex.named_config
+def ninja():
+    common = dict(env_name="procgen:procgen-ninja-v0")
+
+
+@train_rl_ex.named_config
+def plunder():
+    common = dict(env_name="procgen:procgen-plunder-v0")
+
+
+@train_rl_ex.named_config
+def starpilot():
+    common = dict(env_name="procgen:procgen-starpilot-v0")
 
 
 # Debug configs

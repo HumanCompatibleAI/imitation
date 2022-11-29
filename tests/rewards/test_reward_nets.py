@@ -214,10 +214,10 @@ def test_cnn_transpose_input_validation(dimensions: int):
     tens = th.zeros(shape)
 
     if dimensions == 4:  # should succeed
-        reward_nets.cnn_transpose(tens)
+        networks.cnn_transpose(tens)
     else:  # should fail
         with pytest.raises(ValueError, match="Invalid input: "):
-            reward_nets.cnn_transpose(tens)
+            networks.cnn_transpose(tens)
 
 
 def _sample(space, n):

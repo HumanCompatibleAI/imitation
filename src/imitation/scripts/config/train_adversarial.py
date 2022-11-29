@@ -1,6 +1,9 @@
 """Configuration for imitation.scripts.train_adversarial."""
 
 import sacred
+from gym.wrappers import TimeLimit
+from seals.util import AutoResetWrapper
+from stable_baselines3.common.atari_wrappers import AtariWrapper
 
 from imitation.rewards import reward_nets
 from imitation.scripts.common import common, demonstrations, expert, reward, rl, train
@@ -170,6 +173,35 @@ def seals_swimmer():
 def seals_walker():
     locals().update(**MUJOCO_SHARED_LOCALS)
     common = dict(env_name="seals/Walker2d-v0")
+
+
+# Atari configs
+
+
+@train_adversarial_ex.named_config
+def asteroids():
+    common = dict(
+        env_name="AsteroidsNoFrameskip-v4",
+        post_wrappers=[
+            lambda env, _: AutoResetWrapper(env),
+            lambda env, _: AtariWrapper(env, terminal_on_life_loss=False),
+            lambda env, _: TimeLimit(env, max_episode_steps=100_000),
+        ],
+    )
+    algorithm_kwargs = dict(transpose_obs=True)
+
+
+@train_adversarial_ex.named_config
+def asteroids_short_episodes():
+    common = dict(
+        env_name="AsteroidsNoFrameskip-v4",
+        post_wrappers=[
+            lambda env, _: AutoResetWrapper(env),
+            lambda env, _: AtariWrapper(env, terminal_on_life_loss=False),
+            lambda env, _: TimeLimit(env, max_episode_steps=100),
+        ],
+    )
+    algorithm_kwargs = dict(transpose_obs=True)
 
 
 # Debug configs

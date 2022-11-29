@@ -1,6 +1,9 @@
 """Configuration for imitation.scripts.train_preference_comparisons."""
 
 import sacred
+from gym.wrappers import TimeLimit
+from seals.util import AutoResetWrapper
+from stable_baselines3.common.atari_wrappers import AtariWrapper
 
 from imitation.algorithms import preference_comparisons
 from imitation.scripts.common import common, reward, rl, train
@@ -113,6 +116,30 @@ def mountain_car():
 @train_preference_comparisons_ex.named_config
 def seals_mountain_car():
     common = dict(env_name="seals/MountainCar-v0")
+
+
+@train_preference_comparisons_ex.named_config
+def asteroids():
+    common = dict(
+        env_name="AsteroidsNoFrameskip-v4",
+        post_wrappers=[
+            lambda env, _: AutoResetWrapper(env),
+            lambda env, _: AtariWrapper(env, terminal_on_life_loss=False),
+            lambda env, _: TimeLimit(env, max_episode_steps=100_000),
+        ],
+    )
+
+
+@train_preference_comparisons_ex.named_config
+def asteroids_short_episodes():
+    common = dict(
+        env_name="AsteroidsNoFrameskip-v4",
+        post_wrappers=[
+            lambda env, _: AutoResetWrapper(env),
+            lambda env, _: AtariWrapper(env, terminal_on_life_loss=False),
+            lambda env, _: TimeLimit(env, max_episode_steps=100),
+        ],
+    )
 
 
 @train_preference_comparisons_ex.named_config

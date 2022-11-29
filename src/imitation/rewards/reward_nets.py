@@ -568,10 +568,12 @@ class CnnRewardNet(RewardNet):
         """
         inputs = []
         if self.use_state:
-            state_ = cnn_transpose(state) if self.hwc_format else state
+            state_ = networks.cnn_transpose(state) if self.hwc_format else state
             inputs.append(state_)
         if self.use_next_state:
-            next_state_ = cnn_transpose(next_state) if self.hwc_format else next_state
+            next_state_ = (
+                networks.cnn_transpose(next_state) if self.hwc_format else next_state
+            )
             inputs.append(next_state_)
 
         inputs_concat = th.cat(inputs, dim=1)
@@ -595,16 +597,6 @@ class CnnRewardNet(RewardNet):
         else:
             rewards = outputs
         return rewards
-
-
-def cnn_transpose(tens: th.Tensor) -> th.Tensor:
-    """Transpose a (b,h,w,c)-formatted tensor to (b,c,h,w) format."""
-    if len(tens.shape) == 4:
-        return th.permute(tens, (0, 3, 1, 2))
-    else:
-        raise ValueError(
-            f"Invalid input: len(tens.shape) = {len(tens.shape)} != 4.",
-        )
 
 
 class NormalizedRewardNet(PredictProcessedWrapper):
@@ -872,7 +864,7 @@ class BasicPotentialCNN(nn.Module):
         )
 
     def forward(self, state: th.Tensor) -> th.Tensor:
-        state_ = cnn_transpose(state) if self.hwc_format else state
+        state_ = networks.cnn_transpose(state) if self.hwc_format else state
         return self._potential_net(state_)
 
 

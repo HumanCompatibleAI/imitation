@@ -71,6 +71,7 @@ def train_imitation(
     dagger: Mapping[str, Any],
     use_dagger: bool,
     agent_path: Optional[str],
+    transpose_obs: bool = False,
 ) -> Mapping[str, Mapping[str, float]]:
     """Runs DAgger (if `use_dagger`) or BC (otherwise) training.
 
@@ -82,6 +83,9 @@ def train_imitation(
         agent_path: Path to serialized policy. If provided, then load the
             policy from this path. Otherwise, make a new policy.
             Specify only if policy_cls and policy_kwargs are not specified.
+        transpose_obs: Whether observations will need to be transposed from (h,w,c)
+            format to be fed into the policy. Should usually be True for image
+            environments, and usually be False otherwise.
 
     Returns:
         Statistics for rollouts from the trained policy and demonstration data.
@@ -96,9 +100,15 @@ def train_imitation(
         if not use_dagger or dagger["use_offline_rollouts"]:
             expert_trajs = demonstrations.get_expert_trajectories()
 
+        if transpose_obs:
+            # this modification only affects the observation space the BC trainer
+            # expects to deal with
+            bc_trainer_venv = vec_env.vec_transpose.VecTransposeImage(venv)
+        else:
+            bc_trainer_venv = venv
         bc_trainer = bc_algorithm.BC(
-            observation_space=venv.observation_space,
-            action_space=venv.action_space,
+            observation_space=bc_trainer_venv.observation_space,
+            action_space=bc_trainer_venv.action_space,
             policy=imit_policy,
             demonstrations=expert_trajs,
             custom_logger=custom_logger,
