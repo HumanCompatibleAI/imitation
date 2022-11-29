@@ -741,7 +741,7 @@ def test_train_rl_cnn_policy(tmpdir: str, rng):
     run = train_rl.train_rl_ex.run(
         named_configs=["train.cnn_policy"] + ALGO_FAST_CONFIGS["rl"],
         config_updates=dict(
-            environment_name=dict(gym_id="AsteroidsNoFrameskip-v4"),
+            environment=dict(gym_id="AsteroidsNoFrameskip-v4"),
             logging=dict(log_dir=log_dir_data),
             reward_path=tmppath,
         ),

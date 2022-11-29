@@ -6,18 +6,10 @@ import numpy as np
 import sacred
 from stable_baselines3.common import vec_env
 
-import imitation.scripts.ingredients.logging as logging_ingredient
 from imitation.data import wrappers
-from imitation.scripts.ingredients.environment_name import environment_name_ingredient
 from imitation.util import util
 
-environment_ingredient = sacred.Ingredient(
-    "environment",
-    ingredients=[
-        environment_name_ingredient,
-        logging_ingredient.logging_ingredient,
-    ],
-)
+environment_ingredient = sacred.Ingredient("environment")
 
 
 @environment_ingredient.config
@@ -26,6 +18,7 @@ def config():
     parallel = True  # Use SubprocVecEnv rather than DummyVecEnv
     max_episode_steps = None  # Set to positive int to limit episode horizons
     env_make_kwargs = {}  # The kwargs passed to `spec.make`.
+    gym_id = "seals/CartPole-v0"  # The environment to train on
 
     locals()  # quieten flake8
 
@@ -33,20 +26,19 @@ def config():
 @contextlib.contextmanager
 @environment_ingredient.capture
 def make_venv(
-    _rnd: np.random.Generator,
-    environment_name: dict,
-    logging: dict,
+    gym_id: str,
     num_vec: int,
     parallel: bool,
     max_episode_steps: int,
     env_make_kwargs: Mapping[str, Any],
+    _run: sacred.run.Run,
+    _rnd: np.random.Generator,
     **kwargs,
 ) -> Generator[vec_env.VecEnv, None, None]:
     """Builds the vector environment.
 
     Args:
-        environment_name: The environment name ingredient to use.
-        logging: The logging ingredient to use for the log directory.
+        gym_id: The id of the environment to create.
         num_vec: Number of `gym.Env` instances to combine into a vector environment.
         parallel: Whether to use "true" parallelism. If True, then use `SubProcVecEnv`.
             Otherwise, use `DummyVecEnv` which steps through environments serially.
@@ -62,12 +54,12 @@ def make_venv(
     # Note: we create the venv outside the try -- finally block for the case that env
     #     creation fails.
     venv = util.make_vec_env(
-        environment_name["gym_id"],
+        gym_id,
         rng=_rnd,
         n_envs=num_vec,
         parallel=parallel,
         max_episode_steps=max_episode_steps,
-        log_dir=logging["log_dir"],
+        log_dir=_run.config["logging"]["log_dir"] if "logging" in _run.config else None,
         env_make_kwargs=env_make_kwargs,
         **kwargs,
     )
@@ -80,7 +72,7 @@ def make_venv(
 @contextlib.contextmanager
 @environment_ingredient.capture
 def make_rollout_venv(
-    environment_name: dict,
+    gym_id: str,
     num_vec: int,
     parallel: bool,
     max_episode_steps: int,
@@ -92,7 +84,7 @@ def make_rollout_venv(
     This environment does no logging, and it is wrapped in a `RolloutInfoWrapper`.
 
     Args:
-        environment_name: The environment name ingredient to use.
+        gym_id: The id of the environment to create.
         num_vec: Number of `gym.Env` instances to combine into a vector environment.
         parallel: Whether to use "true" parallelism. If True, then use `SubProcVecEnv`.
             Otherwise, use `DummyVecEnv` which steps through environments serially.
@@ -108,7 +100,7 @@ def make_rollout_venv(
     # Note: we create the venv outside the try -- finally block for the case that env
     #     creation fails.
     venv = util.make_vec_env(
-        environment_name["gym_id"],
+        gym_id,
         rng=_rnd,
         n_envs=num_vec,
         parallel=parallel,

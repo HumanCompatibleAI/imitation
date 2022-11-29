@@ -2,13 +2,11 @@
 import sacred
 
 from imitation.policies import serialize
-from imitation.scripts.ingredients import environment_name
+from imitation.scripts.ingredients import environment
 
 expert_ingredient = sacred.Ingredient(
     "expert",
-    ingredients=[
-        environment_name.environment_name_ingredient,
-    ],
+    ingredients=[environment.environment_ingredient],
 )
 
 
@@ -33,7 +31,7 @@ def config_hook(config, command_name, logger):
         # huggingface policy loader since there is no way to get the name from the venv.
         # The name is needed to deduce the repo id and load the correct huggingface
         # model.
-        e_config["loader_kwargs"]["env_name"] = config["environment_name"]["gym_id"]
+        e_config["loader_kwargs"]["env_name"] = config["environment"]["gym_id"]
 
     # Note: this only serves the purpose to indicated that you need to specify the
     #   path for local policies. It makes the config more explicit.

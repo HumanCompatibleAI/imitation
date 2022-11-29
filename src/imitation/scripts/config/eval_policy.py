@@ -48,83 +48,82 @@ def render():
 
 @eval_policy_ex.named_config
 def acrobot():
-    environment_name = dict(gym_id="Acrobot-v1")
+    environment = dict(gym_id="Acrobot-v1")
 
 
 @eval_policy_ex.named_config
 def ant():
-    environment_name = dict(gym_id="Ant-v2")
+    environment = dict(gym_id="Ant-v2")
 
 
 @eval_policy_ex.named_config
 def cartpole():
-    environment_name = dict(gym_id="CartPole-v1")
+    environment = dict(gym_id="CartPole-v1")
 
 
 @eval_policy_ex.named_config
 def seals_cartpole():
-    environment_name = dict(gym_id="seals/CartPole-v0")
+    environment = dict(gym_id="seals/CartPole-v0")
 
 
 @eval_policy_ex.named_config
 def half_cheetah():
-    environment_name = dict(gym_id="HalfCheetah-v2")
+    environment = dict(gym_id="HalfCheetah-v2")
 
 
 @eval_policy_ex.named_config
 def seals_half_cheetah():
-    environment_name = dict(gym_id="seals/HalfCheetah-v0")
+    environment = dict(gym_id="seals/HalfCheetah-v0")
 
 
 @eval_policy_ex.named_config
 def seals_hopper():
-    environment_name = dict(gym_id="seals/Hopper-v0")
+    environment = dict(gym_id="seals/Hopper-v0")
 
 
 @eval_policy_ex.named_config
 def seals_humanoid():
-    environment_name = dict(gym_id="seals/Humanoid-v0")
+    environment = dict(gym_id="seals/Humanoid-v0")
 
 
 @eval_policy_ex.named_config
 def mountain_car():
-    environment_name = dict(gym_id="MountainCar-v0")
+    environment = dict(gym_id="MountainCar-v0")
 
 
 @eval_policy_ex.named_config
 def seals_mountain_car():
-    environment_name = dict(gym_id="seals/MountainCar-v0")
+    environment = dict(gym_id="seals/MountainCar-v0")
 
 
 @eval_policy_ex.named_config
 def pendulum():
-    environment_name = dict(gym_id="Pendulum-v1")
+    environment = dict(gym_id="Pendulum-v1")
 
 
 @eval_policy_ex.named_config
 def reacher():
-    environment_name = dict(gym_id="Reacher-v2")
+    environment = dict(gym_id="Reacher-v2")
 
 
 @eval_policy_ex.named_config
 def seals_ant():
-    environment_name = dict(gym_id="seals/Ant-v0")
+    environment = dict(gym_id="seals/Ant-v0")
 
 
 @eval_policy_ex.named_config
 def seals_swimmer():
-    environment_name = dict(gym_id="seals/Swimmer-v0")
+    environment = dict(gym_id="seals/Swimmer-v0")
 
 
 @eval_policy_ex.named_config
 def seals_walker():
-    environment_name = dict(gym_id="seals/Walker2d-v0")
+    environment = dict(gym_id="seals/Walker2d-v0")
 
 
 @eval_policy_ex.named_config
 def fast():
-    environment_name = dict(gym_id="seals/CartPole-v0")
-    environment = dict(num_vec=1, parallel=False)
+    environment = dict(gym_id="seals/CartPole-v0", num_vec=1, parallel=False)
     render = True
     eval_n_timesteps = 1
     eval_n_episodes = None

@@ -8,7 +8,7 @@ import huggingface_sb3 as hfsb3
 import sacred
 
 from imitation.data import types
-from imitation.scripts.ingredients import environment_name, wb
+from imitation.scripts.ingredients import environment, wb
 from imitation.util import logger as imit_logger
 from imitation.util import sacred as sacred_util
 from imitation.util import util
@@ -17,7 +17,7 @@ logging_ingredient = sacred.Ingredient(
     "logging",
     ingredients=[
         wb.wandb_ingredient,
-        environment_name.environment_name_ingredient,
+        environment.environment_ingredient,
     ],
 )
 logger = logging.getLogger(__name__)
@@ -49,7 +49,7 @@ def hook(config, command_name: str, logger):
     if config["logging"]["log_dir"] is None:
         config_log_root = config["logging"]["log_root"] or "output"
         log_root = types.parse_path(config_log_root)
-        env_sanitized = hfsb3.EnvironmentName(config["environment_name"]["gym_id"])
+        env_sanitized = hfsb3.EnvironmentName(config["environment"]["gym_id"])
         assert isinstance(env_sanitized, str)
         log_dir = log_root / command_name / env_sanitized / util.make_unique_timestamp()
         updates["log_dir"] = log_dir

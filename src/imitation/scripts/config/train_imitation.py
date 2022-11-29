@@ -44,67 +44,67 @@ def config():
 
 @train_imitation_ex.named_config
 def mountain_car():
-    environment_name = dict(gym_id="MountainCar-v0")
+    environment = dict(gym_id="MountainCar-v0")
     bc_kwargs = dict(l2_weight=0.0)
     dagger = dict(total_timesteps=20000)
 
 
 @train_imitation_ex.named_config
 def seals_mountain_car():
-    environment_name = dict(gym_id="seals/MountainCar-v0")
+    environment = dict(gym_id="seals/MountainCar-v0")
     bc_kwargs = dict(l2_weight=0.0)
     dagger = dict(total_timesteps=20000)
 
 
 @train_imitation_ex.named_config
 def cartpole():
-    environment_name = dict(gym_id="CartPole-v1")
+    environment = dict(gym_id="CartPole-v1")
     dagger = dict(total_timesteps=20000)
 
 
 @train_imitation_ex.named_config
 def seals_cartpole():
-    environment_name = dict(gym_id="seals/CartPole-v0")
+    environment = dict(gym_id="seals/CartPole-v0")
     dagger = dict(total_timesteps=20000)
 
 
 @train_imitation_ex.named_config
 def pendulum():
-    environment_name = dict(gym_id="Pendulum-v1")
+    environment = dict(gym_id="Pendulum-v1")
 
 
 @train_imitation_ex.named_config
 def ant():
-    environment_name = dict(gym_id="Ant-v2")
+    environment = dict(gym_id="Ant-v2")
 
 
 @train_imitation_ex.named_config
 def seals_ant():
-    environment_name = dict(gym_id="seals/Ant-v0")
+    environment = dict(gym_id="seals/Ant-v0")
 
 
 @train_imitation_ex.named_config
 def half_cheetah():
-    environment_name = dict(gym_id="HalfCheetah-v2")
+    environment = dict(gym_id="HalfCheetah-v2")
     bc_kwargs = dict(l2_weight=0.0)
     dagger = dict(total_timesteps=60000)
 
 
 @train_imitation_ex.named_config
 def seals_half_cheetah():
-    environment_name = dict(gym_id="seals/HalfCheetah-v0")
+    environment = dict(gym_id="seals/HalfCheetah-v0")
     bc_kwargs = dict(l2_weight=0.0)
     dagger = dict(total_timesteps=60000)
 
 
 @train_imitation_ex.named_config
 def humanoid():
-    environment_name = dict(gym_id="Humanoid-v2")
+    environment = dict(gym_id="Humanoid-v2")
 
 
 @train_imitation_ex.named_config
 def seals_humanoid():
-    environment_name = dict(gym_id="seals/Humanoid-v0")
+    environment = dict(gym_id="seals/Humanoid-v0")
 
 
 @train_imitation_ex.named_config

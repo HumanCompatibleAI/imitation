@@ -115,7 +115,6 @@ available in ``scripts/``. You can take a look at the following doc links to und
     imitation.scripts.ingredients.logging
     imitation.scripts.ingredients.demonstrations
     imitation.scripts.ingredients.environment
-    imitation.scripts.ingredients.environment_name
     imitation.scripts.ingredients.expert
     imitation.scripts.ingredients.reward
     imitation.scripts.ingredients.rl

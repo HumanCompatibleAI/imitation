@@ -46,7 +46,7 @@ def wandb_init(
     Raises:
         ModuleNotFoundError: wandb is not installed.
     """
-    env_name = _run.config["environment_name"]["gym_id"]
+    env_name = _run.config["environment"]["gym_id"]
     root_seed = _run.config["seed"]
 
     updated_wandb_kwargs: Mapping[str, Any] = {
