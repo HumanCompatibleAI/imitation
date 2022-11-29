@@ -14,11 +14,13 @@ if TYPE_CHECKING:
 IS_NOT_WINDOWS = os.name != "nt"
 
 PARALLEL_REQUIRE = ["ray[debug,tune]~=2.0.0"]
-ATARI_REQUIRE = [
+IMAGE_ENV_REQUIRE = [
     "opencv-python",
     "ale-py==0.7.4",
     "pillow",
     "autorom[accept-rom-license]~=0.4.2",
+    "procgen==0.10.7",
+    "gym3@git+https://github.com/openai/gym3.git#4c3824680eaf9dd04dce224ee3d4856429878226",  # noqa: E501
 ]
 PYTYPE = ["pytype==2022.7.26"] if IS_NOT_WINDOWS else []
 STABLE_BASELINES3 = "stable-baselines3>=1.6.1"
@@ -61,7 +63,7 @@ TESTS_REQUIRE = (
         "pre-commit>=2.20.0",
     ]
     + PARALLEL_REQUIRE
-    + ATARI_REQUIRE
+    + IMAGE_ENV_REQUIRE
     + PYTYPE
 )
 DOCS_REQUIRE = [
@@ -74,7 +76,7 @@ DOCS_REQUIRE = [
     "sphinx-github-changelog~=1.2.0",
     "myst-nb==0.16.0",
     "ipykernel~=6.15.2",
-] + ATARI_REQUIRE
+] + IMAGE_ENV_REQUIRE
 
 
 def get_readme() -> str:
@@ -231,7 +233,7 @@ setup(
         "mujoco": [
             "gym[classic_control,mujoco]" + GYM_VERSION_SPECIFIER,
         ],
-        "atari": ATARI_REQUIRE,
+        "image_envs": IMAGE_ENV_REQUIRE,
     },
     entry_points={
         "console_scripts": [
