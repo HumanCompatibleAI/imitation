@@ -37,15 +37,6 @@ def sac():
     policy_cls = base.SAC1024Policy  # noqa: F841
 
 
-@train_ingredient.named_config
-def cnn():
-    policy_cls = base.CnnPolicy  # noqa: F841
-    # If features_extractor_class is not set, it will be set to a
-    # NormalizeFeaturesExtractor by default via the config hook, which implements an
-    # MLP. Therefore, to actually get this to implement a CNN, we need to set it here.
-    policy_kwargs = {"features_extractor_class": torch_layers.NatureCNN}  # noqa: F841
-
-
 NORMALIZE_RUNNING_POLICY_KWARGS = {
     "features_extractor_class": base.NormalizeFeaturesExtractor,
     "features_extractor_kwargs": {
