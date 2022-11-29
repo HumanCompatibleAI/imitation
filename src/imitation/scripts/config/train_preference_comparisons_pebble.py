@@ -1,8 +1,12 @@
 """Configuration for imitation.scripts.train_preference_comparisons_pebble."""
 
+import warnings
+
 import sacred
+import stable_baselines3 as sb3
 
 from imitation.algorithms import preference_comparisons
+from imitation.policies import base
 from imitation.scripts.common import common, reward, rl, train
 
 train_preference_comparisons_pebble_ex = sacred.Experiment(
@@ -15,12 +19,40 @@ train_preference_comparisons_pebble_ex = sacred.Experiment(
     ],
 )
 
-
 MUJOCO_SHARED_LOCALS = dict(rl=dict(rl_kwargs=dict(ent_coef=0.1)))
 ANT_SHARED_LOCALS = dict(
     total_timesteps=int(3e7),
     rl=dict(batch_size=16384),
 )
+
+
+@rl.rl_ingredient.config
+def rl_sac():
+    # For recommended SAC hyperparams in each environment, see:
+    # https://github.com/DLR-RM/rl-baselines3-zoo/blob/master/hyperparams/sac.yml
+    rl_cls = sb3.SAC
+    warnings.warn(
+        "SAC currently only supports continuous action spaces. "
+        "Consider adding a discrete version as mentioned here: "
+        "https://github.com/DLR-RM/stable-baselines3/issues/505",
+        category=RuntimeWarning,
+    )
+    # Default HPs are as follows:
+    batch_size = 256  # batch size for RL algorithm
+    rl_kwargs = dict(batch_size=None)  # make sure to set batch size to None
+    locals()  # quieten flake8
+
+
+@train.train_ingredient.config
+def train_sac():
+    policy_cls = base.SAC1024Policy  # noqa: F841
+    locals()  # quieten flake8
+
+
+@common.common_ingredient.config
+def mountain_car():
+    env_name = "MountainCarContinuous-v0"
+    locals()  # quieten flake8
 
 
 @train_preference_comparisons_pebble_ex.config
