@@ -1,8 +1,3 @@
-.. imitation documentation master file, created by
-   sphinx-quickstart on Wed Jun 26 10:19:27 2019.
-   You can adapt this file completely to your liking, but it should at least
-   contain the root `toctree` directive.
-
 =========
 Imitation
 =========
@@ -27,6 +22,21 @@ Main Features
 - Scripts to train policies using SB3 and save rollouts from these policies as synthetic "expert" demonstrations.
 - Data structures and scripts for loading and storing expert demonstrations.
 
+Citing imitation
+~~~~~~~~~~~~~~~~
+
+If you use ``imitation`` in your research project, please cite our paper to help us track our impact and enable readers to more easily replicate your results. You may use the following BibTeX::
+
+    @misc{gleave2022imitation,
+      author = {Gleave, Adam and Taufeeque, Mohammad and Rocamonde, Juan and Jenner, Erik and Wang, Steven H. and Toyer, Sam and Ernestus, Maximilian and Belrose, Nora and Emmons, Scott and Russell, Stuart},
+      title = {imitation: Clean Imitation Learning Implementations},
+      year = {2022},
+      howPublished = {arXiv:2211.11972v1 [cs.LG]},
+      archivePrefix = {arXiv},
+      eprint = {2211.11972},
+      primaryClass = {cs.LG},
+      url = {https://arxiv.org/abs/2211.11972},
+    }
 
 .. toctree::
    :maxdepth: 2
