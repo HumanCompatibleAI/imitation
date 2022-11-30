@@ -11,6 +11,7 @@ from hypothesis.extra.numpy import arrays
 
 from imitation.util import sacred as sacred_util
 from imitation.util import util
+from imitation.util.util import kth_value
 
 
 def test_endless_iter():
@@ -144,3 +145,14 @@ def test_compute_state_entropy_2d():
         util.compute_state_entropy(obs, all_obs, k=3),
         np.sqrt(20**2 + 2**2),
     )
+
+
+def test_kth_value():
+    arr1 = np.arange(0, 10, 1)
+    np.random.shuffle(arr1)
+    arr2 = np.arange(0, 100, 10)
+    np.random.shuffle(arr2)
+    arr = np.stack([arr1, arr2])
+
+    result = kth_value(arr, 3)
+    np.testing.assert_array_equal(result, np.array([2, 20]))

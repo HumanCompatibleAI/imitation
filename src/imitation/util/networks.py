@@ -86,6 +86,9 @@ class BaseNorm(nn.Module, abc.ABC):
             with th.no_grad():
                 self.update_stats(x)
 
+        return self.normalize(x)
+
+    def normalize(self, x: th.Tensor) -> th.Tensor:
         # Note: this is different from the behavior in stable-baselines, see
         # https://github.com/HumanCompatibleAI/imitation/issues/442
         return (x - self.running_mean) / th.sqrt(self.running_var + self.eps)

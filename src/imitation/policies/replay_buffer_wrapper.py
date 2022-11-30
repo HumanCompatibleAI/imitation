@@ -24,6 +24,29 @@ def _samples_to_reward_fn_input(
     )
 
 
+class ReplayBufferView:
+    """A read-only view over a valid records in a ReplayBuffer.
+
+    Args:
+        observations_buffer: Array buffer holding observations
+        buffer_slice_provider: Function returning slice of buffer
+            with valid observations
+    """
+
+    def __init__(
+        self,
+        observations_buffer: np.ndarray,
+        buffer_slice_provider: Callable[[], slice],
+    ):
+        self._observations_buffer = observations_buffer.view()
+        self._observations_buffer.flags.writeable = False
+        self._buffer_slice_provider = buffer_slice_provider
+
+    @property
+    def observations(self):
+        return self._observations_buffer[self._buffer_slice_provider()]
+
+
 class ReplayBufferRewardWrapper(ReplayBuffer):
     """Relabel the rewards in transitions sampled from a ReplayBuffer."""
 
@@ -78,6 +101,13 @@ class ReplayBufferRewardWrapper(ReplayBuffer):
     @full.setter
     def full(self, full: bool):
         self.replay_buffer.full = full
+
+    @property
+    def buffer_view(self) -> ReplayBufferView:
+        def valid_buffer_slice():
+            return slice(None) if self.full else slice(self.pos)
+
+        return ReplayBufferView(self.replay_buffer.observations, valid_buffer_slice)
 
     def sample(self, *args, **kwargs):
         samples = self.replay_buffer.sample(*args, **kwargs)
@@ -167,7 +197,7 @@ class ReplayBufferEntropyRewardWrapper(ReplayBufferRewardWrapper):
         all_obs = all_obs.reshape((-1, *self.obs_shape))
         entropies = util.compute_state_entropy(
             samples.observations,
-            all_obs.reshape((-1, *self.obs_shape)),
+            all_obs,
             self.k,
         )
 

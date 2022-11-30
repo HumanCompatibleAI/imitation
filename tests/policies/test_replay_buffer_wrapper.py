@@ -2,6 +2,7 @@
 
 import os.path as osp
 from typing import Type
+from unittest.mock import Mock
 
 import gym
 import numpy as np
@@ -10,7 +11,9 @@ import stable_baselines3 as sb3
 import torch as th
 from gym import spaces
 from stable_baselines3.common import buffers, off_policy_algorithm, policies
+from stable_baselines3.common.buffers import ReplayBuffer
 from stable_baselines3.common.policies import BasePolicy
+from stable_baselines3.common.preprocessing import get_obs_shape, get_action_dim
 from stable_baselines3.common.save_util import load_from_pkl
 from stable_baselines3.common.vec_env import DummyVecEnv
 
@@ -225,3 +228,39 @@ def test_entropy_wrapper_class(tmpdir, rng):
         k=k,
     )
     assert trained_entropy.mean() > initial_entropy.mean()
+
+
+def test_replay_buffer_view_provides_buffered_observations():
+    space = spaces.Box(np.array([0]), np.array([5]))
+    n_envs = 2
+    buffer_size = 10
+    action = np.empty((n_envs, get_action_dim(space)))
+
+    obs_shape = get_obs_shape(space)
+    wrapper = ReplayBufferRewardWrapper(
+        buffer_size,
+        space,
+        space,
+        replay_buffer_class=ReplayBuffer,
+        reward_fn=Mock(),
+        n_envs=n_envs,
+        handle_timeout_termination=False,
+    )
+    view = wrapper.buffer_view
+
+    # initially empty
+    assert len(view.observations) == 0
+
+    # after adding observation
+    obs1 = np.random.random((n_envs, *obs_shape))
+    wrapper.add(obs1, obs1, action, np.empty(n_envs), np.empty(n_envs), [])
+    np.testing.assert_allclose(view.observations, np.array([obs1]))
+
+    # after filling buffer
+    observations = np.random.random((buffer_size // n_envs, n_envs, *obs_shape))
+    for obs in observations:
+        wrapper.add(obs, obs, action, np.empty(n_envs), np.empty(n_envs), [])
+
+    # ReplayBuffer internally uses a circular buffer
+    expected = np.roll(observations, 1, axis=0)
+    np.testing.assert_allclose(view.observations, expected)
