@@ -79,6 +79,14 @@ def sac():
     locals()  # quieten flake8
 
 
+@rl_ingredient.named_config
+def procgen_default():
+    # copying the hyperparams used in "Goal Misgeneralization in Deep
+    # Reinforcement Learning"
+    rl_cls = sb3.PPO
+    rl_kwargs = dict(gamma=0.999, learning_rate=5e-4, batch_size=2048, ent_coef=0.01, n_steps=1024)
+
+
 def _maybe_add_relabel_buffer(
     rl_kwargs: Dict[str, Any],
     relabel_reward_fn: Optional[RewardFn] = None,

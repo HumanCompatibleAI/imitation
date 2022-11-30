@@ -138,81 +138,97 @@ def seals_walker():
 @train_rl_ex.named_config
 def coinrun():
     common = dict(env_name="procgen:procgen-coinrun-v0")
+    total_timesteps = int(2e8)
 
 
 @train_rl_ex.named_config
 def maze():
     common = dict(env_name="procgen:procgen-maze-v0")
+    total_timesteps = int(2e8)
 
 
 @train_rl_ex.named_config
 def bigfish():
     common = dict(env_name="procgen:procgen-bigfish-v0")
+    total_timesteps = int(2e8)
 
 
 @train_rl_ex.named_config
 def bossfight():
     common = dict(env_name="procgen:procgen-bossfight-v0")
+    total_timesteps = int(2e8)
 
 
 @train_rl_ex.named_config
 def caveflyer():
     common = dict(env_name="procgen:procgen-caveflyer-v0")
+    total_timesteps = int(2e8)
 
 
 @train_rl_ex.named_config
 def chaser():
     common = dict(env_name="procgen:procgen-chaser-v0")
+    total_timesteps = int(2e8)
 
 
 @train_rl_ex.named_config
 def climber():
     common = dict(env_name="procgen:procgen-climber-v0")
+    total_timesteps = int(2e8)
 
 
 @train_rl_ex.named_config
 def dodgeball():
     common = dict(env_name="procgen:procgen-dodgeball-v0")
+    total_timesteps = int(2e8)
 
 
 @train_rl_ex.named_config
 def fruitbot():
     common = dict(env_name="procgen:procgen-fruitbot-v0")
+    total_timesteps = int(2e8)
 
 
 @train_rl_ex.named_config
 def heist():
     common = dict(env_name="procgen:procgen-heist-v0")
+    total_timesteps = int(2e8)
 
 
 @train_rl_ex.named_config
 def jumper():
     common = dict(env_name="procgen:procgen-jumper-v0")
+    total_timesteps = int(2e8)
 
 
 @train_rl_ex.named_config
 def leaper():
     common = dict(env_name="procgen:procgen-leaper-v0")
+    total_timesteps = int(2e8)
 
 
 @train_rl_ex.named_config
 def miner():
     common = dict(env_name="procgen:procgen-miner-v0")
+    total_timesteps = int(2e8)
 
 
 @train_rl_ex.named_config
 def ninja():
     common = dict(env_name="procgen:procgen-ninja-v0")
+    total_timesteps = int(2e8)
 
 
 @train_rl_ex.named_config
 def plunder():
     common = dict(env_name="procgen:procgen-plunder-v0")
+    total_timesteps = int(2e8)
 
 
 @train_rl_ex.named_config
 def starpilot():
     common = dict(env_name="procgen:procgen-starpilot-v0")
+    total_timesteps = int(2e8)
 
 
 # Debug configs
