@@ -163,26 +163,22 @@ class ReplayBufferEntropyRewardWrapper(ReplayBufferRewardWrapper):
             all_obs = self.observations
         else:
             all_obs = self.observations[: self.pos]
+        # super().sample() flattens the venv dimension, let's do it too
+        all_obs = all_obs.reshape((-1, *self.obs_shape))
         entropies = util.compute_state_entropy(
-            # TODO support multiple environments
-            samples.observations.unsqueeze(1),
-            all_obs,
+            samples.observations,
+            all_obs.reshape((-1, *self.obs_shape)),
             self.k,
         )
 
         # Normalize to have mean of 0 and standard deviation of 1 according to running stats
         entropies = self.entropy_stats.forward(entropies)
-
-        entropies_th = (
-            util.safe_to_tensor(entropies)
-            .reshape(samples.rewards.shape)
-            .to(samples.rewards.device)
-        )
+        assert entropies.shape == samples.rewards.shape
 
         return ReplayBufferSamples(
-            samples.observations,
-            samples.actions,
-            samples.next_observations,
-            samples.dones,
-            entropies_th,
+            observations=samples.observations,
+            actions=samples.actions,
+            next_observations=samples.next_observations,
+            dones=samples.dones,
+            rewards=entropies,
         )

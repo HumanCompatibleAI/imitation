@@ -50,7 +50,7 @@ def train_sac():
 
 
 @common.common_ingredient.config
-def mountain_car():
+def common_mountain_car_continuous():
     env_name = "MountainCarContinuous-v0"
     locals()  # quieten flake8
 
