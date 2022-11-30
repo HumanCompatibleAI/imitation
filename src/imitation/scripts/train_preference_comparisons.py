@@ -81,6 +81,7 @@ def train_preference_comparisons(
     fragmenter_kwargs: Mapping[str, Any],
     allow_variable_horizon: bool,
     checkpoint_interval: int,
+    video_save_interval: int,
     query_schedule: Union[str, type_aliases.Schedule],
 ) -> Mapping[str, Any]:
     """Train a reward model using preference comparisons.
@@ -136,6 +137,10 @@ def train_preference_comparisons(
             trajectory_generator contains a policy) every `checkpoint_interval`
             iterations and after training is complete. If 0, then only save weights
             after training is complete. If <0, then don't save weights at all.
+        video_save_interval: The number of steps to take before saving a video.
+            After that step count is reached, the step count is reset and the next
+            episode will be recorded in full. Empty or negative values means no
+            video is saved.
         query_schedule: one of ("constant", "hyperbolic", "inverse_quadratic").
             A function indicating how the total number of preference queries should
             be allocated to each iteration. "hyperbolic" and "inverse_quadratic"
@@ -149,14 +154,23 @@ def train_preference_comparisons(
         ValueError: Inconsistency between config and deserialized policy normalization.
     """
     custom_logger, log_dir = common.setup_logging()
+    checkpoint_dir = log_dir / "checkpoints"
+    checkpoint_dir.mkdir(parents=True, exist_ok=True)
+
     rng = common.make_rng()
 
-    with common.make_venv() as venv:
+    post_wrappers = common.setup_video_saving(
+        base_dir=checkpoint_dir,
+        video_save_interval=video_save_interval,
+    )
+
+    with common.make_venv(post_wrappers=post_wrappers) as venv:
         reward_net = reward.make_reward_net(venv)
         relabel_reward_fn = functools.partial(
             reward_net.predict_processed,
             update_stats=False,
         )
+
         if agent_path is None:
             agent = rl_common.make_rl_algo(venv, relabel_reward_fn=relabel_reward_fn)
         else:
@@ -250,7 +264,7 @@ def train_preference_comparisons(
             if checkpoint_interval > 0 and iteration_num % checkpoint_interval == 0:
                 save_checkpoint(
                     trainer=main_trainer,
-                    save_path=log_dir / "checkpoints" / f"{iteration_num:04d}",
+                    save_path=checkpoint_dir / f"{iteration_num:04d}",
                     allow_save_policy=bool(trajectory_path is None),
                 )
 
@@ -272,7 +286,7 @@ def train_preference_comparisons(
     if checkpoint_interval >= 0:
         save_checkpoint(
             trainer=main_trainer,
-            save_path=log_dir / "checkpoints" / "final",
+            save_path=checkpoint_dir / "final",
             allow_save_policy=bool(trajectory_path is None),
         )
 

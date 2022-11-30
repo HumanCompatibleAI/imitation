@@ -71,6 +71,7 @@ def train_adversarial(
     algorithm_kwargs: Mapping[str, Any],
     total_timesteps: int,
     checkpoint_interval: int,
+    video_save_interval: int,
     agent_path: Optional[str],
 ) -> Mapping[str, Mapping[str, float]]:
     """Train an adversarial-network-based imitation learning algorithm.
@@ -93,6 +94,10 @@ def train_adversarial(
             `checkpoint_interval` rounds and after training is complete. If 0,
             then only save weights after training is complete. If <0, then don't
             save weights at all.
+        video_save_interval: The number of steps to take before saving a video.
+            After that step count is reached, the step count is reset and the next
+            episode will be recorded in full. Empty or negative values means no
+            video is saved.
         agent_path: Path to a directory containing a pre-trained agent. If
             provided, then the agent will be initialized using this stored policy
             (warm start). If not provided, then the agent will be initialized using
@@ -111,9 +116,17 @@ def train_adversarial(
         sacred.commands.print_config(_run)
 
     custom_logger, log_dir = common_config.setup_logging()
+    checkpoint_dir = log_dir / "checkpoints"
+    checkpoint_dir.mkdir(parents=True, exist_ok=True)
+
     expert_trajs = demonstrations.get_expert_trajectories()
 
-    with common_config.make_venv() as venv:
+    post_wrappers = common_config.setup_video_saving(
+        base_dir=checkpoint_dir,
+        video_save_interval=video_save_interval,
+    )
+
+    with common_config.make_venv(post_wrappers=post_wrappers) as venv:
         reward_net = reward.make_reward_net(venv)
         relabel_reward_fn = functools.partial(
             reward_net.predict_processed,
@@ -149,14 +162,14 @@ def train_adversarial(
 
         def callback(round_num: int, /) -> None:
             if checkpoint_interval > 0 and round_num % checkpoint_interval == 0:
-                save(trainer, log_dir / "checkpoints" / f"{round_num:05d}")
+                save(trainer, checkpoint_dir / f"{round_num:05d}")
 
         trainer.train(total_timesteps, callback)
         imit_stats = train.eval_policy(trainer.policy, trainer.venv_train)
 
     # Save final artifacts.
     if checkpoint_interval >= 0:
-        save(trainer, log_dir / "checkpoints" / "final")
+        save(trainer, checkpoint_dir / "final")
 
     return {
         "imit_stats": imit_stats,

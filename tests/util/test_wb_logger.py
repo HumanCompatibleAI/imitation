@@ -113,6 +113,11 @@ def test_wandb_output_format():
         {"_step": 0, "foo": 42, "fizz": 12},
         {"_step": 3, "fizz": 21},
     ]
+
+    with pytest.raises(ValueError, match=r"wandb.Video accepts a file path.*"):
+        log_obj.record("video", 42)
+        log_obj.dump(step=4)
+
     log_obj.close()
 
 

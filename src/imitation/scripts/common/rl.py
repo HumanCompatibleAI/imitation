@@ -154,6 +154,7 @@ def make_rl_algo(
         )
     else:
         raise TypeError(f"Unsupported RL algorithm '{rl_cls}'")
+
     rl_algo = rl_cls(
         policy=train["policy_cls"],
         # Note(yawen): Copy `policy_kwargs` as SB3 may mutate the config we pass.

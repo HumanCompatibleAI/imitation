@@ -58,6 +58,7 @@ def train_defaults():
     allow_variable_horizon = False
 
     checkpoint_interval = 0  # Num epochs between saving (<0 disables, =0 final only)
+    video_save_interval = 0  # Number of steps before saving video (<=0 disables)
     query_schedule = "hyperbolic"
 
 
