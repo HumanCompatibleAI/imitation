@@ -610,6 +610,11 @@ def rollout(
 ) -> Sequence[types.TrajectoryWithRew]:
     """Generate policy rollouts.
 
+    This method is a wrapper to generate_trajectories. In addition, it
+    allows the user to replace the rewards and observations with the original
+    values if the environment is wrapped, to exclude the infos from the
+    trajectories, and to print summary statistics of the rollout.
+
     The `.infos` field of each Trajectory is set to `None` to save space.
 
     Args:
