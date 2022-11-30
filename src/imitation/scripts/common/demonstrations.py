@@ -60,6 +60,7 @@ def get_expert_trajectories(
                 "Ignoring `rollout_path` since `rollout_type` is set to download the "
                 "rollouts from the huggingface-hub. If you want to load the rollouts "
                 'from disk, set `rollout_type`="local" and the path in `rollout_path`.',
+                RuntimeWarning,
             )
         rollout_path = _download_expert_rollouts(rollout_type)
     elif rollout_type != "local":
@@ -138,12 +139,7 @@ def load_local_expert_trajs(
 
 @demonstrations_ingredient.capture(prefix="expert")
 def _download_expert_rollouts(rollout_type, loader_kwargs):
-    if not rollout_type.endswith("-huggingface"):
-        raise ValueError(
-            "`rollout_type` must follow the convention `{algo}-huggingface`"
-            "to download rollouts from huggingface of an expert trained using {algo}."
-            "Example: rollout_type=ppo-huggingface",
-        )
+    assert rollout_type.endswith("-huggingface")
     algo_name = rollout_type.split("-")[0]
     return serialize.load_rollouts_from_huggingface(
         algo_name,
