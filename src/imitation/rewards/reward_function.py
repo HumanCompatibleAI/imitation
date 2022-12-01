@@ -35,6 +35,11 @@ class RewardFn(Protocol):
 
 
 class ReplayBufferAwareRewardFn(RewardFn, abc.ABC):
+    """Abstract class for a reward function that needs access to a replay buffer."""
+
     @abc.abstractmethod
-    def on_replay_buffer_initialized(self, replay_buffer: "ReplayBufferRewardWrapper"):
+    def on_replay_buffer_initialized(
+        self,
+        replay_buffer: "ReplayBufferRewardWrapper",  # type: ignore[name-defined]
+    ):
         pass

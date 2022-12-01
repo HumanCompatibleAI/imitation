@@ -1,12 +1,14 @@
+"""Reward function for the PEBBLE training algorithm."""
+
 from enum import Enum, auto
-from typing import Tuple
+from typing import Dict, Optional, Tuple, Union
 
 import numpy as np
 import torch as th
 
 from imitation.policies.replay_buffer_wrapper import (
-    ReplayBufferView,
     ReplayBufferRewardWrapper,
+    ReplayBufferView,
 )
 from imitation.rewards.reward_function import ReplayBufferAwareRewardFn, RewardFn
 from imitation.util import util
@@ -14,16 +16,16 @@ from imitation.util.networks import RunningNorm
 
 
 class PebbleRewardPhase(Enum):
-    """States representing different behaviors for PebbleStateEntropyReward"""
+    """States representing different behaviors for PebbleStateEntropyReward."""
 
     UNSUPERVISED_EXPLORATION = auto()  # Entropy based reward
     POLICY_AND_REWARD_LEARNING = auto()  # Learned reward
 
 
 class PebbleStateEntropyReward(ReplayBufferAwareRewardFn):
-    """
-    Reward function for implementation of the PEBBLE learning algorithm
-    (https://arxiv.org/pdf/2106.05091.pdf).
+    """Reward function for implementation of the PEBBLE learning algorithm.
+
+    See https://arxiv.org/pdf/2106.05091.pdf .
 
     The rewards returned by this function go through the three phases:
     1. Before enough samples are collected for entropy calculation, the
@@ -38,33 +40,38 @@ class PebbleStateEntropyReward(ReplayBufferAwareRewardFn):
     supplied with set_replay_buffer() or on_replay_buffer_initialized().
     To transition to the last phase, unsupervised_exploration_finish() needs
     to be called.
-
-    Args:
-        learned_reward_fn: The learned reward function used after unsupervised
-            exploration is finished
-        nearest_neighbor_k: Parameter for entropy computation (see
-            compute_state_entropy())
     """
 
-    # TODO #625: parametrize nearest_neighbor_k
     def __init__(
         self,
         learned_reward_fn: RewardFn,
         nearest_neighbor_k: int = 5,
     ):
+        """Builds this class.
+
+        Args:
+            learned_reward_fn: The learned reward function used after unsupervised
+                exploration is finished
+            nearest_neighbor_k: Parameter for entropy computation (see
+                compute_state_entropy())
+        """
         self.learned_reward_fn = learned_reward_fn
         self.nearest_neighbor_k = nearest_neighbor_k
         self.entropy_stats = RunningNorm(1)
         self.state = PebbleRewardPhase.UNSUPERVISED_EXPLORATION
 
         # These two need to be set with set_replay_buffer():
-        self.replay_buffer_view = None
-        self.obs_shape = None
+        self.replay_buffer_view: Optional[ReplayBufferView] = None
+        self.obs_shape: Union[Tuple[int, ...], Dict[str, Tuple[int, ...]], None] = None
 
     def on_replay_buffer_initialized(self, replay_buffer: ReplayBufferRewardWrapper):
         self.set_replay_buffer(replay_buffer.buffer_view, replay_buffer.obs_shape)
 
-    def set_replay_buffer(self, replay_buffer: ReplayBufferView, obs_shape: Tuple):
+    def set_replay_buffer(
+        self,
+        replay_buffer: ReplayBufferView,
+        obs_shape: Union[Tuple[int, ...], Dict[str, Tuple[int, ...]]],
+    ):
         self.replay_buffer_view = replay_buffer
         self.obs_shape = obs_shape
 
@@ -87,7 +94,7 @@ class PebbleStateEntropyReward(ReplayBufferAwareRewardFn):
     def _entropy_reward(self, state, action, next_state, done):
         if self.replay_buffer_view is None:
             raise ValueError(
-                "Replay buffer must be supplied before entropy reward can be used"
+                "Replay buffer must be supplied before entropy reward can be used",
             )
         all_observations = self.replay_buffer_view.observations
         # ReplayBuffer sampling flattens the venv dimension, let's adapt to that

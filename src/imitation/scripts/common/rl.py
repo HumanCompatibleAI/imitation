@@ -89,7 +89,8 @@ def _maybe_add_relabel_buffer(
         _buffer_kwargs = dict(
             reward_fn=relabel_reward_fn,
             replay_buffer_class=rl_kwargs.get(
-                "replay_buffer_class", buffers.ReplayBuffer
+                "replay_buffer_class",
+                buffers.ReplayBuffer,
             ),
         )
         rl_kwargs["replay_buffer_class"] = ReplayBufferRewardWrapper

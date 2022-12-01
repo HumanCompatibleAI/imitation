@@ -77,8 +77,7 @@ class TrajectoryGenerator(abc.ABC):
         """  # noqa: DAR202
 
     def unsupervised_pretrain(self, steps: int, **kwargs: Any) -> None:
-        """Pre-train an agent if the trajectory generator uses one that
-            needs pre-training.
+        """Pre-train an agent before collecting comparisons.
 
         By default, this method does nothing and doesn't need
         to be overridden in subclasses that don't require pre-training.
@@ -331,8 +330,8 @@ class AgentTrainer(TrajectoryGenerator):
 
 
 class PebbleAgentTrainer(AgentTrainer):
-    """
-    Specialization of AgentTrainer for PEBBLE training.
+    """Specialization of AgentTrainer for PEBBLE training.
+
     Includes unsupervised pretraining with an entropy based reward function.
     """
 
@@ -344,9 +343,20 @@ class PebbleAgentTrainer(AgentTrainer):
         reward_fn: PebbleStateEntropyReward,
         **kwargs,
     ) -> None:
+        """Builds PebbleAgentTrainer.
+
+        Args:
+            reward_fn: Pebble reward function
+             **kwargs: additional keyword arguments to pass on to
+                the parent class
+
+        Raises:
+            ValueError: Unexpected type of reward_fn given.
+        """
         if not isinstance(reward_fn, PebbleStateEntropyReward):
             raise ValueError(
-                f"{self.__class__.__name__} expects {PebbleStateEntropyReward.__name__} reward function"
+                f"{self.__class__.__name__} expects "
+                f"{PebbleStateEntropyReward.__name__} reward function",
             )
         super().__init__(reward_fn=reward_fn, **kwargs)
 
@@ -1731,10 +1741,10 @@ class PreferenceComparisons(base.BaseImitationAlgorithm):
         ###################################################
         with self.logger.accumulate_means("agent"):
             self.logger.log(
-                f"Pre-training agent for {unsupervised_pretrain_timesteps} timesteps"
+                f"Pre-training agent for {unsupervised_pretrain_timesteps} timesteps",
             )
             self.trajectory_generator.unsupervised_pretrain(
-                unsupervised_pretrain_timesteps
+                unsupervised_pretrain_timesteps,
             )
 
         for i, num_pairs in enumerate(preference_query_schedule):
@@ -1813,7 +1823,7 @@ class PreferenceComparisons(base.BaseImitationAlgorithm):
 
     def _compute_timesteps(self, total_timesteps: int) -> Tuple[int, int, int]:
         unsupervised_pretrain_timesteps = int(
-            total_timesteps * self.unsupervised_agent_pretrain_frac
+            total_timesteps * self.unsupervised_agent_pretrain_frac,
         )
         timesteps_per_iteration, extra_timesteps = divmod(
             total_timesteps - unsupervised_pretrain_timesteps,

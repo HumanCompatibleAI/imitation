@@ -10,13 +10,13 @@ from typing import Any, Mapping, Optional, Type, Union
 import numpy as np
 import torch as th
 from sacred.observers import FileStorageObserver
-from stable_baselines3.common import type_aliases, base_class, vec_env
+from stable_baselines3.common import base_class, type_aliases, vec_env
 
 from imitation.algorithms import preference_comparisons
 from imitation.algorithms.pebble.entropy_reward import PebbleStateEntropyReward
 from imitation.data import types
 from imitation.policies import serialize
-from imitation.rewards import reward_nets, reward_function
+from imitation.rewards import reward_function, reward_nets
 from imitation.scripts.common import common, reward
 from imitation.scripts.common import rl as rl_common
 from imitation.scripts.common import train
@@ -65,7 +65,7 @@ def make_reward_function(
     reward_net: reward_nets.RewardNet,
     *,
     pebble_enabled: bool = False,
-    pebble_nearest_neighbor_k: Optional[int] = None,
+    pebble_nearest_neighbor_k: int = 5,
 ):
     relabel_reward_fn = functools.partial(
         reward_net.predict_processed,
@@ -73,7 +73,8 @@ def make_reward_function(
     )
     if pebble_enabled:
         relabel_reward_fn = PebbleStateEntropyReward(
-            relabel_reward_fn, pebble_nearest_neighbor_k
+            relabel_reward_fn,  # type: ignore[assignment]
+            pebble_nearest_neighbor_k,
         )
     return relabel_reward_fn
 
@@ -92,6 +93,7 @@ def make_agent_trajectory_generator(
     trajectory_generator_kwargs: Mapping[str, Any],
 ) -> preference_comparisons.AgentTrainer:
     if pebble_enabled:
+        assert isinstance(relabel_reward_fn, PebbleStateEntropyReward)
         return preference_comparisons.PebbleAgentTrainer(
             algorithm=agent,
             reward_fn=relabel_reward_fn,
@@ -138,7 +140,7 @@ def train_preference_comparisons(
     allow_variable_horizon: bool,
     checkpoint_interval: int,
     query_schedule: Union[str, type_aliases.Schedule],
-    unsupervised_agent_pretrain_frac: Optional[float],
+    unsupervised_agent_pretrain_frac: float,
 ) -> Mapping[str, Any]:
     """Train a reward model using preference comparisons.
 

@@ -1,17 +1,18 @@
+"""Tests for `imitation.algorithms.entropy_reward`."""
+
 import pickle
-from unittest.mock import patch, Mock
+from unittest.mock import Mock, patch
 
 import numpy as np
 import torch as th
 from gym.spaces import Discrete
-from stable_baselines3.common.preprocessing import get_obs_shape
 
 from imitation.algorithms.pebble.entropy_reward import PebbleStateEntropyReward
 from imitation.policies.replay_buffer_wrapper import ReplayBufferView
 from imitation.util import util
 
 SPACE = Discrete(4)
-OBS_SHAPE = get_obs_shape(SPACE)
+OBS_SHAPE = (1,)
 PLACEHOLDER = np.empty(OBS_SHAPE)
 
 BUFFER_SIZE = 20
@@ -25,7 +26,8 @@ def test_pebble_entropy_reward_returns_entropy_for_pretraining(rng):
 
     reward_fn = PebbleStateEntropyReward(Mock(), K)
     reward_fn.set_replay_buffer(
-        ReplayBufferView(all_observations, lambda: slice(None)), OBS_SHAPE
+        ReplayBufferView(all_observations, lambda: slice(None)),
+        OBS_SHAPE,
     )
 
     # Act
@@ -34,17 +36,20 @@ def test_pebble_entropy_reward_returns_entropy_for_pretraining(rng):
 
     # Assert
     expected = util.compute_state_entropy(
-        observations, all_observations.reshape(-1, *OBS_SHAPE), K
+        observations,
+        all_observations.reshape(-1, *OBS_SHAPE),
+        K,
     )
     expected_normalized = reward_fn.entropy_stats.normalize(
-        th.as_tensor(expected)
+        th.as_tensor(expected),
     ).numpy()
     np.testing.assert_allclose(reward, expected_normalized)
 
 
 def test_pebble_entropy_reward_returns_normalized_values_for_pretraining():
     with patch("imitation.util.util.compute_state_entropy") as m:
-        # mock entropy computation so that we can test only stats collection in this test
+        # mock entropy computation so that we can test
+        # only stats collection in this test
         m.side_effect = lambda obs, all_obs, k: obs
 
         reward_fn = PebbleStateEntropyReward(Mock(), K)
@@ -64,7 +69,10 @@ def test_pebble_entropy_reward_returns_normalized_values_for_pretraining():
             reward_fn(state, PLACEHOLDER, PLACEHOLDER, PLACEHOLDER)
 
         normalized_reward = reward_fn(
-            np.zeros(dim), PLACEHOLDER, PLACEHOLDER, PLACEHOLDER
+            np.zeros(dim),
+            PLACEHOLDER,
+            PLACEHOLDER,
+            PLACEHOLDER,
         )
 
         # Assert
@@ -91,7 +99,10 @@ def test_pebble_entropy_reward_function_returns_learned_reward_after_pre_trainin
     # Assert
     assert reward == expected_reward
     learned_reward_mock.assert_called_once_with(
-        observations, PLACEHOLDER, PLACEHOLDER, PLACEHOLDER
+        observations,
+        PLACEHOLDER,
+        PLACEHOLDER,
+        PLACEHOLDER,
     )
 
 
