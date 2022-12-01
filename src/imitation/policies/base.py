@@ -76,7 +76,7 @@ class SAC1024Policy(sac_policies.SACPolicy):
     """Actor and value networks with two hidden layers of 1024 units respectively.
 
     This matches the implementation of SAC policies in the PEBBLE paper. See:
-    https://arxiv.org/pdf/2106.05091.pdf
+    https://arxiv.org/abs/2106.05091
     https://github.com/denisyarats/pytorch_sac/blob/master/config/agent/sac.yaml
 
     Note: This differs from stable_baselines3 SACPolicy by having 1024 hidden units

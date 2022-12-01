@@ -61,7 +61,7 @@ def train_defaults():
     checkpoint_interval = 0  # Num epochs between saving (<0 disables, =0 final only)
     query_schedule = "hyperbolic"
 
-    # Whether to use the PEBBLE algorithm (https://arxiv.org/pdf/2106.05091.pdf)
+    # Whether to use the PEBBLE algorithm (https://arxiv.org/abs/2106.05091)
     pebble_enabled = False
     unsupervised_agent_pretrain_frac = 0.0
 

@@ -5,6 +5,8 @@ from typing import Protocol
 
 import numpy as np
 
+import imitation.policies.replay_buffer_wrapper
+
 
 class RewardFn(Protocol):
     """Abstract class for reward function.
@@ -40,6 +42,8 @@ class ReplayBufferAwareRewardFn(RewardFn, abc.ABC):
     @abc.abstractmethod
     def on_replay_buffer_initialized(
         self,
-        replay_buffer: "ReplayBufferRewardWrapper",  # type: ignore[name-defined] # noqa
+        replay_buffer: (
+            "imitation.policies.replay_buffer_wrapper.ReplayBufferRewardWrapper"
+        ),
     ):
         pass

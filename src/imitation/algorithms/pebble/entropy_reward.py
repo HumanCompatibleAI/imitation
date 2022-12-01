@@ -25,7 +25,7 @@ class PebbleRewardPhase(Enum):
 class PebbleStateEntropyReward(ReplayBufferAwareRewardFn):
     """Reward function for implementation of the PEBBLE learning algorithm.
 
-    See https://arxiv.org/pdf/2106.05091.pdf .
+    See https://arxiv.org/abs/2106.05091 .
 
     The rewards returned by this function go through the three phases:
     1. Before enough samples are collected for entropy calculation, the
