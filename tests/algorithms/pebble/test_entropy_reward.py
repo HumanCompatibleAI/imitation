@@ -1,5 +1,5 @@
 import pickle
-from unittest.mock import patch
+from unittest.mock import patch, Mock
 
 import numpy as np
 import torch as th
@@ -19,13 +19,14 @@ BATCH_SIZE = 8
 VENVS = 2
 
 
-def test_state_entropy_reward_returns_entropy(rng):
+def test_pebble_entropy_reward_returns_entropy(rng):
     obs_shape = get_obs_shape(SPACE)
     all_observations = rng.random((BUFFER_SIZE, VENVS, *obs_shape))
 
-
-    reward_fn = PebbleStateEntropyReward(K, SPACE)
-    reward_fn.set_replay_buffer(ReplayBufferView(all_observations, lambda: slice(None)), obs_shape)
+    reward_fn = PebbleStateEntropyReward(Mock(), SPACE, K)
+    reward_fn.set_replay_buffer(
+        ReplayBufferView(all_observations, lambda: slice(None)), obs_shape
+    )
 
     # Act
     observations = rng.random((BATCH_SIZE, *obs_shape))
@@ -41,16 +42,16 @@ def test_state_entropy_reward_returns_entropy(rng):
     np.testing.assert_allclose(reward, expected_normalized)
 
 
-def test_state_entropy_reward_returns_normalized_values():
+def test_pebble_entropy_reward_returns_normalized_values():
     with patch("imitation.util.util.compute_state_entropy") as m:
         # mock entropy computation so that we can test only stats collection in this test
         m.side_effect = lambda obs, all_obs, k: obs
 
-        reward_fn = PebbleStateEntropyReward(K, SPACE)
+        reward_fn = PebbleStateEntropyReward(Mock(), SPACE, K)
         all_observations = np.empty((BUFFER_SIZE, VENVS, *get_obs_shape(SPACE)))
         reward_fn.set_replay_buffer(
             ReplayBufferView(all_observations, lambda: slice(None)),
-            get_obs_shape(SPACE)
+            get_obs_shape(SPACE),
         )
 
         dim = 8
@@ -75,12 +76,12 @@ def test_state_entropy_reward_returns_normalized_values():
         )
 
 
-def test_state_entropy_reward_can_pickle():
+def test_pebble_entropy_reward_can_pickle():
     all_observations = np.empty((BUFFER_SIZE, VENVS, *get_obs_shape(SPACE)))
     replay_buffer = ReplayBufferView(all_observations, lambda: slice(None))
 
     obs1 = np.random.rand(VENVS, *get_obs_shape(SPACE))
-    reward_fn = PebbleStateEntropyReward(K, SPACE)
+    reward_fn = PebbleStateEntropyReward(reward_fn_stub, SPACE, K)
     reward_fn.set_replay_buffer(replay_buffer, get_obs_shape(SPACE))
     reward_fn(obs1, PLACEHOLDER, PLACEHOLDER, PLACEHOLDER)
 
@@ -94,3 +95,33 @@ def test_state_entropy_reward_can_pickle():
     expected_result = reward_fn(obs2, PLACEHOLDER, PLACEHOLDER, PLACEHOLDER)
     actual_result = reward_fn_deserialized(obs2, PLACEHOLDER, PLACEHOLDER, PLACEHOLDER)
     np.testing.assert_allclose(actual_result, expected_result)
+
+
+def test_pebble_entropy_reward_function_switches_to_inner():
+    obs_shape = get_obs_shape(SPACE)
+
+    expected_reward = np.ones(1)
+    reward_fn_mock = Mock()
+    reward_fn_mock.return_value = expected_reward
+    reward_fn = PebbleStateEntropyReward(reward_fn_mock, SPACE)
+
+    # Act
+    reward_fn.on_unsupervised_exploration_finished()
+    observations = np.ones((BATCH_SIZE, *obs_shape))
+    reward = reward_fn(observations, PLACEHOLDER, PLACEHOLDER, PLACEHOLDER)
+
+    # Assert
+    assert reward == expected_reward
+    reward_fn_mock.assert_called_once_with(
+        observations, PLACEHOLDER, PLACEHOLDER, PLACEHOLDER
+    )
+
+
+def reward_fn_stub(
+    self,
+    state: np.ndarray,
+    action: np.ndarray,
+    next_state: np.ndarray,
+    done: np.ndarray,
+) -> np.ndarray:
+    return state

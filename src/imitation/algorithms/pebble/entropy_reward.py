@@ -9,14 +9,21 @@ from imitation.policies.replay_buffer_wrapper import (
     ReplayBufferView,
     ReplayBufferRewardWrapper,
 )
-from imitation.rewards.reward_function import ReplayBufferAwareRewardFn
+from imitation.rewards.reward_function import ReplayBufferAwareRewardFn, RewardFn
 from imitation.util import util
 from imitation.util.networks import RunningNorm
 
 
 class PebbleStateEntropyReward(ReplayBufferAwareRewardFn):
     # TODO #625: get rid of the observation_space parameter
-    def __init__(self, nearest_neighbor_k: int, observation_space: spaces.Space):
+    # TODO #625: parametrize nearest_neighbor_k
+    def __init__(
+        self,
+        trained_reward_fn: RewardFn,
+        observation_space: spaces.Space,
+        nearest_neighbor_k: int = 5,
+    ):
+        self.trained_reward_fn = trained_reward_fn
         self.nearest_neighbor_k = nearest_neighbor_k
         # TODO support n_envs > 1
         self.entropy_stats = RunningNorm(1)
@@ -25,13 +32,19 @@ class PebbleStateEntropyReward(ReplayBufferAwareRewardFn):
         self.replay_buffer_view = ReplayBufferView(
             np.empty(0, dtype=observation_space.dtype), lambda: slice(0)
         )
+        # This indicates that the training is in the "Unsupervised exploration"
+        # phase of the Pebble algorithm, where entropy is used as reward
+        self.unsupervised_exploration_active = True
 
     def on_replay_buffer_initialized(self, replay_buffer: ReplayBufferRewardWrapper):
         self.set_replay_buffer(replay_buffer.buffer_view, replay_buffer.obs_shape)
 
-    def set_replay_buffer(self, replay_buffer: ReplayBufferView, obs_shape:Tuple):
+    def set_replay_buffer(self, replay_buffer: ReplayBufferView, obs_shape: Tuple):
         self.replay_buffer_view = replay_buffer
         self.obs_shape = obs_shape
+
+    def on_unsupervised_exploration_finished(self):
+        self.unsupervised_exploration_active = False
 
     def __call__(
         self,
@@ -40,9 +53,14 @@ class PebbleStateEntropyReward(ReplayBufferAwareRewardFn):
         next_state: np.ndarray,
         done: np.ndarray,
     ) -> np.ndarray:
+        if self.unsupervised_exploration_active:
+            return self._entropy_reward(state)
+        else:
+            return self.trained_reward_fn(state, action, next_state, done)
+
+    def _entropy_reward(self, state):
         # TODO: should this work with torch instead of numpy internally?
         #   (The RewardFn protocol requires numpy)
-
         all_observations = self.replay_buffer_view.observations
         # ReplayBuffer sampling flattens the venv dimension, let's adapt to that
         all_observations = all_observations.reshape(
