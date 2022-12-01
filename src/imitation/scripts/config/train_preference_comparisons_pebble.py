@@ -68,6 +68,8 @@ def train_defaults():
     initial_comparison_frac = 0.1
     # fraction of sampled trajectories that will include some random actions
     exploration_frac = 0.0
+    # fraction of total_timesteps for training before preference gathering
+    initial_agent_pretrain_frac = 0.05
     preference_model_kwargs = {}
     reward_trainer_kwargs = {
         "epochs": 3,
@@ -153,6 +155,7 @@ def fast():
     total_timesteps = 50
     total_comparisons = 5
     initial_comparison_frac = 0.2
+    initial_agent_pretrain_frac = 0.2
     num_iterations = 1
     fragment_length = 2
     reward_trainer_kwargs = {

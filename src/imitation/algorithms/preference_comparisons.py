@@ -1495,6 +1495,7 @@ class PreferenceComparisons(base.BaseImitationAlgorithm):
         transition_oversampling: float = 1,
         initial_comparison_frac: float = 0.1,
         initial_epoch_multiplier: float = 200.0,
+        initial_agent_pretrain_frac: float = 0.01,
         custom_logger: Optional[imit_logger.HierarchicalLogger] = None,
         allow_variable_horizon: bool = False,
         rng: Optional[np.random.Generator] = None,
@@ -1544,6 +1545,9 @@ class PreferenceComparisons(base.BaseImitationAlgorithm):
             initial_epoch_multiplier: before agent training begins, train the reward
                 model for this many more epochs than usual (on fragments sampled from a
                 random agent).
+            initial_agent_pretrain_frac: fraction of total_timesteps for which the
+                agent will be trained without preference gathering (and reward model
+                training)
             custom_logger: Where to log to; if None (default), creates a new logger.
             allow_variable_horizon: If False (default), algorithm will raise an
                 exception if it detects trajectories of different length during
@@ -1642,6 +1646,7 @@ class PreferenceComparisons(base.BaseImitationAlgorithm):
         self.fragment_length = fragment_length
         self.initial_comparison_frac = initial_comparison_frac
         self.initial_epoch_multiplier = initial_epoch_multiplier
+        self.initial_agent_pretrain_frac = initial_agent_pretrain_frac
         self.num_iterations = num_iterations
         self.transition_oversampling = transition_oversampling
         if callable(query_schedule):
@@ -1674,10 +1679,11 @@ class PreferenceComparisons(base.BaseImitationAlgorithm):
         preference_query_schedule = self._preference_gather_schedule(total_comparisons)
         print(f"Query schedule: {preference_query_schedule}")
 
-        timesteps_per_iteration, extra_timesteps = divmod(
-            total_timesteps,
-            self.num_iterations,
-        )
+        (
+            agent_pretrain_timesteps,
+            timesteps_per_iteration,
+            extra_timesteps,
+        ) = self._compute_timesteps(total_timesteps)
         reward_loss = None
         reward_accuracy = None
 
@@ -1754,3 +1760,13 @@ class PreferenceComparisons(base.BaseImitationAlgorithm):
         shares = util.oric(probs * total_comparisons)
         schedule = [initial_comparisons] + shares.tolist()
         return schedule
+
+    def _compute_timesteps(self, total_timesteps: int) -> Tuple[int, int, int]:
+        agent_pretrain_timesteps = int(
+            total_timesteps * self.initial_agent_pretrain_frac
+        )
+        timesteps_per_iteration, extra_timesteps = divmod(
+            total_timesteps - agent_pretrain_timesteps,
+            self.num_iterations,
+        )
+        return agent_pretrain_timesteps, timesteps_per_iteration, extra_timesteps
