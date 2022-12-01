@@ -82,6 +82,8 @@ def train_preference_comparisons(
     allow_variable_horizon: bool,
     checkpoint_interval: int,
     query_schedule: Union[str, type_aliases.Schedule],
+    unsupervised_agent_pretrain_frac: Optional[float],
+    pebble_nearest_neighbor_k: Optional[int],
 ) -> Mapping[str, Any]:
     """Train a reward model using preference comparisons.
 
@@ -141,6 +143,11 @@ def train_preference_comparisons(
             be allocated to each iteration. "hyperbolic" and "inverse_quadratic"
             apportion fewer queries to later iterations when the policy is assumed
             to be better and more stable.
+        unsupervised_agent_pretrain_frac: fraction of total_timesteps for which the
+                agent will be trained without preference gathering (and reward model
+                training)
+        pebble_nearest_neighbor_k: Parameter for state entropy computation (for PEBBLE
+            training only)
 
     Returns:
         Rollout statistics from trained policy.
@@ -244,6 +251,7 @@ def train_preference_comparisons(
             custom_logger=custom_logger,
             allow_variable_horizon=allow_variable_horizon,
             query_schedule=query_schedule,
+            unsupervised_agent_pretrain_frac=unsupervised_agent_pretrain_frac,
         )
 
         def save_callback(iteration_num):

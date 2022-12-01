@@ -344,6 +344,10 @@ class PebbleAgentTrainer(AgentTrainer):
         reward_fn: PebbleStateEntropyReward,
         **kwargs,
     ) -> None:
+        if not isinstance(reward_fn, PebbleStateEntropyReward):
+            raise ValueError(
+                f"{self.__class__.__name__} expects {PebbleStateEntropyReward.__name__} reward function"
+            )
         super().__init__(reward_fn=reward_fn, **kwargs)
 
     def unsupervised_pretrain(self, steps: int, **kwargs: Any) -> None:

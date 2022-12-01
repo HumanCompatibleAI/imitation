@@ -1,8 +1,10 @@
 """Configuration for imitation.scripts.train_preference_comparisons."""
 
 import sacred
+import stable_baselines3 as sb3
 
 from imitation.algorithms import preference_comparisons
+from imitation.policies import base
 from imitation.scripts.common import common, reward, rl, train
 
 train_preference_comparisons_ex = sacred.Experiment(
@@ -14,7 +16,6 @@ train_preference_comparisons_ex = sacred.Experiment(
         train.train_ingredient,
     ],
 )
-
 
 MUJOCO_SHARED_LOCALS = dict(rl=dict(rl_kwargs=dict(ent_coef=0.1)))
 ANT_SHARED_LOCALS = dict(
@@ -59,6 +60,26 @@ def train_defaults():
 
     checkpoint_interval = 0  # Num epochs between saving (<0 disables, =0 final only)
     query_schedule = "hyperbolic"
+
+
+@train_preference_comparisons_ex.named_config
+def pebble():
+    # fraction of total_timesteps for training before preference gathering
+    unsupervised_agent_pretrain_frac = 0.05
+    pebble_nearest_neighbor_k = 5
+
+    rl = {
+        "rl_cls": sb3.SAC,
+        "batch_size": 256,  # batch size for RL algorithm
+        "rl_kwargs": {"batch_size": None},  # make sure to set batch size to None
+    }
+    train = {
+        "policy_cls": base.SAC1024Policy,  # noqa: F841
+    }
+    common = {"env_name": "MountainCarContinuous-v0"}
+    allow_variable_horizon = True
+
+    locals()  # quieten flake8
 
 
 @train_preference_comparisons_ex.named_config
@@ -121,6 +142,7 @@ def fast():
     total_timesteps = 50
     total_comparisons = 5
     initial_comparison_frac = 0.2
+    unsupervised_agent_pretrain_frac = 0.2
     num_iterations = 1
     fragment_length = 2
     reward_trainer_kwargs = {
