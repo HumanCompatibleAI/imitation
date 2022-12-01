@@ -35,13 +35,14 @@ class StateEntropyReward(RewardFn):
 
         all_observations = self.replay_buffer_view.observations
         # ReplayBuffer sampling flattens the venv dimension, let's adapt to that
-        all_observations = all_observations.reshape((-1, *self.obs_shape))
+        all_observations = all_observations.reshape((-1, *state.shape[1:]))  # TODO #625: fix self.obs_shape
+        # TODO #625: deal with the conversion back and forth between np and torch
         entropies = util.compute_state_entropy(
-            state,
-            all_observations,
+            th.tensor(state),
+            th.tensor(all_observations),
             self.nearest_neighbor_k,
         )
-        normalized_entropies = self.entropy_stats.forward(th.as_tensor(entropies))
+        normalized_entropies = self.entropy_stats.forward(entropies)
         return normalized_entropies.numpy()
 
     def __getstate__(self):
