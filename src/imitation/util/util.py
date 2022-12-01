@@ -389,5 +389,4 @@ def compute_state_entropy(
         # a point is itself, which we want to skip.
         assert distances_tensor.shape[-1] > k
         knn_dists = th.kthvalue(distances_tensor, k=k + 1, dim=1).values
-        state_entropy = knn_dists
-    return state_entropy.unsqueeze(1)
+        return knn_dists

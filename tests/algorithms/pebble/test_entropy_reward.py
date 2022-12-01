@@ -21,7 +21,7 @@ VENVS = 2
 
 
 def test_pebble_entropy_reward_returns_entropy_for_pretraining(rng):
-    all_observations = rng.random((BUFFER_SIZE, VENVS, *(OBS_SHAPE)))
+    all_observations = rng.random((BUFFER_SIZE, VENVS, *OBS_SHAPE))
 
     reward_fn = PebbleStateEntropyReward(Mock(), K)
     reward_fn.set_replay_buffer(
@@ -29,12 +29,12 @@ def test_pebble_entropy_reward_returns_entropy_for_pretraining(rng):
     )
 
     # Act
-    observations = th.rand((BATCH_SIZE, *(OBS_SHAPE)))
+    observations = th.rand((BATCH_SIZE, *OBS_SHAPE))
     reward = reward_fn(observations, PLACEHOLDER, PLACEHOLDER, PLACEHOLDER)
 
     # Assert
     expected = util.compute_state_entropy(
-        observations, all_observations.reshape(-1, *(OBS_SHAPE)), K
+        observations, all_observations.reshape(-1, *OBS_SHAPE), K
     )
     expected_normalized = reward_fn.entropy_stats.normalize(
         th.as_tensor(expected)

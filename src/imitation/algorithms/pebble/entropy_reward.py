@@ -94,7 +94,8 @@ class PebbleStateEntropyReward(ReplayBufferAwareRewardFn):
         all_observations = all_observations.reshape((-1, *self.obs_shape))
 
         if all_observations.shape[0] < self.nearest_neighbor_k:
-            # not enough observations to compare to, fall back to the learned function
+            # not enough observations to compare to, fall back to the learned function;
+            # (falling back to a constant may also be ok)
             return self.learned_reward_fn(state, action, next_state, done)
         else:
             # TODO #625: deal with the conversion back and forth between np and torch
@@ -104,7 +105,7 @@ class PebbleStateEntropyReward(ReplayBufferAwareRewardFn):
                 self.nearest_neighbor_k,
             )
             normalized_entropies = self.entropy_stats.forward(entropies)
-        return normalized_entropies.numpy()
+            return normalized_entropies.numpy()
 
     def __getstate__(self):
         state = self.__dict__.copy()
