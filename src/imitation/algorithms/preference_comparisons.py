@@ -33,6 +33,7 @@ from torch.utils import data as data_th
 from tqdm.auto import tqdm
 
 from imitation.algorithms import base
+from imitation.algorithms.pebble.entropy_reward import PebbleStateEntropyReward
 from imitation.data import rollout, types, wrappers
 from imitation.data.types import (
     AnyPath,
@@ -327,6 +328,27 @@ class AgentTrainer(TrajectoryGenerator):
     def logger(self, value: imit_logger.HierarchicalLogger) -> None:
         self._logger = value
         self.algorithm.set_logger(self.logger)
+
+
+class PebbleAgentTrainer(AgentTrainer):
+    """
+    Specialization of AgentTrainer for PEBBLE training.
+    Includes unsupervised pretraining with an entropy based reward function.
+    """
+
+    reward_fn: PebbleStateEntropyReward
+
+    def __init__(
+        self,
+        *,
+        reward_fn: PebbleStateEntropyReward,
+        **kwargs,
+    ) -> None:
+        super().__init__(reward_fn=reward_fn, **kwargs)
+
+    def unsupervised_pretrain(self, steps: int, **kwargs: Any) -> None:
+        self.train(steps, **kwargs)
+        self.reward_fn.unsupervised_exploration_finish()
 
 
 def _get_trajectories(
@@ -1707,7 +1729,9 @@ class PreferenceComparisons(base.BaseImitationAlgorithm):
             self.logger.log(
                 f"Pre-training agent for {unsupervised_pretrain_timesteps} timesteps"
             )
-            self.trajectory_generator.unsupervised_pretrain(unsupervised_pretrain_timesteps)
+            self.trajectory_generator.unsupervised_pretrain(
+                unsupervised_pretrain_timesteps
+            )
 
         for i, num_pairs in enumerate(preference_query_schedule):
             ##########################
