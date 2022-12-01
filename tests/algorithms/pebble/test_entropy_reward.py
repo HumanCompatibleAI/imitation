@@ -11,7 +11,8 @@ from imitation.policies.replay_buffer_wrapper import ReplayBufferView
 from imitation.util import util
 
 SPACE = Discrete(4)
-PLACEHOLDER = np.empty(get_obs_shape(SPACE))
+OBS_SHAPE = get_obs_shape(SPACE)
+PLACEHOLDER = np.empty(OBS_SHAPE)
 
 BUFFER_SIZE = 20
 K = 4
@@ -19,22 +20,59 @@ BATCH_SIZE = 8
 VENVS = 2
 
 
-def test_pebble_entropy_reward_returns_entropy(rng):
-    obs_shape = get_obs_shape(SPACE)
-    all_observations = rng.random((BUFFER_SIZE, VENVS, *obs_shape))
+def test_pebble_entropy_reward_function_returns_learned_reward_initially():
+    expected_reward = np.ones(1)
+    learned_reward_mock = Mock()
+    learned_reward_mock.return_value = expected_reward
+    reward_fn = PebbleStateEntropyReward(learned_reward_mock, SPACE)
+
+    # Act
+    observations = np.ones((BATCH_SIZE, *OBS_SHAPE))
+    reward = reward_fn(observations, PLACEHOLDER, PLACEHOLDER, PLACEHOLDER)
+
+    # Assert
+    assert reward == expected_reward
+    learned_reward_mock.assert_called_once_with(
+        observations, PLACEHOLDER, PLACEHOLDER, PLACEHOLDER
+    )
+
+
+def test_pebble_entropy_reward_function_returns_learned_reward_after_pre_training():
+    expected_reward = np.ones(1)
+    learned_reward_mock = Mock()
+    learned_reward_mock.return_value = expected_reward
+    reward_fn = PebbleStateEntropyReward(learned_reward_mock, SPACE)
+    # move all the way to the last state
+    reward_fn.unsupervised_exploration_start()
+    reward_fn.unsupervised_exploration_finish()
+
+    # Act
+    observations = np.ones((BATCH_SIZE, *OBS_SHAPE))
+    reward = reward_fn(observations, PLACEHOLDER, PLACEHOLDER, PLACEHOLDER)
+
+    # Assert
+    assert reward == expected_reward
+    learned_reward_mock.assert_called_once_with(
+        observations, PLACEHOLDER, PLACEHOLDER, PLACEHOLDER
+    )
+
+
+def test_pebble_entropy_reward_returns_entropy_for_pretraining(rng):
+    all_observations = rng.random((BUFFER_SIZE, VENVS, *(OBS_SHAPE)))
 
     reward_fn = PebbleStateEntropyReward(Mock(), SPACE, K)
     reward_fn.set_replay_buffer(
-        ReplayBufferView(all_observations, lambda: slice(None)), obs_shape
+        ReplayBufferView(all_observations, lambda: slice(None)), OBS_SHAPE
     )
+    reward_fn.unsupervised_exploration_start()
 
     # Act
-    observations = rng.random((BATCH_SIZE, *obs_shape))
+    observations = th.rand((BATCH_SIZE, *(OBS_SHAPE)))
     reward = reward_fn(observations, PLACEHOLDER, PLACEHOLDER, PLACEHOLDER)
 
     # Assert
     expected = util.compute_state_entropy(
-        observations, all_observations.reshape(-1, *obs_shape), K
+        observations, all_observations.reshape(-1, *(OBS_SHAPE)), K
     )
     expected_normalized = reward_fn.entropy_stats.normalize(
         th.as_tensor(expected)
@@ -42,17 +80,18 @@ def test_pebble_entropy_reward_returns_entropy(rng):
     np.testing.assert_allclose(reward, expected_normalized)
 
 
-def test_pebble_entropy_reward_returns_normalized_values():
+def test_pebble_entropy_reward_returns_normalized_values_for_pretraining():
     with patch("imitation.util.util.compute_state_entropy") as m:
         # mock entropy computation so that we can test only stats collection in this test
         m.side_effect = lambda obs, all_obs, k: obs
 
         reward_fn = PebbleStateEntropyReward(Mock(), SPACE, K)
-        all_observations = np.empty((BUFFER_SIZE, VENVS, *get_obs_shape(SPACE)))
+        all_observations = np.empty((BUFFER_SIZE, VENVS, *OBS_SHAPE))
         reward_fn.set_replay_buffer(
             ReplayBufferView(all_observations, lambda: slice(None)),
-            get_obs_shape(SPACE),
+            OBS_SHAPE,
         )
+        reward_fn.unsupervised_exploration_start()
 
         dim = 8
         shift = 3
@@ -77,51 +116,25 @@ def test_pebble_entropy_reward_returns_normalized_values():
 
 
 def test_pebble_entropy_reward_can_pickle():
-    all_observations = np.empty((BUFFER_SIZE, VENVS, *get_obs_shape(SPACE)))
+    all_observations = np.empty((BUFFER_SIZE, VENVS, *OBS_SHAPE))
     replay_buffer = ReplayBufferView(all_observations, lambda: slice(None))
 
-    obs1 = np.random.rand(VENVS, *get_obs_shape(SPACE))
+    obs1 = np.random.rand(VENVS, *OBS_SHAPE)
     reward_fn = PebbleStateEntropyReward(reward_fn_stub, SPACE, K)
-    reward_fn.set_replay_buffer(replay_buffer, get_obs_shape(SPACE))
+    reward_fn.set_replay_buffer(replay_buffer, OBS_SHAPE)
     reward_fn(obs1, PLACEHOLDER, PLACEHOLDER, PLACEHOLDER)
 
     # Act
     pickled = pickle.dumps(reward_fn)
     reward_fn_deserialized = pickle.loads(pickled)
-    reward_fn_deserialized.set_replay_buffer(replay_buffer)
+    reward_fn_deserialized.set_replay_buffer(replay_buffer, OBS_SHAPE)
 
     # Assert
-    obs2 = np.random.rand(VENVS, *get_obs_shape(SPACE))
+    obs2 = np.random.rand(VENVS, *OBS_SHAPE)
     expected_result = reward_fn(obs2, PLACEHOLDER, PLACEHOLDER, PLACEHOLDER)
     actual_result = reward_fn_deserialized(obs2, PLACEHOLDER, PLACEHOLDER, PLACEHOLDER)
     np.testing.assert_allclose(actual_result, expected_result)
 
 
-def test_pebble_entropy_reward_function_switches_to_inner():
-    obs_shape = get_obs_shape(SPACE)
-
-    expected_reward = np.ones(1)
-    reward_fn_mock = Mock()
-    reward_fn_mock.return_value = expected_reward
-    reward_fn = PebbleStateEntropyReward(reward_fn_mock, SPACE)
-
-    # Act
-    reward_fn.on_unsupervised_exploration_finished()
-    observations = np.ones((BATCH_SIZE, *obs_shape))
-    reward = reward_fn(observations, PLACEHOLDER, PLACEHOLDER, PLACEHOLDER)
-
-    # Assert
-    assert reward == expected_reward
-    reward_fn_mock.assert_called_once_with(
-        observations, PLACEHOLDER, PLACEHOLDER, PLACEHOLDER
-    )
-
-
-def reward_fn_stub(
-    self,
-    state: np.ndarray,
-    action: np.ndarray,
-    next_state: np.ndarray,
-    done: np.ndarray,
-) -> np.ndarray:
+def reward_fn_stub(state, action, next_state, done):
     return state
