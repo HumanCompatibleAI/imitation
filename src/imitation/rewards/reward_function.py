@@ -40,6 +40,6 @@ class ReplayBufferAwareRewardFn(RewardFn, abc.ABC):
     @abc.abstractmethod
     def on_replay_buffer_initialized(
         self,
-        replay_buffer: "ReplayBufferRewardWrapper",  # type: ignore[name-defined]
+        replay_buffer: "ReplayBufferRewardWrapper",  # type: ignore[name-defined] # noqa
     ):
         pass

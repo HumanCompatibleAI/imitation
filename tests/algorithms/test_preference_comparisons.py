@@ -17,8 +17,10 @@ from stable_baselines3.common.vec_env import DummyVecEnv
 
 import imitation.testing.reward_nets as testing_reward_nets
 from imitation.algorithms import preference_comparisons
+from imitation.algorithms.pebble.entropy_reward import PebbleStateEntropyReward
 from imitation.data import types
 from imitation.data.types import TrajectoryWithRew
+from imitation.policies.replay_buffer_wrapper import ReplayBufferView
 from imitation.regularization import regularizers, updaters
 from imitation.rewards import reward_nets
 from imitation.util import networks, util
@@ -70,6 +72,23 @@ def random_fragmenter(rng):
 @pytest.fixture
 def agent_trainer(agent, reward_net, venv, rng):
     return preference_comparisons.AgentTrainer(agent, reward_net, venv, rng)
+
+
+@pytest.fixture
+def replay_buffer(rng):
+    return ReplayBufferView(rng.random((10, 8, 4)), lambda: slice(None))
+
+
+@pytest.fixture
+def pebble_agent_trainer(agent, reward_net, venv, rng, replay_buffer):
+    reward_fn = PebbleStateEntropyReward(reward_net.predict_processed)
+    reward_fn.set_replay_buffer(replay_buffer, (4,))
+    return preference_comparisons.PebbleAgentTrainer(
+        algorithm=agent,
+        reward_fn=reward_fn,
+        venv=venv,
+        rng=rng,
+    )
 
 
 def assert_info_arrs_equal(arr1, arr2):  # pragma: no cover
@@ -293,14 +312,17 @@ def test_preference_comparisons_raises(
     "schedule",
     ["constant", "hyperbolic", "inverse_quadratic", lambda t: 1 / (1 + t**3)],
 )
+@pytest.mark.parametrize("agent_fixture", ["agent_trainer", "pebble_agent_trainer"])
 def test_trainer_no_crash(
-    agent_trainer,
+    request,
+    agent_fixture,
     reward_net,
     random_fragmenter,
     custom_logger,
     schedule,
     rng,
 ):
+    agent_trainer = request.getfixturevalue(agent_fixture)
     main_trainer = preference_comparisons.PreferenceComparisons(
         agent_trainer,
         reward_net,

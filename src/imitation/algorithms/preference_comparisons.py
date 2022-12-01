@@ -45,6 +45,7 @@ from imitation.data.types import (
 from imitation.policies import exploration_wrapper
 from imitation.regularization import regularizers
 from imitation.rewards import reward_function, reward_nets, reward_wrapper
+from imitation.rewards.reward_function import RewardFn
 from imitation.util import logger as imit_logger
 from imitation.util import networks, util
 
@@ -178,7 +179,7 @@ class AgentTrainer(TrajectoryGenerator):
                 reward_fn.action_space,
             )
             reward_fn = reward_fn.predict_processed
-        self.reward_fn = reward_fn
+        self.reward_fn: RewardFn = reward_fn
         self.exploration_frac = exploration_frac
         self.rng = rng
 
@@ -362,7 +363,7 @@ class PebbleAgentTrainer(AgentTrainer):
 
     def unsupervised_pretrain(self, steps: int, **kwargs: Any) -> None:
         self.train(steps, **kwargs)
-        self.reward_fn.unsupervised_exploration_finish()
+        self.reward_fn.unsupervised_exploration_finish()  # type: ignore[attribute-error]
 
 
 def _get_trajectories(
