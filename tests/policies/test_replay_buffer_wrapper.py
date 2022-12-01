@@ -264,3 +264,18 @@ def test_replay_buffer_view_provides_buffered_observations():
     # ReplayBuffer internally uses a circular buffer
     expected = np.roll(observations, 1, axis=0)
     np.testing.assert_allclose(view.observations, expected)
+
+
+def test_replay_buffer_reward_wrapper_calls_initialization_callback_with_itself():
+    callback = Mock()
+    buffer = ReplayBufferRewardWrapper(
+        10,
+        spaces.Discrete(2),
+        spaces.Discrete(2),
+        replay_buffer_class=ReplayBuffer,
+        reward_fn=Mock(),
+        n_envs=2,
+        handle_timeout_termination=False,
+        on_initialized_callback=callback,
+    )
+    assert callback.call_args.args[0] is buffer

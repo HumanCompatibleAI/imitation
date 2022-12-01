@@ -1,5 +1,6 @@
 """Wrapper for reward labeling for transitions sampled from a replay buffer."""
 
+from typing import Callable
 from typing import Mapping, Type
 
 import numpy as np
@@ -10,7 +11,6 @@ from stable_baselines3.common.type_aliases import ReplayBufferSamples
 from imitation.rewards.reward_function import RewardFn
 from imitation.util import util
 from imitation.util.networks import RunningNorm
-from typing import Callable
 
 
 def _samples_to_reward_fn_input(
@@ -59,6 +59,7 @@ class ReplayBufferRewardWrapper(ReplayBuffer):
         *,
         replay_buffer_class: Type[ReplayBuffer],
         reward_fn: RewardFn,
+        on_initialized_callback: Callable[["ReplayBufferRewardWrapper"], None] = None,
         **kwargs,
     ):
         """Builds ReplayBufferRewardWrapper.
@@ -69,6 +70,9 @@ class ReplayBufferRewardWrapper(ReplayBuffer):
             action_space: Action space
             replay_buffer_class: Class of the replay buffer.
             reward_fn: Reward function for reward relabeling.
+            on_initialized_callback: Callback called with reference to this object after
+                this instance is fully initialized. This provides a hook to access the
+                buffer after it is created from inside a Stable Baselines algorithm.
             **kwargs: keyword arguments for ReplayBuffer.
         """
         # Note(yawen-d): we directly inherit ReplayBuffer and leave out the case of
@@ -86,6 +90,8 @@ class ReplayBufferRewardWrapper(ReplayBuffer):
         self.reward_fn = reward_fn
         _base_kwargs = {k: v for k, v in kwargs.items() if k in ["device", "n_envs"]}
         super().__init__(buffer_size, observation_space, action_space, **_base_kwargs)
+        if on_initialized_callback is not None:
+            on_initialized_callback(self)
 
     @property
     def pos(self) -> int:
