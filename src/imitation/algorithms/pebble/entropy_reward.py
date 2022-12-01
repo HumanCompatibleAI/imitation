@@ -1,15 +1,20 @@
+from typing import Tuple
+
 import numpy as np
 import torch as th
 from gym.vector.utils import spaces
 from stable_baselines3.common.preprocessing import get_obs_shape
 
-from imitation.policies.replay_buffer_wrapper import ReplayBufferView
-from imitation.rewards.reward_function import RewardFn
+from imitation.policies.replay_buffer_wrapper import (
+    ReplayBufferView,
+    ReplayBufferRewardWrapper,
+)
+from imitation.rewards.reward_function import ReplayBufferAwareRewardFn
 from imitation.util import util
 from imitation.util.networks import RunningNorm
 
 
-class StateEntropyReward(RewardFn):
+class StateEntropyReward(ReplayBufferAwareRewardFn):
     def __init__(self, nearest_neighbor_k: int, observation_space: spaces.Space):
         self.nearest_neighbor_k = nearest_neighbor_k
         # TODO support n_envs > 1
@@ -20,8 +25,12 @@ class StateEntropyReward(RewardFn):
             np.empty(0, dtype=observation_space.dtype), lambda: slice(0)
         )
 
-    def set_replay_buffer(self, replay_buffer: ReplayBufferView):
+    def on_replay_buffer_initialized(self, replay_buffer: ReplayBufferRewardWrapper):
+        self.set_replay_buffer(replay_buffer.buffer_view, replay_buffer.obs_shape)
+
+    def set_replay_buffer(self, replay_buffer: ReplayBufferView, obs_shape:Tuple):
         self.replay_buffer_view = replay_buffer
+        self.obs_shape = obs_shape
 
     def __call__(
         self,

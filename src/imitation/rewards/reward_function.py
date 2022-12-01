@@ -32,3 +32,9 @@ class RewardFn(Protocol):
         Returns:
             Computed rewards of shape `(batch_size,`).
         """  # noqa: DAR202
+
+
+class ReplayBufferAwareRewardFn(RewardFn, abc.ABC):
+    @abc.abstractmethod
+    def on_replay_buffer_initialized(self, replay_buffer: "ReplayBufferRewardWrapper"):
+        pass

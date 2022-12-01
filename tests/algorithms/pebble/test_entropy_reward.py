@@ -23,8 +23,9 @@ def test_state_entropy_reward_returns_entropy(rng):
     obs_shape = get_obs_shape(SPACE)
     all_observations = rng.random((BUFFER_SIZE, VENVS, *obs_shape))
 
+
     reward_fn = StateEntropyReward(K, SPACE)
-    reward_fn.set_buffer_view(ReplayBufferView(all_observations, lambda: slice(None)))
+    reward_fn.set_replay_buffer(ReplayBufferView(all_observations, lambda: slice(None)), obs_shape)
 
     # Act
     observations = rng.random((BATCH_SIZE, *obs_shape))
@@ -48,7 +49,8 @@ def test_state_entropy_reward_returns_normalized_values():
         reward_fn = StateEntropyReward(K, SPACE)
         all_observations = np.empty((BUFFER_SIZE, VENVS, *get_obs_shape(SPACE)))
         reward_fn.set_replay_buffer(
-            ReplayBufferView(all_observations, lambda: slice(None))
+            ReplayBufferView(all_observations, lambda: slice(None)),
+            get_obs_shape(SPACE)
         )
 
         dim = 8
@@ -79,7 +81,7 @@ def test_state_entropy_reward_can_pickle():
 
     obs1 = np.random.rand(VENVS, *get_obs_shape(SPACE))
     reward_fn = StateEntropyReward(K, SPACE)
-    reward_fn.set_replay_buffer(replay_buffer)
+    reward_fn.set_replay_buffer(replay_buffer, get_obs_shape(SPACE))
     reward_fn(obs1, PLACEHOLDER, PLACEHOLDER, PLACEHOLDER)
 
     # Act

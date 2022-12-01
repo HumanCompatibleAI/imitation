@@ -17,6 +17,7 @@ from stable_baselines3.common.preprocessing import get_action_dim, get_obs_shape
 from stable_baselines3.common.save_util import load_from_pkl
 
 from imitation.policies.replay_buffer_wrapper import ReplayBufferRewardWrapper
+from imitation.rewards.reward_function import ReplayBufferAwareRewardFn
 from imitation.util import util
 
 
@@ -175,16 +176,15 @@ def test_replay_buffer_view_provides_buffered_observations():
     np.testing.assert_allclose(view.observations, expected)
 
 
-def test_replay_buffer_reward_wrapper_calls_initialization_callback_with_itself():
-    callback = Mock()
+def test_replay_buffer_reward_wrapper_calls_reward_initialization_callback():
+    reward_fn = Mock(spec=ReplayBufferAwareRewardFn)
     buffer = ReplayBufferRewardWrapper(
         10,
         spaces.Discrete(2),
         spaces.Discrete(2),
         replay_buffer_class=ReplayBuffer,
-        reward_fn=Mock(),
+        reward_fn=reward_fn,
         n_envs=2,
         handle_timeout_termination=False,
-        on_initialized_callback=callback,
     )
-    assert callback.call_args.args[0] is buffer
+    assert reward_fn.on_replay_buffer_initialized.call_args.args[0] is buffer

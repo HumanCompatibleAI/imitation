@@ -7,7 +7,7 @@ from gym import spaces
 from stable_baselines3.common.buffers import ReplayBuffer
 from stable_baselines3.common.type_aliases import ReplayBufferSamples
 
-from imitation.rewards.reward_function import RewardFn
+from imitation.rewards.reward_function import RewardFn, ReplayBufferAwareRewardFn
 from imitation.util import util
 
 
@@ -37,13 +37,13 @@ class ReplayBufferView:
         observations_buffer: np.ndarray,
         buffer_slice_provider: Callable[[], slice],
     ):
-        self._observations_buffer = observations_buffer.view()
-        self._observations_buffer.flags.writeable = False
+        self._observations_buffer_view = observations_buffer.view()
+        self._observations_buffer_view.flags.writeable = False
         self._buffer_slice_provider = buffer_slice_provider
 
     @property
     def observations(self):
-        return self._observations_buffer[self._buffer_slice_provider()]
+        return self._observations_buffer_view[self._buffer_slice_provider()]
 
 
 class ReplayBufferRewardWrapper(ReplayBuffer):
@@ -57,7 +57,6 @@ class ReplayBufferRewardWrapper(ReplayBuffer):
         *,
         replay_buffer_class: Type[ReplayBuffer],
         reward_fn: RewardFn,
-        on_initialized_callback: Callable[["ReplayBufferRewardWrapper"], None] = None,
         **kwargs,
     ):
         """Builds ReplayBufferRewardWrapper.
@@ -88,8 +87,8 @@ class ReplayBufferRewardWrapper(ReplayBuffer):
         self.reward_fn = reward_fn
         _base_kwargs = {k: v for k, v in kwargs.items() if k in ["device", "n_envs"]}
         super().__init__(buffer_size, observation_space, action_space, **_base_kwargs)
-        if on_initialized_callback is not None:
-            on_initialized_callback(self)
+        if isinstance(reward_fn, ReplayBufferAwareRewardFn):
+            reward_fn.on_replay_buffer_initialized(self)
 
     @property
     def pos(self) -> int:
