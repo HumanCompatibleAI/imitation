@@ -10,6 +10,7 @@ from stable_baselines3.common.type_aliases import ReplayBufferSamples
 from imitation.rewards.reward_function import RewardFn
 from imitation.util import util
 from imitation.util.networks import RunningNorm
+from typing import Callable
 
 
 def _samples_to_reward_fn_input(

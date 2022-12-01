@@ -1,3 +1,4 @@
+import pickle
 from unittest.mock import patch
 
 import numpy as np
@@ -33,7 +34,9 @@ def test_state_entropy_reward_returns_entropy(rng):
     expected = util.compute_state_entropy(
         observations, all_observations.reshape(-1, *obs_shape), K
     )
-    expected_normalized = reward_fn.entropy_stats.normalize(th.as_tensor(expected)).numpy()
+    expected_normalized = reward_fn.entropy_stats.normalize(
+        th.as_tensor(expected)
+    ).numpy()
     np.testing.assert_allclose(reward, expected_normalized)
 
 
@@ -44,7 +47,7 @@ def test_state_entropy_reward_returns_normalized_values():
 
         reward_fn = StateEntropyReward(K, SPACE)
         all_observations = np.empty((BUFFER_SIZE, VENVS, *get_obs_shape(SPACE)))
-        reward_fn.set_buffer_view(
+        reward_fn.set_replay_buffer(
             ReplayBufferView(all_observations, lambda: slice(None))
         )
 
@@ -68,3 +71,24 @@ def test_state_entropy_reward_returns_normalized_values():
             rtol=0.05,
             atol=0.05,
         )
+
+
+def test_state_entropy_reward_can_pickle():
+    all_observations = np.empty((BUFFER_SIZE, VENVS, *get_obs_shape(SPACE)))
+    replay_buffer = ReplayBufferView(all_observations, lambda: slice(None))
+
+    obs1 = np.random.rand(VENVS, *get_obs_shape(SPACE))
+    reward_fn = StateEntropyReward(K, SPACE)
+    reward_fn.set_replay_buffer(replay_buffer)
+    reward_fn(obs1, PLACEHOLDER, PLACEHOLDER, PLACEHOLDER)
+
+    # Act
+    pickled = pickle.dumps(reward_fn)
+    reward_fn_deserialized = pickle.loads(pickled)
+    reward_fn_deserialized.set_replay_buffer(replay_buffer)
+
+    # Assert
+    obs2 = np.random.rand(VENVS, *get_obs_shape(SPACE))
+    expected_result = reward_fn(obs2, PLACEHOLDER, PLACEHOLDER, PLACEHOLDER)
+    actual_result = reward_fn_deserialized(obs2, PLACEHOLDER, PLACEHOLDER, PLACEHOLDER)
+    np.testing.assert_allclose(actual_result, expected_result)
