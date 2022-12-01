@@ -1670,16 +1670,9 @@ class PreferenceComparisons(base.BaseImitationAlgorithm):
             A dictionary with final metrics such as loss and accuracy
             of the reward model.
         """
-        initial_comparisons = int(total_comparisons * self.initial_comparison_frac)
-        total_comparisons -= initial_comparisons
-
         # Compute the number of comparisons to request at each iteration in advance.
-        vec_schedule = np.vectorize(self.query_schedule)
-        unnormalized_probs = vec_schedule(np.linspace(0, 1, self.num_iterations))
-        probs = unnormalized_probs / np.sum(unnormalized_probs)
-        shares = util.oric(probs * total_comparisons)
-        schedule = [initial_comparisons] + shares.tolist()
-        print(f"Query schedule: {schedule}")
+        preference_query_schedule = self._preference_gather_schedule(total_comparisons)
+        print(f"Query schedule: {preference_query_schedule}")
 
         timesteps_per_iteration, extra_timesteps = divmod(
             total_timesteps,
@@ -1688,7 +1681,7 @@ class PreferenceComparisons(base.BaseImitationAlgorithm):
         reward_loss = None
         reward_accuracy = None
 
-        for i, num_pairs in enumerate(schedule):
+        for i, num_pairs in enumerate(preference_query_schedule):
             ##########################
             # Gather new preferences #
             ##########################
@@ -1751,3 +1744,13 @@ class PreferenceComparisons(base.BaseImitationAlgorithm):
             self._iteration += 1
 
         return {"reward_loss": reward_loss, "reward_accuracy": reward_accuracy}
+
+    def _preference_gather_schedule(self, total_comparisons):
+        initial_comparisons = int(total_comparisons * self.initial_comparison_frac)
+        total_comparisons -= initial_comparisons
+        vec_schedule = np.vectorize(self.query_schedule)
+        unnormalized_probs = vec_schedule(np.linspace(0, 1, self.num_iterations))
+        probs = unnormalized_probs / np.sum(unnormalized_probs)
+        shares = util.oric(probs * total_comparisons)
+        schedule = [initial_comparisons] + shares.tolist()
+        return schedule
