@@ -75,6 +75,19 @@ class TrajectoryGenerator(abc.ABC):
             be the environment rewards, not ones from a reward model).
         """  # noqa: DAR202
 
+    def unsupervised_pretrain(self, steps: int, **kwargs: Any) -> None:
+        """Pre-train an agent if the trajectory generator uses one that
+            needs pre-training.
+
+        By default, this method does nothing and doesn't need
+        to be overridden in subclasses that don't require pre-training.
+
+        Args:
+            steps: number of environment steps to train for.
+            **kwargs: additional keyword arguments to pass on to
+                the training procedure.
+        """
+
     def train(self, steps: int, **kwargs: Any) -> None:
         """Train an agent if the trajectory generator uses one.
 
@@ -1495,7 +1508,7 @@ class PreferenceComparisons(base.BaseImitationAlgorithm):
         transition_oversampling: float = 1,
         initial_comparison_frac: float = 0.1,
         initial_epoch_multiplier: float = 200.0,
-        initial_agent_pretrain_frac: float = 0.01,
+        initial_agent_pretrain_frac: float = 0.05,
         custom_logger: Optional[imit_logger.HierarchicalLogger] = None,
         allow_variable_horizon: bool = False,
         rng: Optional[np.random.Generator] = None,
@@ -1686,6 +1699,15 @@ class PreferenceComparisons(base.BaseImitationAlgorithm):
         ) = self._compute_timesteps(total_timesteps)
         reward_loss = None
         reward_accuracy = None
+
+        ###################################################
+        # Pre-training agent before gathering preferences #
+        ###################################################
+        with self.logger.accumulate_means("agent"):
+            self.logger.log(
+                f"Pre-training agent for {agent_pretrain_timesteps} timesteps"
+            )
+            self.trajectory_generator.unsupervised_pretrain(agent_pretrain_timesteps)
 
         for i, num_pairs in enumerate(preference_query_schedule):
             ##########################
