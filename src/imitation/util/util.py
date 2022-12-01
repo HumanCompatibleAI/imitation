@@ -362,10 +362,10 @@ def get_first_iter_element(iterable: Iterable[T]) -> Tuple[T, Iterable[T]]:
 
 
 def compute_state_entropy(
-    obs: np.ndarray,
-    all_obs: np.ndarray,
+    obs: th.Tensor,
+    all_obs: th.Tensor,
     k: int,
-) -> np.ndarray:
+) -> th.Tensor:
     """Compute the state entropy given by KNN distance.
 
     Args:
@@ -379,19 +379,15 @@ def compute_state_entropy(
     assert obs.shape[1:] == all_obs.shape[1:]
     with th.no_grad():
         non_batch_dimensions = tuple(range(2, len(obs.shape) + 1))
-        distances_tensor = np.linalg.norm(
+        distances_tensor = th.linalg.vector_norm(
             obs[:, None] - all_obs[None, :],
-            axis=non_batch_dimensions,
+            dim=non_batch_dimensions,
             ord=2,
         )
 
         # Note that we take the k+1'th value because the closest neighbor to
         # a point is itself, which we want to skip.
-        knn_dists = kth_value(distances_tensor, k+1)
+        assert distances_tensor.shape[-1] > k
+        knn_dists = th.kthvalue(distances_tensor, k=k + 1, dim=1).values
         state_entropy = knn_dists
-    return np.expand_dims(state_entropy, axis=1)
-
-
-def kth_value(x: np.ndarray, k: int):
-    assert k > 0
-    return np.partition(x, k - 1, axis=-1)[..., k - 1]
+    return state_entropy.unsqueeze(1)
