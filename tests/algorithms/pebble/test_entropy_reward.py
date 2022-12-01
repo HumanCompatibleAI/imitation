@@ -6,7 +6,7 @@ import torch as th
 from gym.spaces import Discrete
 from stable_baselines3.common.preprocessing import get_obs_shape
 
-from imitation.algorithms.pebble.entropy_reward import StateEntropyReward
+from imitation.algorithms.pebble.entropy_reward import PebbleStateEntropyReward
 from imitation.policies.replay_buffer_wrapper import ReplayBufferView
 from imitation.util import util
 
@@ -24,7 +24,7 @@ def test_state_entropy_reward_returns_entropy(rng):
     all_observations = rng.random((BUFFER_SIZE, VENVS, *obs_shape))
 
 
-    reward_fn = StateEntropyReward(K, SPACE)
+    reward_fn = PebbleStateEntropyReward(K, SPACE)
     reward_fn.set_replay_buffer(ReplayBufferView(all_observations, lambda: slice(None)), obs_shape)
 
     # Act
@@ -46,7 +46,7 @@ def test_state_entropy_reward_returns_normalized_values():
         # mock entropy computation so that we can test only stats collection in this test
         m.side_effect = lambda obs, all_obs, k: obs
 
-        reward_fn = StateEntropyReward(K, SPACE)
+        reward_fn = PebbleStateEntropyReward(K, SPACE)
         all_observations = np.empty((BUFFER_SIZE, VENVS, *get_obs_shape(SPACE)))
         reward_fn.set_replay_buffer(
             ReplayBufferView(all_observations, lambda: slice(None)),
@@ -80,7 +80,7 @@ def test_state_entropy_reward_can_pickle():
     replay_buffer = ReplayBufferView(all_observations, lambda: slice(None))
 
     obs1 = np.random.rand(VENVS, *get_obs_shape(SPACE))
-    reward_fn = StateEntropyReward(K, SPACE)
+    reward_fn = PebbleStateEntropyReward(K, SPACE)
     reward_fn.set_replay_buffer(replay_buffer, get_obs_shape(SPACE))
     reward_fn(obs1, PLACEHOLDER, PLACEHOLDER, PLACEHOLDER)
 

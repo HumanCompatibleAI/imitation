@@ -14,7 +14,8 @@ from imitation.util import util
 from imitation.util.networks import RunningNorm
 
 
-class StateEntropyReward(ReplayBufferAwareRewardFn):
+class PebbleStateEntropyReward(ReplayBufferAwareRewardFn):
+    # TODO #625: get rid of the observation_space parameter
     def __init__(self, nearest_neighbor_k: int, observation_space: spaces.Space):
         self.nearest_neighbor_k = nearest_neighbor_k
         # TODO support n_envs > 1
