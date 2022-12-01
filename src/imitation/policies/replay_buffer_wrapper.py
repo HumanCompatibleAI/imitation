@@ -1,7 +1,6 @@
 """Wrapper for reward labeling for transitions sampled from a replay buffer."""
 
-from typing import Callable
-from typing import Mapping, Type
+from typing import Callable, Mapping, Type
 
 import numpy as np
 from gym import spaces
@@ -10,7 +9,6 @@ from stable_baselines3.common.type_aliases import ReplayBufferSamples
 
 from imitation.rewards.reward_function import RewardFn
 from imitation.util import util
-from imitation.util.networks import RunningNorm
 
 
 def _samples_to_reward_fn_input(
@@ -138,84 +136,4 @@ class ReplayBufferRewardWrapper(ReplayBuffer):
         raise NotImplementedError(
             "_get_samples() is intentionally not implemented."
             "This method should not be called.",
-        )
-
-
-class ReplayBufferEntropyRewardWrapper(ReplayBufferRewardWrapper):
-    """Relabel the rewards from a ReplayBuffer, initially using entropy as reward."""
-
-    def __init__(
-        self,
-        buffer_size: int,
-        observation_space: spaces.Space,
-        action_space: spaces.Space,
-        *,
-        replay_buffer_class: Type[ReplayBuffer],
-        reward_fn: RewardFn,
-        entropy_as_reward_samples: int,
-        k: int = 5,
-        **kwargs,
-    ):
-        """Builds ReplayBufferRewardWrapper.
-
-        Args:
-            buffer_size: Max number of elements in the buffer
-            observation_space: Observation space
-            action_space: Action space
-            replay_buffer_class: Class of the replay buffer.
-            reward_fn: Reward function for reward relabeling.
-            entropy_as_reward_samples: Number of samples to use entropy as the reward,
-                before switching to using the reward_fn for relabeling.
-            k: Use the k'th nearest neighbor's distance when computing state entropy.
-            **kwargs: keyword arguments for ReplayBuffer.
-        """
-        # TODO should we limit by number of batches (as this does)
-        #      or number of observations returned?
-        super().__init__(
-            buffer_size,
-            observation_space,
-            action_space,
-            replay_buffer_class=replay_buffer_class,
-            reward_fn=reward_fn,
-            **kwargs,
-        )
-        self.sample_count = 0
-        self.k = k
-        # TODO support n_envs > 1
-        self.entropy_stats = RunningNorm(1)
-        self.entropy_as_reward_samples = entropy_as_reward_samples
-
-    def sample(self, *args, **kwargs):
-        self.sample_count += 1
-        samples = super().sample(*args, **kwargs)
-        # For some reason self.entropy_as_reward_samples seems to get cleared,
-        # and I have no idea why.
-        if self.sample_count > self.entropy_as_reward_samples:
-            return samples
-        # TODO we really ought to reset the reward network once we are done w/
-        #      the entropy based pre-training. We also have no reason to train
-        #      or even use the reward network before then.
-
-        if self.full:
-            all_obs = self.observations
-        else:
-            all_obs = self.observations[: self.pos]
-        # super().sample() flattens the venv dimension, let's do it too
-        all_obs = all_obs.reshape((-1, *self.obs_shape))
-        entropies = util.compute_state_entropy(
-            samples.observations,
-            all_obs,
-            self.k,
-        )
-
-        # Normalize to have mean of 0 and standard deviation of 1 according to running stats
-        entropies = self.entropy_stats.forward(entropies)
-        assert entropies.shape == samples.rewards.shape
-
-        return ReplayBufferSamples(
-            observations=samples.observations,
-            actions=samples.actions,
-            next_observations=samples.next_observations,
-            dones=samples.dones,
-            rewards=entropies,
         )

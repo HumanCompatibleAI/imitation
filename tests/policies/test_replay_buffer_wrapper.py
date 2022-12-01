@@ -13,14 +13,10 @@ from gym import spaces
 from stable_baselines3.common import buffers, off_policy_algorithm, policies
 from stable_baselines3.common.buffers import ReplayBuffer
 from stable_baselines3.common.policies import BasePolicy
-from stable_baselines3.common.preprocessing import get_obs_shape, get_action_dim
+from stable_baselines3.common.preprocessing import get_action_dim, get_obs_shape
 from stable_baselines3.common.save_util import load_from_pkl
-from stable_baselines3.common.vec_env import DummyVecEnv
 
-from imitation.policies.replay_buffer_wrapper import (
-    ReplayBufferEntropyRewardWrapper,
-    ReplayBufferRewardWrapper,
-)
+from imitation.policies.replay_buffer_wrapper import ReplayBufferRewardWrapper
 from imitation.util import util
 
 
@@ -123,54 +119,6 @@ def test_wrapper_class(tmpdir, rng):
         replay_buffer_wrapper._get_samples()
 
 
-# Combine this with the above test via parameterization over the buffer class
-def test_entropy_wrapper_class_no_op(tmpdir, rng):
-    buffer_size = 15
-    total_timesteps = 20
-    entropy_samples = 0
-
-    venv = util.make_vec_env("Pendulum-v1", n_envs=1, rng=rng)
-    rl_algo = sb3.SAC(
-        policy=sb3.sac.policies.SACPolicy,
-        policy_kwargs=dict(),
-        env=venv,
-        seed=42,
-        replay_buffer_class=ReplayBufferEntropyRewardWrapper,
-        replay_buffer_kwargs=dict(
-            replay_buffer_class=buffers.ReplayBuffer,
-            reward_fn=zero_reward_fn,
-            entropy_as_reward_samples=entropy_samples,
-        ),
-        buffer_size=buffer_size,
-    )
-
-    rl_algo.learn(total_timesteps=total_timesteps)
-
-    buffer_path = osp.join(tmpdir, "buffer.pkl")
-    rl_algo.save_replay_buffer(buffer_path)
-    replay_buffer_wrapper = load_from_pkl(buffer_path)
-    replay_buffer = replay_buffer_wrapper.replay_buffer
-
-    # replay_buffer_wrapper.sample(...) should return zero-reward transitions
-    assert buffer_size == replay_buffer_wrapper.size() == replay_buffer.size()
-    assert (replay_buffer_wrapper.sample(total_timesteps).rewards == 0.0).all()
-    assert (replay_buffer.sample(total_timesteps).rewards != 0.0).all()  # seed=42
-
-    # replay_buffer_wrapper.pos, replay_buffer_wrapper.full
-    assert replay_buffer_wrapper.pos == total_timesteps - buffer_size
-    assert replay_buffer_wrapper.full
-
-    # reset()
-    replay_buffer_wrapper.reset()
-    assert 0 == replay_buffer_wrapper.size() == replay_buffer.size()
-    assert replay_buffer_wrapper.pos == 0
-    assert not replay_buffer_wrapper.full
-
-    # to_torch()
-    tensor = replay_buffer_wrapper.to_torch(np.ones(42))
-    assert type(tensor) is th.Tensor
-
-
 class ActionIsObsEnv(gym.Env):
     """Simple environment where the obs is the action."""
 
@@ -189,45 +137,6 @@ class ActionIsObsEnv(gym.Env):
 
     def reset(self):
         return np.array([0])
-
-
-def test_entropy_wrapper_class(tmpdir, rng):
-    buffer_size = 20
-    entropy_samples = 500
-    k = 4
-
-    venv = DummyVecEnv([ActionIsObsEnv])
-    rl_algo = sb3.SAC(
-        policy=sb3.sac.policies.SACPolicy,
-        policy_kwargs=dict(),
-        env=venv,
-        seed=42,
-        replay_buffer_class=ReplayBufferEntropyRewardWrapper,
-        replay_buffer_kwargs=dict(
-            replay_buffer_class=buffers.ReplayBuffer,
-            reward_fn=zero_reward_fn,
-            entropy_as_reward_samples=entropy_samples,
-            k=k,
-        ),
-        buffer_size=buffer_size,
-    )
-
-    rl_algo.learn(total_timesteps=buffer_size)
-    initial_entropy = util.compute_state_entropy(
-        th.Tensor(rl_algo.replay_buffer.replay_buffer.observations),
-        th.Tensor(rl_algo.replay_buffer.replay_buffer.observations),
-        k=k,
-    )
-
-    rl_algo.learn(total_timesteps=entropy_samples - buffer_size)
-    # Expect that the entropy of our replay buffer is now higher,
-    # since we trained with that as the reward.
-    trained_entropy = util.compute_state_entropy(
-        th.Tensor(rl_algo.replay_buffer.replay_buffer.observations),
-        th.Tensor(rl_algo.replay_buffer.replay_buffer.observations),
-        k=k,
-    )
-    assert trained_entropy.mean() > initial_entropy.mean()
 
 
 def test_replay_buffer_view_provides_buffered_observations():

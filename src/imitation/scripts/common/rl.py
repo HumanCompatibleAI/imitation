@@ -86,10 +86,11 @@ def _maybe_add_relabel_buffer(
     """Use ReplayBufferRewardWrapper in rl_kwargs if relabel_reward_fn is not None."""
     rl_kwargs = dict(rl_kwargs)
     if relabel_reward_fn:
-        _buffer_kwargs = dict(reward_fn=relabel_reward_fn)
-        _buffer_kwargs["replay_buffer_class"] = rl_kwargs.get(
-            "replay_buffer_class",
-            buffers.ReplayBuffer,
+        _buffer_kwargs = dict(
+            reward_fn=relabel_reward_fn,
+            replay_buffer_class=rl_kwargs.get(
+                "replay_buffer_class", buffers.ReplayBuffer
+            ),
         )
         rl_kwargs["replay_buffer_class"] = ReplayBufferRewardWrapper
 

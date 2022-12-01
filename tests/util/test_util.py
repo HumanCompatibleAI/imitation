@@ -144,4 +144,3 @@ def test_compute_state_entropy_2d():
         util.compute_state_entropy(obs, all_obs, k=3),
         np.sqrt(20**2 + 2**2),
     )
-
