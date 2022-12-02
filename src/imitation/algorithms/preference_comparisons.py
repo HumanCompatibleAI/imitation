@@ -84,7 +84,7 @@ class TrajectoryGenerator(abc.ABC):
         The value can be used, e.g., when allocating time-steps for pre-training.
 
         By default, True is returned if the unsupervised_pretrain() method is not
-        overriden, bud subclasses may choose to override this behavior.
+        overridden, bud subclasses may choose to override this behavior.
 
         Returns:
             True if this generator has a pre-training phase, False otherwise
@@ -385,6 +385,7 @@ class PebbleAgentTrainer(AgentTrainer):
     def unsupervised_pretrain(self, steps: int, **kwargs: Any) -> None:
         self.train(steps, **kwargs)
         fn = self.reward_fn
+        assert isinstance(fn, PebbleStateEntropyReward)
         fn.unsupervised_exploration_finish()
 
 
