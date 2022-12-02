@@ -81,8 +81,6 @@ def pebble():
     train = {
         "policy_cls": base.SAC1024Policy,  # noqa: F841
     }
-    common = {"env_name": "MountainCarContinuous-v0"}
-    allow_variable_horizon = True
 
     locals()  # quieten flake8
 
@@ -139,6 +137,13 @@ def mountain_car():
 @train_preference_comparisons_ex.named_config
 def seals_mountain_car():
     common = dict(env_name="seals/MountainCar-v0")
+
+
+@train_preference_comparisons_ex.named_config
+def mountain_car_continuous():
+    common = {"env_name": "MountainCarContinuous-v0"}
+    allow_variable_horizon = True
+    locals()  # quieten flake8
 
 
 @train_preference_comparisons_ex.named_config
