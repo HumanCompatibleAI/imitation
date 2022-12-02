@@ -382,7 +382,7 @@ class PebbleAgentTrainer(AgentTrainer):
     def unsupervised_pretrain(self, steps: int, **kwargs: Any) -> None:
         self.train(steps, **kwargs)
         fn = self.reward_fn
-        fn.unsupervised_exploration_finish()  # type: ignore[attribute-error]
+        fn.unsupervised_exploration_finish()
 
 
 def _get_trajectories(
