@@ -1,6 +1,6 @@
 """Reward function for the PEBBLE training algorithm."""
 
-from enum import Enum, auto
+import enum
 from typing import Dict, Optional, Tuple, Union
 
 import numpy as np
@@ -16,11 +16,11 @@ from imitation.util import util
 from imitation.util.networks import RunningNorm
 
 
-class PebbleRewardPhase(Enum):
+class PebbleRewardPhase(enum.Enum):
     """States representing different behaviors for PebbleStateEntropyReward."""
 
-    UNSUPERVISED_EXPLORATION = auto()  # Entropy based reward
-    POLICY_AND_REWARD_LEARNING = auto()  # Learned reward
+    UNSUPERVISED_EXPLORATION = enum.auto()  # Entropy based reward
+    POLICY_AND_REWARD_LEARNING = enum.auto()  # Learned reward
 
 
 class PebbleStateEntropyReward(ReplayBufferAwareRewardFn):
