@@ -348,8 +348,7 @@ class PebbleAgentTrainer(AgentTrainer):
 
         Args:
             reward_fn: Pebble reward function
-             **kwargs: additional keyword arguments to pass on to
-                the parent class
+            **kwargs: additional keyword arguments to pass on to the parent class
 
         Raises:
             ValueError: Unexpected type of reward_fn given.

@@ -1,5 +1,5 @@
 """Wrapper for reward labeling for transitions sampled from a replay buffer."""
-
+import abc
 from typing import Callable, Mapping, Type
 
 import numpy as np
@@ -7,7 +7,7 @@ from gym import spaces
 from stable_baselines3.common.buffers import ReplayBuffer
 from stable_baselines3.common.type_aliases import ReplayBufferSamples
 
-from imitation.rewards.reward_function import ReplayBufferAwareRewardFn, RewardFn
+from imitation.rewards.reward_function import RewardFn
 from imitation.util import util
 
 
@@ -134,3 +134,14 @@ class ReplayBufferRewardWrapper(ReplayBuffer):
             "_get_samples() is intentionally not implemented."
             "This method should not be called.",
         )
+
+
+class ReplayBufferAwareRewardFn(RewardFn, abc.ABC):
+    """Abstract class for a reward function that needs access to a replay buffer."""
+
+    @abc.abstractmethod
+    def on_replay_buffer_initialized(
+        self,
+        replay_buffer: ReplayBufferRewardWrapper,
+    ):
+        pass

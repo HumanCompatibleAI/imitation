@@ -16,8 +16,10 @@ from stable_baselines3.common.policies import BasePolicy
 from stable_baselines3.common.preprocessing import get_action_dim, get_obs_shape
 from stable_baselines3.common.save_util import load_from_pkl
 
-from imitation.policies.replay_buffer_wrapper import ReplayBufferRewardWrapper
-from imitation.rewards.reward_function import ReplayBufferAwareRewardFn
+from imitation.policies.replay_buffer_wrapper import (
+    ReplayBufferAwareRewardFn,
+    ReplayBufferRewardWrapper,
+)
 from imitation.util import util
 
 

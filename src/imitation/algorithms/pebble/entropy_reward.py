@@ -7,10 +7,11 @@ import numpy as np
 import torch as th
 
 from imitation.policies.replay_buffer_wrapper import (
+    ReplayBufferAwareRewardFn,
     ReplayBufferRewardWrapper,
     ReplayBufferView,
 )
-from imitation.rewards.reward_function import ReplayBufferAwareRewardFn, RewardFn
+from imitation.rewards.reward_function import RewardFn
 from imitation.util import util
 from imitation.util.networks import RunningNorm
 
@@ -29,12 +30,12 @@ class PebbleStateEntropyReward(ReplayBufferAwareRewardFn):
 
     The rewards returned by this function go through the three phases:
     1. Before enough samples are collected for entropy calculation, the
-        underlying function is returned. This shouldn't matter because
-        OffPolicyAlgorithms have an initialization period for `learning_starts`
-        timesteps.
+    underlying function is returned. This shouldn't matter because
+    OffPolicyAlgorithms have an initialization period for `learning_starts`
+    timesteps.
     2. During the unsupervised exploration phase, entropy based reward is returned
     3. After unsupervised exploration phase is finished, the underlying learned
-        reward is returned.
+    reward is returned.
 
     The second phase requires that a buffer with observations to compare against is
     supplied with set_replay_buffer() or on_replay_buffer_initialized().
