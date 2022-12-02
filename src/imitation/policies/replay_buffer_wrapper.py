@@ -24,7 +24,7 @@ def _samples_to_reward_fn_input(
 
 
 class ReplayBufferView:
-    """A read-only view over a valid records in a ReplayBuffer."""
+    """A read-only view over valid records in a ReplayBuffer."""
 
     def __init__(
         self,
