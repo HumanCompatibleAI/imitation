@@ -85,6 +85,9 @@ class TrajectoryGenerator(abc.ABC):
 
         By default, True is returned if the unsupervised_pretrain() method is not
         overriden, bud subclasses may choose to override this behavior.
+
+        Returns:
+            True if this generator has a pre-training phase, False otherwise
         """
         orig_impl = TrajectoryGenerator.unsupervised_pretrain
         return type(self).unsupervised_pretrain != orig_impl
@@ -105,7 +108,7 @@ class TrajectoryGenerator(abc.ABC):
                 f"{steps} timesteps allocated for unsupervised pre-training:"
                 " Trajectory generators without pre-training implementation should"
                 " not consume any timesteps (otherwise the total number of"
-                " timesteps executed may be misleading)"
+                " timesteps executed may be misleading)",
             )
 
     def train(self, steps: int, **kwargs: Any) -> None:
