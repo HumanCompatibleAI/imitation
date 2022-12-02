@@ -1749,7 +1749,7 @@ class PreferenceComparisons(base.BaseImitationAlgorithm):
         self.logger.log(f"Query schedule: {preference_query_schedule}")
 
         (
-            unsupervised_pretrain_timesteps,
+            unsup_pretrain_timesteps,
             timesteps_per_iteration,
             extra_timesteps,
         ) = self._compute_timesteps(total_timesteps)
@@ -1759,13 +1759,14 @@ class PreferenceComparisons(base.BaseImitationAlgorithm):
         ###################################################
         # Pre-training agent before gathering preferences #
         ###################################################
-        with self.logger.accumulate_means("agent"):
-            self.logger.log(
-                f"Pre-training agent for {unsupervised_pretrain_timesteps} timesteps",
-            )
-            self.trajectory_generator.unsupervised_pretrain(
-                unsupervised_pretrain_timesteps,
-            )
+        if unsup_pretrain_timesteps:
+            with self.logger.accumulate_means("agent"):
+                self.logger.log(
+                    f"Pre-training agent for {unsup_pretrain_timesteps} timesteps",
+                )
+                self.trajectory_generator.unsupervised_pretrain(
+                    unsup_pretrain_timesteps,
+                )
 
         for i, num_pairs in enumerate(preference_query_schedule):
             ##########################
