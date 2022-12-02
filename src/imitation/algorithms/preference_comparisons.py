@@ -77,17 +77,36 @@ class TrajectoryGenerator(abc.ABC):
             be the environment rewards, not ones from a reward model).
         """  # noqa: DAR202
 
+    @property
+    def has_pretraining(self) -> bool:
+        """Indicates whether this generator has a pre-training phase.
+
+        The value can be used, e.g., when allocating time-steps for pre-training.
+
+        By default, True is returned if the unsupervised_pretrain() method is not
+        overriden, bud subclasses may choose to override this behavior.
+        """
+        orig_impl = TrajectoryGenerator.unsupervised_pretrain
+        return type(self).unsupervised_pretrain != orig_impl
+
     def unsupervised_pretrain(self, steps: int, **kwargs: Any) -> None:
         """Pre-train an agent before collecting comparisons.
 
-        By default, this method does nothing and doesn't need
-        to be overridden in subclasses that don't require pre-training.
+        By default, this method asserts that pre-training has zero steps allocated.
+        Override this behavior in subclasses that implement pre-training.
 
         Args:
             steps: number of environment steps to train for.
             **kwargs: additional keyword arguments to pass on to
                 the training procedure.
         """
+        if steps > 0:
+            self._logger.warn(
+                f"{steps} timesteps allocated for unsupervised pre-training:"
+                " Trajectory generators without pre-training implementation should"
+                " not consume any timesteps (otherwise the total number of"
+                " timesteps executed may be misleading)"
+            )
 
     def train(self, steps: int, **kwargs: Any) -> None:
         """Train an agent if the trajectory generator uses one.
@@ -1823,9 +1842,12 @@ class PreferenceComparisons(base.BaseImitationAlgorithm):
         return schedule
 
     def _compute_timesteps(self, total_timesteps: int) -> Tuple[int, int, int]:
-        unsupervised_pretrain_timesteps = int(
-            total_timesteps * self.unsupervised_agent_pretrain_frac,
-        )
+        if self.trajectory_generator.has_pretraining:
+            unsupervised_pretrain_timesteps = int(
+                total_timesteps * self.unsupervised_agent_pretrain_frac,
+            )
+        else:
+            unsupervised_pretrain_timesteps = 0
         timesteps_per_iteration, extra_timesteps = divmod(
             total_timesteps - unsupervised_pretrain_timesteps,
             self.num_iterations,
