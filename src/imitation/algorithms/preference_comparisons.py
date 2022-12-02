@@ -1746,7 +1746,7 @@ class PreferenceComparisons(base.BaseImitationAlgorithm):
         """
         # Compute the number of comparisons to request at each iteration in advance.
         preference_query_schedule = self._preference_gather_schedule(total_comparisons)
-        print(f"Query schedule: {preference_query_schedule}")
+        self.logger.log(f"Query schedule: {preference_query_schedule}")
 
         (
             unsupervised_pretrain_timesteps,
