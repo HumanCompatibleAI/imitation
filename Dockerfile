@@ -37,6 +37,7 @@ ENV LANG C.UTF-8
 # Set the PATH to the venv before we create the venv, so it's visible in base.
 # This is since we may create the venv outside of Docker, e.g. in CI
 # or by binding it in for local development.
+ENV VIRTUAL_ENV=/venv
 ENV PATH="/venv/bin:$PATH"
 ENV LD_LIBRARY_PATH /usr/local/nvidia/lib64:${LD_LIBRARY_PATH}
 
