@@ -58,6 +58,7 @@ class PebbleStateEntropyReward(ReplayBufferAwareRewardFn):
         """
         self.learned_reward_fn = learned_reward_fn
         self.nearest_neighbor_k = nearest_neighbor_k
+
         self.entropy_stats = RunningNorm(1)
         self.state = PebbleRewardPhase.UNSUPERVISED_EXPLORATION
 
@@ -66,15 +67,9 @@ class PebbleStateEntropyReward(ReplayBufferAwareRewardFn):
         self.obs_shape: Union[Tuple[int, ...], Dict[str, Tuple[int, ...]], None] = None
 
     def on_replay_buffer_initialized(self, replay_buffer: ReplayBufferRewardWrapper):
-        self.set_replay_buffer(replay_buffer.buffer_view, replay_buffer.obs_shape)
+        self.replay_buffer_view = replay_buffer.buffer_view
+        self.obs_shape = replay_buffer.obs_shape
 
-    def set_replay_buffer(
-        self,
-        replay_buffer: ReplayBufferView,
-        obs_shape: Union[Tuple[int, ...], Dict[str, Tuple[int, ...]]],
-    ):
-        self.replay_buffer_view = replay_buffer
-        self.obs_shape = obs_shape
 
     def unsupervised_exploration_finish(self):
         assert self.state == PebbleRewardPhase.UNSUPERVISED_EXPLORATION
@@ -112,7 +107,9 @@ class PebbleStateEntropyReward(ReplayBufferAwareRewardFn):
                 th.tensor(all_observations),
                 self.nearest_neighbor_k,
             )
+
             normalized_entropies = self.entropy_stats.forward(entropies)
+
             return normalized_entropies.numpy()
 
     def __getstate__(self):

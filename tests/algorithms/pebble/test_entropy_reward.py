@@ -25,9 +25,11 @@ def test_pebble_entropy_reward_returns_entropy_for_pretraining(rng):
     all_observations = rng.random((BUFFER_SIZE, VENVS, *OBS_SHAPE))
 
     reward_fn = PebbleStateEntropyReward(Mock(), K)
-    reward_fn.set_replay_buffer(
-        ReplayBufferView(all_observations, lambda: slice(None)),
-        OBS_SHAPE,
+    reward_fn.on_replay_buffer_initialized(
+        replay_buffer_mock(
+            ReplayBufferView(all_observations, lambda: slice(None)),
+            OBS_SHAPE,
+        )
     )
 
     # Act
@@ -54,9 +56,11 @@ def test_pebble_entropy_reward_returns_normalized_values_for_pretraining():
 
         reward_fn = PebbleStateEntropyReward(Mock(), K)
         all_observations = np.empty((BUFFER_SIZE, VENVS, *OBS_SHAPE))
-        reward_fn.set_replay_buffer(
-            ReplayBufferView(all_observations, lambda: slice(None)),
-            OBS_SHAPE,
+        reward_fn.on_replay_buffer_initialized(
+            replay_buffer_mock(
+                ReplayBufferView(all_observations, lambda: slice(None)),
+                OBS_SHAPE,
+            )
         )
 
         dim = 8
@@ -112,13 +116,15 @@ def test_pebble_entropy_reward_can_pickle():
 
     obs1 = np.random.rand(VENVS, *OBS_SHAPE)
     reward_fn = PebbleStateEntropyReward(reward_fn_stub, K)
-    reward_fn.set_replay_buffer(replay_buffer, OBS_SHAPE)
+    reward_fn.on_replay_buffer_initialized(replay_buffer_mock(replay_buffer, OBS_SHAPE))
     reward_fn(obs1, PLACEHOLDER, PLACEHOLDER, PLACEHOLDER)
 
     # Act
     pickled = pickle.dumps(reward_fn)
     reward_fn_deserialized = pickle.loads(pickled)
-    reward_fn_deserialized.set_replay_buffer(replay_buffer, OBS_SHAPE)
+    reward_fn_deserialized.on_replay_buffer_initialized(
+        replay_buffer_mock(replay_buffer, OBS_SHAPE)
+    )
 
     # Assert
     obs2 = np.random.rand(VENVS, *OBS_SHAPE)
@@ -129,3 +135,10 @@ def test_pebble_entropy_reward_can_pickle():
 
 def reward_fn_stub(state, action, next_state, done):
     return state
+
+
+def replay_buffer_mock(buffer_view: ReplayBufferView, obs_shape: tuple) -> Mock:
+    replay_buffer_mock = Mock()
+    replay_buffer_mock.buffer_view = buffer_view
+    replay_buffer_mock.obs_shape = obs_shape
+    return replay_buffer_mock

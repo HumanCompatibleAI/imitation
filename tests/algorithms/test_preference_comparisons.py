@@ -3,6 +3,7 @@
 import math
 import re
 from typing import Any, Sequence
+from unittest.mock import Mock
 
 import gym
 import numpy as np
@@ -81,8 +82,11 @@ def replay_buffer(rng):
 
 @pytest.fixture
 def pebble_agent_trainer(agent, reward_net, venv, rng, replay_buffer):
+    replay_buffer_mock = Mock()
+    replay_buffer_mock.buffer_view = replay_buffer
+    replay_buffer_mock.obs_shape = (4,)
     reward_fn = PebbleStateEntropyReward(reward_net.predict_processed)
-    reward_fn.set_replay_buffer(replay_buffer, (4,))
+    reward_fn.on_replay_buffer_initialized(replay_buffer_mock)
     return preference_comparisons.PebbleAgentTrainer(
         algorithm=agent,
         reward_fn=reward_fn,
