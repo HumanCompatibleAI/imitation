@@ -95,8 +95,9 @@ class TrajectoryGenerator(abc.ABC):
     def unsupervised_pretrain(self, steps: int, **kwargs: Any) -> None:
         """Pre-train an agent before collecting comparisons.
 
-        By default, this method asserts that pre-training has zero steps allocated.
         Override this behavior in subclasses that implement pre-training.
+        If not overriden, this method raises ValueError when non-zero steps are
+        allocated for pre-training.
 
         Args:
             steps: number of environment steps to train for.
@@ -104,7 +105,7 @@ class TrajectoryGenerator(abc.ABC):
                 the training procedure.
         """
         if steps > 0:
-            self._logger.warn(
+            raise ValueError(
                 f"{steps} timesteps allocated for unsupervised pre-training:"
                 " Trajectory generators without pre-training implementation should"
                 " not consume any timesteps (otherwise the total number of"
