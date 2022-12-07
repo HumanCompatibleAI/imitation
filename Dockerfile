@@ -59,11 +59,11 @@ COPY ./README.md ./README.md
 COPY ./src/imitation/__init__.py ./src/imitation/__init__.py
 COPY ci/build_and_activate_venv.sh ./ci/build_and_activate_venv.sh
 
-# Passing version as an ARG because .git is missing inside Docker container and
-# setuptools-scm cannot determine version automatically. Can be supplied at build time
-# with `--build-arg "IMITATION_VERSION=$(python setup.py --version)"`
-ARG IMITATION_VERSION=1
-RUN SETUPTOOLS_SCM_PRETEND_VERSION="$IMITATION_VERSION" ci/build_and_activate_venv.sh /venv \
+# Pass mock value for version because .git is not present in the Docker container
+# at this stage, so setuptools-scm cannot determine version automatically.
+# setuptools-scm will compute it correctly when it comes to building and installing
+# imitation, as .git will then be present.
+RUN SETUPTOOLS_SCM_PRETEND_VERSION="dummy" ci/build_and_activate_venv.sh /venv \
     && rm -rf $HOME/.cache/pip
 
 # full stage contains everything.
