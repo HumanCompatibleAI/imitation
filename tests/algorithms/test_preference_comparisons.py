@@ -18,12 +18,12 @@ from stable_baselines3.common.vec_env import DummyVecEnv
 
 import imitation.testing.reward_nets as testing_reward_nets
 from imitation.algorithms import preference_comparisons
-from imitation.algorithms.pebble.entropy_reward import PebbleStateEntropyReward
 from imitation.data import types
 from imitation.data.types import TrajectoryWithRew
 from imitation.policies.replay_buffer_wrapper import ReplayBufferView
 from imitation.regularization import regularizers, updaters
 from imitation.rewards import reward_nets
+from imitation.scripts.train_preference_comparisons import create_pebble_reward_fn
 from imitation.util import networks, util
 
 UNCERTAINTY_ON = ["logit", "probability", "label"]
@@ -84,9 +84,13 @@ def replay_buffer(rng):
 def pebble_agent_trainer(agent, reward_net, venv, rng, replay_buffer):
     replay_buffer_mock = Mock()
     replay_buffer_mock.buffer_view = replay_buffer
-    replay_buffer_mock.obs_shape = (4,)
-    reward_fn = PebbleStateEntropyReward(
-        reward_net.predict_processed, venv.observation_space, venv.action_space
+    replay_buffer_mock.observation_space = venv.observation_space
+    replay_buffer_mock.action_space = venv.action_space
+    reward_fn = create_pebble_reward_fn(
+        reward_net.predict_processed,
+        5,
+        venv.action_space,
+        venv.observation_space,
     )
     reward_fn.on_replay_buffer_initialized(replay_buffer_mock)
     return preference_comparisons.PebbleAgentTrainer(

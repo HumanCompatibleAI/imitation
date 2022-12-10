@@ -40,7 +40,10 @@ def test_pebble_entropy_reward_returns_entropy_for_pretraining():
 
     np.testing.assert_allclose(reward, expected_result)
     entropy_fn.assert_called_once_with(
-        observations, PLACEHOLDER, PLACEHOLDER, PLACEHOLDER
+        observations,
+        PLACEHOLDER,
+        PLACEHOLDER,
+        PLACEHOLDER,
     )
 
 
@@ -57,7 +60,10 @@ def test_pebble_entropy_reward_returns_learned_rew_on_insufficient_observations(
 
     np.testing.assert_allclose(reward, expected_result)
     learned_fn.assert_called_once_with(
-        observations, PLACEHOLDER, PLACEHOLDER, PLACEHOLDER
+        observations,
+        PLACEHOLDER,
+        PLACEHOLDER,
+        PLACEHOLDER,
     )
 
 
@@ -74,7 +80,10 @@ def test_pebble_entropy_reward_function_returns_learned_reward_after_pre_trainin
 
     np.testing.assert_allclose(reward, expected_result)
     learned_fn.assert_called_once_with(
-        observations, PLACEHOLDER, PLACEHOLDER, PLACEHOLDER
+        observations,
+        PLACEHOLDER,
+        PLACEHOLDER,
+        PLACEHOLDER,
     )
 
 
@@ -97,7 +106,10 @@ def test_entropy_reward_net_returns_entropy_for_pretraining(rng):
 
     # Act
     reward = reward_net.predict_processed(
-        observations, PLACEHOLDER, PLACEHOLDER, PLACEHOLDER
+        observations,
+        PLACEHOLDER,
+        PLACEHOLDER,
+        PLACEHOLDER,
     )
 
     # Assert
@@ -118,7 +130,10 @@ def test_entropy_reward_net_raises_on_insufficient_observations(rng):
     # Act
     with pytest.raises(InsufficientObservations):
         reward_net.predict_processed(
-            observations, PLACEHOLDER, PLACEHOLDER, PLACEHOLDER
+            observations,
+            PLACEHOLDER,
+            PLACEHOLDER,
+            PLACEHOLDER,
         )
 
 

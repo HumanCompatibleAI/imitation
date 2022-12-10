@@ -7,6 +7,7 @@ import functools
 import pathlib
 from typing import Any, Mapping, Optional, Type, Union
 
+import gym
 import numpy as np
 import torch as th
 from sacred.observers import FileStorageObserver
@@ -24,6 +25,7 @@ from imitation.policies.replay_buffer_wrapper import (
     ReplayBufferRewardWrapper,
 )
 from imitation.rewards import reward_function, reward_nets
+from imitation.rewards.reward_function import RewardFn
 from imitation.rewards.reward_nets import NormalizedRewardNet
 from imitation.scripts.common import common, reward
 from imitation.scripts.common import rl as rl_common
@@ -80,21 +82,22 @@ def make_reward_function(
         reward_net.predict_processed,
         update_stats=False,
     )
-    observation_space = reward_net.observation_space
-    action_space = reward_net.action_space
     if pebble_enabled:
         relabel_reward_fn = create_pebble_reward_fn(
-            relabel_reward_fn,
+            relabel_reward_fn,  # type: ignore[assignment]
             pebble_nearest_neighbor_k,
-            action_space,
-            observation_space,
+            reward_net.action_space,
+            reward_net.observation_space,
         )
     return relabel_reward_fn
 
 
 def create_pebble_reward_fn(
-    relabel_reward_fn, pebble_nearest_neighbor_k, action_space, observation_space
-):
+    relabel_reward_fn: RewardFn,
+    pebble_nearest_neighbor_k: int,
+    action_space: gym.Space,
+    observation_space: gym.Space,
+) -> PebbleStateEntropyReward:
     entropy_reward_net = EntropyRewardNet(
         nearest_neighbor_k=pebble_nearest_neighbor_k,
         observation_space=observation_space,
@@ -111,13 +114,14 @@ def create_pebble_reward_fn(
             return normalized_entropy_reward_net.predict_processed(*args, **kwargs)
 
         def on_replay_buffer_initialized(
-            self, replay_buffer: ReplayBufferRewardWrapper
+            self,
+            replay_buffer: ReplayBufferRewardWrapper,
         ):
             entropy_reward_net.on_replay_buffer_initialized(replay_buffer)
 
     return PebbleStateEntropyReward(
         EntropyRewardFn(),
-        relabel_reward_fn,  # type: ignore[assignment]
+        relabel_reward_fn,
     )
 
 

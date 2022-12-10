@@ -1,7 +1,7 @@
 """Reward function for the PEBBLE training algorithm."""
 
 import enum
-from typing import Optional, Tuple
+from typing import Any, Callable, Optional, Tuple
 
 import gym
 import numpy as np
@@ -18,10 +18,16 @@ from imitation.util import util
 
 
 class InsufficientObservations(RuntimeError):
+    """Error signifying not enough observations for entropy calculation."""
+
     pass
 
 
 class EntropyRewardNet(RewardNet, ReplayBufferAwareRewardFn):
+    """RewardNet wrapping entropy reward function."""
+
+    __call__: Callable[..., Any]  # Needed to appease pytype
+
     def __init__(
         self,
         nearest_neighbor_k: int,
@@ -53,6 +59,9 @@ class EntropyRewardNet(RewardNet, ReplayBufferAwareRewardFn):
 
         This method needs to be called, e.g., after unpickling.
         See also __getstate__() / __setstate__().
+
+        Args:
+            replay_buffer: replay buffer with history of observations
         """
         assert self.observation_space == replay_buffer.observation_space
         assert self.action_space == replay_buffer.action_space
@@ -72,16 +81,18 @@ class EntropyRewardNet(RewardNet, ReplayBufferAwareRewardFn):
         all_observations = self._replay_buffer_view.observations
         # ReplayBuffer sampling flattens the venv dimension, let's adapt to that
         all_observations = all_observations.reshape(
-            (-1,) + self.observation_space.shape
+            (-1,) + self.observation_space.shape,
         )
 
         if all_observations.shape[0] < self.nearest_neighbor_k:
             raise InsufficientObservations(
-                "Insufficient observations for entropy calculation"
+                "Insufficient observations for entropy calculation",
             )
 
         return util.compute_state_entropy(
-            state, all_observations, self.nearest_neighbor_k
+            state,
+            all_observations,
+            self.nearest_neighbor_k,
         )
 
     def preprocess(
@@ -95,6 +106,15 @@ class EntropyRewardNet(RewardNet, ReplayBufferAwareRewardFn):
 
         We also know forward() only works with state, so no need to convert
         other tensors.
+
+        Args:
+            state: The observation input.
+            action: The action input.
+            next_state: The observation input.
+            done: Whether the episode has terminated.
+
+        Returns:
+            Observations preprocessed by converting them to Tensor.
         """
         state_th = util.safe_to_tensor(state).to(self.device)
         action_th = next_state_th = done_th = th.empty(0)
@@ -172,8 +192,8 @@ class PebbleStateEntropyReward(ReplayBufferAwareRewardFn):
             try:
                 return self.entropy_reward_fn(state, action, next_state, done)
             except InsufficientObservations:
-                # not enough observations to compare to, fall back to the learned function;
-                # (falling back to a constant may also be ok)
+                # not enough observations to compare to, fall back to the learned
+                # function; (falling back to a constant may also be ok)
                 return self.learned_reward_fn(state, action, next_state, done)
         else:
             return self.learned_reward_fn(state, action, next_state, done)

@@ -96,13 +96,17 @@ class TrajectoryGenerator(abc.ABC):
         """Pre-train an agent before collecting comparisons.
 
         Override this behavior in subclasses that implement pre-training.
-        If not overriden, this method raises ValueError when non-zero steps are
+        If not overridden, this method raises ValueError when non-zero steps are
         allocated for pre-training.
 
         Args:
             steps: number of environment steps to train for.
             **kwargs: additional keyword arguments to pass on to
                 the training procedure.
+
+        Raises:
+            ValueError: Unsupervised pre-training not implemented but non-zero
+                steps are allocated for pre-training.
         """
         if steps > 0:
             raise ValueError(

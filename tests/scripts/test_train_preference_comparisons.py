@@ -1,3 +1,5 @@
+"""Tests train_preferences_comparisons helper methods."""
+
 from unittest.mock import Mock, patch
 
 import numpy as np
