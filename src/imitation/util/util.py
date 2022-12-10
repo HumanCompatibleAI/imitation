@@ -384,12 +384,15 @@ def compute_state_entropy(
         for idx in range(len(all_obs) // batch_size + 1):
             start = idx * batch_size
             end = (idx + 1) * batch_size
+            all_obs_batch = all_obs[start:end]
             distances_tensor = th.linalg.vector_norm(
-                obs[:, None] - all_obs[None, start:end],
+                obs[:, None] - all_obs_batch[None, :],
                 dim=non_batch_dimensions,
                 ord=2,
             )
+            assert distances_tensor.shape == (obs.shape[0], all_obs_batch.shape[0])
             dists.append(distances_tensor)
         all_dists = th.cat(dists, dim=1)
         knn_dists = th.kthvalue(all_dists, k=k + 1, dim=1).values
         return knn_dists
+

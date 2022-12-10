@@ -158,3 +158,4 @@ def fast():
     reward_trainer_kwargs = {
         "epochs": 1,
     }
+    locals()  # quieten flake8

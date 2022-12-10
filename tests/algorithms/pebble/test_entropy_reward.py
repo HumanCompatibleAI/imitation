@@ -5,15 +5,14 @@ from unittest.mock import Mock, patch
 
 import numpy as np
 import torch as th
-from gym.spaces import Discrete
-
+from gym.spaces import Discrete,  Box
+from gym.spaces.space import Space
 from imitation.algorithms.pebble.entropy_reward import PebbleStateEntropyReward
 from imitation.policies.replay_buffer_wrapper import ReplayBufferView
 from imitation.util import util
 
-SPACE = Discrete(4)
-OBS_SHAPE = (1,)
-PLACEHOLDER = np.empty(OBS_SHAPE)
+SPACE = Box(-1, 1, shape=(1,))
+PLACEHOLDER = np.empty(SPACE.shape)
 
 BUFFER_SIZE = 20
 K = 4
@@ -22,30 +21,27 @@ VENVS = 2
 
 
 def test_pebble_entropy_reward_returns_entropy_for_pretraining(rng):
-    all_observations = rng.random((BUFFER_SIZE, VENVS, *OBS_SHAPE))
+    all_observations = rng.random((BUFFER_SIZE, VENVS) + SPACE.shape)
 
     reward_fn = PebbleStateEntropyReward(Mock(), K)
     reward_fn.on_replay_buffer_initialized(
         replay_buffer_mock(
             ReplayBufferView(all_observations, lambda: slice(None)),
-            OBS_SHAPE,
+            SPACE,
         )
     )
 
     # Act
-    observations = th.rand((BATCH_SIZE, *OBS_SHAPE))
+    observations = th.rand((BATCH_SIZE, *SPACE.shape))
     reward = reward_fn(observations, PLACEHOLDER, PLACEHOLDER, PLACEHOLDER)
 
     # Assert
     expected = util.compute_state_entropy(
         observations,
-        all_observations.reshape(-1, *OBS_SHAPE),
+        all_observations.reshape(-1, *SPACE.shape),
         K,
     )
-    expected_normalized = reward_fn.entropy_stats.normalize(
-        th.as_tensor(expected),
-    ).numpy()
-    np.testing.assert_allclose(reward, expected_normalized)
+    np.testing.assert_allclose(reward, expected, rtol=0.005, atol=0.005)
 
 
 def test_pebble_entropy_reward_returns_normalized_values_for_pretraining():
@@ -55,11 +51,11 @@ def test_pebble_entropy_reward_returns_normalized_values_for_pretraining():
         m.side_effect = lambda obs, all_obs, k: obs
 
         reward_fn = PebbleStateEntropyReward(Mock(), K)
-        all_observations = np.empty((BUFFER_SIZE, VENVS, *OBS_SHAPE))
+        all_observations = np.empty((BUFFER_SIZE, VENVS, *SPACE.shape))
         reward_fn.on_replay_buffer_initialized(
             replay_buffer_mock(
                 ReplayBufferView(all_observations, lambda: slice(None)),
-                OBS_SHAPE,
+                SPACE,
             )
         )
 
@@ -97,7 +93,7 @@ def test_pebble_entropy_reward_function_returns_learned_reward_after_pre_trainin
     reward_fn.unsupervised_exploration_finish()
 
     # Act
-    observations = np.ones((BATCH_SIZE, *OBS_SHAPE))
+    observations = np.ones((BATCH_SIZE, *SPACE.shape))
     reward = reward_fn(observations, PLACEHOLDER, PLACEHOLDER, PLACEHOLDER)
 
     # Assert
@@ -111,23 +107,23 @@ def test_pebble_entropy_reward_function_returns_learned_reward_after_pre_trainin
 
 
 def test_pebble_entropy_reward_can_pickle():
-    all_observations = np.empty((BUFFER_SIZE, VENVS, *OBS_SHAPE))
+    all_observations = np.empty((BUFFER_SIZE, VENVS, *SPACE.shape))
     replay_buffer = ReplayBufferView(all_observations, lambda: slice(None))
 
-    obs1 = np.random.rand(VENVS, *OBS_SHAPE)
+    obs1 = np.random.rand(VENVS, *SPACE.shape)
     reward_fn = PebbleStateEntropyReward(reward_fn_stub, K)
-    reward_fn.on_replay_buffer_initialized(replay_buffer_mock(replay_buffer, OBS_SHAPE))
+    reward_fn.on_replay_buffer_initialized(replay_buffer_mock(replay_buffer, SPACE))
     reward_fn(obs1, PLACEHOLDER, PLACEHOLDER, PLACEHOLDER)
 
     # Act
     pickled = pickle.dumps(reward_fn)
     reward_fn_deserialized = pickle.loads(pickled)
     reward_fn_deserialized.on_replay_buffer_initialized(
-        replay_buffer_mock(replay_buffer, OBS_SHAPE)
+        replay_buffer_mock(replay_buffer, SPACE)
     )
 
     # Assert
-    obs2 = np.random.rand(VENVS, *OBS_SHAPE)
+    obs2 = np.random.rand(VENVS, *SPACE.shape)
     expected_result = reward_fn(obs2, PLACEHOLDER, PLACEHOLDER, PLACEHOLDER)
     actual_result = reward_fn_deserialized(obs2, PLACEHOLDER, PLACEHOLDER, PLACEHOLDER)
     np.testing.assert_allclose(actual_result, expected_result)
@@ -137,8 +133,9 @@ def reward_fn_stub(state, action, next_state, done):
     return state
 
 
-def replay_buffer_mock(buffer_view: ReplayBufferView, obs_shape: tuple) -> Mock:
-    replay_buffer_mock = Mock()
-    replay_buffer_mock.buffer_view = buffer_view
-    replay_buffer_mock.obs_shape = obs_shape
-    return replay_buffer_mock
+def replay_buffer_mock(buffer_view: ReplayBufferView, obs_space: Space) -> Mock:
+    mock = Mock()
+    mock.buffer_view = buffer_view
+    mock.observation_space = obs_space
+    mock.action_space = SPACE
+    return mock
