@@ -395,4 +395,3 @@ def compute_state_entropy(
         all_dists = th.cat(dists, dim=1)
         knn_dists = th.kthvalue(all_dists, k=k + 1, dim=1).values
         return knn_dists
-

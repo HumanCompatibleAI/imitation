@@ -85,7 +85,9 @@ def pebble_agent_trainer(agent, reward_net, venv, rng, replay_buffer):
     replay_buffer_mock = Mock()
     replay_buffer_mock.buffer_view = replay_buffer
     replay_buffer_mock.obs_shape = (4,)
-    reward_fn = PebbleStateEntropyReward(reward_net.predict_processed)
+    reward_fn = PebbleStateEntropyReward(
+        reward_net.predict_processed, venv.observation_space, venv.action_space
+    )
     reward_fn.on_replay_buffer_initialized(replay_buffer_mock)
     return preference_comparisons.PebbleAgentTrainer(
         algorithm=agent,

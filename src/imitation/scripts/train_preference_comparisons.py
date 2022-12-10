@@ -13,10 +13,18 @@ from sacred.observers import FileStorageObserver
 from stable_baselines3.common import base_class, type_aliases, vec_env
 
 from imitation.algorithms import preference_comparisons
-from imitation.algorithms.pebble.entropy_reward import PebbleStateEntropyReward
+from imitation.algorithms.pebble.entropy_reward import (
+    EntropyRewardNet,
+    PebbleStateEntropyReward,
+)
 from imitation.data import types
 from imitation.policies import serialize
+from imitation.policies.replay_buffer_wrapper import (
+    ReplayBufferAwareRewardFn,
+    ReplayBufferRewardWrapper,
+)
 from imitation.rewards import reward_function, reward_nets
+from imitation.rewards.reward_nets import NormalizedRewardNet
 from imitation.scripts.common import common, reward
 from imitation.scripts.common import rl as rl_common
 from imitation.scripts.common import train
@@ -24,6 +32,7 @@ from imitation.scripts.config.train_preference_comparisons import (
     train_preference_comparisons_ex,
 )
 from imitation.util import logger as imit_logger
+from imitation.util.networks import RunningNorm
 
 
 def save_model(
@@ -71,12 +80,45 @@ def make_reward_function(
         reward_net.predict_processed,
         update_stats=False,
     )
+    observation_space = reward_net.observation_space
+    action_space = reward_net.action_space
     if pebble_enabled:
-        relabel_reward_fn = PebbleStateEntropyReward(
-            relabel_reward_fn,  # type: ignore[assignment]
+        relabel_reward_fn = create_pebble_reward_fn(
+            relabel_reward_fn,
             pebble_nearest_neighbor_k,
+            action_space,
+            observation_space,
         )
     return relabel_reward_fn
+
+
+def create_pebble_reward_fn(
+    relabel_reward_fn, pebble_nearest_neighbor_k, action_space, observation_space
+):
+    entropy_reward_net = EntropyRewardNet(
+        nearest_neighbor_k=pebble_nearest_neighbor_k,
+        observation_space=observation_space,
+        action_space=action_space,
+        normalize_images=False,
+    )
+    normalized_entropy_reward_net = NormalizedRewardNet(entropy_reward_net, RunningNorm)
+
+    class EntropyRewardFn(ReplayBufferAwareRewardFn):
+        """Adapter for entropy reward adding on_replay_buffer_initialized() hook."""
+
+        def __call__(self, *args, **kwargs) -> np.ndarray:
+            kwargs["update_stats"] = True
+            return normalized_entropy_reward_net.predict_processed(*args, **kwargs)
+
+        def on_replay_buffer_initialized(
+            self, replay_buffer: ReplayBufferRewardWrapper
+        ):
+            entropy_reward_net.on_replay_buffer_initialized(replay_buffer)
+
+    return PebbleStateEntropyReward(
+        EntropyRewardFn(),
+        relabel_reward_fn,  # type: ignore[assignment]
+    )
 
 
 @train_preference_comparisons_ex.capture
