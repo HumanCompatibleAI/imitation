@@ -4,7 +4,6 @@ import os.path as osp
 from typing import Type
 from unittest.mock import Mock
 
-import gym
 import numpy as np
 import pytest
 import stable_baselines3 as sb3
@@ -120,26 +119,6 @@ def test_wrapper_class(tmpdir, rng):
     # raise error for _get_samples()
     with pytest.raises(NotImplementedError, match=r".*_get_samples.*"):
         replay_buffer_wrapper._get_samples()
-
-
-class ActionIsObsEnv(gym.Env):
-    """Simple environment where the obs is the action."""
-
-    def __init__(self):
-        """Initialize environment."""
-        super().__init__()
-        self.action_space = spaces.Box(np.array([0]), np.array([1]))
-        self.observation_space = spaces.Box(np.array([0]), np.array([1]))
-
-    def step(self, action):
-        obs = action
-        reward = 0
-        done = False
-        info = {}
-        return obs, reward, done, info
-
-    def reset(self):
-        return np.array([0])
 
 
 def test_replay_buffer_view_provides_buffered_observations():

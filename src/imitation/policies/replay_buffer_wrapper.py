@@ -143,5 +143,12 @@ class ReplayBufferAwareRewardFn(RewardFn, abc.ABC):
     def on_replay_buffer_initialized(
         self,
         replay_buffer: ReplayBufferRewardWrapper,
-    ):
-        pass
+    ) -> None:
+        """Hook method to be called when ReplayBuffer is initialized.
+
+        Needed to propagate the ReplayBuffer to a reward function because the buffer
+        is created indirectly in ReplayBufferRewardWrapper.
+
+        Args:
+            replay_buffer: the created ReplayBuffer
+        """  # noqa: DAR202

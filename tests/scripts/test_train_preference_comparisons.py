@@ -52,6 +52,9 @@ def test_creates_normalized_entropy_pebble_reward():
             atol=0.05,
         )
 
+        # Just to make coverage happy:
+        reward_fn_stub(state, PLACEHOLDER, PLACEHOLDER, PLACEHOLDER)
+
 
 def reward_fn_stub(state, action, next_state, done):
     return state

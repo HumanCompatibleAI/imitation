@@ -155,10 +155,6 @@ def test_entropy_reward_net_can_pickle(rng):
     np.testing.assert_allclose(actual_result, expected_result)
 
 
-def reward_fn_stub(state, action, next_state, done):
-    return state
-
-
 def replay_buffer_mock(all_observations: np.ndarray, obs_space: Space = SPACE) -> Mock:
     buffer_view = ReplayBufferView(all_observations, lambda: slice(None))
     mock = Mock()
