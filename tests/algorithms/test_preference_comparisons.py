@@ -3,6 +3,7 @@
 import math
 import re
 from typing import Any, Sequence
+from unittest.mock import Mock
 
 import gym
 import numpy as np
@@ -17,10 +18,17 @@ from stable_baselines3.common.vec_env import DummyVecEnv
 
 import imitation.testing.reward_nets as testing_reward_nets
 from imitation.algorithms import preference_comparisons
+from imitation.algorithms.preference_comparisons import (
+    PebbleAgentTrainer,
+    TrajectoryGenerator,
+)
 from imitation.data import types
 from imitation.data.types import TrajectoryWithRew
+from imitation.policies.replay_buffer_wrapper import ReplayBufferView
 from imitation.regularization import regularizers, updaters
 from imitation.rewards import reward_nets
+from imitation.rewards.reward_function import RewardFn
+from imitation.scripts.train_preference_comparisons import create_pebble_reward_fn
 from imitation.util import networks, util
 
 UNCERTAINTY_ON = ["logit", "probability", "label"]
@@ -70,6 +78,32 @@ def random_fragmenter(rng):
 @pytest.fixture
 def agent_trainer(agent, reward_net, venv, rng):
     return preference_comparisons.AgentTrainer(agent, reward_net, venv, rng)
+
+
+@pytest.fixture
+def replay_buffer(rng):
+    return ReplayBufferView(rng.random((10, 8, 4)), lambda: slice(None))
+
+
+@pytest.fixture
+def pebble_agent_trainer(agent, reward_net, venv, rng, replay_buffer):
+    replay_buffer_mock = Mock()
+    replay_buffer_mock.buffer_view = replay_buffer
+    replay_buffer_mock.observation_space = venv.observation_space
+    replay_buffer_mock.action_space = venv.action_space
+    reward_fn = create_pebble_reward_fn(
+        reward_net.predict_processed,
+        5,
+        venv.action_space,
+        venv.observation_space,
+    )
+    reward_fn.on_replay_buffer_initialized(replay_buffer_mock)
+    return preference_comparisons.PebbleAgentTrainer(
+        algorithm=agent,
+        reward_fn=reward_fn,
+        venv=venv,
+        rng=rng,
+    )
 
 
 def assert_info_arrs_equal(arr1, arr2):  # pragma: no cover
@@ -293,14 +327,17 @@ def test_preference_comparisons_raises(
     "schedule",
     ["constant", "hyperbolic", "inverse_quadratic", lambda t: 1 / (1 + t**3)],
 )
+@pytest.mark.parametrize("agent_fixture", ["agent_trainer", "pebble_agent_trainer"])
 def test_trainer_no_crash(
-    agent_trainer,
+    request,
+    agent_fixture,
     reward_net,
     random_fragmenter,
     custom_logger,
     schedule,
     rng,
 ):
+    agent_trainer = request.getfixturevalue(agent_fixture)
     main_trainer = preference_comparisons.PreferenceComparisons(
         agent_trainer,
         reward_net,
@@ -1088,3 +1125,28 @@ def test_that_trainer_improves(
     )
 
     assert np.mean(trained_agent_rewards) > np.mean(novice_agent_rewards)
+
+
+def test_trajectory_generator_raises_on_pretrain_if_not_implemented():
+    class TrajectoryGeneratorTestImpl(TrajectoryGenerator):
+        def sample(self, steps: int) -> Sequence[TrajectoryWithRew]:
+            return []
+
+    generator = TrajectoryGeneratorTestImpl()
+    assert generator.has_pretraining is False
+    with pytest.raises(ValueError, match="should not consume any timesteps"):
+        generator.unsupervised_pretrain(1)
+
+    generator.sample(1)  # just to make coverage happy
+
+
+def test_pebble_agent_trainer_expects_pebble_reward(agent, venv, rng):
+    reward_fn: RewardFn = lambda state, action, next, done: state
+
+    with pytest.raises(ValueError, match="PebbleStateEntropyReward"):
+        PebbleAgentTrainer(
+            algorithm=agent,
+            reward_fn=reward_fn,  # type: ignore[call-arg]
+            venv=venv,
+            rng=rng,
+        )

@@ -1,6 +1,6 @@
 """Wrapper for reward labeling for transitions sampled from a replay buffer."""
-
-from typing import Mapping, Type
+import abc
+from typing import Callable, Mapping, Type
 
 import numpy as np
 from gym import spaces
@@ -21,6 +21,30 @@ def _samples_to_reward_fn_input(
         next_state=samples.next_observations.cpu().numpy(),
         done=samples.dones.cpu().numpy(),
     )
+
+
+class ReplayBufferView:
+    """A read-only view over valid records in a ReplayBuffer."""
+
+    def __init__(
+        self,
+        observations_buffer: np.ndarray,
+        buffer_slice_provider: Callable[[], slice],
+    ):
+        """Builds ReplayBufferView.
+
+        Args:
+            observations_buffer: Array buffer holding observations
+            buffer_slice_provider: Function returning slice of buffer
+                with valid observations
+        """
+        self._observations_buffer_view = observations_buffer.view()
+        self._observations_buffer_view.flags.writeable = False
+        self._buffer_slice_provider = buffer_slice_provider
+
+    @property
+    def observations(self):
+        return self._observations_buffer_view[self._buffer_slice_provider()]
 
 
 class ReplayBufferRewardWrapper(ReplayBuffer):
@@ -61,6 +85,8 @@ class ReplayBufferRewardWrapper(ReplayBuffer):
         self.reward_fn = reward_fn
         _base_kwargs = {k: v for k, v in kwargs.items() if k in ["device", "n_envs"]}
         super().__init__(buffer_size, observation_space, action_space, **_base_kwargs)
+        if isinstance(reward_fn, ReplayBufferAwareRewardFn):
+            reward_fn.on_replay_buffer_initialized(self)
 
     @property
     def pos(self) -> int:
@@ -77,6 +103,13 @@ class ReplayBufferRewardWrapper(ReplayBuffer):
     @full.setter
     def full(self, full: bool):
         self.replay_buffer.full = full
+
+    @property
+    def buffer_view(self) -> ReplayBufferView:
+        def valid_buffer_slice():
+            return slice(None) if self.full else slice(self.pos)
+
+        return ReplayBufferView(self.replay_buffer.observations, valid_buffer_slice)
 
     def sample(self, *args, **kwargs):
         samples = self.replay_buffer.sample(*args, **kwargs)
@@ -101,3 +134,21 @@ class ReplayBufferRewardWrapper(ReplayBuffer):
             "_get_samples() is intentionally not implemented."
             "This method should not be called.",
         )
+
+
+class ReplayBufferAwareRewardFn(RewardFn, abc.ABC):
+    """Abstract class for a reward function that needs access to a replay buffer."""
+
+    @abc.abstractmethod
+    def on_replay_buffer_initialized(
+        self,
+        replay_buffer: ReplayBufferRewardWrapper,
+    ) -> None:
+        """Hook method to be called when ReplayBuffer is initialized.
+
+        Needed to propagate the ReplayBuffer to a reward function because the buffer
+        is created indirectly in ReplayBufferRewardWrapper.
+
+        Args:
+            replay_buffer: the created ReplayBuffer
+        """  # noqa: DAR202

@@ -33,6 +33,7 @@ from torch.utils import data as data_th
 from tqdm.auto import tqdm
 
 from imitation.algorithms import base
+from imitation.algorithms.pebble.entropy_reward import PebbleStateEntropyReward
 from imitation.data import rollout, types, wrappers
 from imitation.data.types import (
     AnyPath,
@@ -44,6 +45,7 @@ from imitation.data.types import (
 from imitation.policies import exploration_wrapper
 from imitation.regularization import regularizers
 from imitation.rewards import reward_function, reward_nets, reward_wrapper
+from imitation.rewards.reward_function import RewardFn
 from imitation.util import logger as imit_logger
 from imitation.util import networks, util
 
@@ -74,6 +76,45 @@ class TrajectoryGenerator(abc.ABC):
             A list of sampled trajectories with rewards (which should
             be the environment rewards, not ones from a reward model).
         """  # noqa: DAR202
+
+    @property
+    def has_pretraining(self) -> bool:
+        """Indicates whether this generator has a pre-training phase.
+
+        The value can be used, e.g., when allocating time-steps for pre-training.
+
+        By default, True is returned if the unsupervised_pretrain() method is not
+        overridden, bud subclasses may choose to override this behavior.
+
+        Returns:
+            True if this generator has a pre-training phase, False otherwise
+        """
+        orig_impl = TrajectoryGenerator.unsupervised_pretrain
+        return type(self).unsupervised_pretrain != orig_impl
+
+    def unsupervised_pretrain(self, steps: int, **kwargs: Any) -> None:
+        """Pre-train an agent before collecting comparisons.
+
+        Override this behavior in subclasses that implement pre-training.
+        If not overridden, this method raises ValueError when non-zero steps are
+        allocated for pre-training.
+
+        Args:
+            steps: number of environment steps to train for.
+            **kwargs: additional keyword arguments to pass on to
+                the training procedure.
+
+        Raises:
+            ValueError: Unsupervised pre-training not implemented but non-zero
+                steps are allocated for pre-training.
+        """
+        if steps > 0:
+            raise ValueError(
+                f"{steps} timesteps allocated for unsupervised pre-training:"
+                " Trajectory generators without pre-training implementation should"
+                " not consume any timesteps (otherwise the total number of"
+                " timesteps executed may be misleading)",
+            )
 
     def train(self, steps: int, **kwargs: Any) -> None:
         """Train an agent if the trajectory generator uses one.
@@ -165,7 +206,7 @@ class AgentTrainer(TrajectoryGenerator):
                 reward_fn.action_space,
             )
             reward_fn = reward_fn.predict_processed
-        self.reward_fn = reward_fn
+        self.reward_fn: RewardFn = reward_fn
         self.exploration_frac = exploration_frac
         self.rng = rng
 
@@ -314,6 +355,43 @@ class AgentTrainer(TrajectoryGenerator):
     def logger(self, value: imit_logger.HierarchicalLogger) -> None:
         self._logger = value
         self.algorithm.set_logger(self.logger)
+
+
+class PebbleAgentTrainer(AgentTrainer):
+    """Specialization of AgentTrainer for PEBBLE training.
+
+    Includes unsupervised pretraining with an entropy based reward function.
+    """
+
+    reward_fn: PebbleStateEntropyReward
+
+    def __init__(
+        self,
+        *,
+        reward_fn: PebbleStateEntropyReward,
+        **kwargs,
+    ) -> None:
+        """Builds PebbleAgentTrainer.
+
+        Args:
+            reward_fn: Pebble reward function
+            **kwargs: additional keyword arguments to pass on to the parent class
+
+        Raises:
+            ValueError: Unexpected type of reward_fn given.
+        """
+        if not isinstance(reward_fn, PebbleStateEntropyReward):
+            raise ValueError(
+                f"{self.__class__.__name__} expects "
+                f"{PebbleStateEntropyReward.__name__} reward function",
+            )
+        super().__init__(reward_fn=reward_fn, **kwargs)
+
+    def unsupervised_pretrain(self, steps: int, **kwargs: Any) -> None:
+        self.train(steps, **kwargs)
+        fn = self.reward_fn
+        assert isinstance(fn, PebbleStateEntropyReward)
+        fn.unsupervised_exploration_finish()
 
 
 def _get_trajectories(
@@ -1495,6 +1573,7 @@ class PreferenceComparisons(base.BaseImitationAlgorithm):
         transition_oversampling: float = 1,
         initial_comparison_frac: float = 0.1,
         initial_epoch_multiplier: float = 200.0,
+        unsupervised_agent_pretrain_frac: float = 0.05,
         custom_logger: Optional[imit_logger.HierarchicalLogger] = None,
         allow_variable_horizon: bool = False,
         rng: Optional[np.random.Generator] = None,
@@ -1544,6 +1623,9 @@ class PreferenceComparisons(base.BaseImitationAlgorithm):
             initial_epoch_multiplier: before agent training begins, train the reward
                 model for this many more epochs than usual (on fragments sampled from a
                 random agent).
+            unsupervised_agent_pretrain_frac: fraction of total_timesteps for which the
+                agent will be trained without preference gathering (and reward model
+                training)
             custom_logger: Where to log to; if None (default), creates a new logger.
             allow_variable_horizon: If False (default), algorithm will raise an
                 exception if it detects trajectories of different length during
@@ -1642,6 +1724,7 @@ class PreferenceComparisons(base.BaseImitationAlgorithm):
         self.fragment_length = fragment_length
         self.initial_comparison_frac = initial_comparison_frac
         self.initial_epoch_multiplier = initial_epoch_multiplier
+        self.unsupervised_agent_pretrain_frac = unsupervised_agent_pretrain_frac
         self.num_iterations = num_iterations
         self.transition_oversampling = transition_oversampling
         if callable(query_schedule):
@@ -1670,25 +1753,31 @@ class PreferenceComparisons(base.BaseImitationAlgorithm):
             A dictionary with final metrics such as loss and accuracy
             of the reward model.
         """
-        initial_comparisons = int(total_comparisons * self.initial_comparison_frac)
-        total_comparisons -= initial_comparisons
-
         # Compute the number of comparisons to request at each iteration in advance.
-        vec_schedule = np.vectorize(self.query_schedule)
-        unnormalized_probs = vec_schedule(np.linspace(0, 1, self.num_iterations))
-        probs = unnormalized_probs / np.sum(unnormalized_probs)
-        shares = util.oric(probs * total_comparisons)
-        schedule = [initial_comparisons] + shares.tolist()
-        print(f"Query schedule: {schedule}")
+        preference_query_schedule = self._preference_gather_schedule(total_comparisons)
+        self.logger.log(f"Query schedule: {preference_query_schedule}")
 
-        timesteps_per_iteration, extra_timesteps = divmod(
-            total_timesteps,
-            self.num_iterations,
-        )
+        (
+            unsup_pretrain_timesteps,
+            timesteps_per_iteration,
+            extra_timesteps,
+        ) = self._compute_timesteps(total_timesteps)
         reward_loss = None
         reward_accuracy = None
 
-        for i, num_pairs in enumerate(schedule):
+        ###################################################
+        # Pre-training agent before gathering preferences #
+        ###################################################
+        if unsup_pretrain_timesteps:
+            with self.logger.accumulate_means("agent"):
+                self.logger.log(
+                    f"Pre-training agent for {unsup_pretrain_timesteps} timesteps",
+                )
+                self.trajectory_generator.unsupervised_pretrain(
+                    unsup_pretrain_timesteps,
+                )
+
+        for i, num_pairs in enumerate(preference_query_schedule):
             ##########################
             # Gather new preferences #
             ##########################
@@ -1751,3 +1840,26 @@ class PreferenceComparisons(base.BaseImitationAlgorithm):
             self._iteration += 1
 
         return {"reward_loss": reward_loss, "reward_accuracy": reward_accuracy}
+
+    def _preference_gather_schedule(self, total_comparisons):
+        initial_comparisons = int(total_comparisons * self.initial_comparison_frac)
+        total_comparisons -= initial_comparisons
+        vec_schedule = np.vectorize(self.query_schedule)
+        unnormalized_probs = vec_schedule(np.linspace(0, 1, self.num_iterations))
+        probs = unnormalized_probs / np.sum(unnormalized_probs)
+        shares = util.oric(probs * total_comparisons)
+        schedule = [initial_comparisons] + shares.tolist()
+        return schedule
+
+    def _compute_timesteps(self, total_timesteps: int) -> Tuple[int, int, int]:
+        if self.trajectory_generator.has_pretraining:
+            unsupervised_pretrain_timesteps = int(
+                total_timesteps * self.unsupervised_agent_pretrain_frac,
+            )
+        else:
+            unsupervised_pretrain_timesteps = 0
+        timesteps_per_iteration, extra_timesteps = divmod(
+            total_timesteps - unsupervised_pretrain_timesteps,
+            self.num_iterations,
+        )
+        return unsupervised_pretrain_timesteps, timesteps_per_iteration, extra_timesteps

@@ -359,3 +359,39 @@ def get_first_iter_element(iterable: Iterable[T]) -> Tuple[T, Iterable[T]]:
         return_iterable = iterable
 
     return first_element, return_iterable
+
+
+def compute_state_entropy(
+    obs: th.Tensor,
+    all_obs: th.Tensor,
+    k: int,
+) -> th.Tensor:
+    """Compute the state entropy given by KNN distance.
+
+    Args:
+        obs: A batch of observations.
+        all_obs: The tensor of all states to compare to.
+        k: the number of neighbors to consider
+
+    Returns:
+        A tensor containing the state entropy for `obs`.
+    """
+    assert obs.shape[1:] == all_obs.shape[1:]
+    batch_size = 500
+    with th.no_grad():
+        non_batch_dimensions = tuple(range(2, len(obs.shape) + 1))
+        dists: List[th.Tensor] = []
+        for idx in range(len(all_obs) // batch_size + 1):
+            start = idx * batch_size
+            end = (idx + 1) * batch_size
+            all_obs_batch = all_obs[start:end]
+            distances_tensor = th.linalg.vector_norm(
+                obs[:, None] - all_obs_batch[None, :],
+                dim=non_batch_dimensions,
+                ord=2,
+            )
+            assert distances_tensor.shape == (obs.shape[0], all_obs_batch.shape[0])
+            dists.append(distances_tensor)
+        all_dists = th.cat(dists, dim=1)
+        knn_dists = th.kthvalue(all_dists, k=k + 1, dim=1).values
+        return knn_dists

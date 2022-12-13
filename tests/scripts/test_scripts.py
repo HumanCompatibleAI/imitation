@@ -254,6 +254,20 @@ def test_train_preference_comparisons_reward_named_config(tmpdir, named_configs)
     assert isinstance(run.result, dict)
 
 
+def test_train_preference_comparisons_pebble_config(tmpdir):
+    config_updates = dict(common=dict(log_root=tmpdir))
+    run = train_preference_comparisons.train_preference_comparisons_ex.run(
+        # make sure rl.sac named_config is called after rl.fast to overwrite
+        # rl_kwargs.batch_size to None
+        named_configs=ALGO_FAST_CONFIGS["preference_comparison"]
+        + ["pebble", "mountain_car_continuous"],
+        config_updates=config_updates,
+    )
+    assert run.config["rl"]["rl_cls"] is stable_baselines3.SAC
+    assert run.status == "COMPLETED"
+    assert isinstance(run.result, dict)
+
+
 def test_train_dagger_main(tmpdir):
     with pytest.warns(None) as record:
         run = train_imitation.train_imitation_ex.run(
