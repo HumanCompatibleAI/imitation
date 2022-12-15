@@ -1,13 +1,88 @@
 """Environment wrappers for collecting rollouts."""
 
+import os
+import shutil
+import tempfile
+import uuid
 from typing import List, Optional, Sequence, Tuple
 
+import cv2
 import gym
 import numpy as np
 import numpy.typing as npt
 from stable_baselines3.common.vec_env import VecEnv, VecEnvWrapper
 
 from imitation.data import rollout, types
+
+
+class RenderImageInfoWrapper(gym.Wrapper):
+    """Saves render images to `info`.
+
+    Can be very memory intensive for large render images.
+    Use `scale_factor` to reduce render image size.
+    If you need to preserve the resolution and memory
+    runs out, you can activate `ues_file_cache` to save
+    render images and instead put their path into `info`.
+    """
+
+    def __init__(
+        self,
+        env: gym.Env,
+        scale_factor: float = 1.,
+        use_file_cache: bool = False,
+    ):
+        """Builds RenderImageInfoWrapper.
+
+        Args:
+            env: Environment to wrap.
+        """
+        super().__init__(env)
+        self.scale_factor = scale_factor
+        self.use_file_cache = use_file_cache
+        if self.use_file_cache:
+            self.file_cache = tempfile.mkdtemp("imitation_RenderImageInfoWrapper")
+
+        self._active = True
+
+    def set_render_image_active(self, active: bool):
+        self._active = active
+
+    def step(self, action):
+        obs, rew, done, info = self.env.step(action)
+
+        if self._active:
+            rendered_image = self.render(mode="rgb_array")
+            # Scale the render image
+            scaled_size = (
+                int(self.scale_factor * rendered_image.shape[0]),
+                int(self.scale_factor * rendered_image.shape[1]),
+            )
+            scaled_rendered_image = cv2.resize(
+                rendered_image,
+                scaled_size,
+                interpolation=cv2.INTER_AREA,
+            )
+            # Store the render image
+            if not self.use_file_cache:
+                info["rendered_img"] = scaled_rendered_image
+            else:
+                unique_file_path = os.path.join(
+                    self.file_cache,
+                    str(uuid.uuid4()) + ".npy",
+                )
+                np.save(unique_file_path, scaled_rendered_image)
+                info["rendered_img"] = unique_file_path
+
+        # Do not show window of classic control envs
+        if self.env.viewer is not None and self.env.viewer.window.visible:
+            self.env.viewer.window.set_visible(False)
+
+        return obs, rew, done, info
+
+    def close(self) -> None:
+        if self.use_file_cache:
+            shutil.rmtree(self.file_cache)
+        return super().close()
 
 
 class BufferingWrapper(VecEnvWrapper):
