@@ -3,8 +3,9 @@
 import contextlib
 import logging
 import pathlib
-from typing import Any, Generator, Mapping, Sequence, Tuple, Union
+from typing import Any, Callable, Generator, Mapping, Sequence, Tuple, Union
 
+import gym
 import numpy as np
 import sacred
 from stable_baselines3.common import vec_env
@@ -36,6 +37,8 @@ def config():
     parallel = True  # Use SubprocVecEnv rather than DummyVecEnv
     max_episode_steps = None  # Set to positive int to limit episode horizons
     env_make_kwargs = {}  # The kwargs passed to `spec.make`.
+    post_wrappers = []  # Wrappers applied after `spec.make`
+    post_wrappers_kwargs = []  # The kwargs passed to post wrappers
 
     locals()  # quieten flake8
 
@@ -142,6 +145,8 @@ def make_venv(
     log_dir: str,
     max_episode_steps: int,
     env_make_kwargs: Mapping[str, Any],
+    post_wrappers: Mapping[str, Callable[[gym.Env, int], gym.Env]],
+    post_wrappers_kwargs: Mapping[str, Mapping[str, Any]],
     **kwargs,
 ) -> Generator[vec_env.VecEnv, None, None]:
     """Builds the vector environment.
@@ -156,12 +161,20 @@ def make_venv(
             episode.
         log_dir: Logs episode return statistics to a subdirectory 'monitor`.
         env_make_kwargs: The kwargs passed to `spec.make` of a gym environment.
+        post_wrappers: The wrappers applied after environment creation with `spec.make`.
+        post_wrappers_kwargs: List of kwargs passed to the respective post wrappers.
         kwargs: Passed through to `util.make_vec_env`.
 
     Yields:
         The constructed vector environment.
     """
     rng = make_rng()
+    # Update env_fns for post wrappers with kwargs
+    updated_post_wrappers = []
+    for key, post_wrapper in post_wrappers.items():
+        def updated_post_wrapper(env, env_id):
+            return post_wrapper(env, env_id, **post_wrappers_kwargs[key])
+        updated_post_wrappers.append(updated_post_wrapper)
     # Note: we create the venv outside the try -- finally block for the case that env
     #     creation fails.
     venv = util.make_vec_env(
@@ -172,6 +185,7 @@ def make_venv(
         max_episode_steps=max_episode_steps,
         log_dir=log_dir,
         env_make_kwargs=env_make_kwargs,
+        post_wrappers=updated_post_wrappers,
         **kwargs,
     )
     try:
