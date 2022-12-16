@@ -37,8 +37,8 @@ def config():
     parallel = True  # Use SubprocVecEnv rather than DummyVecEnv
     max_episode_steps = None  # Set to positive int to limit episode horizons
     env_make_kwargs = {}  # The kwargs passed to `spec.make`.
-    post_wrappers = []  # Wrappers applied after `spec.make`
-    post_wrappers_kwargs = []  # The kwargs passed to post wrappers
+    post_wrappers = {}  # Wrappers applied after `spec.make`
+    post_wrappers_kwargs = {}  # The kwargs passed to post wrappers
 
     locals()  # quieten flake8
 
