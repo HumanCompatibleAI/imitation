@@ -49,7 +49,7 @@ parallel -j 25% --header : --results "${OUTPUT_DIR}/parallel/" --colsep , \
   --capture=sys \
   with \
   '{env_config_name}' \
-  common.log_root="${OUTPUT_DIR}" \
+  logging.log_root="${OUTPUT_DIR}" \
   rollout_save_path="${OUTPUT_DIR}/expert_models/{env_config_name}_0/rollouts/final.npz" \
   eval_n_episodes='{n_demonstrations}' \
   eval_n_timesteps=None \

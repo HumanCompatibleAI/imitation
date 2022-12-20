@@ -66,7 +66,7 @@ def _gather_sacred_dicts(
 
     if env_name is not None:
         sacred_dicts = filter(
-            lambda sd: get(sd.config, "common.env_name") == env_name,
+            lambda sd: get(sd.config, "environment.gym_id") == env_name,
             sacred_dicts,
         )
 
@@ -202,7 +202,7 @@ table_entry_fns: sd_to_table_entry_type = {
     "status": lambda sd: get(sd.run, "status"),
     "exp_command": _get_exp_command,
     "algo": _get_algo_name,
-    "env_name": lambda sd: get(sd.config, "common.env_name"),
+    "env_name": lambda sd: get(sd.config, "environment.gym_id"),
     "n_expert_demos": lambda sd: get(sd.config, "demonstrations.n_expert_demos"),
     "run_name": lambda sd: get(sd.run, "experiment.name"),
     "expert_return_summary": lambda sd: _return_summaries(sd)["expert_return_summary"],

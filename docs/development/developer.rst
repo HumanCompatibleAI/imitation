@@ -109,17 +109,19 @@ available in ``scripts/``. You can take a look at the following doc links to und
 
 - `Experiment Overview <https://sacred.readthedocs.io/en/stable/experiment.html>`_: Explains how to create and run experiments. Each script, defined in ``scripts/``, has a corresponding experiment object, defined in ``scripts/config``, with the experiment object and Python source files named after the algorithm(s) supported. For example, the ``train_rl_ex`` object is defined in ``scripts.config.train_rl`` and its main function is in ``scripts.train_rl``.
 
-- `Ingredients <https://sacred.readthedocs.io/en/stable/ingredients.html>`_: Explains how to use ingredients to avoid code duplication across experiments. The ingredients used in our experiments are defined in ``scripts/common/``:
+- `Ingredients <https://sacred.readthedocs.io/en/stable/ingredients.html>`_: Explains how to use ingredients to avoid code duplication across experiments. The ingredients used in our experiments are defined in ``scripts/ingredients/``:
 
   .. autosummary::
-    imitation.scripts.common.common
-    imitation.scripts.common.demonstrations
-    imitation.scripts.common.reward
-    imitation.scripts.common.rl
-    imitation.scripts.common.train
-    imitation.scripts.common.wb
+    imitation.scripts.ingredients.logging
+    imitation.scripts.ingredients.demonstrations
+    imitation.scripts.ingredients.environment
+    imitation.scripts.ingredients.expert
+    imitation.scripts.ingredients.reward
+    imitation.scripts.ingredients.rl
+    imitation.scripts.ingredients.train
+    imitation.scripts.ingredients.wb
 
-- `Configurations <https://sacred.readthedocs.io/en/stable/configuration.html>`_: Explains how to use configurations to parametrize runs. The configurations for different algorithms are defined in their file in ``scripts/``. Some of the commonly used configs and ingredients used across algorithms are defined in ``scripts/common/``.
+- `Configurations <https://sacred.readthedocs.io/en/stable/configuration.html>`_: Explains how to use configurations to parametrize runs. The configurations for different algorithms are defined in their file in ``scripts/``. Some of the commonly used configs and ingredients used across algorithms are defined in ``scripts/ingredients/``.
 
 - `Command-Line Interface <https://sacred.readthedocs.io/en/stable/command_line.html>`_: Explains how to run the experiments through the command-line interface. Also, note the section on how to `print configs <https://sacred.readthedocs.io/en/stable/command_line.html#print-config>`_ to verify the configurations used for the run.
 
