@@ -102,8 +102,9 @@ class BaseImitationAlgorithm(abc.ABC):
                 f"Episodes of different length detected: {horizons}. "
                 "Variable horizon environments are discouraged -- "
                 "termination conditions leak information about reward. See "
-                "https://imitation.readthedocs.io/en/latest/getting-started/variable-horizon.html"
-                " for more information. If you are SURE you want to run imitation on a "
+                "https://imitation.readthedocs.io/en/latest/getting-started/"
+                "variable-horizon.html for more information. "
+                "If you are SURE you want to run imitation on a "
                 "variable horizon task, then please pass in the flag: "
                 "`allow_variable_horizon=True`.",
             )
