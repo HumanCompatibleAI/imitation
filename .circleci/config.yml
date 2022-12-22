@@ -49,7 +49,7 @@ commands:
       # Download and cache dependencies
       - restore_cache:
           keys:
-            - v100-linux-dependencies-{{ checksum "setup.py" }}-{{ checksum "ci/build_and_activate_venv.sh" }}
+            - v6-linux-dependencies-{{ checksum "setup.py" }}-{{ checksum "ci/build_and_activate_venv.sh" }}
 
       - run:
           name: install dependencies
@@ -59,7 +59,7 @@ commands:
       - save_cache:
           paths:
             - /venv
-          key: v100-linux-dependencies-{{ checksum "setup.py" }}-{{ checksum "ci/build_and_activate_venv.sh" }}
+          key: v6-linux-dependencies-{{ checksum "setup.py" }}-{{ checksum "ci/build_and_activate_venv.sh" }}
 
       - run:
           name: install imitation
@@ -122,7 +122,7 @@ commands:
       # Download and cache dependencies
       - restore_cache:
           keys:
-            - v6-win-dependencies-{{ checksum "setup.py" }}-{{ checksum "ci/build_and_activate_venv.ps1" }}
+            - v100-win-dependencies-{{ checksum "setup.py" }}-{{ checksum "ci/build_and_activate_venv.ps1" }}
 
       - run:
           name: install python and binary dependencies
@@ -151,7 +151,7 @@ commands:
       - save_cache:
           paths:
             - .\venv
-          key: v6-win-dependencies-{{ checksum "setup.py" }}-{{ checksum "ci/build_and_activate_venv.ps1" }}
+          key: v100-win-dependencies-{{ checksum "setup.py" }}-{{ checksum "ci/build_and_activate_venv.ps1" }}
 
       - run:
           name: install imitation
