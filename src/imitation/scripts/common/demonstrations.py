@@ -45,7 +45,7 @@ def get_expert_trajectories(
     Args:
         rollout_type: Can be either `local` to load rollouts from the disk or to
             generate them locally or of the format `{algo}-huggingface` to load
-            from the huggingface hub of expert trained using `{algo}`
+            from the huggingface hub of expert trained using `{algo}`.
         rollout_path: A path containing a pickled sequence of `types.Trajectory`.
 
     Returns:
