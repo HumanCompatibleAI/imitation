@@ -1,12 +1,15 @@
 """Ingredient for scripts learning from demonstrations."""
 
 import logging
-from typing import Optional, Sequence
+import pathlib
+import warnings
+from typing import Optional, Sequence, Union
 
 import numpy as np
 import sacred
 
 from imitation.data import rollout, types
+from imitation.policies import serialize
 from imitation.scripts.ingredients import environment, expert
 from imitation.scripts.ingredients import logging as logging_ingredient
 
@@ -23,7 +26,9 @@ logger = logging.getLogger(__name__)
 
 @demonstrations_ingredient.config
 def config():
-    # path to file containing rollouts. If None, they are sampled from the expert.
+    rollout_type = "local"
+    # path to file containing rollouts. If rollout_path is None
+    # and rollout_type is local, they are sampled from the expert.
     rollout_path = None
     n_expert_demos = None  # Num demos used or sampled. None loads every demo possible.
     locals()  # quieten flake8
@@ -38,10 +43,39 @@ def fast():
 
 @demonstrations_ingredient.capture
 def get_expert_trajectories(
+    rollout_type: str,
     rollout_path: str,
 ) -> Sequence[types.Trajectory]:
+    """Loads expert demonstrations.
+
+    Args:
+        rollout_type: Can be either `local` to load rollouts from the disk or to
+            generate them locally or of the format `{algo}-huggingface` to load
+            from the huggingface hub of expert trained using `{algo}`.
+        rollout_path: A path containing a pickled sequence of `types.Trajectory`.
+
+    Returns:
+        The expert trajectories.
+
+    Raises:
+        ValueError: if `rollout_type` is not "local" or of the form {algo}-huggingface.
+    """
+    if rollout_type.endswith("-huggingface"):
+        if rollout_path is not None:
+            warnings.warn(
+                "Ignoring `rollout_path` since `rollout_type` is set to download the "
+                "rollouts from the huggingface-hub. If you want to load the rollouts "
+                'from disk, set `rollout_type`="local" and the path in `rollout_path`.',
+                RuntimeWarning,
+            )
+        rollout_path = _download_expert_rollouts(rollout_type)
+    elif rollout_type != "local":
+        raise ValueError(
+            "`rollout_type` can either be `local` or of the form `{algo}-huggingface`.",
+        )
+
     if rollout_path is not None:
-        return load_expert_trajs()
+        return load_local_expert_trajs(rollout_path)
     else:
         return generate_expert_trajs()
 
@@ -77,11 +111,11 @@ def generate_expert_trajs(
 
 
 @demonstrations_ingredient.capture
-def load_expert_trajs(
-    rollout_path: str,
+def load_local_expert_trajs(
+    rollout_path: Union[str, pathlib.Path],
     n_expert_demos: Optional[int],
 ) -> Sequence[types.Trajectory]:
-    """Loads expert demonstrations.
+    """Loads expert demonstrations from a local path.
 
     Args:
         rollout_path: A path containing a pickled sequence of `types.Trajectory`.
@@ -105,3 +139,14 @@ def load_expert_trajs(
         expert_trajs = expert_trajs[:n_expert_demos]
         logger.info(f"Truncated to {n_expert_demos} expert trajectories")
     return expert_trajs
+
+
+@demonstrations_ingredient.capture(prefix="expert")
+def _download_expert_rollouts(rollout_type, loader_kwargs):
+    assert rollout_type.endswith("-huggingface")
+    algo_name = rollout_type.split("-")[0]
+    return serialize.load_rollouts_from_huggingface(
+        algo_name,
+        env_name=loader_kwargs["env_name"],
+        organization=loader_kwargs["organization"],
+    )

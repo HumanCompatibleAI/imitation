@@ -230,3 +230,14 @@ class SavePolicyCallback(callbacks.EventCallback):
         output_dir = self.policy_dir / f"{self.num_timesteps:012d}"
         save_stable_model(output_dir, self.model)
         return True
+
+
+def load_rollouts_from_huggingface(
+    algo_name: str,
+    env_name: str,
+    organization: str = "HumanCompatibleAI",
+) -> str:
+    model_name = hfsb3.ModelName(algo_name, hfsb3.EnvironmentName(env_name))
+    repo_id = hfsb3.ModelRepoId(organization, model_name)
+    filename = hfsb3.load_from_hub(repo_id, "rollouts.npz")
+    return filename
