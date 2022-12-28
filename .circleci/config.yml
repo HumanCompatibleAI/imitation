@@ -3,7 +3,7 @@ version: 2.1
 orbs:
   codecov: codecov/codecov@3.2.3
   shellcheck: circleci/shellcheck@3.1.2
-  win: circleci/windows@4.1
+  win: circleci/windows@5.0
 
 defaults: &defaults
   docker:
@@ -122,7 +122,7 @@ commands:
       # Download and cache dependencies
       - restore_cache:
           keys:
-            - v100-win-dependencies-{{ checksum "setup.py" }}-{{ checksum "ci/build_and_activate_venv.ps1" }}
+            - v6-win-dependencies-{{ checksum "setup.py" }}-{{ checksum "ci/build_and_activate_venv.ps1" }}
 
       - run:
           name: install python and binary dependencies
@@ -151,7 +151,7 @@ commands:
       - save_cache:
           paths:
             - .\venv
-          key: v100-win-dependencies-{{ checksum "setup.py" }}-{{ checksum "ci/build_and_activate_venv.ps1" }}
+          key: v6-win-dependencies-{{ checksum "setup.py" }}-{{ checksum "ci/build_and_activate_venv.ps1" }}
 
       - run:
           name: install imitation
