@@ -70,7 +70,13 @@ def generate_test_data():
             },
         },
     }
-    base_named_configs = ["cartpole", "common.fast", "train.fast", "rl.fast", "fast"]
+    base_named_configs = [
+        "cartpole",
+        "environment.fast",
+        "train.fast",
+        "rl.fast",
+        "fast",
+    ]
     base_config_updates = {
         "rollout_save_final": False,
     }

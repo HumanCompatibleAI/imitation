@@ -97,16 +97,16 @@ def test_main_console(script_mod):
 
 ALGO_FAST_CONFIGS = {
     "adversarial": [
-        "common.fast",
+        "environment.fast",
         "demonstrations.fast",
         "rl.fast",
         "train.fast",
         "fast",
     ],
-    "eval_policy": ["common.fast", "fast"],
-    "imitation": ["common.fast", "demonstrations.fast", "train.fast", "fast"],
-    "preference_comparison": ["common.fast", "rl.fast", "train.fast", "fast"],
-    "rl": ["common.fast", "rl.fast", "train.fast", "fast"],
+    "eval_policy": ["environment.fast", "fast"],
+    "imitation": ["environment.fast", "demonstrations.fast", "train.fast", "fast"],
+    "preference_comparison": ["environment.fast", "rl.fast", "train.fast", "fast"],
+    "rl": ["environment.fast", "rl.fast", "train.fast", "fast"],
 }
 
 RL_SAC_NAMED_CONFIGS = ["rl.sac", "train.sac"]
@@ -134,7 +134,7 @@ def preference_comparison_config(request):
             # FIXME(yawen): the policy we load was trained on 8 parallel environments
             #  and for some reason using it breaks if we use just 1 (like would be the
             #  default with the fast named_config)
-            "common": dict(num_vec=8),
+            "environment": dict(num_vec=8),
         },
         with_checkpoints={
             # Test that we can save checkpoints
@@ -144,7 +144,7 @@ def preference_comparison_config(request):
 
 
 def test_train_preference_comparisons_main(tmpdir, preference_comparison_config):
-    config_updates = dict(common=dict(log_root=tmpdir))
+    config_updates = dict(logging=dict(log_root=tmpdir))
     sacred.utils.recursive_update(config_updates, preference_comparison_config)
     run = train_preference_comparisons.train_preference_comparisons_ex.run(
         # Note: we have to use the cartpole and not the seals_cartpole config because
@@ -163,7 +163,7 @@ def test_train_preference_comparisons_main(tmpdir, preference_comparison_config)
 )
 def test_train_preference_comparisons_envs_no_crash(tmpdir, env_name):
     """Test envs specified in imitation.scripts.config.train_preference_comparisons."""
-    config_updates = dict(common=dict(log_root=tmpdir))
+    config_updates = dict(logging=dict(log_root=tmpdir))
     run = train_preference_comparisons.train_preference_comparisons_ex.run(
         named_configs=[env_name] + ALGO_FAST_CONFIGS["preference_comparison"],
         config_updates=config_updates,
@@ -173,7 +173,7 @@ def test_train_preference_comparisons_envs_no_crash(tmpdir, env_name):
 
 
 def test_train_preference_comparisons_sac(tmpdir):
-    config_updates = dict(common=dict(log_root=tmpdir))
+    config_updates = dict(logging=dict(log_root=tmpdir))
     run = train_preference_comparisons.train_preference_comparisons_ex.run(
         # make sure rl.sac named_config is called after rl.fast to overwrite
         # rl_kwargs.batch_size to None
@@ -200,7 +200,7 @@ def test_train_preference_comparisons_sac(tmpdir):
 def test_train_preference_comparisons_sac_reward_relabel(tmpdir):
     def _run_reward_relabel_sac_preference_comparisons(buffer_cls):
         config_updates = dict(
-            common=dict(log_root=tmpdir),
+            logging=dict(log_root=tmpdir),
             rl=dict(
                 rl_kwargs=dict(
                     replay_buffer_class=buffer_cls,
@@ -237,7 +237,7 @@ def test_train_preference_comparisons_sac_reward_relabel(tmpdir):
     ),
 )
 def test_train_preference_comparisons_reward_named_config(tmpdir, named_configs):
-    config_updates = dict(common=dict(log_root=tmpdir))
+    config_updates = dict(logging=dict(log_root=tmpdir))
     run = train_preference_comparisons.train_preference_comparisons_ex.run(
         named_configs=["seals_cartpole"]
         + ALGO_FAST_CONFIGS["preference_comparison"]
@@ -260,7 +260,7 @@ def test_train_dagger_main(tmpdir):
             command_name="dagger",
             named_configs=["seals_cartpole"] + ALGO_FAST_CONFIGS["imitation"],
             config_updates=dict(
-                common=dict(log_root=tmpdir),
+                logging=dict(log_root=tmpdir),
                 demonstrations=dict(rollout_path=CARTPOLE_TEST_ROLLOUT_PATH),
             ),
         )
@@ -280,19 +280,19 @@ def test_train_dagger_warmstart(tmpdir):
         command_name="dagger",
         named_configs=["seals_cartpole"] + ALGO_FAST_CONFIGS["imitation"],
         config_updates=dict(
-            common=dict(log_root=tmpdir),
+            logging=dict(log_root=tmpdir),
             demonstrations=dict(rollout_path=CARTPOLE_TEST_ROLLOUT_PATH),
         ),
     )
     assert run.status == "COMPLETED"
 
-    log_dir = types.parse_path(run.config["common"]["log_dir"])
+    log_dir = types.parse_path(run.config["logging"]["log_dir"])
     policy_path = log_dir / "scratch" / "policy-latest.pt"
     run_warmstart = train_imitation.train_imitation_ex.run(
         command_name="dagger",
         named_configs=["seals_cartpole"] + ALGO_FAST_CONFIGS["imitation"],
         config_updates=dict(
-            common=dict(log_root=tmpdir),
+            logging=dict(log_root=tmpdir),
             demonstrations=dict(rollout_path=CARTPOLE_TEST_ROLLOUT_PATH),
             agent_path=policy_path,
         ),
@@ -307,7 +307,7 @@ def test_train_bc_main_with_none_demonstrations_raises_value_error(tmpdir):
             command_name="bc",
             named_configs=["seals_cartpole"] + ALGO_FAST_CONFIGS["imitation"],
             config_updates=dict(
-                common=dict(log_root=tmpdir),
+                logging=dict(log_root=tmpdir),
                 demonstrations=dict(n_expert_demos=None),
             ),
         )
@@ -318,7 +318,7 @@ def test_train_bc_main_with_demonstrations_from_huggingface(tmpdir):
         command_name="bc",
         named_configs=["seals_cartpole"] + ALGO_FAST_CONFIGS["imitation"],
         config_updates=dict(
-            common=dict(log_root=tmpdir),
+            logging=dict(log_root=tmpdir),
             demonstrations=dict(rollout_type="ppo-huggingface"),
         ),
     )
@@ -335,7 +335,7 @@ def test_train_bc_main_with_demonstrations_raises_error_on_wrong_huggingface_for
             command_name="bc",
             named_configs=["seals_cartpole"] + ALGO_FAST_CONFIGS["imitation"],
             config_updates=dict(
-                common=dict(log_root=tmpdir),
+                logging=dict(log_root=tmpdir),
                 demonstrations=dict(rollout_type="huggingface-ppo"),
             ),
         )
@@ -352,7 +352,7 @@ def test_train_bc_main_with_demonstrations_warns_setting_rollout_type(
             command_name="bc",
             named_configs=["seals_cartpole"] + ALGO_FAST_CONFIGS["imitation"],
             config_updates=dict(
-                common=dict(log_root=tmpdir),
+                logging=dict(log_root=tmpdir),
                 demonstrations=dict(
                     rollout_type="ppo-huggingface",
                     rollout_path="path",
@@ -383,7 +383,7 @@ def bc_config(tmpdir, request):
         command_name="bc",
         named_configs=["seals_cartpole"] + ALGO_FAST_CONFIGS["imitation"],
         config_updates=dict(
-            common=dict(log_root=tmpdir),
+            logging=dict(log_root=tmpdir),
             expert=expert_config,
             demonstrations=dict(rollout_path=CARTPOLE_TEST_ROLLOUT_PATH),
         ),
@@ -401,7 +401,7 @@ def test_train_bc_warmstart(tmpdir):
         command_name="bc",
         named_configs=["seals_cartpole"] + ALGO_FAST_CONFIGS["imitation"],
         config_updates=dict(
-            common=dict(log_root=tmpdir),
+            logging=dict(log_root=tmpdir),
             demonstrations=dict(rollout_path=CARTPOLE_TEST_ROLLOUT_PATH),
             expert=dict(policy_type="ppo-huggingface"),
         ),
@@ -409,12 +409,12 @@ def test_train_bc_warmstart(tmpdir):
     assert run.status == "COMPLETED"
     assert isinstance(run.result, dict)
 
-    policy_path = types.parse_path(run.config["common"]["log_dir"]) / "final.th"
+    policy_path = types.parse_path(run.config["logging"]["log_dir"]) / "final.th"
     run_warmstart = train_imitation.train_imitation_ex.run(
         command_name="bc",
         named_configs=["seals_cartpole"] + ALGO_FAST_CONFIGS["imitation"],
         config_updates=dict(
-            common=dict(log_root=tmpdir),
+            logging=dict(log_root=tmpdir),
             demonstrations=dict(rollout_path=CARTPOLE_TEST_ROLLOUT_PATH),
             agent_path=policy_path,
         ),
@@ -426,19 +426,19 @@ def test_train_bc_warmstart(tmpdir):
 
 @pytest.fixture(params=["cold_start", "warm_start"])
 def rl_train_ppo_config(request, tmpdir):
-    config = dict(common=dict(log_root=tmpdir))
+    config = dict(logging=dict(log_root=tmpdir))
     if request.param == "warm_start":
         # FIXME(yawen): the policy we load was trained on 8 parallel environments
         #  and for some reason using it breaks if we use just 1 (like would be the
         #  default with the fast named_config)
         config["agent_path"] = CARTPOLE_TEST_POLICY_PATH / "model.zip"
-        config["common"] = dict(num_vec=8)
+        config["environment"] = dict(num_vec=8)
     return config
 
 
 def test_train_rl_main(tmpdir, rl_train_ppo_config):
     """Smoke test for imitation.scripts.train_rl."""
-    config_updates = dict(common=dict(log_root=tmpdir))
+    config_updates = dict(logging=dict(log_root=tmpdir))
     sacred.utils.recursive_update(config_updates, rl_train_ppo_config)
     run = train_rl.train_rl_ex.run(
         named_configs=["cartpole"] + ALGO_FAST_CONFIGS["rl"],
@@ -449,14 +449,14 @@ def test_train_rl_main(tmpdir, rl_train_ppo_config):
 
 
 def test_train_rl_wb_logging(tmpdir):
-    """Smoke test for imitation.scripts.common.common.wandb_logging."""
+    """Smoke test for imitation.scripts.ingredients.logging.wandb_logging."""
     with pytest.raises(Exception, match=".*api_key not configured.*"):
         train_rl.train_rl_ex.run(
             named_configs=["cartpole"]
             + ALGO_FAST_CONFIGS["rl"]
-            + ["common.wandb_logging"],
+            + ["logging.wandb_logging"],
             config_updates=dict(
-                common=dict(log_root=tmpdir),
+                logging=dict(log_root=tmpdir),
             ),
         )
 
@@ -467,7 +467,7 @@ def test_train_rl_sac(tmpdir):
         # rl_kwargs.batch_size to None
         named_configs=["pendulum"] + ALGO_FAST_CONFIGS["rl"] + RL_SAC_NAMED_CONFIGS,
         config_updates=dict(
-            common=dict(log_root=tmpdir),
+            logging=dict(log_root=tmpdir),
         ),
     )
     assert run.config["rl"]["rl_cls"] is stable_baselines3.SAC
@@ -495,7 +495,7 @@ if platform.system() != "Darwin":
 @pytest.mark.parametrize("config", EVAL_POLICY_CONFIGS)
 def test_eval_policy(config, tmpdir):
     """Smoke test for imitation.scripts.eval_policy."""
-    config_updates = dict(common=dict(log_root=tmpdir))
+    config_updates = dict(logging=dict(log_root=tmpdir))
     config_updates.update(config)
     run = eval_policy.eval_policy_ex.run(
         config_updates=config_updates,
@@ -545,7 +545,7 @@ def test_train_adversarial(tmpdir, named_configs, command):
         named_configs + ["seals_cartpole"] + ALGO_FAST_CONFIGS["adversarial"]
     )
     config_updates = {
-        "common": dict(log_root=tmpdir),
+        "logging": dict(log_root=tmpdir),
         "demonstrations": dict(rollout_path=CARTPOLE_TEST_ROLLOUT_PATH),
         # TensorBoard logs to get extra coverage
         "algorithm_kwargs": dict(init_tensorboard=True),
@@ -563,7 +563,7 @@ def test_train_adversarial(tmpdir, named_configs, command):
 def test_train_adversarial_warmstart(tmpdir, command):
     named_configs = ["cartpole"] + ALGO_FAST_CONFIGS["adversarial"]
     config_updates = {
-        "common": dict(log_root=tmpdir),
+        "logging": dict(log_root=tmpdir),
         "demonstrations": dict(rollout_path=CARTPOLE_TEST_ROLLOUT_PATH),
     }
     run = train_adversarial.train_adversarial_ex.run(
@@ -572,7 +572,7 @@ def test_train_adversarial_warmstart(tmpdir, command):
         config_updates=config_updates,
     )
 
-    log_dir = types.parse_path(run.config["common"]["log_dir"])
+    log_dir = types.parse_path(run.config["logging"]["log_dir"])
     policy_path = log_dir / "checkpoints" / "final" / "gen_policy"
 
     run_warmstart = train_adversarial.train_adversarial_ex.run(
@@ -597,7 +597,7 @@ def test_train_adversarial_sac(tmpdir, command):
         ["pendulum"] + ALGO_FAST_CONFIGS["adversarial"] + RL_SAC_NAMED_CONFIGS
     )
     config_updates = {
-        "common": dict(log_root=tmpdir),
+        "logging": dict(log_root=tmpdir),
         "demonstrations": dict(rollout_path=PENDULUM_TEST_ROLLOUT_PATH),
     }
     run = train_adversarial.train_adversarial_ex.run(
@@ -615,7 +615,7 @@ def test_train_adversarial_algorithm_value_error(tmpdir):
     base_named_configs = ["cartpole"] + ALGO_FAST_CONFIGS["adversarial"]
     base_config_updates = collections.ChainMap(
         {
-            "common": dict(log_root=tmpdir),
+            "logging": dict(log_root=tmpdir),
             "demonstrations": dict(rollout_path=CARTPOLE_TEST_ROLLOUT_PATH),
         },
     )
@@ -663,7 +663,7 @@ def test_transfer_learning(tmpdir: str) -> None:
         command_name="airl",
         named_configs=["seals_cartpole"] + ALGO_FAST_CONFIGS["adversarial"],
         config_updates=dict(
-            common=dict(log_dir=log_dir_train),
+            logging=dict(log_dir=log_dir_train),
             demonstrations=dict(rollout_path=CARTPOLE_TEST_ROLLOUT_PATH),
         ),
     )
@@ -677,7 +677,7 @@ def test_transfer_learning(tmpdir: str) -> None:
     run = train_rl.train_rl_ex.run(
         named_configs=["seals_cartpole"] + ALGO_FAST_CONFIGS["rl"],
         config_updates=dict(
-            common=dict(log_dir=log_dir_data),
+            logging=dict(log_dir=log_dir_data),
             reward_type="RewardNet_unshaped",
             reward_path=reward_path,
         ),
@@ -713,7 +713,7 @@ def test_preference_comparisons_transfer_learning(
         named_configs=["pendulum"]
         + ALGO_FAST_CONFIGS["preference_comparison"]
         + named_configs_dict["pc"],
-        config_updates=dict(common=dict(log_dir=log_dir_train)),
+        config_updates=dict(logging=dict(log_dir=log_dir_train)),
     )
     assert run.status == "COMPLETED"
 
@@ -732,7 +732,7 @@ def test_preference_comparisons_transfer_learning(
     run = train_rl.train_rl_ex.run(
         named_configs=["pendulum"] + ALGO_FAST_CONFIGS["rl"] + named_configs_dict["rl"],
         config_updates=dict(
-            common=dict(log_dir=log_dir_data),
+            logging=dict(log_dir=log_dir_data),
             reward_type=reward_type,
             reward_path=reward_path,
             load_reward_kwargs=load_reward_kwargs,
@@ -766,7 +766,7 @@ def test_train_rl_double_normalization(tmpdir: str, rng):
         train_rl.train_rl_ex.run(
             named_configs=["cartpole"] + ALGO_FAST_CONFIGS["rl"],
             config_updates=dict(
-                common=dict(log_dir=log_dir_data),
+                logging=dict(log_dir=log_dir_data),
                 reward_type="RewardNet_normalized",
                 normalize_reward=True,
                 reward_path=tmppath,
@@ -789,7 +789,8 @@ def test_train_rl_cnn_policy(tmpdir: str, rng):
     run = train_rl.train_rl_ex.run(
         named_configs=["train.cnn_policy"] + ALGO_FAST_CONFIGS["rl"],
         config_updates=dict(
-            common=dict(log_dir=log_dir_data, env_name="AsteroidsNoFrameskip-v4"),
+            environment=dict(gym_id="AsteroidsNoFrameskip-v4"),
+            logging=dict(log_dir=log_dir_data),
             reward_path=tmppath,
         ),
     )
@@ -836,7 +837,7 @@ def test_parallel(config_updates, tmpdir):
     # CI server only has 2 cores
     config_updates = dict(config_updates)
     config_updates.update(PARALLEL_CONFIG_LOW_RESOURCE)
-    config_updates.setdefault("base_config_updates", {})["common.log_root"] = tmpdir
+    config_updates.setdefault("base_config_updates", {})["logging.log_root"] = tmpdir
     run = parallel.parallel_ex.run(config_updates=config_updates)
     assert run.status == "COMPLETED"
 
@@ -844,7 +845,7 @@ def test_parallel(config_updates, tmpdir):
 def test_parallel_arg_errors(tmpdir):
     """Error on bad algorithm arguments."""
     config_updates = dict(PARALLEL_CONFIG_LOW_RESOURCE)
-    config_updates.setdefault("base_config_updates", {})["common.log_root"] = tmpdir
+    config_updates.setdefault("base_config_updates", {})["logging.log_root"] = tmpdir
     config_updates = collections.ChainMap(config_updates)
 
     with pytest.raises(TypeError, match=".*Sequence.*"):
@@ -877,7 +878,7 @@ def _generate_test_rollouts(tmpdir: str, env_named_config: str) -> pathlib.Path:
     train_rl.train_rl_ex.run(
         named_configs=[env_named_config] + ALGO_FAST_CONFIGS["rl"],
         config_updates=dict(
-            common=dict(log_dir=tmpdir),
+            logging=dict(log_dir=tmpdir),
         ),
     )
     rollout_path = tmpdir_path / "rollouts/final.npz"
@@ -899,7 +900,7 @@ def test_parallel_train_adversarial_custom_env(tmpdir):
         n_seeds=1,
         base_named_configs=[env_named_config] + ALGO_FAST_CONFIGS["adversarial"],
         base_config_updates=dict(
-            common=dict(log_root=tmpdir),
+            logging=dict(log_root=tmpdir),
             demonstrations=dict(rollout_path=rollout_path),
         ),
         search_space=dict(command_name="gail"),
@@ -914,7 +915,7 @@ def _run_train_adv_for_test_analyze_imit(run_name, sacred_logs_dir, log_dir):
         command_name="gail",
         named_configs=["seals_cartpole"] + ALGO_FAST_CONFIGS["adversarial"],
         config_updates=dict(
-            common=dict(log_root=log_dir),
+            logging=dict(log_root=log_dir),
             demonstrations=dict(rollout_path=CARTPOLE_TEST_ROLLOUT_PATH),
             checkpoint_interval=-1,
         ),
@@ -928,7 +929,7 @@ def _run_train_bc_for_test_analyze_imit(run_name, sacred_logs_dir, log_dir):
         command_name="bc",
         named_configs=["seals_cartpole"] + ALGO_FAST_CONFIGS["imitation"],
         config_updates=dict(
-            common=dict(log_dir=log_dir),
+            logging=dict(log_dir=log_dir),
             demonstrations=dict(rollout_path=CARTPOLE_TEST_ROLLOUT_PATH),
         ),
         options={"--name": run_name, "--file_storage": sacred_logs_dir},
