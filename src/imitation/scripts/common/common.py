@@ -1,6 +1,7 @@
 """Common configuration elements for scripts."""
 
 import contextlib
+import functools
 import logging
 import pathlib
 from typing import Any, Callable, Generator, Mapping, Sequence, Tuple, Union
@@ -37,8 +38,8 @@ def config():
     parallel = True  # Use SubprocVecEnv rather than DummyVecEnv
     max_episode_steps = None  # Set to positive int to limit episode horizons
     env_make_kwargs = {}  # The kwargs passed to `spec.make`.
-    post_wrappers = []  # Wrappers applied after `spec.make`
-    post_wrappers_kwargs = []  # The kwargs passed to post wrappers
+    post_wrappers = {}  # Wrappers applied after `spec.make`
+    post_wrappers_kwargs = {}  # The kwargs passed to post wrappers
 
     locals()  # quieten flake8
 
@@ -172,9 +173,9 @@ def make_venv(
     # Update env_fns for post wrappers with kwargs
     updated_post_wrappers = []
     for key, post_wrapper in post_wrappers.items():
-        def updated_post_wrapper(env, env_id):
-            return post_wrapper(env, env_id, **post_wrappers_kwargs[key])
-        updated_post_wrappers.append(updated_post_wrapper)
+        if key in post_wrappers_kwargs:
+            post_wrapper = functools.partial(post_wrapper, **post_wrappers_kwargs[key])
+        updated_post_wrappers.append(post_wrapper)
     # Note: we create the venv outside the try -- finally block for the case that env
     #     creation fails.
     venv = util.make_vec_env(
