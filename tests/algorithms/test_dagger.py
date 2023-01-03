@@ -105,6 +105,47 @@ def test_traj_collector(tmpdir, pendulum_venv, rng):
     assert nonzero_acts == 0
 
 
+def test_traj_collector_reproducible(tmpdir, pendulum_venv):
+    # Check that we get the same results if we run the collector
+    # twice with the same random seeds.
+    # In particular, check that the observations from all the
+    # collected trajectories are the same in each run.
+    trajs_obs_list = []
+    with torch.random.fork_rng():
+        for run_idx in range(2):
+            # Reset the random seeds.
+            save_dir = os.path.join(tmpdir, "run{0}".format(run_idx))
+            rng = np.random.default_rng(12345)
+            pendulum_venv.seed(12345)
+            pendulum_venv.action_space.seed(12345)
+
+            # Run the collector.
+            collector = dagger.InteractiveTrajectoryCollector(
+                venv=pendulum_venv,
+                get_robot_acts=lambda o: [
+                    pendulum_venv.action_space.sample() for _ in range(len(o))
+                ],
+                beta=0.5,
+                save_dir=save_dir,
+                rng=rng,
+            )
+            collector.reset()
+            zero_acts = np.zeros(
+                (pendulum_venv.num_envs,) + pendulum_venv.action_space.shape,
+                dtype=pendulum_venv.action_space.dtype,
+            )
+            for i in range(1000):
+                _, _, dones, _ = collector.step(zero_acts)
+
+            # Get the observations from all the collected trajectories.
+            file_paths = glob.glob(os.path.join(save_dir, "dagger-demo-*.npz"))
+            trajs = [types.load(p)[0] for p in file_paths]
+            trajs_obs = np.stack([trajs[i].obs for i in range(len(trajs))], axis=0)
+            trajs_obs_list.append(trajs_obs)
+
+    np.testing.assert_almost_equal(trajs_obs_list[0], trajs_obs_list[1])
+
+
 def _build_dagger_trainer(
     tmpdir,
     venv,
@@ -323,6 +364,69 @@ def test_trainer_makes_progress(init_trainer_fn, pendulum_venv, pendulum_expert_
         rewards_after_training,
         300,
     )
+
+
+@pytest.mark.parametrize(
+    "init_trainer_fn",
+    [_build_dagger_trainer, _build_simple_dagger_trainer],
+)
+def test_trainer_reproducible(
+    init_trainer_fn,
+    tmpdir,
+    pendulum_venv,
+    pendulum_expert_policy,
+    custom_logger,
+):
+    # Check that we get the same results if we run the trainer
+    # twice with the same random seeds.
+    # In particular, check that the rewards achieved by the imitation
+    # policy are the same in each run.
+    rewards_list = []
+    with torch.random.fork_rng():
+        for run_idx in range(2):
+            # Reset the random seeds.
+            run_dir = os.path.join(tmpdir, "run{0}".format(run_idx))
+            torch.random.manual_seed(12345)
+            rng = np.random.default_rng(12345)
+            pendulum_venv.seed(12345)
+            pendulum_venv.action_space.seed(12345)
+
+            beta_schedule = None
+            maybe_pendulum_expert_trajectories = None
+            trainer = init_trainer_fn(
+                run_dir,
+                pendulum_venv,
+                beta_schedule,
+                pendulum_expert_policy,
+                maybe_pendulum_expert_trajectories,
+                custom_logger,
+                rng,
+            )
+
+            # Train for 10 iterations. (6 or less causes test to fail on some configs.)
+            # see https://github.com/HumanCompatibleAI/imitation/issues/580 for details
+            for i in range(10):
+                collector = trainer.create_trajectory_collector()
+                obs = collector.reset()
+                dones = [False] * pendulum_venv.num_envs
+                while not np.any(dones):
+                    expert_actions, _ = pendulum_expert_policy.predict(
+                        obs,
+                        deterministic=True,
+                    )
+                    obs, _, dones, _ = collector.step(expert_actions)
+                trainer.extend_and_update(dict(n_epochs=1))
+
+            rewards, _ = evaluation.evaluate_policy(
+                trainer.policy,
+                pendulum_venv,
+                15,
+                return_episode_rewards=True,
+            )
+            rewards_list.append(rewards)
+
+    assert len(rewards_list) == 2
+    np.testing.assert_almost_equal(rewards_list[0], rewards_list[1])
 
 
 def test_trainer_save_reload(tmpdir, init_trainer_fn, pendulum_venv):
