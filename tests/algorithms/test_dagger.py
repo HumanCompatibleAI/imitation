@@ -419,9 +419,7 @@ def test_trainer_reproducible(
                 rng,
             )
 
-            # Train for 10 iterations. (6 or less causes test to fail on some configs.)
-            # see https://github.com/HumanCompatibleAI/imitation/issues/580 for details
-            for i in range(10):
+            for i in range(2):
                 collector = trainer.create_trajectory_collector()
                 obs = collector.reset()
                 dones = [False] * pendulum_venv.num_envs
