@@ -47,6 +47,11 @@ def normalize_output_running():
 
 
 @reward_ingredient.named_config
+def normalize_output_ema():
+    normalize_output_layer = networks.EMANorm  # noqa: F841
+
+
+@reward_ingredient.named_config
 def reward_ensemble():
     net_cls = reward_nets.RewardEnsemble
     add_std_alpha = 0

@@ -1,6 +1,8 @@
 """Configuration settings for train_rl, training a policy with RL."""
 
+
 import sacred
+from torch import nn
 
 from imitation.scripts.ingredients import environment
 from imitation.scripts.ingredients import logging as logging_ingredient
@@ -70,8 +72,30 @@ def cartpole():
 
 @train_rl_ex.named_config
 def seals_cartpole():
-    environment = dict(gym_id="seals/CartPole-v0")
-    total_timesteps = int(1e6)
+    environment = dict(gym_id="seals/CartPole-v0", num_vec=8)
+    total_timesteps = int(1e5)
+    train = dict(
+        policy_cls="MlpPolicy",
+        policy_kwargs=dict(
+            activation_fn=nn.ReLU,
+            net_arch=[dict(pi=[64, 64], vf=[64, 64])],
+        ),
+    )
+    normalize_reward = False
+    rl = dict(
+        batch_size=4096,
+        rl_kwargs=dict(
+            batch_size=256,
+            clip_range=0.4,
+            ent_coef=0.008508727919228772,
+            gae_lambda=0.9,
+            gamma=0.9999,
+            learning_rate=0.0012403278189645594,
+            max_grad_norm=0.8,
+            n_epochs=10,
+            vf_coef=0.489343896591493,
+        ),
+    )
 
 
 @train_rl_ex.named_config
@@ -81,8 +105,68 @@ def half_cheetah():
 
 
 @train_rl_ex.named_config
+def seals_half_cheetah():
+    environment = dict(
+        gym_id="seals/HalfCheetah-v0",
+        num_vec=1,
+    )
+
+    train = dict(
+        policy_cls="MlpPolicy",
+        policy_kwargs=dict(
+            activation_fn=nn.Tanh,
+            net_arch=[dict(pi=[64, 64], vf=[64, 64])],
+        ),
+    )
+    # total_timesteps = int(5e6)  # does OK after 1e6, but continues improving
+    total_timesteps = 1e6
+    normalize_reward = False
+
+    rl = dict(
+        batch_size=512,
+        rl_kwargs=dict(
+            batch_size=64,
+            clip_range=0.1,
+            ent_coef=3.794797423594763e-06,
+            gae_lambda=0.95,
+            gamma=0.95,
+            learning_rate=0.0003286871805949382,
+            max_grad_norm=0.8,
+            n_epochs=5,
+            vf_coef=0.11483689492120866,
+        ),
+    )
+
+
+@train_rl_ex.named_config
 def seals_hopper():
-    environment = dict(gym_id="seals/Hopper-v0")
+    environment = dict(gym_id="seals/Hopper-v0", num_vec=1)
+    train = dict(
+        policy_cls="MlpPolicy",
+        policy_kwargs=dict(
+            activation_fn=nn.ReLU,
+            net_arch=[dict(pi=[64, 64], vf=[64, 64])],
+        ),
+    )
+
+    total_timesteps = 1e6
+    normalize_reward = False
+
+    rl = dict(
+        batch_size=2048,
+        rl_kwargs=dict(
+            batch_size=512,
+            clip_range=0.1,
+            ent_coef=0.0010159833764878474,
+            gae_lambda=0.98,
+            gamma=0.995,
+            learning_rate=0.0003904770450788824,
+            max_grad_norm=0.9,
+            n_epochs=20,
+            # policy_kwargs are same as the defaults
+            vf_coef=0.20315938606555833,
+        ),
+    )
 
 
 @train_rl_ex.named_config
@@ -104,15 +188,34 @@ def seals_mountain_car():
 
 @train_rl_ex.named_config
 def pendulum():
-    environment = dict(gym_id="Pendulum-v1")
+    environment = dict(gym_id="Pendulum-v1", num_vec=4)
+    total_timesteps = int(1e5)
+
+    train = dict(
+        policy_cls="MlpPolicy",
+        # policy_kwargs=dict(
+        #     activation_fn=nn.Tanh,
+        #     net_arch=[dict(pi=[64, 64], vf=[64, 64])],
+        # ),
+    )
+    normalize_reward = False
+
     rl = dict(
-        batch_size=4096,
+        batch_size=1024 * 4,
         rl_kwargs=dict(
+            gae_lambda=0.95,
             gamma=0.9,
+            n_epochs=10,
+            ent_coef=0.0,
             learning_rate=1e-3,
+            clip_range=0.2,
+            use_sde=True,
+            sde_sample_freq=4,
+            # batch_size=64,
+            # max_grad_norm=0.8,
+            # vf_coef=0.11483689492120866,
         ),
     )
-    total_timesteps = int(2e5)
 
 
 @train_rl_ex.named_config
@@ -122,17 +225,99 @@ def reacher():
 
 @train_rl_ex.named_config
 def seals_ant():
-    environment = dict(gym_id="seals/Ant-v0")
+    environment = dict(
+        gym_id="seals/Ant-v0",
+        num_vec=1,
+    )
+
+    train = dict(
+        policy_cls="MlpPolicy",
+        policy_kwargs=dict(
+            activation_fn=nn.Tanh,
+            net_arch=[dict(pi=[64, 64], vf=[64, 64])],
+        ),
+    )
+
+    total_timesteps = 1e6
+    normalize_reward = False
+
+    rl = dict(
+        batch_size=2048,
+        rl_kwargs=dict(
+            batch_size=16,
+            clip_range=0.3,
+            ent_coef=3.1441389214159857e-06,
+            gae_lambda=0.8,
+            gamma=0.995,
+            learning_rate=0.00017959211641976886,
+            max_grad_norm=0.9,
+            n_epochs=10,
+            # policy_kwargs are same as the defaults
+            vf_coef=0.4351450387648799,
+        ),
+    )
 
 
 @train_rl_ex.named_config
 def seals_swimmer():
-    environment = dict(gym_id="seals/Swimmer-v0")
+    environment = dict(gym_id="seals/Swimmer-v0", num_vec=1)
+    train = dict(
+        policy_cls="MlpPolicy",
+        policy_kwargs=dict(
+            activation_fn=nn.ReLU,
+            net_arch=[dict(pi=[64, 64], vf=[64, 64])],
+        ),
+    )
+
+    total_timesteps = 1e6
+    normalize_reward = False
+
+    rl = dict(
+        batch_size=2048,
+        rl_kwargs=dict(
+            batch_size=64,
+            clip_range=0.1,
+            ent_coef=5.167107294612664e-08,
+            gae_lambda=0.95,
+            gamma=0.999,
+            learning_rate=0.000414936134792374,
+            max_grad_norm=2,
+            n_epochs=5,
+            # policy_kwargs are same as the defaults
+            vf_coef=0.6162112311062333,
+        ),
+    )
 
 
 @train_rl_ex.named_config
 def seals_walker():
-    environment = dict(gym_id="seals/Walker2d-v0")
+    environment = dict(gym_id="seals/Walker2d-v0", num_vec=1)
+    train = dict(
+        policy_cls="MlpPolicy",
+        policy_kwargs=dict(
+            activation_fn=nn.ReLU,
+            net_arch=[dict(pi=[64, 64], vf=[64, 64])],
+        ),
+    )
+
+    total_timesteps = 1e6
+    normalize_reward = False
+
+    rl = dict(
+        batch_size=8192,
+        rl_kwargs=dict(
+            batch_size=128,
+            clip_range=0.4,
+            ent_coef=0.00013057334805552262,
+            gae_lambda=0.92,
+            gamma=0.98,
+            learning_rate=0.000138575372312869,
+            max_grad_norm=0.6,
+            n_epochs=20,
+            # policy_kwargs are same as the defaults
+            vf_coef=0.6167177795726859,
+        ),
+    )
 
 
 # Debug configs

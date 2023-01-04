@@ -375,7 +375,10 @@ def bc_config(tmpdir, request):
             policy_type="ppo",
             loader_kwargs=dict(path=CARTPOLE_TEST_POLICY_PATH / "model.zip"),
         ),
-        expert_from_huggingface=dict(policy_type="ppo-huggingface"),
+        expert_from_huggingface=dict(
+            policy_type="ppo-huggingface",
+            loader_kwargs=dict(env_id="seals/CartPole-v0"),
+        ),
         random_expert=dict(policy_type="random"),
         zero_expert=dict(policy_type="zero"),
     )[request.param]
@@ -403,7 +406,10 @@ def test_train_bc_warmstart(tmpdir):
         config_updates=dict(
             logging=dict(log_root=tmpdir),
             demonstrations=dict(rollout_path=CARTPOLE_TEST_ROLLOUT_PATH),
-            expert=dict(policy_type="ppo-huggingface"),
+            expert=dict(
+                policy_type="ppo-huggingface",
+                loader_kwargs=dict(env_id="seals/CartPole-v0"),
+            ),
         ),
     )
     assert run.status == "COMPLETED"
@@ -552,6 +558,27 @@ def test_train_adversarial(tmpdir, named_configs, command):
     }
     run = train_adversarial.train_adversarial_ex.run(
         command_name=command,
+        named_configs=named_configs,
+        config_updates=config_updates,
+    )
+    assert run.status == "COMPLETED"
+    _check_train_ex_result(run.result)
+
+
+def test_train_adversarial_debug():
+    """Smoke test for imitation.scripts.train_adversarial."""
+    named_configs = ["seals_ant", "debug_nans"]
+    config_updates = {
+        "common": dict(log_root="/home/tf/imitation/debug", parallel=False),
+        "demonstrations": dict(
+            rollout_path="/home/tf/imitation/download/final.pkl",
+        ),
+        # TensorBoard logs to get extra coverage
+        # "algorithm_kwargs": dict(init_tensorboard=True),
+        "agent_path": "/home/tf/imitation/download/01124/gen_policy",
+    }
+    run = train_adversarial.train_adversarial_ex.run(
+        command_name="airl",
         named_configs=named_configs,
         config_updates=config_updates,
     )

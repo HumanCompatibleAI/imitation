@@ -125,10 +125,12 @@ def train_imitation(
                 expert_policy=expert_policy,
                 custom_logger=custom_logger,
                 bc_trainer=bc_trainer,
+                beta_schedule=dagger["beta_schedule"],
                 rng=_rnd,
             )
             model.train(
                 total_timesteps=int(dagger["total_timesteps"]),
+                rollout_round_min_episodes=dagger["rollout_round_min_episodes"],
                 bc_train_kwargs=bc_train_kwargs,
             )
             # TODO(adam): add checkpointing to DAgger?
@@ -141,7 +143,7 @@ def train_imitation(
 
         imit_stats = train.eval_policy(imit_policy, venv)
 
-    stats = {"imit_stats": imit_stats}
+    stats = {"imit_stats": imit_stats, "mean_return": imit_stats["monitor_return_mean"]}
     trajectories = model._all_demos if use_dagger else expert_trajs
     assert trajectories is not None
     if all(isinstance(t, types.TrajectoryWithRew) for t in trajectories):

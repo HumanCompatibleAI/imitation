@@ -2,12 +2,18 @@
 
 import collections.abc
 import copy
+import glob
 import pathlib
-from typing import Any, Callable, Dict, Mapping, Optional, Sequence
+from typing import Any, Callable, Dict, Mapping, Optional, Sequence, Union
 
+import numpy as np
 import ray
 import ray.tune
 import sacred
+from pandas.api.types import is_object_dtype
+from ray.tune import search
+from ray.tune.registry import register_trainable
+from ray.tune.search import optuna
 from sacred.observers import FileStorageObserver
 
 from imitation.scripts.config.parallel import parallel_ex
@@ -17,6 +23,7 @@ from imitation.scripts.config.parallel import parallel_ex
 def parallel(
     sacred_ex_name: str,
     run_name: str,
+    num_samples: int,
     search_space: Mapping[str, Any],
     base_named_configs: Sequence[str],
     base_config_updates: Mapping[str, Any],
@@ -24,6 +31,12 @@ def parallel(
     init_kwargs: Mapping[str, Any],
     local_dir: Optional[str],
     upload_dir: Optional[str],
+    repeat: int = 3,
+    eval_best_trial: bool = False,
+    eval_trial_seeds: int = 5,
+    experiment_checkpoint_path: str = "",
+    syncer=None,
+    resume: Union[str, bool] = False,
 ) -> None:
     """Parallelize multiple runs of another Sacred Experiment using Ray Tune.
 
@@ -40,6 +53,7 @@ def parallel(
             under the 'experiment.name' key. This is equivalent to using the Sacred
             CLI '--name' option on the inner experiment. Offline analysis jobs can use
             this argument to group similar data.
+        num_samples: Number of times to sample from the hyperparameter space.
         search_space: A dictionary which can contain Ray Tune search objects like
             `ray.tune.grid_search` and `ray.tune.sample_from`, and is
             passed as the `config` argument to `ray.tune.run()`. After the
@@ -62,6 +76,19 @@ def parallel(
         init_kwargs: Arguments to pass to `ray.init`.
         local_dir: `local_dir` argument to `ray.tune.run()`.
         upload_dir: `upload_dir` argument to `ray.tune.run()`.
+        repeat: Number of runs to repeat each trial for.
+        eval_best_trial: Whether to evaluate the trial with the best mean return
+            at the end of tuning on a different set of seeds.
+        eval_trial_seeds: Number of distinct seeds to evaluate the best trial on.
+        experiment_checkpoint_path: Path containing the checkpoints of a previous
+            experiment. ran using this script. Useful for resuming cancelled trials
+            of the experiments (using `resume`) or evaluating the best trial of the
+            experiment (using `eval_best_trial`).
+        resume: If true and `experiment_checkpoint_path` is given, then resumes the
+            experiment by restarting the trials that did not finish in the experiment
+            checkpoint path.
+        syncer: `syncer` argument to `ray.tune.syncer.SyncConfig`.
+
 
     Raises:
         TypeError: Named configs not string sequences or config updates not mappings.
@@ -73,8 +100,8 @@ def parallel(
     if not isinstance(base_config_updates, collections.abc.Mapping):
         raise TypeError("base_config_updates must be a Mapping")
 
-    if not isinstance(search_space["named_configs"], collections.abc.Sequence):
-        raise TypeError('search_space["named_configs"] must be a Sequence')
+    # if not isinstance(search_space["named_configs"], collections.abc.Sequence):
+    #     raise TypeError('search_space["named_configs"] must be a Sequence')
 
     if not isinstance(search_space["config_updates"], collections.abc.Mapping):
         raise TypeError('search_space["config_updates"] must be a Mapping')
@@ -95,15 +122,104 @@ def parallel(
     )
 
     ray.init(**init_kwargs)
+    search_alg = optuna.OptunaSearch()
+    search_alg = search.Repeater(search_alg, repeat=repeat)
     try:
-        ray.tune.run(
-            trainable,
-            config=search_space,
-            name=run_name,
-            local_dir=local_dir,
-            resources_per_trial=resources_per_trial,
-            sync_config=ray.tune.syncer.SyncConfig(upload_dir=upload_dir),
+        if experiment_checkpoint_path:
+            if resume:
+                register_trainable("inner", trainable)
+                runner = ray.tune.execution.trial_runner.TrialRunner(
+                    local_checkpoint_dir=experiment_checkpoint_path,
+                    sync_config=ray.tune.syncer.SyncConfig(
+                        upload_dir=upload_dir,
+                        syncer=syncer,
+                    ),
+                    metric="mean_return",
+                    resume=resume,
+                )
+                print(
+                    "Live trials:", len(runner._live_trials), "/", len(runner._trials)
+                )
+                while not runner.is_finished():
+                    runner.step()
+                    print("Debug:", runner.debug_string())
+
+            result = ray.tune.ExperimentAnalysis(experiment_checkpoint_path)
+            result._load_checkpoints_from_latest(
+                glob.glob(experiment_checkpoint_path + "/experiment_state*.json"),
+            )
+            result.trials = None
+            result.fetch_trial_dataframes()
+        else:
+            result = ray.tune.run(
+                trainable,
+                config=search_space,
+                num_samples=num_samples * repeat,
+                name=run_name,
+                local_dir=local_dir,
+                resources_per_trial=resources_per_trial,
+                sync_config=ray.tune.syncer.SyncConfig(
+                    upload_dir=upload_dir,
+                    syncer=syncer,
+                ),
+                search_alg=search_alg,
+                metric="mean_return",
+                mode="max",
+            )
+
+        key = (
+            "rollout/"
+            if sacred_ex_name == "train_preference_comparisons"
+            else ""
+            if sacred_ex_name == "train_rl"
+            else "imit_stats/"
         )
+        key += "monitor_return_mean"
+        if eval_best_trial:
+            df = result.results_df
+            df = df[df["config/named_configs"].notna()]
+            for col in df.columns:
+                if is_object_dtype(df[col]):
+                    df[col] = df[col].astype("str")
+
+            grp_keys = [
+                c for c in df.columns if c.startswith("config") and "seed" not in c
+            ]
+            grps = df.groupby(grp_keys)
+            print(grps[key])
+            df["mean_return"] = grps[key].transform(lambda x: x.mean())
+            best_config_df = df[df["mean_return"] == df["mean_return"].max()]
+            envs_processed = set()
+            for i, row in best_config_df.iterrows():
+                tag = row["experiment_tag"]
+                trial = [t for t in result.trials if tag in t.experiment_tag][0]
+                best_config = trial.config
+                env = tuple(best_config["named_configs"])
+                if env in envs_processed:
+                    continue
+                envs_processed.add(env)
+                print("Named configs:", env)
+                print("Mean return:", row["mean_return"])
+                print("All returns:", df[df["mean_return"] == row["mean_return"]][key])
+                print("Total seeds:", (df["mean_return"] == row["mean_return"]).sum())
+                best_config["config_updates"].update(
+                    seed=ray.tune.grid_search(list(range(100, 100 + eval_trial_seeds))),
+                )
+                resources_per_trial = {k: 2 * v for k, v in resources_per_trial.items()}
+                eval_result = ray.tune.run(
+                    trainable,
+                    config={
+                        "named_configs": best_config["named_configs"],
+                        "config_updates": best_config["config_updates"],
+                        "command_name": best_config.get("command_name", None),
+                    },
+                    name=run_name + "_best_hp_eval",
+                    resources_per_trial=resources_per_trial,
+                )
+                returns = eval_result.results_df["mean_return"].to_numpy()
+                print("Returns:", returns)
+                print(np.mean(returns), np.std(returns))
+
     finally:
         ray.shutdown()
 
@@ -148,7 +264,7 @@ def _ray_tune_sacred_wrapper(
         `ex.run`) and `reporter`. The function returns the run result.
     """
 
-    def inner(config: Mapping[str, Any], reporter) -> Mapping[str, Any]:
+    def inner(config: Dict[str, Any], reporter) -> Mapping[str, Any]:
         """Trainable function with the correct signature for `ray.tune`.
 
         Args:
@@ -169,11 +285,17 @@ def _ray_tune_sacred_wrapper(
         # Import inside function rather than in module because Sacred experiments
         # are not picklable, and Ray requires this function to be picklable.
         from imitation.scripts.train_adversarial import train_adversarial_ex
+        from imitation.scripts.train_imitation import train_imitation_ex
+        from imitation.scripts.train_preference_comparisons import (
+            train_preference_comparisons_ex,
+        )
         from imitation.scripts.train_rl import train_rl_ex
 
         experiments = {
             "train_rl": train_rl_ex,
             "train_adversarial": train_adversarial_ex,
+            "train_imitation": train_imitation_ex,
+            "train_preference_comparisons": train_preference_comparisons_ex,
         }
         ex = experiments[sacred_ex_name]
 
@@ -181,22 +303,28 @@ def _ray_tune_sacred_wrapper(
         named_configs = base_named_configs + run_kwargs["named_configs"]
         updated_run_kwargs["named_configs"] = named_configs
 
-        config_updates = {**base_config_updates, **run_kwargs["config_updates"]}
+        config_updates: Mapping[str, Any] = {}
+        config_updates.update(base_config_updates)
+        config_updates.update(run_kwargs["config_updates"])
+        if "__trial_index__" in run_kwargs:
+            config_updates.update(seed=run_kwargs.pop("__trial_index__"))
         updated_run_kwargs["config_updates"] = config_updates
 
         # Add other run_kwargs items to updated_run_kwargs.
         for k, v in run_kwargs.items():
             if k not in updated_run_kwargs:
                 updated_run_kwargs[k] = v
-
-        run = ex.run(
-            **updated_run_kwargs,
-            options={"--run": run_name, "--file_storage": "sacred"},
-        )
-
+        run = ex.run(**updated_run_kwargs, options={"--run": run_name})
         # Ray Tune has a string formatting error if raylet completes without
         # any calls to `reporter`.
-        reporter(done=True)
+        # reporter(done=True)
+        # if sacred_ex_name == "train_preference_comparisons":
+        #     #reporter(mean_return=run.result["rollout"]["monitor_return_mean"])
+        #     #ray.tune.report(mean_return=run.result["rollout"]["monitor_return_mean"])
+        #     ray.tune.report(mean_return=234)
+        # else:
+        #     # reporter(mean_return=run.result["imit_stats"]["monitor_return_mean"])
+        #     ray.tune.report(mean_return=run.result["imit_stats"]["monitor_return_mean"])
 
         assert run.status == "COMPLETED"
         return run.result
