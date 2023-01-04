@@ -382,9 +382,8 @@ class DAggerTrainer(base.BaseImitationAlgorithm):
         # https://stackoverflow.com/questions/31534583/is-os-listdir-deterministic
         # To ensure the order is consistent across file systems,
         # we sort by the filename.
-        return [
-            round_dir / p for p in sorted(os.listdir(round_dir)) if p.endswith(".npz")
-        ]
+        filenames = sorted(os.listdir(round_dir))
+        return [round_dir / f for f in filenames if f.endswith(".npz")]
 
     def _demo_dir_path_for_round(self, round_num: Optional[int] = None) -> pathlib.Path:
         if round_num is None:
