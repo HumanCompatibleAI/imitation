@@ -106,11 +106,13 @@ def test_traj_collector(tmpdir, pendulum_venv, rng):
 
 
 def test_traj_collector_reproducible(tmpdir, pendulum_venv):
-    # Check that we get the same results if we run the collector
-    # twice with the same random seeds.
-    # In particular, check that the observations from all the
-    # collected trajectories are the same in each run.
-    trajs_obs_list = []
+    # We run the collector twice with the same random seeds and
+    # check that the following 2 properties hold:
+    # 1) The files written in the first run have the same filenames
+    #    as the files written in the second run.
+    # 2) Each file in the first run stores the same trajectory as
+    #    the file with the same filename in the second run.
+    filename_to_traj_dicts = []
     with torch.random.fork_rng():
         for run_idx in range(2):
             # Reset the random seeds.
@@ -139,11 +141,25 @@ def test_traj_collector_reproducible(tmpdir, pendulum_venv):
 
             # Get the observations from all the collected trajectories.
             file_paths = glob.glob(os.path.join(save_dir, "dagger-demo-*.npz"))
-            trajs = [types.load(p)[0] for p in file_paths]
-            trajs_obs = np.stack([trajs[i].obs for i in range(len(trajs))], axis=0)
-            trajs_obs_list.append(trajs_obs)
+            filename_to_traj_dict = {}
+            for fp in file_paths:
+                traj = types.load_with_rewards(fp)[0]
+                # For the purposes of testing, we remove `infos` from the
+                # trajectory, because `infos` contains the time that it
+                # takes to complete an episode, which we expect to differ
+                # slightly between runs.
+                traj_without_infos = types.TrajectoryWithRew(
+                    obs=traj.obs,
+                    acts=traj.acts,
+                    infos=None,
+                    terminal=traj.terminal,
+                    rews=traj.rews,
+                )
+                filename = os.path.basename(fp)
+                filename_to_traj_dict[filename] = traj_without_infos
+            filename_to_traj_dicts.append(filename_to_traj_dict)
 
-    np.testing.assert_almost_equal(trajs_obs_list[0], trajs_obs_list[1])
+    assert filename_to_traj_dicts[0] == filename_to_traj_dicts[1]
 
 
 def _build_dagger_trainer(
@@ -379,9 +395,9 @@ def test_trainer_reproducible(
 ):
     # Check that we get the same results if we run the trainer
     # twice with the same random seeds.
-    # In particular, check that the rewards achieved by the imitation
-    # policy are the same in each run.
-    rewards_list = []
+    # In particular, check that the trajectories from rolling out
+    # the trained policy are the same in each run.
+    run_trajs = []
     with torch.random.fork_rng():
         for run_idx in range(2):
             # Reset the random seeds.
@@ -417,16 +433,16 @@ def test_trainer_reproducible(
                     obs, _, dones, _ = collector.step(expert_actions)
                 trainer.extend_and_update(dict(n_epochs=1))
 
-            rewards, _ = evaluation.evaluate_policy(
+            trajs = rollout.rollout(
                 trainer.policy,
                 pendulum_venv,
-                15,
-                return_episode_rewards=True,
+                rollout.make_sample_until(min_episodes=2),
+                rng,
             )
-            rewards_list.append(rewards)
+            run_trajs.append(trajs)
 
-    assert len(rewards_list) == 2
-    np.testing.assert_almost_equal(rewards_list[0], rewards_list[1])
+    assert len(run_trajs) == 2
+    assert run_trajs[0] == run_trajs[1]
 
 
 def test_trainer_save_reload(tmpdir, init_trainer_fn, pendulum_venv):
