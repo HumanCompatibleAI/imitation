@@ -6,11 +6,12 @@
   },
   "checkpoint_interval": 0,
   "demonstrations": {
+    "rollout_type": "ppo-huggingface",
     "n_expert_demos": null
   },
   "expert": {
     "loader_kwargs": {
-      "env_name": "seals/Walker2d-v0",
+      "gym_id": "seals/Walker2d-v0",
       "organization": "HumanCompatibleAI"
     }
   },
@@ -46,7 +47,7 @@
       "vf_coef": 0.6167177795726859
     }
   },
-  "total_timesteps": 10000000.0,
+  "total_timesteps": 10000000,
   "train": {
     "n_episodes_eval": 50,
     "policy_cls": "MlpPolicy",
@@ -64,13 +65,19 @@
       },
       "net_arch": [
         {
-          "pi": [64, 64],
-          "vf": [64, 64]
+          "pi": [
+            64,
+            64
+          ],
+          "vf": [
+            64,
+            64
+          ]
         }
       ]
     }
   },
-  "common": {
-    "env_name": "seals/Walker2d-v0"
+  "environment": {
+    "gym_id": "seals/Walker2d-v0"
   }
 }
