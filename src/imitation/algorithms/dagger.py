@@ -10,6 +10,7 @@ import abc
 import logging
 import os
 import pathlib
+import uuid
 from typing import Any, Callable, List, Mapping, Optional, Sequence, Tuple, Union
 
 import numpy as np
@@ -21,7 +22,6 @@ from torch.utils import data as th_data
 from imitation.algorithms import base, bc
 from imitation.data import rollout, types
 from imitation.util import logger as imit_logger
-from imitation.util import util
 
 
 class BetaSchedule(abc.ABC):
@@ -99,16 +99,21 @@ def reconstruct_trainer(
 
 def _save_dagger_demo(
     trajectory: types.Trajectory,
+    trajectory_index: int,
     save_dir: types.AnyPath,
+    rng: np.random.Generator,
     prefix: str = "",
 ) -> None:
     save_dir = types.parse_path(save_dir)
     assert isinstance(trajectory, types.Trajectory)
     actual_prefix = f"{prefix}-" if prefix else ""
-    timestamp = util.make_unique_timestamp()
-    filename = f"{actual_prefix}dagger-demo-{timestamp}.npz"
-
+    randbits = int.from_bytes(rng.bytes(16), "big")
+    random_uuid = uuid.UUID(int=randbits, version=4).hex
+    filename = f"{actual_prefix}dagger-demo-{trajectory_index}-{random_uuid}.npz"
     npz_path = save_dir / filename
+    assert (
+        not npz_path.exists()
+    ), "The following DAgger demonstration path already exists: {0}".format(npz_path)
     types.save(npz_path, [trajectory])
     logging.info(f"Saved demo at '{npz_path}'")
 
@@ -246,8 +251,8 @@ class InteractiveTrajectoryCollector(vec_env.VecEnvWrapper):
             infos=infos,
             dones=dones,
         )
-        for traj in fresh_demos:
-            _save_dagger_demo(traj, self.save_dir)
+        for traj_index, traj in enumerate(fresh_demos):
+            _save_dagger_demo(traj, traj_index, self.save_dir, self.rng)
 
         return next_obs, rews, dones, infos
 
@@ -372,7 +377,13 @@ class DAggerTrainer(base.BaseImitationAlgorithm):
         return demo_transitions, num_demos_by_round
 
     def _get_demo_paths(self, round_dir: pathlib.Path) -> List[pathlib.Path]:
-        return [round_dir / p for p in os.listdir(round_dir) if p.endswith(".npz")]
+        # listdir returns filenames in an arbitrary order that depends on the
+        # file system implementation:
+        # https://stackoverflow.com/questions/31534583/is-os-listdir-deterministic
+        # To ensure the order is consistent across file systems,
+        # we sort by the filename.
+        filenames = sorted(os.listdir(round_dir))
+        return [round_dir / f for f in filenames if f.endswith(".npz")]
 
     def _demo_dir_path_for_round(self, round_num: Optional[int] = None) -> pathlib.Path:
         if round_num is None:
@@ -570,10 +581,12 @@ class SimpleDAggerTrainer(DAggerTrainer):
         if expert_trajs is not None:
             # Save each initial expert trajectory into the "round 0" demonstration
             # data directory.
-            for traj in expert_trajs:
+            for traj_index, traj in enumerate(expert_trajs):
                 _save_dagger_demo(
                     traj,
+                    traj_index,
                     self._demo_dir_path_for_round(),
+                    self.rng,
                     prefix="initial_data",
                 )
 
