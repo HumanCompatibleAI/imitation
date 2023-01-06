@@ -69,7 +69,7 @@ def test_density_reward(
         pendulum_venv.observation_space,
         pendulum_venv.action_space,
     )
-    sample_until = rollout.make_min_episodes(15)
+    sample_until = rollout.make_min_episodes(20)
     random_trajectories = rollout.generate_trajectories(
         random_policy,
         pendulum_venv,
