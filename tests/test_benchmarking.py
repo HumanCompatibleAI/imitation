@@ -6,20 +6,6 @@ import pytest
 
 from imitation.data import types
 
-ALGO_FAST_CONFIGS = {
-    "adversarial": [
-        "environment.fast",
-        "demonstrations.fast",
-        "rl.fast",
-        "train.fast",
-        "fast",
-    ],
-    "eval_policy": ["environment.fast", "fast"],
-    "imitation": ["environment.fast", "demonstrations.fast", "train.fast", "fast"],
-    "preference_comparison": ["environment.fast", "rl.fast", "train.fast", "fast"],
-    "rl": ["environment.fast", "rl.fast", "train.fast", "fast"],
-}
-
 BENCHMARKING_DIR = types.parse_path("benchmarking")
 
 if not BENCHMARKING_DIR.exists():  # pragma: no cover
