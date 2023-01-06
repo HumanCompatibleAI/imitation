@@ -1,8 +1,10 @@
 """Tests for config files in benchmarking/ folder."""
+import os
+import subprocess
+
 import pytest
 
 from imitation.data import types
-from imitation.scripts import train_adversarial, train_imitation
 
 ALGO_FAST_CONFIGS = {
     "adversarial": [
@@ -27,38 +29,30 @@ if not BENCHMARKING_DIR.exists():  # pragma: no cover
     )
 
 
-@pytest.mark.parametrize("command_name", ["bc", "dagger"])
-def test_benchmarking_imitation_config_runs(tmpdir, command_name):
-    config_file = "example_" + command_name + "_seals_half_cheetah_best_hp_eval.json"
-    config_path = BENCHMARKING_DIR / config_file
-    train_imitation.train_imitation_ex.add_named_config(
-        tmpdir.basename,
-        config_path.as_posix(),
+@pytest.mark.parametrize(
+    "script_name, command_name",
+    [
+        ("train_imitation", "bc"),
+        ("train_imitation", "dagger"),
+        ("train_adversarial", "airl"),
+        ("train_adversarial", "gail"),
+    ],
+)
+def test_benchmarking_configs(tmpdir, script_name, command_name):
+    # We test that the configs using the print_config command
+    # only for the half_cheetah environment,
+    # because the print_config command is slow
+    # (takes about 5 seconds per execution).
+    # We do not test that the configs run even with the fast configs applied,
+    # because running the configs requires MuJoCo. Requiring MuJoCo to run
+    # the tests adds too much complexity.
+    config_file = f"example_{command_name}_seals_half_cheetah_best_hp_eval.json"
+    config_path = os.path.join(BENCHMARKING_DIR.stem, config_file)
+    completed_process = subprocess.run(
+        f"python -m imitation.scripts.{script_name} print_config with {config_path}",
+        shell=True,
+        capture_output=False,
+        stdin=subprocess.DEVNULL,
+        check=True,
     )
-    run = train_imitation.train_imitation_ex.run(
-        command_name=command_name,
-        named_configs=[tmpdir.basename] + ALGO_FAST_CONFIGS["imitation"],
-        config_updates=dict(
-            bc_train_kwargs=dict(n_epochs=None),
-            logging=dict(log_root=tmpdir),
-        ),
-    )
-    assert run.status == "COMPLETED"
-
-
-@pytest.mark.parametrize("command_name", ["airl", "gail"])
-def test_benchmarking_adversarial_config_runs(tmpdir, command_name):
-    config_file = "example_" + command_name + "_seals_half_cheetah_best_hp_eval.json"
-    config_path = BENCHMARKING_DIR / config_file
-    train_adversarial.train_adversarial_ex.add_named_config(
-        tmpdir.basename,
-        config_path.as_posix(),
-    )
-    run = train_adversarial.train_adversarial_ex.run(
-        command_name=command_name,
-        named_configs=[tmpdir.basename] + ALGO_FAST_CONFIGS["adversarial"],
-        config_updates=dict(
-            logging=dict(log_root=tmpdir),
-        ),
-    )
-    assert run.status == "COMPLETED"
+    assert completed_process.returncode == 0
