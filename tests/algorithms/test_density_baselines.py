@@ -48,7 +48,7 @@ def test_density_reward(
     rng,
 ):
     # use only a subset of trajectories
-    expert_trajectories_all = pendulum_expert_trajectories[:8]
+    expert_trajectories_all = pendulum_expert_trajectories
     n_experts = len(expert_trajectories_all)
     expert_trajectories_train = expert_trajectories_all[: n_experts // 2]
     reward_fn = DensityAlgorithm(
@@ -69,7 +69,7 @@ def test_density_reward(
         pendulum_venv.observation_space,
         pendulum_venv.action_space,
     )
-    sample_until = rollout.make_min_episodes(20)
+    sample_until = rollout.make_min_episodes(15)
     random_trajectories = rollout.generate_trajectories(
         random_policy,
         pendulum_venv,
