@@ -6,9 +6,9 @@
   },
   "checkpoint_interval": 0,
   "demonstrations": {
+    "rollout_type": "ppo-huggingface",
     "n_expert_demos": null
   },
-
   "reward": {
     "add_std_alpha": null,
     "ensemble_size": null,
@@ -41,7 +41,7 @@
       "vf_coef": 0.11483689492120866
     }
   },
-  "total_timesteps": 10000000.0,
+  "total_timesteps": 10000000,
   "train": {
     "n_episodes_eval": 50,
     "policy_cls": {
@@ -58,7 +58,7 @@
       }
     }
   },
-  "common": {
-    "env_name": "seals/HalfCheetah-v0"
+  "environment": {
+    "gym_id": "seals/HalfCheetah-v0"
   }
 }
