@@ -25,7 +25,7 @@ To generate the commands to run the entire benchmarking suite with multiple rand
 python experiments/commands.py \
   --name=run0 \
   --cfg_pattern=benchmarking/example_*.json \
-  --seeds 0,1,2 \
+  --seeds 0 1 2 \
   --output_dir=output
 ```
 
@@ -41,7 +41,7 @@ To generate the commands for the Hofvarpnir cluster:
 python experiments/commands.py \
   --name=run0 \
   --cfg_pattern=benchmarking/example_*.json \
-  --seeds 0,1,2 \
+  --seeds 0 1 2 \
   --output_dir=/data/output \
   --remote
 ```
