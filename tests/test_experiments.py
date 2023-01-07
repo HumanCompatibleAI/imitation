@@ -1,4 +1,4 @@
-"""Smoke tests for bash scripts in experiments/."""
+"""Tests for commands.py + Smoke tests for bash scripts in experiments/."""
 
 import glob
 import os
@@ -27,6 +27,17 @@ EXPECTED_LOCAL_CONFIG_TEMPLATE = """python -m imitation.scripts.train_imitation 
 $USER-cmd-run0-dagger-0-8bf911a8 \
 with benchmarking/fast_dagger_seals_cartpole.json \
 seed=0 logging.log_root={output_dir}"""
+
+EXPECTED_HOFVARPNIR_CONFIG_TEMPLATE = """ctl job run \
+--name $USER-cmd-run0-dagger-0-c3ac179d \
+--command "python -m imitation.scripts.train_imitation dagger \
+--capture=sys --name=run0 --file_storage={output_dir}/sacred/\
+$USER-cmd-run0-dagger-0-c3ac179d \
+with /data/imitation/benchmarking/fast_dagger_seals_cartpole.json \
+seed=0 logging.log_root={output_dir}" \
+--container hacobe/devbox:imitation \
+--login --force-pull --never-restart --gpu 0 \
+--shared-host-dir-mount /data"""
 
 
 def _get_benchmarking_path(benchmarking_file):
@@ -124,6 +135,10 @@ def test_commands_local_config_runs(tmpdir):
         check=True,
     )
     assert completed_process.returncode == 0
+    assert (tmpdir / "dagger" / "seals-CartPole-v0").exists()
+    user = os.environ["USER"]
+    expected_sacred_dir = tmpdir / "sacred" / f"{user}-cmd-run0-dagger-0-8bf911a8"
+    assert expected_sacred_dir.exists()
 
 
 def test_commands_local_config_with_custom_flags():
@@ -146,16 +161,10 @@ seed=1 logging.log_root=/foo/bar"""
 def test_commands_hofvarpnir_config():
     if os.name == "nt":  # pragma: no cover
         pytest.skip("commands.py not ported to Windows.")
-    commands = _run_commands_from_flags(output_dir="/data/output", remote=True)
+    output_dir = "/data/output"
+    commands = _run_commands_from_flags(output_dir=output_dir, remote=True)
     assert len(commands) == 1
-    expected = """ctl job run --name $USER-cmd-run0-dagger-0-c3ac179d \
---command python\\ -m\\ imitation.scripts.train_imitation\\ dagger\\ \
---capture=sys\\ --name=run0\\ --file_storage=/data/output/sacred/\
-$USER-cmd-run0-dagger-0-c3ac179d\\ \
-with\\ /data/imitation/benchmarking/fast_dagger_seals_cartpole.json\\ \
-seed=0\\ logging.log_root=/data/output --container hacobe/devbox:imitation \
---login --force-pull --never-restart --gpu 0 \
---shared-host-dir-mount /data"""
+    expected = EXPECTED_HOFVARPNIR_CONFIG_TEMPLATE.format(output_dir=output_dir)
     assert commands[0] == expected
 
 
@@ -172,13 +181,66 @@ def test_commands_hofvarpnir_config_with_custom_flags():
     )
     assert len(commands) == 1
     expected = """ctl job run --name $USER-cmd-baz-dagger-1-345d0f8a \
---command python\\ -m\\ imitation.scripts.train_imitation\\ dagger\\ \
---capture=sys\\ --name=baz\\ --file_storage=/foo/bar/sacred/\
-$USER-cmd-baz-dagger-1-345d0f8a\\ \
-with\\ /bas/bat/fast_dagger_seals_cartpole.json\\ \
-seed=1\\ logging.log_root=/foo/bar --container bam \
+--command "python -m imitation.scripts.train_imitation dagger \
+--capture=sys --name=baz --file_storage=/foo/bar/sacred/\
+$USER-cmd-baz-dagger-1-345d0f8a \
+with /bas/bat/fast_dagger_seals_cartpole.json \
+seed=1 logging.log_root=/foo/bar" --container bam \
 --login --force-pull --never-restart --gpu 0 \
 --shared-host-dir-mount /data"""
+    assert commands[0] == expected
+
+
+def test_commands_local_config_with_special_characters_in_flags(tmpdir):
+    if os.name == "nt":  # pragma: no cover
+        pytest.skip("commands.py not ported to Windows.")
+    # Simulate running commands.py with the following flag:
+    # --output_dir="\"/tmp/.../foo bar\""
+    # And generating a training command with the following flag:
+    # --logging.log_root="/tmp/.../foo bar"
+    #
+    # If we didn't enclose the directory in quotes as in:
+    # --output_dir=/tmp/.../foo bar
+    # Then we would get an "unrecognized arguments: bar" error
+    # trying to run commands.py.
+    #
+    # Or if we enclosed the directory in double quotes as in:
+    # --output_dir="/tmp/.../foo bar"
+    # Then we would generate a training command with the following flag:
+    # --logging.log_root=/tmp/.../foo bar
+    # And we would get an error trying to run the generated command.
+    output_subdir = "foo bar"
+    unquoted_output_dir = (tmpdir / f"{output_subdir}").strpath
+    output_dir = '"\\"' + unquoted_output_dir + '\\""'
+    commands = _run_commands_from_flags(output_dir=output_dir)
+    assert len(commands) == 1
+    # The extra double quotes are removed in the generated command.
+    # It has the following flag:
+    # --logging.log_root="/tmp/.../foo bar"
+    # So it can run without an error introduced by the space.
+    expected = EXPECTED_LOCAL_CONFIG_TEMPLATE.format(
+        output_dir='"' + unquoted_output_dir + '"',
+    )
+    assert commands[0] == expected
+
+
+def test_commands_hofvarpnir_config_with_special_characters_in_flags(tmpdir):
+    if os.name == "nt":  # pragma: no cover
+        pytest.skip("commands.py not ported to Windows.")
+    # See the comments in
+    # test_commands_local_config_with_special_characters_in_flags
+    # for a discussion of special characters in the flag values.
+    output_subdir = "foo bar"
+    unquoted_output_dir = (tmpdir / f"{output_subdir}").strpath
+    output_dir = '"\\"' + unquoted_output_dir + '\\""'
+    commands = _run_commands_from_flags(output_dir=output_dir, remote=True)
+    assert len(commands) == 1
+    # Make sure double quotes are escaped in the training script command
+    # because the training script command is itself enclosed in double
+    # quotes within the cluster command.
+    expected = EXPECTED_HOFVARPNIR_CONFIG_TEMPLATE.format(
+        output_dir='\\"' + unquoted_output_dir + '\\"',
+    )
     assert commands[0] == expected
 
 

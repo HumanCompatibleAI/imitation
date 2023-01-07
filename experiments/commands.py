@@ -49,12 +49,12 @@ python commands.py \
 And get the following command printed out:
 
 ctl job run --name $USER-cmd-run0-bc-0-72cb1df3 \
-    --command python\\ -m\\ imitation.scripts.train_imitation\\ bc\\ \
-    --capture=sys\\ --name=run0\\ \
-    --file_storage=/data/output/sacred/$USER-cmd-run0-bc-0-72cb1df3\\ \
-    with\\ \
-    /data/imitation/benchmarking/example_bc_seals_half_cheetah_best_hp_eval.json\\ \
-    seed=0\\ logging.log_root=/data/output --container hacobe/devbox:imitation \
+    --command "python -m imitation.scripts.train_imitation bc \
+    --capture=sys --name=run0 \
+    --file_storage=/data/output/sacred/$USER-cmd-run0-bc-0-72cb1df3 \
+    with /data/imitation/benchmarking/example_bc_seals_half_cheetah_best_hp_eval.json \
+    seed=0 logging.log_root=/data/output" \
+    --container hacobe/devbox:imitation \
     --login --force-pull --never-restart --gpu 0 --shared-host-dir-mount /data
 """
 import argparse
@@ -76,7 +76,7 @@ _TRAIN_CMD_TEMPLATE = """python -m imitation.scripts.{script_name} \
 with {cfg_path} seed={seed} logging.log_root={log_root}"""
 
 _HOFVARPNIR_CLUSTER_CMD_TEMPLATE = """ctl job run \
---name {name} --command {command} --container {container} \
+--name {name} --command "{command}" --container {container} \
 --login --force-pull --never-restart --gpu 0 \
 --shared-host-dir-mount /data"""
 
@@ -147,8 +147,8 @@ def main(args: argparse.Namespace):
                 print(train_cmd)
                 continue
 
-            # Escape spaces.
-            command = train_cmd.replace(" ", "\\ ")
+            # Escape double quotes.
+            command = train_cmd.replace('"', '\\"')
 
             hofvarpnir_cluster_cmd = _HOFVARPNIR_CLUSTER_CMD_TEMPLATE.format(
                 name=cmd_id,
