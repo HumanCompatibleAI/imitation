@@ -55,7 +55,7 @@ ctl job run --name $USER-cmd-run0-bc-0-72cb1df3 \
     with\\ \
     /data/imitation/benchmarking/example_bc_seals_half_cheetah_best_hp_eval.json\\ \
     seed=0\\ logging.log_root=/data/output --container hacobe/devbox:imitation \
-    --login --force-pull --never-restart
+    --login --force-pull --never-restart --gpu 0 --shared-host-dir-mount /data
 """
 import argparse
 import glob
