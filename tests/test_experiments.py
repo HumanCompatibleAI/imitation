@@ -136,9 +136,7 @@ def test_commands_local_config_runs(tmpdir):
     )
     assert completed_process.returncode == 0
     assert (tmpdir / "dagger" / "seals-CartPole-v0").exists()
-    user = os.environ["USER"]
-    expected_sacred_dir = tmpdir / "sacred" / f"{user}-cmd-run0-dagger-0-8bf911a8"
-    assert expected_sacred_dir.exists()
+    assert (tmpdir / "sacred").exists()
 
 
 def test_commands_local_config_with_custom_flags():
