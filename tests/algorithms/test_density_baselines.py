@@ -48,9 +48,8 @@ def test_density_reward(
     rng,
 ):
     # use only a subset of trajectories
-    expert_trajectories_all = pendulum_expert_trajectories
-    n_experts = len(expert_trajectories_all)
-    expert_trajectories_train = expert_trajectories_all[: n_experts // 2]
+    n_experts = len(pendulum_expert_trajectories)
+    expert_trajectories_train = pendulum_expert_trajectories[: n_experts // 2]
     reward_fn = DensityAlgorithm(
         demonstrations=expert_trajectories_train,
         density_type=density_type,
@@ -76,7 +75,7 @@ def test_density_reward(
         sample_until=sample_until,
         rng=rng,
     )
-    expert_trajectories_test = expert_trajectories_all[n_experts // 2 :]
+    expert_trajectories_test = pendulum_expert_trajectories[n_experts // 2 :]
     random_returns = score_trajectories(random_trajectories, reward_fn)
     expert_returns = score_trajectories(expert_trajectories_test, reward_fn)
     assert reward_improvement.is_significant_reward_improvement(
