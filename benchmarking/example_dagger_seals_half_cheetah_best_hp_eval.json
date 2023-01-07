@@ -24,9 +24,9 @@
     "use_offline_rollouts": false
   },
   "demonstrations": {
+    "rollout_type": "ppo-huggingface",
     "n_expert_demos": null
   },
-
   "train": {
     "n_episodes_eval": 50,
     "policy_cls": {
@@ -43,7 +43,7 @@
       }
     }
   },
-  "common": {
-    "env_name": "seals/HalfCheetah-v0"
+  "environment": {
+    "gym_id": "seals/HalfCheetah-v0"
   }
 }
