@@ -1,44 +1,33 @@
 """Tests for config files in benchmarking/ folder."""
+import glob
 import os
-import subprocess
+import pathlib
 
 import pytest
 
-from imitation.data import types
+from imitation.scripts import train_adversarial, train_imitation
 
-BENCHMARKING_DIR = types.parse_path("benchmarking")
-
-if not BENCHMARKING_DIR.exists():  # pragma: no cover
-    raise RuntimeError(
-        "The benchmarking/ folder has not been found. Make sure you are "
-        "running tests relative to the base imitation project folder.",
-    )
+THIS_DIR = pathlib.Path(__file__).absolute().parent
+BENCHMARKING_DIR = THIS_DIR / ".." / "benchmarking"
 
 
 @pytest.mark.parametrize(
-    "script_name, command_name",
-    [
-        ("train_imitation", "bc"),
-        ("train_imitation", "dagger"),
-        ("train_adversarial", "airl"),
-        ("train_adversarial", "gail"),
-    ],
+    "command_name",
+    ["bc", "dagger", "airl", "gail"],
 )
-def test_benchmarking_configs(tmpdir, script_name, command_name):
-    # We test that the configs using the print_config command
-    # only for the half_cheetah environment,
-    # because the print_config command is slow
-    # (takes about 5 seconds per execution).
-    # We do not test that the configs run even with the fast configs applied,
-    # because running the configs requires MuJoCo. Requiring MuJoCo to run
-    # the tests adds too much complexity.
-    config_file = f"example_{command_name}_seals_half_cheetah_best_hp_eval.json"
-    config_path = os.path.join(BENCHMARKING_DIR.stem, config_file)
-    completed_process = subprocess.run(
-        f"python -m imitation.scripts.{script_name} print_config with {config_path}",
-        shell=True,
-        capture_output=False,
-        stdin=subprocess.DEVNULL,
-        check=True,
-    )
-    assert completed_process.returncode == 0
+def test_benchmarking_configs(tmpdir, command_name):
+    # We test the configs using the print_config command,
+    # because running the configs requires MuJoCo.
+    # Requiring MuJoCo to run the tests adds too much complexity.
+    if command_name in ("bc", "dagger"):
+        ex = train_imitation.train_imitation_ex
+    elif command_name in ("airl", "gail"):
+        ex = train_adversarial.train_adversarial_ex
+    cfg_pattern = os.path.join(BENCHMARKING_DIR.stem, f"example_{command_name}_*.json")
+    cfg_files = glob.glob(cfg_pattern)
+    assert len(cfg_files) == 5, "There should be 1 config file for each of environment."
+    for i, cfg_file in enumerate(cfg_files):
+        cfg_name = f"{tmpdir.basename}_{i}"
+        ex.add_named_config(cfg_name, cfg_file)
+        run = ex.run(command_name="print_config", named_configs=[cfg_name])
+        assert run.status == "COMPLETED"
