@@ -160,6 +160,7 @@ def main(args: argparse.Namespace):
 
 
 def parse():
+    """Parse command-line arguments."""
     parser = argparse.ArgumentParser(
         description="Generate commands to run training scripts with different configs.",
     )
