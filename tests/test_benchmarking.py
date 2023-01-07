@@ -8,7 +8,7 @@ import pytest
 from imitation.scripts import train_adversarial, train_imitation
 
 THIS_DIR = pathlib.Path(__file__).absolute().parent
-BENCHMARKING_DIR = THIS_DIR / ".." / "benchmarking"
+BENCHMARKING_DIR = THIS_DIR.parent / "benchmarking"
 
 
 @pytest.mark.parametrize(
@@ -23,7 +23,7 @@ def test_benchmarking_configs(tmpdir, command_name):
         ex = train_imitation.train_imitation_ex
     elif command_name in ("airl", "gail"):
         ex = train_adversarial.train_adversarial_ex
-    cfg_pattern = os.path.join(BENCHMARKING_DIR.stem, f"example_{command_name}_*.json")
+    cfg_pattern = os.path.join(BENCHMARKING_DIR, f"example_{command_name}_*.json")
     cfg_files = glob.glob(cfg_pattern)
     assert len(cfg_files) == 5, "There should be 1 config file for each of environment."
     for i, cfg_file in enumerate(cfg_files):
