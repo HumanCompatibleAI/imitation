@@ -101,6 +101,8 @@ def _run_commands_from_flags(**kwargs) -> List[str]:
 
 
 def test_commands_local_config():
+    if os.name == "nt":  # pragma: no cover
+        pytest.skip("commands.py not ported to Windows.")
     commands = _run_commands_from_flags()
     assert len(commands) == 1
     expected = EXPECTED_LOCAL_CONFIG_TEMPLATE.format(output_dir="output")
@@ -108,6 +110,8 @@ def test_commands_local_config():
 
 
 def test_commands_local_config_runs(tmpdir):
+    if os.name == "nt":  # pragma: no cover
+        pytest.skip("commands.py not ported to Windows.")
     commands = _run_commands_from_flags(output_dir=tmpdir)
     assert len(commands) == 1
     expected = EXPECTED_LOCAL_CONFIG_TEMPLATE.format(output_dir=tmpdir)
@@ -123,6 +127,8 @@ def test_commands_local_config_runs(tmpdir):
 
 
 def test_commands_local_config_with_custom_flags():
+    if os.name == "nt":  # pragma: no cover
+        pytest.skip("commands.py not ported to Windows.")
     commands = _run_commands_from_flags(
         name="baz",
         seeds=1,
@@ -138,6 +144,8 @@ seed=1 logging.log_root=/foo/bar"""
 
 
 def test_commands_hofvarpnir_config():
+    if os.name == "nt":  # pragma: no cover
+        pytest.skip("commands.py not ported to Windows.")
     commands = _run_commands_from_flags(output_dir="/data/output", remote=True)
     assert len(commands) == 1
     expected = """ctl job run --name $USER-cmd-run0-dagger-0-c3ac179d \
@@ -152,6 +160,8 @@ seed=0\\ logging.log_root=/data/output --container hacobe/devbox:imitation \
 
 
 def test_commands_hofvarpnir_config_with_custom_flags():
+    if os.name == "nt":  # pragma: no cover
+        pytest.skip("commands.py not ported to Windows.")
     commands = _run_commands_from_flags(
         name="baz",
         remote_cfg_dir="/bas/bat",
@@ -173,6 +183,8 @@ seed=1\\ logging.log_root=/foo/bar --container bam \
 
 
 def test_commands_bc_config():
+    if os.name == "nt":  # pragma: no cover
+        pytest.skip("commands.py not ported to Windows.")
     cfg_pattern = _get_benchmarking_path("example_bc_seals_ant_best_hp_eval.json")
     commands = _run_commands_from_flags(cfg_pattern=cfg_pattern)
     assert len(commands) == 1
@@ -185,6 +197,8 @@ seed=0 logging.log_root=output"""
 
 
 def test_commands_dagger_config():
+    if os.name == "nt":  # pragma: no cover
+        pytest.skip("commands.py not ported to Windows.")
     cfg_pattern = _get_benchmarking_path("example_dagger_seals_ant_best_hp_eval.json")
     commands = _run_commands_from_flags(cfg_pattern=cfg_pattern)
     assert len(commands) == 1
@@ -197,6 +211,8 @@ seed=0 logging.log_root=output"""
 
 
 def test_commands_gail_config():
+    if os.name == "nt":  # pragma: no cover
+        pytest.skip("commands.py not ported to Windows.")
     cfg_pattern = _get_benchmarking_path("example_gail_seals_ant_best_hp_eval.json")
     commands = _run_commands_from_flags(cfg_pattern=cfg_pattern)
     assert len(commands) == 1
@@ -209,6 +225,8 @@ seed=0 logging.log_root=output"""
 
 
 def test_commands_airl_config():
+    if os.name == "nt":  # pragma: no cover
+        pytest.skip("commands.py not ported to Windows.")
     cfg_pattern = _get_benchmarking_path("example_airl_seals_ant_best_hp_eval.json")
     commands = _run_commands_from_flags(cfg_pattern=cfg_pattern)
     assert len(commands) == 1
@@ -221,6 +239,8 @@ seed=0 logging.log_root=output"""
 
 
 def test_commands_multiple_configs():
+    if os.name == "nt":  # pragma: no cover
+        pytest.skip("commands.py not ported to Windows.")
     # Test a more complicated `cfg_pattern`.
     cfg_pattern = _get_benchmarking_path("*.json")
     commands = _run_commands_from_flags(cfg_pattern=cfg_pattern)
@@ -228,6 +248,8 @@ def test_commands_multiple_configs():
 
 
 def test_commands_multiple_configs_multiple_seeds():
+    if os.name == "nt":  # pragma: no cover
+        pytest.skip("commands.py not ported to Windows.")
     cfg_pattern = _get_benchmarking_path("*.json")
     seeds = [0, 1, 2]
     commands = _run_commands_from_flags(
