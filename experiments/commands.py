@@ -159,7 +159,7 @@ def main(args: argparse.Namespace):
             print(hofvarpnir_cluster_cmd)
 
 
-def parse():
+def parse() -> argparse.Namespace:
     """Parse command-line arguments."""
     parser = argparse.ArgumentParser(
         description="Generate commands to run training scripts with different configs.",
