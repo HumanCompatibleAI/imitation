@@ -16,7 +16,7 @@
   },
   "dagger": {
     "beta_schedule": {
-      "py/object": "imitation.algorithms.dagger.LinearBetaSchedule",
+      "py/type": "imitation.algorithms.dagger.LinearBetaSchedule",
       "rampdown_rounds": 15
     },
     "rollout_round_min_episodes": 5,

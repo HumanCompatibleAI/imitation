@@ -17,7 +17,7 @@
   "dagger": {
     "beta_schedule": {
       "decay_probability": 0.7,
-      "py/object": "imitation.algorithms.dagger.ExponentialBetaSchedule"
+      "py/type": "imitation.algorithms.dagger.ExponentialBetaSchedule"
     },
     "rollout_round_min_episodes": 10,
     "total_timesteps": 100000,
