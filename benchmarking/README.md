@@ -82,7 +82,7 @@ paper = pd.DataFrame.from_records([
 paper["count"] = 5
 paper["confidence_level"] = 0.95
 # Back out the standard deviation from the margin of error.
-paper["std"] = (paper["margin"] * paper["count"]) / scipy.stats.t.ppf(1-((1-paper["confidence_level"])/2), paper["count"] -1)
+paper["std"] = (paper["margin"] * np.sqrt(paper["count"])) / scipy.stats.t.ppf(1-((1-paper["confidence_level"])/2), paper["count"] -1)
 
 comparison = pd.merge(summary, paper, on=["algo", "env_name"])
 
