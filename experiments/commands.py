@@ -106,7 +106,7 @@ def _get_cfg_id(cfg_path: str) -> str:
     return checksum_hex[2:]
 
 
-def main(args: argparse.Namespace):
+def main(args: argparse.Namespace) -> None:
     """Generate commands to run training scripts with different configs."""
     cfg_relative_paths = glob.glob(args.cfg_pattern)
     local = not args.remote
