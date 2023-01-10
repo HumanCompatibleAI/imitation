@@ -27,12 +27,13 @@ def parallel(
     search_space: Mapping[str, Any],
     base_named_configs: Sequence[str],
     base_config_updates: Mapping[str, Any],
-    resources_per_trial: Mapping[str, Any],
+    resources_per_trial: Dict[str, Any],
     init_kwargs: Mapping[str, Any],
     local_dir: Optional[str],
     upload_dir: Optional[str],
     repeat: int = 3,
     eval_best_trial: bool = False,
+    eval_best_trial_resource_multiplier: int = 2,
     eval_trial_seeds: int = 5,
     experiment_checkpoint_path: str = "",
     syncer=None,
@@ -79,6 +80,8 @@ def parallel(
         repeat: Number of runs to repeat each trial for.
         eval_best_trial: Whether to evaluate the trial with the best mean return
             at the end of tuning on a different set of seeds.
+        eval_best_trial_resource_multiplier: factor by which to multiply the
+            number of cpus per trial in `resources_per_trial`.
         eval_trial_seeds: Number of distinct seeds to evaluate the best trial on.
         experiment_checkpoint_path: Path containing the checkpoints of a previous
             experiment. ran using this script. Useful for resuming cancelled trials
@@ -122,11 +125,11 @@ def parallel(
     )
 
     ray.init(**init_kwargs)
-    search_alg = optuna.OptunaSearch()
-    search_alg = search.Repeater(search_alg, repeat=repeat)
+    search_alg = search.Repeater(optuna.OptunaSearch(), repeat=repeat)
     try:
         if experiment_checkpoint_path:
             if resume:
+                # restart failed runs from experiment_checkpoint_path
                 register_trainable("inner", trainable)
                 runner = ray.tune.execution.trial_runner.TrialRunner(
                     local_checkpoint_dir=experiment_checkpoint_path,
@@ -138,16 +141,21 @@ def parallel(
                     resume=resume,
                 )
                 print(
-                    "Live trials:", len(runner._live_trials), "/", len(runner._trials)
+                    "Live trials:",
+                    len(runner._live_trials),
+                    "/",
+                    len(runner._trials),
                 )
                 while not runner.is_finished():
                     runner.step()
                     print("Debug:", runner.debug_string())
 
+            # load experiment analysis results
             result = ray.tune.ExperimentAnalysis(experiment_checkpoint_path)
             result._load_checkpoints_from_latest(
                 glob.glob(experiment_checkpoint_path + "/experiment_state*.json"),
             )
+            # update result.trials using all the experiment_state json files
             result.trials = None
             result.fetch_trial_dataframes()
         else:
@@ -167,45 +175,50 @@ def parallel(
                 mode="max",
             )
 
-        key = (
+        key_prefix = (
             "rollout/"
             if sacred_ex_name == "train_preference_comparisons"
             else ""
             if sacred_ex_name == "train_rl"
             else "imit_stats/"
         )
-        key += "monitor_return_mean"
+        key = key_prefix + "monitor_return_mean"
         if eval_best_trial:
             df = result.results_df
             df = df[df["config/named_configs"].notna()]
+            # convert object dtype to str required by df.groupby
             for col in df.columns:
                 if is_object_dtype(df[col]):
                     df[col] = df[col].astype("str")
-
+            # group into separate HP configs
             grp_keys = [
                 c for c in df.columns if c.startswith("config") and "seed" not in c
             ]
             grps = df.groupby(grp_keys)
-            print(grps[key])
+            # store mean return of runs across all seeds in a group
             df["mean_return"] = grps[key].transform(lambda x: x.mean())
             best_config_df = df[df["mean_return"] == df["mean_return"].max()]
-            envs_processed = set()
-            for i, row in best_config_df.iterrows():
-                tag = row["experiment_tag"]
-                trial = [t for t in result.trials if tag in t.experiment_tag][0]
+            row = best_config_df.loc[0]
+            best_config_tag = row["experiment_tag"]
+            if result.trials is not None:
+                trial = [
+                    t for t in result.trials if best_config_tag in t.experiment_tag
+                ][0]
                 best_config = trial.config
-                env = tuple(best_config["named_configs"])
-                if env in envs_processed:
-                    continue
-                envs_processed.add(env)
-                print("Named configs:", env)
                 print("Mean return:", row["mean_return"])
                 print("All returns:", df[df["mean_return"] == row["mean_return"]][key])
                 print("Total seeds:", (df["mean_return"] == row["mean_return"]).sum())
                 best_config["config_updates"].update(
                     seed=ray.tune.grid_search(list(range(100, 100 + eval_trial_seeds))),
                 )
-                resources_per_trial = {k: 2 * v for k, v in resources_per_trial.items()}
+                # update cpus per trial only if it is provided in `resources_per_trial`
+                # Uses the default values (cpu=1) if it is not provided
+                if "cpu" in resources_per_trial:
+                    resources_per_trial["cpu"] *= eval_best_trial_resource_multiplier
+                    best_config["config_updates"].update(
+                        environment=dict(num_vec=resources_per_trial["cpu"]),
+                    )
+
                 eval_result = ray.tune.run(
                     trainable,
                     config={
@@ -219,7 +232,6 @@ def parallel(
                 returns = eval_result.results_df["mean_return"].to_numpy()
                 print("Returns:", returns)
                 print(np.mean(returns), np.std(returns))
-
     finally:
         ray.shutdown()
 
@@ -229,7 +241,7 @@ def _ray_tune_sacred_wrapper(
     run_name: str,
     base_named_configs: list,
     base_config_updates: Mapping[str, Any],
-) -> Callable[[Mapping[str, Any], Any], Mapping[str, Any]]:
+) -> Callable[[Dict[str, Any], Any], Mapping[str, Any]]:
     """From an Experiment build a wrapped run function suitable for Ray Tune.
 
     `ray.tune.run(...)` expects a trainable function that takes a dict
@@ -303,7 +315,7 @@ def _ray_tune_sacred_wrapper(
         named_configs = base_named_configs + run_kwargs["named_configs"]
         updated_run_kwargs["named_configs"] = named_configs
 
-        config_updates: Mapping[str, Any] = {}
+        config_updates: Dict[str, Any] = {}
         config_updates.update(base_config_updates)
         config_updates.update(run_kwargs["config_updates"])
         if "__trial_index__" in run_kwargs:
