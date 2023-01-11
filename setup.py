@@ -21,7 +21,7 @@ ATARI_REQUIRE = [
     "autorom[accept-rom-license]~=0.4.2",
 ]
 PYTYPE = ["pytype==2022.7.26"] if IS_NOT_WINDOWS else []
-STABLE_BASELINES3 = "stable-baselines3>=1.6.1"
+STABLE_BASELINES3 = "stable-baselines3>=1.7.0"
 # pinned to 0.21 until https://github.com/DLR-RM/stable-baselines3/pull/780 goes
 # upstream.
 GYM_VERSION_SPECIFIER = "==0.21.0"
