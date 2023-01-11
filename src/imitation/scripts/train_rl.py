@@ -13,6 +13,7 @@ import pathlib
 import warnings
 from typing import Any, Mapping, Optional
 
+import numpy as np
 from sacred.observers import FileStorageObserver
 from stable_baselines3.common import callbacks
 from stable_baselines3.common.vec_env import VecNormalize
@@ -21,8 +22,10 @@ from imitation.data import rollout, types, wrappers
 from imitation.policies import serialize
 from imitation.rewards.reward_wrapper import RewardVecEnvWrapper
 from imitation.rewards.serialize import load_reward
-from imitation.scripts.common import common, rl, train
 from imitation.scripts.config.train_rl import train_rl_ex
+from imitation.scripts.ingredients import environment
+from imitation.scripts.ingredients import logging as logging_ingredient
+from imitation.scripts.ingredients import rl, train
 
 
 @train_rl_ex.main
@@ -40,6 +43,7 @@ def train_rl(
     policy_save_interval: int,
     policy_save_final: bool,
     agent_path: Optional[str],
+    _rnd: np.random.Generator,
 ) -> Mapping[str, float]:
     """Trains an expert policy from scratch and saves the rollouts and policy.
 
@@ -82,19 +86,19 @@ def train_rl(
         policy_save_final: If True, then save the policy right after training is
             finished.
         agent_path: Path to load warm-started agent.
+        _rnd: Random number generator provided by Sacred.
 
     Returns:
         The return value of `rollout_stats()` using the final policy.
     """
-    rng = common.make_rng()
-    custom_logger, log_dir = common.setup_logging()
+    custom_logger, log_dir = logging_ingredient.setup_logging()
     rollout_dir = log_dir / "rollouts"
     policy_dir = log_dir / "policies"
     rollout_dir.mkdir(parents=True, exist_ok=True)
     policy_dir.mkdir(parents=True, exist_ok=True)
 
     post_wrappers = [lambda env, idx: wrappers.RolloutInfoWrapper(env)]
-    with common.make_venv(post_wrappers=post_wrappers) as venv:
+    with environment.make_venv(post_wrappers=post_wrappers) as venv:
         callback_objs = []
         if reward_type is not None:
             reward_fn = load_reward(
@@ -146,7 +150,7 @@ def train_rl(
             )
             types.save(
                 save_path,
-                rollout.rollout(rl_algo, rl_algo.get_env(), sample_until, rng=rng),
+                rollout.rollout(rl_algo, rl_algo.get_env(), sample_until, rng=_rnd),
             )
         if policy_save_final:
             output_dir = policy_dir / "final"

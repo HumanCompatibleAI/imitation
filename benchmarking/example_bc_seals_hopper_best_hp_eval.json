@@ -16,13 +16,13 @@
   },
   "dagger": {
     "rollout_round_min_episodes": null,
-    "total_timesteps": 100000.0,
+    "total_timesteps": 100000,
     "use_offline_rollouts": false
   },
   "demonstrations": {
+    "rollout_type": "ppo-huggingface",
     "n_expert_demos": null
   },
-
   "train": {
     "n_episodes_eval": 50,
     "policy_cls": {
@@ -39,7 +39,7 @@
       }
     }
   },
-  "common": {
-    "env_name": "seals/Hopper-v0"
+  "environment": {
+    "gym_id": "seals/Hopper-v0"
   }
 }

@@ -105,6 +105,63 @@ def test_traj_collector(tmpdir, pendulum_venv, rng):
     assert nonzero_acts == 0
 
 
+def test_traj_collector_reproducible(tmpdir, pendulum_venv):
+    # We run the collector twice with the same random seeds and
+    # check that the following 2 properties hold:
+    # 1) The files written in the first run have the same filenames
+    #    as the files written in the second run.
+    # 2) Each file in the first run stores the same trajectory as
+    #    the file with the same filename in the second run.
+    filename_to_traj_dicts = []
+    with torch.random.fork_rng():
+        for run_idx in range(2):
+            # Reset the random seeds.
+            save_dir = os.path.join(tmpdir, "run{0}".format(run_idx))
+            rng = np.random.default_rng(12345)
+            pendulum_venv.seed(12345)
+            pendulum_venv.action_space.seed(12345)
+
+            # Run the collector.
+            collector = dagger.InteractiveTrajectoryCollector(
+                venv=pendulum_venv,
+                get_robot_acts=lambda o: [
+                    pendulum_venv.action_space.sample() for _ in range(len(o))
+                ],
+                beta=0.5,
+                save_dir=save_dir,
+                rng=rng,
+            )
+            collector.reset()
+            zero_acts = np.zeros(
+                (pendulum_venv.num_envs,) + pendulum_venv.action_space.shape,
+                dtype=pendulum_venv.action_space.dtype,
+            )
+            for i in range(1000):
+                _, _, dones, _ = collector.step(zero_acts)
+
+            # Get the observations from all the collected trajectories.
+            file_paths = glob.glob(os.path.join(save_dir, "dagger-demo-*.npz"))
+            filename_to_traj_dict = {}
+            for fp in file_paths:
+                traj = types.load_with_rewards(fp)[0]
+                # For the purposes of testing, we remove `infos` from the
+                # trajectory, because `infos` contains the time that it
+                # takes to complete an episode, which we expect to differ
+                # slightly between runs.
+                traj_without_infos = types.TrajectoryWithRew(
+                    obs=traj.obs,
+                    acts=traj.acts,
+                    infos=None,
+                    terminal=traj.terminal,
+                    rews=traj.rews,
+                )
+                filename = os.path.basename(fp)
+                filename_to_traj_dict[filename] = traj_without_infos
+            filename_to_traj_dicts.append(filename_to_traj_dict)
+
+    assert filename_to_traj_dicts[0] == filename_to_traj_dicts[1]
+
+
 def _build_dagger_trainer(
     tmpdir,
     venv,
@@ -323,6 +380,67 @@ def test_trainer_makes_progress(init_trainer_fn, pendulum_venv, pendulum_expert_
         rewards_after_training,
         300,
     )
+
+
+@pytest.mark.parametrize(
+    "init_trainer_fn",
+    [_build_dagger_trainer, _build_simple_dagger_trainer],
+)
+def test_trainer_reproducible(
+    init_trainer_fn,
+    tmpdir,
+    pendulum_venv,
+    pendulum_expert_policy,
+    custom_logger,
+):
+    # Check that we get the same results if we run the trainer
+    # twice with the same random seeds.
+    # In particular, check that the trajectories from rolling out
+    # the trained policy are the same in each run.
+    run_trajs = []
+    with torch.random.fork_rng():
+        for run_idx in range(2):
+            # Reset the random seeds.
+            run_dir = os.path.join(tmpdir, "run{0}".format(run_idx))
+            torch.random.manual_seed(12345)
+            rng = np.random.default_rng(12345)
+            pendulum_venv.seed(12345)
+            pendulum_venv.action_space.seed(12345)
+
+            beta_schedule = None
+            maybe_pendulum_expert_trajectories = None
+            trainer = init_trainer_fn(
+                run_dir,
+                pendulum_venv,
+                beta_schedule,
+                pendulum_expert_policy,
+                maybe_pendulum_expert_trajectories,
+                custom_logger,
+                rng,
+            )
+
+            for i in range(2):
+                collector = trainer.create_trajectory_collector()
+                obs = collector.reset()
+                dones = [False] * pendulum_venv.num_envs
+                while not np.any(dones):
+                    expert_actions, _ = pendulum_expert_policy.predict(
+                        obs,
+                        deterministic=True,
+                    )
+                    obs, _, dones, _ = collector.step(expert_actions)
+                trainer.extend_and_update(dict(n_epochs=1))
+
+            trajs = rollout.rollout(
+                trainer.policy,
+                pendulum_venv,
+                rollout.make_sample_until(min_episodes=2),
+                rng,
+            )
+            run_trajs.append(trajs)
+
+    assert len(run_trajs) == 2
+    assert run_trajs[0] == run_trajs[1]
 
 
 def test_trainer_save_reload(tmpdir, init_trainer_fn, pendulum_venv):

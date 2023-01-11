@@ -37,6 +37,7 @@ ENV LANG C.UTF-8
 # Set the PATH to the venv before we create the venv, so it's visible in base.
 # This is since we may create the venv outside of Docker, e.g. in CI
 # or by binding it in for local development.
+ENV VIRTUAL_ENV=/venv
 ENV PATH="/venv/bin:$PATH"
 ENV LD_LIBRARY_PATH /usr/local/nvidia/lib64:${LD_LIBRARY_PATH}
 
@@ -57,7 +58,12 @@ COPY ./setup.py ./setup.py
 COPY ./README.md ./README.md
 COPY ./src/imitation/__init__.py ./src/imitation/__init__.py
 COPY ci/build_and_activate_venv.sh ./ci/build_and_activate_venv.sh
-RUN    ci/build_and_activate_venv.sh /venv \
+
+# Pass mock value for version because .git is not present in the Docker container
+# at this stage, so setuptools-scm cannot determine version automatically.
+# setuptools-scm will compute it correctly when it comes to building and installing
+# imitation, as .git will then be present.
+RUN SETUPTOOLS_SCM_PRETEND_VERSION="dummy" ci/build_and_activate_venv.sh /venv \
     && rm -rf $HOME/.cache/pip
 
 # full stage contains everything.

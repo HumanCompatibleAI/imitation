@@ -145,7 +145,7 @@ def test_replay_buffer(capacity, chunk_len, obs_shape, act_shape, dtype):
         assert sample.next_obs.dtype == dtype
         assert info_vals.dtype == dtype
         assert sample.dones.dtype == bool
-        assert sample.infos.dtype == np.object
+        assert sample.infos.dtype == object
 
         # Are samples in range?
         _check_bound(i + chunk_len, capacity, sample.obs)

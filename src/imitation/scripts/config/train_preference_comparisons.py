@@ -3,12 +3,15 @@
 import sacred
 
 from imitation.algorithms import preference_comparisons
-from imitation.scripts.common import common, reward, rl, train
+from imitation.scripts.ingredients import environment
+from imitation.scripts.ingredients import logging as logging_ingredient
+from imitation.scripts.ingredients import reward, rl, train
 
 train_preference_comparisons_ex = sacred.Experiment(
     "train_preference_comparisons",
     ingredients=[
-        common.common_ingredient,
+        logging_ingredient.logging_ingredient,
+        environment.environment_ingredient,
         reward.reward_ingredient,
         rl.rl_ingredient,
         train.train_ingredient,
@@ -63,7 +66,7 @@ def train_defaults():
 
 @train_preference_comparisons_ex.named_config
 def cartpole():
-    common = dict(env_name="CartPole-v1")
+    environment = dict(gym_id="CartPole-v1")
     allow_variable_horizon = True
 
 
@@ -71,48 +74,48 @@ def cartpole():
 def seals_ant():
     locals().update(**MUJOCO_SHARED_LOCALS)
     locals().update(**ANT_SHARED_LOCALS)
-    common = dict(env_name="seals/Ant-v0")
+    environment = dict(gym_id="seals/Ant-v0")
 
 
 @train_preference_comparisons_ex.named_config
 def half_cheetah():
     locals().update(**MUJOCO_SHARED_LOCALS)
-    common = dict(env_name="HalfCheetah-v2")
+    environment = dict(gym_id="HalfCheetah-v2")
     rl = dict(batch_size=16384, rl_kwargs=dict(batch_size=1024))
 
 
 @train_preference_comparisons_ex.named_config
 def seals_hopper():
     locals().update(**MUJOCO_SHARED_LOCALS)
-    common = dict(env_name="seals/Hopper-v0")
+    environment = dict(gym_id="seals/Hopper-v0")
 
 
 @train_preference_comparisons_ex.named_config
 def seals_humanoid():
     locals().update(**MUJOCO_SHARED_LOCALS)
-    common = dict(env_name="seals/Humanoid-v0")
+    environment = dict(gym_id="seals/Humanoid-v0")
     total_timesteps = int(4e6)
 
 
 @train_preference_comparisons_ex.named_config
 def seals_cartpole():
-    common = dict(env_name="seals/CartPole-v0")
+    environment = dict(gym_id="seals/CartPole-v0")
 
 
 @train_preference_comparisons_ex.named_config
 def pendulum():
-    common = dict(env_name="Pendulum-v1")
+    environment = dict(gym_id="Pendulum-v1")
 
 
 @train_preference_comparisons_ex.named_config
 def mountain_car():
-    common = dict(env_name="MountainCar-v0")
+    environment = dict(gym_id="MountainCar-v0")
     allow_variable_horizon = True
 
 
 @train_preference_comparisons_ex.named_config
 def seals_mountain_car():
-    common = dict(env_name="seals/MountainCar-v0")
+    environment = dict(gym_id="seals/MountainCar-v0")
 
 
 @train_preference_comparisons_ex.named_config

@@ -1,10 +1,10 @@
-"""Tests for imitation.scripts.common.make_reward."""
+"""Tests for imitation.scripts.ingredients.reward."""
 from typing import Any, Mapping
 
 import pytest
 
 from imitation.rewards import reward_nets
-from imitation.scripts.common import reward
+from imitation.scripts.ingredients import reward
 from imitation.util import networks
 
 

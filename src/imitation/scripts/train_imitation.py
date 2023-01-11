@@ -6,14 +6,17 @@ import pathlib
 import warnings
 from typing import Any, Mapping, Optional, Sequence, Type, cast
 
+import numpy as np
 from sacred.observers import FileStorageObserver
 from stable_baselines3.common import policies, utils, vec_env
 
 from imitation.algorithms import bc as bc_algorithm
 from imitation.algorithms.dagger import SimpleDAggerTrainer
 from imitation.data import rollout, types
-from imitation.scripts.common import common, demonstrations, expert, train
 from imitation.scripts.config.train_imitation import train_imitation_ex
+from imitation.scripts.ingredients import demonstrations, environment, expert
+from imitation.scripts.ingredients import logging as logging_ingredient
+from imitation.scripts.ingredients import train
 
 logger = logging.getLogger(__name__)
 
@@ -65,12 +68,13 @@ def make_policy(
 
 @train_imitation_ex.capture
 def train_imitation(
-    _run,
     bc_kwargs: Mapping[str, Any],
     bc_train_kwargs: Mapping[str, Any],
     dagger: Mapping[str, Any],
     use_dagger: bool,
     agent_path: Optional[str],
+    _run,
+    _rnd: np.random.Generator,
 ) -> Mapping[str, Mapping[str, float]]:
     """Runs DAgger (if `use_dagger`) or BC (otherwise) training.
 
@@ -82,14 +86,14 @@ def train_imitation(
         agent_path: Path to serialized policy. If provided, then load the
             policy from this path. Otherwise, make a new policy.
             Specify only if policy_cls and policy_kwargs are not specified.
+        _rnd: Random number generator provided by Sacred.
 
     Returns:
         Statistics for rollouts from the trained policy and demonstration data.
     """
-    rng = common.make_rng()
-    custom_logger, log_dir = common.setup_logging()
+    custom_logger, log_dir = logging_ingredient.setup_logging()
 
-    with common.make_venv() as venv:
+    with environment.make_venv() as venv:
         imit_policy = make_policy(venv, agent_path=agent_path)
 
         expert_trajs: Optional[Sequence[types.Trajectory]] = None
@@ -102,7 +106,7 @@ def train_imitation(
             policy=imit_policy,
             demonstrations=expert_trajs,
             custom_logger=custom_logger,
-            rng=rng,
+            rng=_rnd,
             **bc_kwargs,
         )
         bc_train_kwargs = dict(log_rollouts_venv=venv, **bc_train_kwargs)
@@ -121,7 +125,7 @@ def train_imitation(
                 expert_policy=expert_policy,
                 custom_logger=custom_logger,
                 bc_trainer=bc_trainer,
-                rng=rng,
+                rng=_rnd,
             )
             model.train(
                 total_timesteps=int(dagger["total_timesteps"]),

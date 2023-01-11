@@ -8,6 +8,7 @@ import functools
 import pathlib
 from typing import Any, Mapping, Optional, Type, Union
 
+import numpy as np
 import torch as th
 from sacred.observers import FileStorageObserver
 from stable_baselines3.common import type_aliases
@@ -15,12 +16,14 @@ from stable_baselines3.common import type_aliases
 from imitation.algorithms import preference_comparisons
 from imitation.data import types
 from imitation.policies import serialize
-from imitation.scripts.common import common, reward
-from imitation.scripts.common import rl as rl_common
-from imitation.scripts.common import train
 from imitation.scripts.config.train_preference_comparisons import (
     train_preference_comparisons_ex,
 )
+from imitation.scripts.ingredients import environment
+from imitation.scripts.ingredients import logging as logging_ingredient
+from imitation.scripts.ingredients import reward
+from imitation.scripts.ingredients import rl as rl_common
+from imitation.scripts.ingredients import train
 
 
 def save_model(
@@ -82,6 +85,7 @@ def train_preference_comparisons(
     allow_variable_horizon: bool,
     checkpoint_interval: int,
     query_schedule: Union[str, type_aliases.Schedule],
+    _rnd: np.random.Generator,
 ) -> Mapping[str, Any]:
     """Train a reward model using preference comparisons.
 
@@ -141,6 +145,7 @@ def train_preference_comparisons(
             be allocated to each iteration. "hyperbolic" and "inverse_quadratic"
             apportion fewer queries to later iterations when the policy is assumed
             to be better and more stable.
+        _rnd: Random number generator provided by Sacred.
 
     Returns:
         Rollout statistics from trained policy.
@@ -148,10 +153,9 @@ def train_preference_comparisons(
     Raises:
         ValueError: Inconsistency between config and deserialized policy normalization.
     """
-    custom_logger, log_dir = common.setup_logging()
-    rng = common.make_rng()
+    custom_logger, log_dir = logging_ingredient.setup_logging()
 
-    with common.make_venv() as venv:
+    with environment.make_venv() as venv:
         reward_net = reward.make_reward_net(venv)
         relabel_reward_fn = functools.partial(
             reward_net.predict_processed,
@@ -174,7 +178,7 @@ def train_preference_comparisons(
                 reward_fn=reward_net,
                 venv=venv,
                 exploration_frac=exploration_frac,
-                rng=rng,
+                rng=_rnd,
                 custom_logger=custom_logger,
                 **trajectory_generator_kwargs,
             )
@@ -191,7 +195,7 @@ def train_preference_comparisons(
                 )
             trajectory_generator = preference_comparisons.TrajectoryDataset(
                 trajectories=types.load_with_rewards(trajectory_path),
-                rng=rng,
+                rng=_rnd,
                 custom_logger=custom_logger,
                 **trajectory_generator_kwargs,
             )
@@ -199,7 +203,7 @@ def train_preference_comparisons(
         fragmenter: preference_comparisons.Fragmenter = (
             preference_comparisons.RandomFragmenter(
                 **fragmenter_kwargs,
-                rng=rng,
+                rng=_rnd,
                 custom_logger=custom_logger,
             )
         )
@@ -217,7 +221,7 @@ def train_preference_comparisons(
             )
         gatherer = gatherer_cls(
             **gatherer_kwargs,
-            rng=rng,
+            rng=_rnd,
             custom_logger=custom_logger,
         )
 
@@ -226,7 +230,7 @@ def train_preference_comparisons(
         reward_trainer = preference_comparisons._make_reward_trainer(
             preference_model,
             loss,
-            rng,
+            _rnd,
             reward_trainer_kwargs,
         )
 
