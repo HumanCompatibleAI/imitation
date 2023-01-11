@@ -186,11 +186,8 @@ def test_that_bc_improves_rewards(
     cartpole_venv: vec_env.VecEnv,
 ):
     # GIVEN
-    # TODO(https://github.com/HumanCompatibleAI/imitation/issues/600): the upstream
-    # annotation for this function is overly-conservative but passing the policy at
-    # runtime works, the ignore can be removed once fixed upstream.
     novice_rewards, _ = evaluation.evaluate_policy(
-        cartpole_bc_trainer.policy,  # type: ignore[arg-type]
+        cartpole_bc_trainer.policy,
         cartpole_venv,
         15,
         return_episode_rewards=True,
@@ -200,7 +197,7 @@ def test_that_bc_improves_rewards(
     # WHEN
     cartpole_bc_trainer.train(n_epochs=1)
     rewards_after_training, _ = evaluation.evaluate_policy(
-        cartpole_bc_trainer.policy,  # type: ignore[arg-type]
+        cartpole_bc_trainer.policy,
         cartpole_venv,
         15,
         return_episode_rewards=True,
