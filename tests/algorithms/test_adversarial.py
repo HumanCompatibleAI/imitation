@@ -399,9 +399,9 @@ def test_logits_expert_is_high_log_policy_act_prob(
         trans.dones,
     )
     log_act_prob_non_none = np.log(0.1 + 0.9 * np.random.rand(n_timesteps))
-    log_act_prob_non_none = th.as_tensor(log_act_prob_non_none).to(obs.device)
+    log_act_prob_non_none_th = th.as_tensor(log_act_prob_non_none).to(obs.device)
 
-    for log_act_prob in [None, log_act_prob_non_none]:
+    for log_act_prob in [None, log_act_prob_non_none_th]:
         maybe_error_ctx: contextlib.AbstractContextManager
         if isinstance(trainer_diverse_env, airl.AIRL) and log_act_prob is None:
             maybe_error_ctx = pytest.raises(TypeError, match="Non-None.*required.*")
