@@ -82,8 +82,8 @@ class BCTrainingMetrics:
     """Container for the different components of behavior cloning loss."""
 
     neglogp: th.Tensor
-    entropy: th.Tensor
-    ent_loss: th.Tensor
+    entropy: Optional[th.Tensor]
+    ent_loss: th.Tensor  # set to 0 if entropy is None
     prob_true_act: th.Tensor
     l2_norm: th.Tensor
     l2_loss: th.Tensor
@@ -119,14 +119,14 @@ class BehaviorCloningLossCalculator:
         _, log_prob, entropy = policy.evaluate_actions(obs, acts)
         prob_true_act = th.exp(log_prob).mean()
         log_prob = log_prob.mean()
-        entropy = entropy.mean()
+        entropy = entropy.mean() if entropy is not None else None
 
         l2_norms = [th.sum(th.square(w)) for w in policy.parameters()]
         l2_norm = sum(l2_norms) / 2  # divide by 2 to cancel with gradient of square
         # sum of list defaults to float(0) if len == 0.
         assert isinstance(l2_norm, th.Tensor)
 
-        ent_loss = -self.ent_weight * entropy
+        ent_loss = -self.ent_weight * (entropy if entropy is not None else th.zeros(1))
         neglogp = -log_prob
         l2_loss = self.l2_weight * l2_norm
         loss = neglogp + ent_loss + l2_loss
@@ -219,7 +219,7 @@ class BCLogger:
         self._logger.record("bc/batch", batch_num)
         self._logger.record("bc/samples_so_far", num_samples_so_far)
         for k, v in training_metrics.__dict__.items():
-            self._logger.record(f"bc/{k}", float(v))
+            self._logger.record(f"bc/{k}", float(v) if v is not None else None)
 
         for k, v in rollout_stats.items():
             if "return" in k and "monitor" not in k:
