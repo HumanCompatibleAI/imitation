@@ -153,6 +153,18 @@ def train_preference_comparisons(
     Raises:
         ValueError: Inconsistency between config and deserialized policy normalization.
     """
+    # This allows to specify total_timesteps, total_comparisons etc. in scientific
+    # notation, which is interpreted as a float by python.
+    total_timesteps = int(total_timesteps)
+    total_comparisons = int(total_comparisons)
+    num_iterations = int(num_iterations)
+    comparison_queue_size = (
+        int(comparison_queue_size) if comparison_queue_size is not None else None
+    )
+    fragment_length = int(fragment_length)
+    active_selection_oversampling = int(active_selection_oversampling)
+    checkpoint_interval = int(checkpoint_interval)
+
     custom_logger, log_dir = logging_ingredient.setup_logging()
 
     with environment.make_venv() as venv:
