@@ -154,7 +154,7 @@ def train_preference_comparisons(
         ValueError: Inconsistency between config and deserialized policy normalization.
     """
     # This allows to specify total_timesteps, total_comparisons etc. in scientific
-    # notation, which is interpreted as a float by sacred.
+    # notation, which is interpreted as a float by python.
     total_timesteps = int(total_timesteps)
     total_comparisons = int(total_comparisons)
     num_iterations = int(num_iterations)

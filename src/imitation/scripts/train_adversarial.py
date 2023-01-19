@@ -107,7 +107,7 @@ def train_adversarial(
         `rollout_stats()` on the expert demonstrations.
     """
     # This allows to specify total_timesteps and checkpoint_interval in scientific
-    # notation, which is interpreted as a float by sacred.
+    # notation, which is interpreted as a float by python.
     total_timesteps = int(total_timesteps)
     checkpoint_interval = int(checkpoint_interval)
 
