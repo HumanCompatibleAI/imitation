@@ -28,7 +28,6 @@
     "n_expert_demos": null
   },
   "train": {
-    "n_episodes_eval": 50,
     "policy_cls": {
       "py/type": "imitation.policies.base.FeedForward32Policy"
     },
@@ -42,6 +41,9 @@
         }
       }
     }
+  },
+  "policy_evaluation": {
+    "n_episodes_eval": 50
   },
   "environment": {
     "gym_id": "seals/Swimmer-v0"

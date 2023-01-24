@@ -6,7 +6,7 @@ import torch as th
 from imitation.scripts.ingredients import demonstrations as demos_common
 from imitation.scripts.ingredients import environment, expert
 from imitation.scripts.ingredients import logging as logging_ingredient
-from imitation.scripts.ingredients import train
+from imitation.scripts.ingredients import policy_evaluation, train
 
 train_imitation_ex = sacred.Experiment(
     "train_imitation",
@@ -16,6 +16,7 @@ train_imitation_ex = sacred.Experiment(
         train.train_ingredient,
         expert.expert_ingredient,
         environment.environment_ingredient,
+        policy_evaluation.policy_evaluation_ingredient,
     ],
 )
 

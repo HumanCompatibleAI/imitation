@@ -2,7 +2,7 @@
     "bc_train_kwargs": {"n_batches": 50},
     "dagger": {"total_timesteps": 50},
     "demonstrations": {"n_expert_demos": 10},
-    "train": {"n_episodes_eval": 1},
+    "policy_evaluation": {"n_episodes_eval": 50},
     "environment": {
         "gym_id": "seals/CartPole-v0",
         "num_vec": 2,

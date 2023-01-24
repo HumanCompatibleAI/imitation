@@ -100,13 +100,23 @@ ALGO_FAST_CONFIGS = {
         "environment.fast",
         "demonstrations.fast",
         "rl.fast",
-        "train.fast",
+        "policy_evaluation.fast",
         "fast",
     ],
     "eval_policy": ["environment.fast", "fast"],
-    "imitation": ["environment.fast", "demonstrations.fast", "train.fast", "fast"],
-    "preference_comparison": ["environment.fast", "rl.fast", "train.fast", "fast"],
-    "rl": ["environment.fast", "rl.fast", "train.fast", "fast"],
+    "imitation": [
+        "environment.fast",
+        "demonstrations.fast",
+        "policy_evaluation.fast",
+        "fast",
+    ],
+    "preference_comparison": [
+        "environment.fast",
+        "rl.fast",
+        "policy_evaluation.fast",
+        "fast",
+    ],
+    "rl": ["environment.fast", "rl.fast", "fast"],
 }
 
 RL_SAC_NAMED_CONFIGS = ["rl.sac", "train.sac"]

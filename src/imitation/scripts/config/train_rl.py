@@ -4,7 +4,7 @@ import sacred
 
 from imitation.scripts.ingredients import environment
 from imitation.scripts.ingredients import logging as logging_ingredient
-from imitation.scripts.ingredients import rl, train
+from imitation.scripts.ingredients import policy_evaluation, rl, train
 
 train_rl_ex = sacred.Experiment(
     "train_rl",
@@ -13,6 +13,7 @@ train_rl_ex = sacred.Experiment(
         environment.environment_ingredient,
         train.train_ingredient,
         rl.rl_ingredient,
+        policy_evaluation.policy_evaluation_ingredient,
     ],
 )
 

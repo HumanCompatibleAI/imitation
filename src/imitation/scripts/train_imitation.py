@@ -16,7 +16,7 @@ from imitation.data import rollout, types
 from imitation.scripts.config.train_imitation import train_imitation_ex
 from imitation.scripts.ingredients import demonstrations, environment, expert
 from imitation.scripts.ingredients import logging as logging_ingredient
-from imitation.scripts.ingredients import train
+from imitation.scripts.ingredients import policy_evaluation
 
 logger = logging.getLogger(__name__)
 
@@ -139,7 +139,7 @@ def train_imitation(
             # TODO(adam): add checkpointing to BC?
             bc_trainer.save_policy(policy_path=osp.join(log_dir, "final.th"))
 
-        imit_stats = train.eval_policy(imit_policy, venv)
+        imit_stats = policy_evaluation.eval_policy(imit_policy, venv)
 
     stats = {"imit_stats": imit_stats}
     trajectories = model._all_demos if use_dagger else expert_trajs

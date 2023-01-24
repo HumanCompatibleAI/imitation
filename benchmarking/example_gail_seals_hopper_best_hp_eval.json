@@ -43,7 +43,6 @@
   },
   "total_timesteps": 10000000,
   "train": {
-    "n_episodes_eval": 50,
     "policy_cls": "MlpPolicy",
     "policy_kwargs": {
       "activation_fn": {
@@ -70,6 +69,9 @@
         }
       ]
     }
+  },
+  "policy_evaluation": {
+    "n_episodes_eval": 50
   },
   "environment": {
     "gym_id": "seals/Hopper-v0"
