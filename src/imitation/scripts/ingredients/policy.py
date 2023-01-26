@@ -1,10 +1,10 @@
 """Common configuration elements for training imitation algorithms."""
 
 import logging
-from typing import Any, Mapping
+from typing import Any, Mapping, Type
 
 import sacred
-from stable_baselines3.common import policies
+from stable_baselines3.common import policies, utils, vec_env
 
 import imitation.util.networks
 from imitation.policies import base
@@ -51,5 +51,34 @@ def cnn_policy():
 
 
 @policy_ingredient.capture
-def suppress_sacred_error(policy_kwargs: Mapping[str, Any]):
-    """No-op so Sacred recognizes `policy_kwargs` is used (in `rl` and elsewhere)."""
+def make_policy(
+    venv: vec_env.VecEnv,
+    policy_cls: Type[policies.BasePolicy],
+    policy_kwargs: Mapping[str, Any],
+) -> policies.BasePolicy:
+    """Makes policy.
+
+    Args:
+        venv: Vectorized environment we will be imitating demos from.
+        policy_cls: Type of a Stable Baselines3 policy architecture.
+            Specify only if policy_path is not specified.
+        policy_kwargs: Keyword arguments for policy constructor.
+            Specify only if policy_path is not specified.
+
+    Returns:
+        A Stable Baselines3 policy.
+    """
+    policy_kwargs = dict(policy_kwargs)
+    if issubclass(policy_cls, policies.ActorCriticPolicy):
+        policy_kwargs.update(
+            {
+                "observation_space": venv.observation_space,
+                "action_space": venv.action_space,
+                # parameter mandatory for ActorCriticPolicy, but not used by BC
+                "lr_schedule": utils.get_schedule_fn(1),
+            },
+        )
+    policy: policies.BasePolicy
+    policy = policy_cls(**policy_kwargs)
+    logger.info(f"Policy network summary:\n {policy}")
+    return policy

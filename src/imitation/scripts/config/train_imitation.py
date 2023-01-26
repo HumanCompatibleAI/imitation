@@ -40,7 +40,7 @@ def config():
         use_offline_rollouts=False,  # warm-start policy with BC from offline demos
         total_timesteps=1e5,
     )
-    agent_path = None  # Path to load agent from, optional.
+    agent_path = None  # Path to serialized policy. If None, a new policy is created.
 
 
 @train_imitation_ex.named_config
