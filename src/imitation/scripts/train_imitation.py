@@ -21,7 +21,7 @@ from imitation.scripts.ingredients import policy_evaluation
 logger = logging.getLogger(__name__)
 
 
-@train_imitation_ex.capture(prefix="train")
+@train_imitation_ex.capture(prefix="policy")
 def make_policy(
     venv: vec_env.VecEnv,
     policy_cls: Type[policies.BasePolicy],

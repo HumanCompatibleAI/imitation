@@ -42,7 +42,7 @@
     }
   },
   "total_timesteps": 10000000,
-  "train": {
+  "policy": {
     "policy_cls": "MlpPolicy",
     "policy_kwargs": {
       "activation_fn": {

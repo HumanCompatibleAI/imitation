@@ -10,14 +10,14 @@ import imitation.util.networks
 from imitation.policies import base
 from imitation.scripts.ingredients import logging as logging_ingredient
 
-train_ingredient = sacred.Ingredient(
-    "train",
+policy_ingredient = sacred.Ingredient(
+    "policy",
     ingredients=[logging_ingredient.logging_ingredient],
 )
 logger = logging.getLogger(__name__)
 
 
-@train_ingredient.config
+@policy_ingredient.config
 def config():
     # Training
     policy_cls = base.FeedForward32Policy
@@ -26,7 +26,7 @@ def config():
     locals()  # quieten flake8
 
 
-@train_ingredient.named_config
+@policy_ingredient.named_config
 def sac():
     policy_cls = base.SAC1024Policy  # noqa: F841
 
@@ -39,17 +39,17 @@ NORMALIZE_RUNNING_POLICY_KWARGS = {
 }
 
 
-@train_ingredient.named_config
+@policy_ingredient.named_config
 def normalize_running():
     policy_kwargs = NORMALIZE_RUNNING_POLICY_KWARGS  # noqa: F841
 
 
 # Default config for CNN Policies
-@train_ingredient.named_config
+@policy_ingredient.named_config
 def cnn_policy():
     policy_cls = policies.ActorCriticCnnPolicy  # noqa: F841
 
 
-@train_ingredient.capture
+@policy_ingredient.capture
 def suppress_sacred_error(policy_kwargs: Mapping[str, Any]):
     """No-op so Sacred recognizes `policy_kwargs` is used (in `rl` and elsewhere)."""

@@ -23,7 +23,7 @@
     "rollout_type": "ppo-huggingface",
     "n_expert_demos": null
   },
-  "train": {
+  "policy": {
     "policy_cls": {
       "py/type": "imitation.policies.base.FeedForward32Policy"
     },

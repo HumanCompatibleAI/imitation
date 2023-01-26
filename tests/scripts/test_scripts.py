@@ -119,7 +119,7 @@ ALGO_FAST_CONFIGS = {
     "rl": ["environment.fast", "rl.fast", "fast"],
 }
 
-RL_SAC_NAMED_CONFIGS = ["rl.sac", "train.sac"]
+RL_SAC_NAMED_CONFIGS = ["rl.sac", "policy.sac"]
 
 
 @pytest.fixture(
@@ -544,7 +544,7 @@ def _check_train_ex_result(result: dict):
     "named_configs",
     (
         [],
-        ["train.normalize_running", "reward.normalize_input_running"],
+        ["policy.normalize_running", "reward.normalize_input_running"],
         ["reward.normalize_input_disable"],
     ),
 )
@@ -700,7 +700,7 @@ def test_transfer_learning(tmpdir: str) -> None:
     "named_configs_dict",
     (
         dict(pc=[], rl=[]),
-        dict(pc=["rl.sac", "train.sac"], rl=["rl.sac", "train.sac"]),
+        dict(pc=["rl.sac", "policy.sac"], rl=["rl.sac", "policy.sac"]),
         dict(pc=["reward.reward_ensemble"], rl=[]),
     ),
 )
@@ -797,7 +797,7 @@ def test_train_rl_cnn_policy(tmpdir: str, rng):
 
     log_dir_data = os.path.join(tmpdir, "train_rl")
     run = train_rl.train_rl_ex.run(
-        named_configs=["train.cnn_policy"] + ALGO_FAST_CONFIGS["rl"],
+        named_configs=["policy.cnn_policy"] + ALGO_FAST_CONFIGS["rl"],
         config_updates=dict(
             environment=dict(gym_id="AsteroidsNoFrameskip-v4"),
             logging=dict(log_dir=log_dir_data),

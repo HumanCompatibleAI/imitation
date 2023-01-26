@@ -42,7 +42,7 @@
     }
   },
   "total_timesteps": 10000000,
-  "train": {
+  "policy": {
     "policy_cls": {
       "py/type": "imitation.policies.base.FeedForward32Policy"
     },
