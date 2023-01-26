@@ -1,5 +1,5 @@
 {
-  "bc_kwargs": {
+  "bc": {
     "batch_size": 32,
     "l2_weight": 0.0014680228143404998,
     "optimizer_cls": {
@@ -7,12 +7,12 @@
     },
     "optimizer_kwargs": {
       "lr": 0.0003034620018780926
+    },
+    "train_kwargs": {
+      "log_interval": 500,
+      "n_batches": null,
+      "n_epochs": 20
     }
-  },
-  "bc_train_kwargs": {
-    "log_interval": 500,
-    "n_batches": null,
-    "n_epochs": 20
   },
   "dagger": {
     "rollout_round_min_episodes": null,

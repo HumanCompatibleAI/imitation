@@ -1,8 +1,8 @@
 """Configuration settings for train_dagger, training DAgger from synthetic demos."""
 
 import sacred
-import torch as th
 
+from imitation.scripts.ingredients import bc
 from imitation.scripts.ingredients import demonstrations as demos_common
 from imitation.scripts.ingredients import environment, expert
 from imitation.scripts.ingredients import logging as logging_ingredient
@@ -17,43 +17,30 @@ train_imitation_ex = sacred.Experiment(
         expert.expert_ingredient,
         environment.environment_ingredient,
         policy_evaluation.policy_evaluation_ingredient,
+        bc.bc_ingredient,
     ],
 )
 
 
 @train_imitation_ex.config
 def config():
-    bc_kwargs = dict(
-        batch_size=32,
-        l2_weight=3e-5,  # L2 regularization weight
-        optimizer_cls=th.optim.Adam,
-        optimizer_kwargs=dict(
-            lr=4e-4,
-        ),
-    )
-    bc_train_kwargs = dict(
-        n_epochs=None,  # Number of BC epochs per DAgger training round
-        n_batches=None,  # Number of BC batches per DAgger training round
-        log_interval=500,  # Number of updates between Tensorboard/stdout logs
-    )
     dagger = dict(
         use_offline_rollouts=False,  # warm-start policy with BC from offline demos
         total_timesteps=1e5,
     )
-    agent_path = None  # Path to serialized policy. If None, a new policy is created.
 
 
 @train_imitation_ex.named_config
 def mountain_car():
     environment = dict(gym_id="MountainCar-v0")
-    bc_kwargs = dict(l2_weight=0.0)
+    bc = dict(l2_weight=0.0)
     dagger = dict(total_timesteps=20000)
 
 
 @train_imitation_ex.named_config
 def seals_mountain_car():
     environment = dict(gym_id="seals/MountainCar-v0")
-    bc_kwargs = dict(l2_weight=0.0)
+    bc = dict(l2_weight=0.0)
     dagger = dict(total_timesteps=20000)
 
 
@@ -87,14 +74,14 @@ def seals_ant():
 @train_imitation_ex.named_config
 def half_cheetah():
     environment = dict(gym_id="HalfCheetah-v2")
-    bc_kwargs = dict(l2_weight=0.0)
+    bc = dict(l2_weight=0.0)
     dagger = dict(total_timesteps=60000)
 
 
 @train_imitation_ex.named_config
 def seals_half_cheetah():
     environment = dict(gym_id="seals/HalfCheetah-v0")
-    bc_kwargs = dict(l2_weight=0.0)
+    bc = dict(l2_weight=0.0)
     dagger = dict(total_timesteps=60000)
 
 
@@ -111,4 +98,4 @@ def seals_humanoid():
 @train_imitation_ex.named_config
 def fast():
     dagger = dict(total_timesteps=50)
-    bc_train_kwargs = dict(n_batches=50)
+    bc = dict(train_kwargs=dict(n_batches=50))

@@ -304,7 +304,7 @@ def test_train_dagger_warmstart(tmpdir):
         config_updates=dict(
             logging=dict(log_root=tmpdir),
             demonstrations=dict(rollout_path=CARTPOLE_TEST_ROLLOUT_PATH),
-            agent_path=policy_path,
+            bc=dict(agent_path=policy_path),
         ),
     )
     assert run_warmstart.status == "COMPLETED"
@@ -426,7 +426,7 @@ def test_train_bc_warmstart(tmpdir):
         config_updates=dict(
             logging=dict(log_root=tmpdir),
             demonstrations=dict(rollout_path=CARTPOLE_TEST_ROLLOUT_PATH),
-            agent_path=policy_path,
+            bc=dict(agent_path=policy_path),
         ),
     )
 
