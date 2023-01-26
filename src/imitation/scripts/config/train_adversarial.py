@@ -5,7 +5,7 @@ import sacred
 from imitation.rewards import reward_nets
 from imitation.scripts.ingredients import demonstrations, environment, expert
 from imitation.scripts.ingredients import logging as logging_ingredient
-from imitation.scripts.ingredients import policy_evaluation, reward, rl, train
+from imitation.scripts.ingredients import policy_evaluation, reward, rl
 
 train_adversarial_ex = sacred.Experiment(
     "train_adversarial",
@@ -14,7 +14,6 @@ train_adversarial_ex = sacred.Experiment(
         demonstrations.demonstrations_ingredient,
         reward.reward_ingredient,
         rl.rl_ingredient,
-        train.train_ingredient,
         expert.expert_ingredient,
         environment.environment_ingredient,
         policy_evaluation.policy_evaluation_ingredient,
