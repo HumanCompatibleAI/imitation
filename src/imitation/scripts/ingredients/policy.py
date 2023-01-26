@@ -1,4 +1,4 @@
-"""Common configuration elements for training imitation algorithms."""
+"""Ingrdient implementation for a SB3 policy."""
 
 import logging
 from typing import Any, Mapping, Type
