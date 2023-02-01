@@ -435,6 +435,7 @@ def test_compute_train_stats(n_samples):
         assert isinstance(v, float)
 
 
+@pytest.mark.skipif(not th.cuda.is_available(), reason="requires GPU")
 def test_regression_gail_with_sac(pendulum_expert_trajectories, pendulum_venv):
     """GAIL with a SAC learner on GPU used to crash when training (see #655).
 
