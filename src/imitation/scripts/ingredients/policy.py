@@ -1,4 +1,4 @@
-"""Ingrdient implementation for a SB3 policy."""
+"""Ingredient implementation for a SB3 policy."""
 
 import logging
 from typing import Any, Mapping, Type
