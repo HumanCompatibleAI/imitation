@@ -436,7 +436,7 @@ def test_compute_train_stats(n_samples):
 
 
 def test_regression_gail_with_sac(pendulum_expert_trajectories, pendulum_venv):
-    """Right now GAIL with a SAC learner on GPU crashes when training (see #655).
+    """GAIL with a SAC learner on GPU used to crash when training (see #655).
 
     This is a minimal test to reproduce it.
 
@@ -444,20 +444,15 @@ def test_regression_gail_with_sac(pendulum_expert_trajectories, pendulum_venv):
         pendulum_expert_trajectories: expert trajectories for Pendulum env.
         pendulum_venv: the Pendulum environment.
     """
-    from stable_baselines3 import SAC
-
-    from imitation.algorithms.adversarial.gail import GAIL
-    from imitation.rewards.reward_nets import BasicRewardNet
-
-    learner = SAC(
+    learner = stable_baselines3.SAC(
         env=pendulum_venv,
         policy=stable_baselines3.sac.policies.SACPolicy,
     )
-    reward_net = BasicRewardNet(
+    reward_net = reward_nets.BasicRewardNet(
         pendulum_venv.observation_space,
         pendulum_venv.action_space,
     )
-    gail_trainer = GAIL(
+    gail_trainer = gail.GAIL(
         demonstrations=pendulum_expert_trajectories,
         demo_batch_size=1024,
         venv=pendulum_venv,
