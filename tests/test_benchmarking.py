@@ -31,7 +31,7 @@ def test_benchmarks_print_config_succeeds(algorithm: str, environment: str):
     elif algorithm in ("airl", "gail"):
         experiment = train_adversarial.train_adversarial_ex
     else:
-        raise ValueError(f"Unknown algorithm: {algorithm}")
+        raise ValueError(f"Unknown algorithm: {algorithm}")  # pragma: no cover
 
     config_name = f"{algorithm}_{environment}"
     config_file = str(
