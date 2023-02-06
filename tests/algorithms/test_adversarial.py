@@ -436,7 +436,10 @@ def test_compute_train_stats(n_samples):
 
 
 @pytest.mark.skipif(not th.cuda.is_available(), reason="requires GPU")
-def test_regression_gail_with_sac(pendulum_expert_trajectories, pendulum_venv):
+def test_regression_gail_with_sac(
+    pendulum_expert_trajectories,
+    pendulum_venv,
+):  # pragma: no cover
     """GAIL with a SAC learner on GPU used to crash when training (see #655).
 
     This is a minimal test to reproduce it.
