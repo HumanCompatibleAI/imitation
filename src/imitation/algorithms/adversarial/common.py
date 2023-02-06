@@ -501,7 +501,8 @@ class AdversarialTrainer(base.DemonstrationAlgorithm[types.Transitions]):
             # `acts_th` need to be scaled accordingly before computing log prob.
             # Scale actions only if the policy squashes outputs.
             assert self.policy.squash_output
-            scaled_acts_th = self.policy.scale_action(acts_th)
+            scaled_acts = self.policy.scale_action(acts_th.numpy(force=True))
+            scaled_acts_th = th.as_tensor(scaled_acts, device=mean_actions.device)
             log_policy_act_prob_th = distribution.log_prob(scaled_acts_th)
         else:
             return None
