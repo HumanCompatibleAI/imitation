@@ -1,5 +1,6 @@
 [build-system]
-requires = ["setuptools>=45", "setuptools_scm[toml]>=6.2"]
+# Note: setuptools 66.1.1 is the last version that supports installing gym==0.21.0
+requires = ["setuptools==66.1.1", "setuptools_scm[toml]>=6.2"]
 build-backend = "setuptools.build_meta"
 
 # TODO(juan): we've commented this out because currently

@@ -16,17 +16,17 @@
   },
   "dagger": {
     "beta_schedule": {
-      "py/object": "imitation.algorithms.dagger.LinearBetaSchedule",
+      "py/type": "imitation.algorithms.dagger.LinearBetaSchedule",
       "rampdown_rounds": 15
     },
     "rollout_round_min_episodes": 3,
-    "total_timesteps": 100000.0,
+    "total_timesteps": 100000,
     "use_offline_rollouts": false
   },
   "demonstrations": {
+    "rollout_type": "ppo-huggingface",
     "n_expert_demos": null
   },
-
   "train": {
     "n_episodes_eval": 50,
     "policy_cls": {
@@ -43,7 +43,7 @@
       }
     }
   },
-  "common": {
-    "env_name": "seals/Swimmer-v0"
+  "environment": {
+    "gym_id": "seals/Swimmer-v0"
   }
 }
