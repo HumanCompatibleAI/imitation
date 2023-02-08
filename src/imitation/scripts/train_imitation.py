@@ -19,21 +19,25 @@ from imitation.scripts.ingredients import policy_evaluation
 logger = logging.getLogger(__name__)
 
 
-def _add_expert_stats_to_stats_dict_if_all_are_trajectories_with_reward(
-    stats: Dict[str, Any],
+def _all_trajectories_have_reward(trajectories: Sequence[types.Trajectory]) -> bool:
+    """Returns True if all trajectories have reward information."""
+    return all(isinstance(t, types.TrajectoryWithRew) for t in trajectories)
+
+
+def _try_computing_expert_stats(
     expert_trajs: Sequence[types.Trajectory],
-) -> None:
+) -> Optional[Mapping[str, float]]:
     """Adds expert statistics to `stats` if all expert trajectories have reward."""
-    if all(isinstance(t, types.TrajectoryWithRew) for t in expert_trajs):
-        expert_stats = rollout.rollout_stats(
+    if _all_trajectories_have_reward(expert_trajs):
+        return rollout.rollout_stats(
             cast(Sequence[types.TrajectoryWithRew], expert_trajs),
         )
-        stats["expert_stats"] = expert_stats
     else:
         logger.warning(
             "Expert trajectories do not have reward information, so expert "
             "statistics cannot be computed.",
         )
+        return None
 
 
 @train_imitation_ex.command
@@ -69,10 +73,9 @@ def bc(
         imit_stats = policy_evaluation.eval_policy(bc_trainer.policy, venv)
 
     stats = {"imit_stats": imit_stats}
-    _add_expert_stats_to_stats_dict_if_all_are_trajectories_with_reward(
-        stats,
-        expert_trajs,
-    )
+    expert_stats = _try_computing_expert_stats(expert_trajs)
+    if expert_stats is not None:
+        stats["expert_stats"] = expert_stats
     return stats
 
 
@@ -131,10 +134,9 @@ def dagger(
 
     stats = {"imit_stats": imit_stats}
     assert dagger_trainer._all_demos is not None
-    _add_expert_stats_to_stats_dict_if_all_are_trajectories_with_reward(
-        stats,
-        dagger_trainer._all_demos,
-    )
+    expert_stats = _try_computing_expert_stats(dagger_trainer._all_demos)
+    if expert_stats is not None:
+        stats["expert_stats"] = expert_stats
     return stats
 
 
