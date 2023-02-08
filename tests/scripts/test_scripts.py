@@ -910,7 +910,7 @@ def test_parallel_train_adversarial_custom_env(tmpdir):
             logging=dict(log_root=tmpdir),
             demonstrations=dict(rollout_path=rollout_path),
         ),
-        search_space=dict(command_name="gail"),
+        search_space=dict(command_name=tune.choice(["gail"])),
     )
     config_updates.update(PARALLEL_CONFIG_LOW_RESOURCE)
     run = parallel.parallel_ex.run(config_updates=config_updates)
