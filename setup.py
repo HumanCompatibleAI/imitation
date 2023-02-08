@@ -210,6 +210,7 @@ setup(
         "chai-sacred>=0.8.3",
         "tensorboard>=1.14",
         "huggingface_sb3>=2.2.1",
+        "optuna>=3.0.1",
     ],
     tests_require=TESTS_REQUIRE,
     extras_require={
