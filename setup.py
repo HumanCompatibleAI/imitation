@@ -205,9 +205,7 @@ setup(
         "scikit-learn>=0.21.2",
         "seals>=0.1.5",
         STABLE_BASELINES3,
-        # TODO(adam) switch to upstream release if they make it
-        #  See https://github.com/IDSIA/sacred/issues/879
-        "chai-sacred>=0.8.3",
+        "sacred>=0.8.4",
         "tensorboard>=1.14",
         "huggingface_sb3>=2.2.1",
     ],
