@@ -280,6 +280,8 @@ def analyze_imitation(
         new_df = pd.DataFrame()
         if table_verbosity == -1:
             new_df = pd.json_normalize(sd.config)
+        else:
+            new_df = new_df.append({}, ignore_index=True)
 
         for col_name, make_entry_fn in table_entry_fns_subset.items():
             new_df[col_name] = make_entry_fn(sd)

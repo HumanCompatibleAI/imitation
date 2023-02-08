@@ -33,35 +33,39 @@ def maybe_pendulum_expert_trajectories(
         return None
 
 
-def test_linear_beta_schedule():
-    one_step_sched = dagger.LinearBetaSchedule(1)
-    three_step_sched = dagger.LinearBetaSchedule(3)
-    for i in range(10):
-        assert np.allclose(one_step_sched(i), 1 if i == 0 else 0)
-        assert np.allclose(three_step_sched(i), (3 - i) / 3 if i <= 2 else 0)
+@pytest.mark.parametrize("num_rampdown_rounds", [1, 2, 3, 10])
+def test_linear_beta_schedule(num_rampdown_rounds):
+    # GIVEN
+    sched = dagger.LinearBetaSchedule(num_rampdown_rounds)
+    idx_after_rampdown = num_rampdown_rounds + 1
+
+    # WHEN
+    betas = [sched(i) for i in range(num_rampdown_rounds + 10)]
+
+    # THEN
+    assert np.allclose(
+        betas[:idx_after_rampdown],
+        np.linspace(1, 0, idx_after_rampdown),
+    )
+    assert np.allclose(betas[idx_after_rampdown:], 0)
 
 
-def test_indicator_beta_schedule():
-    one_step_sched = dagger.IndicatorBetaSchedule(1)
-    three_step_sched = dagger.IndicatorBetaSchedule(3)
-    for i in range(10):
-        assert np.allclose(one_step_sched(i), 1 if i == 0 else 0)
-        assert np.allclose(three_step_sched(i), 1 if i <= 2 else 0)
+@pytest.mark.parametrize("decay_probability", [0.1, 0.5, 0.9, 1])
+def test_exponential_beta_schedule(decay_probability):
+    # GIVEN
+    sched = dagger.ExponentialBetaSchedule(decay_probability)
+
+    # WHEN
+    betas = [sched(i) for i in range(10)]
+
+    # THEN
+    assert np.allclose(betas, decay_probability ** np.arange(10))
 
 
-def test_exponential_beta_schedule():
-    constant_sched = dagger.ExponentialBetaSchedule(1)
-    decay = 0.5
-    decaying_sched = dagger.ExponentialBetaSchedule(decay)
-    for i in range(10):
-        assert np.allclose(constant_sched(i), 1)
-        assert np.allclose(decaying_sched(i), decay**i)
-
-    with pytest.raises(
-        ValueError,
-        match=r"decay_probability lies outside the range \(0, 1\]\.",
-    ):
-        decaying_sched = dagger.ExponentialBetaSchedule(1.1)
+@pytest.mark.parametrize("decay_probability", [-0.1, 0, 1.1, 2])
+def test_forbidden_decay_probability_on_exp_beta_schedule(decay_probability):
+    with pytest.raises(ValueError):
+        dagger.ExponentialBetaSchedule(decay_probability)
 
 
 def test_traj_collector_seed(tmpdir, pendulum_venv, rng):

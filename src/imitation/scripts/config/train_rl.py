@@ -188,34 +188,15 @@ def seals_mountain_car():
 
 @train_rl_ex.named_config
 def pendulum():
-    environment = dict(gym_id="Pendulum-v1", num_vec=4)
-    total_timesteps = int(1e5)
-
-    train = dict(
-        policy_cls="MlpPolicy",
-        # policy_kwargs=dict(
-        #     activation_fn=nn.Tanh,
-        #     net_arch=[dict(pi=[64, 64], vf=[64, 64])],
-        # ),
-    )
-    normalize_reward = False
-
+    environment = dict(gym_id="Pendulum-v1")
     rl = dict(
-        batch_size=1024 * 4,
+        batch_size=4096,
         rl_kwargs=dict(
-            gae_lambda=0.95,
             gamma=0.9,
-            n_epochs=10,
-            ent_coef=0.0,
             learning_rate=1e-3,
-            clip_range=0.2,
-            use_sde=True,
-            sde_sample_freq=4,
-            # batch_size=64,
-            # max_grad_norm=0.8,
-            # vf_coef=0.11483689492120866,
         ),
     )
+    total_timesteps = int(2e5)
 
 
 @train_rl_ex.named_config

@@ -130,7 +130,6 @@ def train_imitation(
             )
             model.train(
                 total_timesteps=int(dagger["total_timesteps"]),
-                rollout_round_min_episodes=dagger["rollout_round_min_episodes"],
                 bc_train_kwargs=bc_train_kwargs,
             )
             # TODO(adam): add checkpointing to DAgger?

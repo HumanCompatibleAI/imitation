@@ -57,17 +57,17 @@ def config():
 #     }
 
 
-@parallel_ex.config
-def wandb(run_name):
-    base_config_updates = {
-        "common": {
-            "wandb": {
-                "wandb_name_prefix": run_name,
-                "wandb_kwargs": {"project": "algorithm-benchmark"},
-            },
-        },
-    }
-    # base_named_configs = ["common.wandb_logging"]
+# @parallel_ex.config
+# def wandb(run_name):
+#     base_config_updates = {
+#         "logging": {
+#             "wandb": {
+#                 "wandb_name_prefix": run_name,
+#                 "wandb_kwargs": {"project": "algorithm-benchmark"},
+#             },
+#         },
+#     }
+# base_named_configs = ["logging.wandb_logging"]
 
 
 @parallel_ex.named_config
@@ -87,7 +87,7 @@ def generate_test_data():
     """
     sacred_ex_name = "train_rl"
     run_name = "TEST"
-    n_seeds = 1
+    repeat = 1
     search_space = {
         "config_updates": {
             "rl": {
@@ -115,7 +115,7 @@ def generate_test_data():
 def example_cartpole_rl():
     sacred_ex_name = "train_rl"
     run_name = "example-cartpole"
-    n_seeds = 2
+    repeat = 2
     search_space = {
         "config_updates": {
             "rl": {
@@ -138,13 +138,8 @@ def example_rl():
     sacred_ex_name = "train_rl"
     run_name = "rl_tuning"
     # n_seeds = 2
-    base_named_configs = ["common.wandb_logging", "seals_half_cheetah"]
-    base_config_updates = {
-        "common": {
-            "wandb": {"wandb_kwargs": {"project": "algorithm-benchmark"}},
-            "num_vec": 1,
-        },
-    }
+    base_named_configs = ["logging.wandb_logging", "seals_half_cheetah"]
+    base_config_updates = {"environment": {"num_vec": 1}}
     search_space = {
         # "named_configs": tune.choice([[env] for env in EASY_ENVS]),
         "config_updates": {
@@ -169,11 +164,8 @@ def example_rl():
 def example_bc():
     sacred_ex_name = "train_imitation"
     run_name = "bc_tuning_hc"
-    base_named_configs = ["common.wandb_logging", "seals_half_cheetah"]
-    base_config_updates = {
-        # "common": {"wandb": {"wandb_kwargs": {"project": "algorithm-benchmark"}}},
-        "common": {"num_vec": 1},
-    }
+    base_named_configs = ["logging.wandb_logging", "seals_half_cheetah"]
+    base_config_updates = {"environment": {"num_vec": 1}}
     search_space = {
         "config_updates": {
             "bc_kwargs": dict(
@@ -200,10 +192,9 @@ def example_bc():
 def example_dagger():
     sacred_ex_name = "train_imitation"
     run_name = "dagger_tuning_hc"
-    base_named_configs = ["common.wandb_logging", "seals_half_cheetah"]
+    base_named_configs = ["logging.wandb_logging", "seals_half_cheetah"]
     base_config_updates = {
-        # "common": {"wandb": {"wandb_kwargs": {"project": "algorithm-benchmark"}}},
-        "common": {"num_vec": 1},
+        "environment": {"num_vec": 1},
         "dagger": {"total_timesteps": 1e5},
         "bc_kwargs": {
             "batch_size": 16,
@@ -237,9 +228,9 @@ def example_dagger():
 def example_gail():
     sacred_ex_name = "train_adversarial"
     run_name = "gail_tuning_hc"
-    base_named_configs = ["common.wandb_logging"]
+    base_named_configs = ["logging.wandb_logging"]
     base_config_updates = {
-        "common": {"num_vec": 1},
+        "environment": {"num_vec": 1},
         "total_timesteps": 1e7,
     }
     search_space = {
@@ -276,9 +267,9 @@ def example_airl():
     sacred_ex_name = "train_adversarial"
     run_name = "airl_tuning_hc"
     # n_seeds = 1
-    base_named_configs = ["common.wandb_logging"]
+    base_named_configs = ["logging.wandb_logging"]
     base_config_updates = {
-        "common": {"num_vec": 1},
+        "environment": {"num_vec": 1},
         "total_timesteps": 1e7,
     }
     search_space = {
@@ -314,9 +305,9 @@ def example_airl():
 def example_pc():
     sacred_ex_name = "train_preference_comparisons"
     run_name = "pc_tuning"
-    base_named_configs = ["common.wandb_logging", "seals_half_cheetah"]
+    base_named_configs = ["logging.wandb_logging", "seals_half_cheetah"]
     base_config_updates = {
-        "common": {"num_vec": 1},
+        "environment": {"num_vec": 1},
         "total_timesteps": 2e7,
         "total_comparisons": 5000,
         "query_schedule": "hyperbolic",
@@ -373,7 +364,6 @@ def debug_eval():
     eval_best_trial = True
     # base_named_configs = ["seals_half_cheetah"]
     base_config_updates = {
-        "common": {"wandb": {"wandb_kwargs": {"project": "algorithm-benchmark"}}},
         "total_timesteps": 30,
         "total_comparisons": 10,
         # "query_schedule": "hyperbolic",
@@ -405,10 +395,6 @@ def debug_eval_adv():
     eval_best_trial = True
     eval_trial_seeds = 2
     base_config_updates = {
-        "common": {
-            "wandb": {"wandb_kwargs": {"project": "algorithm-benchmark"}},
-            # "num_env": 1,
-        },
         "total_timesteps": 2048,
     }
     search_space = {
@@ -442,9 +428,9 @@ def debug_airl():
     sacred_ex_name = "train_adversarial"
     run_name = "airl_debug"
     # n_seeds = 1
-    base_named_configs = ["common.wandb_logging", "seals_walker"]
+    base_named_configs = ["logging.wandb_logging", "seals_walker"]
     base_config_updates = {
-        "common": {"num_vec": 8},
+        "environment": {"num_vec": 8},
         "total_timesteps": 1e7,
     }
     search_space = {

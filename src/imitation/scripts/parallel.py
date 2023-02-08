@@ -31,7 +31,7 @@ def parallel(
     init_kwargs: Mapping[str, Any],
     local_dir: Optional[str],
     upload_dir: Optional[str],
-    repeat: int = 3,
+    repeat: int = 1,
     eval_best_trial: bool = False,
     eval_best_trial_resource_multiplier: int = 2,
     eval_trial_seeds: int = 5,
@@ -103,8 +103,8 @@ def parallel(
     if not isinstance(base_config_updates, collections.abc.Mapping):
         raise TypeError("base_config_updates must be a Mapping")
 
-    # if not isinstance(search_space["named_configs"], collections.abc.Sequence):
-    #     raise TypeError('search_space["named_configs"] must be a Sequence')
+    if not isinstance(search_space["named_configs"], collections.abc.Sequence):
+        raise TypeError('search_space["named_configs"] must be a Sequence')
 
     if not isinstance(search_space["config_updates"], collections.abc.Mapping):
         raise TypeError('search_space["config_updates"] must be a Mapping')
@@ -318,6 +318,7 @@ def _ray_tune_sacred_wrapper(
         config_updates: Dict[str, Any] = {}
         config_updates.update(base_config_updates)
         config_updates.update(run_kwargs["config_updates"])
+        # for repeat runs, set the seed using their trial index
         if "__trial_index__" in run_kwargs:
             config_updates.update(seed=run_kwargs.pop("__trial_index__"))
         updated_run_kwargs["config_updates"] = config_updates
@@ -326,7 +327,10 @@ def _ray_tune_sacred_wrapper(
         for k, v in run_kwargs.items():
             if k not in updated_run_kwargs:
                 updated_run_kwargs[k] = v
-        run = ex.run(**updated_run_kwargs, options={"--run": run_name})
+        run = ex.run(
+            **updated_run_kwargs,
+            options={"--run": run_name, "--file_storage": "sacred"},
+        )
         # Ray Tune has a string formatting error if raylet completes without
         # any calls to `reporter`.
         # reporter(done=True)
