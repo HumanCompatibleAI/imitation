@@ -399,9 +399,9 @@ def test_logits_expert_is_high_log_policy_act_prob(
         trans.dones,
     )
     log_act_prob_non_none = np.log(0.1 + 0.9 * np.random.rand(n_timesteps))
-    log_act_prob_non_none = th.as_tensor(log_act_prob_non_none).to(obs.device)
+    log_act_prob_non_none_th = th.as_tensor(log_act_prob_non_none).to(obs.device)
 
-    for log_act_prob in [None, log_act_prob_non_none]:
+    for log_act_prob in [None, log_act_prob_non_none_th]:
         maybe_error_ctx: contextlib.AbstractContextManager
         if isinstance(trainer_diverse_env, airl.AIRL) and log_act_prob is None:
             maybe_error_ctx = pytest.raises(TypeError, match="Non-None.*required.*")
@@ -433,3 +433,34 @@ def test_compute_train_stats(n_samples):
     for k, v in stats.items():
         assert isinstance(k, str)
         assert isinstance(v, float)
+
+
+@pytest.mark.skipif(not th.cuda.is_available(), reason="requires GPU")
+def test_regression_gail_with_sac(
+    pendulum_expert_trajectories,
+    pendulum_venv,
+):  # pragma: no cover
+    """GAIL with a SAC learner on GPU used to crash when training (see #655).
+
+    This is a minimal test to reproduce it.
+
+    Args:
+        pendulum_expert_trajectories: expert trajectories for Pendulum env.
+        pendulum_venv: the Pendulum environment.
+    """
+    learner = stable_baselines3.SAC(
+        env=pendulum_venv,
+        policy=stable_baselines3.sac.policies.SACPolicy,
+    )
+    reward_net = reward_nets.BasicRewardNet(
+        pendulum_venv.observation_space,
+        pendulum_venv.action_space,
+    )
+    gail_trainer = gail.GAIL(
+        demonstrations=pendulum_expert_trajectories,
+        demo_batch_size=1024,
+        venv=pendulum_venv,
+        gen_algo=learner,
+        reward_net=reward_net,
+    )
+    gail_trainer.train(8)
