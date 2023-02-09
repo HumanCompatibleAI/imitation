@@ -73,7 +73,7 @@ def generate_test_data():
     base_named_configs = [
         "cartpole",
         "environment.fast",
-        "train.fast",
+        "policy_evaluation.fast",
         "rl.fast",
         "fast",
     ]

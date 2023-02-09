@@ -25,7 +25,7 @@ from imitation.rewards.serialize import load_reward
 from imitation.scripts.config.train_rl import train_rl_ex
 from imitation.scripts.ingredients import environment
 from imitation.scripts.ingredients import logging as logging_ingredient
-from imitation.scripts.ingredients import rl, train
+from imitation.scripts.ingredients import policy_evaluation, rl
 
 
 @train_rl_ex.main
@@ -157,7 +157,7 @@ def train_rl(
             serialize.save_stable_model(output_dir, rl_algo)
 
         # Final evaluation of expert policy.
-        return train.eval_policy(rl_algo, venv)
+        return policy_evaluation.eval_policy(rl_algo, venv)
 
 
 def main_console():

@@ -18,11 +18,11 @@ from imitation.policies import serialize
 from imitation.policies.replay_buffer_wrapper import ReplayBufferRewardWrapper
 from imitation.rewards.reward_function import RewardFn
 from imitation.scripts.ingredients import logging as logging_ingredient
-from imitation.scripts.ingredients.train import train_ingredient
+from imitation.scripts.ingredients.policy import policy_ingredient
 
 rl_ingredient = sacred.Ingredient(
     "rl",
-    ingredients=[train_ingredient, logging_ingredient.logging_ingredient],
+    ingredients=[policy_ingredient, logging_ingredient.logging_ingredient],
 )
 logger = logging.getLogger(__name__)
 
@@ -105,7 +105,7 @@ def make_rl_algo(
     rl_cls: Type[base_class.BaseAlgorithm],
     batch_size: int,
     rl_kwargs: Mapping[str, Any],
-    train: Mapping[str, Any],
+    policy: Mapping[str, Any],
     _seed: int,
     relabel_reward_fn: Optional[RewardFn] = None,
 ) -> base_class.BaseAlgorithm:
@@ -116,7 +116,7 @@ def make_rl_algo(
         rl_cls: Type of a Stable Baselines3 RL algorithm.
         batch_size: The batch size of the RL algorithm.
         rl_kwargs: Keyword arguments for RL algorithm constructor.
-        train: Configuration for the train ingredient. We need the
+        policy: Configuration for the policy ingredient. We need the
             policy_cls and policy_kwargs component.
         relabel_reward_fn: Reward function used for reward relabeling
             in replay or rollout buffers of RL algorithms.
@@ -155,12 +155,12 @@ def make_rl_algo(
     else:
         raise TypeError(f"Unsupported RL algorithm '{rl_cls}'")
     rl_algo = rl_cls(
-        policy=train["policy_cls"],
+        policy=policy["policy_cls"],
         # Note(yawen): Copy `policy_kwargs` as SB3 may mutate the config we pass.
         # In particular, policy_kwargs["use_sde"] may be changed in rl_cls.__init__()
         # for certain algorithms, such as Soft Actor Critic. See:
         # https://github.com/DLR-RM/stable-baselines3/blob/30772aa9f53a4cf61571ee90046cdc454c1b11d7/sb3/common/off_policy_algorithm.py#L145
-        policy_kwargs=dict(train["policy_kwargs"]),
+        policy_kwargs=dict(policy["policy_kwargs"]),
         env=venv,
         seed=_seed,
         **rl_kwargs,
