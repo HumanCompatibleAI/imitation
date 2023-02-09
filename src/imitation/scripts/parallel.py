@@ -333,9 +333,6 @@ def _ray_tune_sacred_wrapper(
             **updated_run_kwargs,
             options={"--run": run_name, "--file_storage": "sacred"},
         )
-        # Ray Tune has a string formatting error if raylet completes without
-        # any calls to `reporter`.
-        reporter(done=True)
 
         assert run.status == "COMPLETED"
         return run.result
