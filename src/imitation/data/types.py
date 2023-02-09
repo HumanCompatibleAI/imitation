@@ -18,6 +18,7 @@ from typing import (
     overload,
 )
 
+import datasets
 import numpy as np
 import torch as th
 from torch.utils import data as th_data
@@ -445,11 +446,48 @@ def load(path: AnyPath) -> Sequence[Trajectory]:
     # look at the type of the resulting object. If it's the new compressed format,
     # it should be a Mapping that we need to decode, whereas if it's the old format
     # it's just the sequence of trajectories, and we can return it directly.
+
+    if os.path.isdir(path):  # huggingface datasets format
+        dataset = datasets.load_from_disk(str(path)).with_format("numpy")
+
+        if not isinstance(dataset, datasets.Dataset):
+            raise ValueError(
+                f"Expected to load a `datasets.Dataset` but got "
+                f"{type(dataset).__name__}",
+            )
+
+        class TrajectoryDatasetSequence(Sequence[Trajectory]):
+            """A wrapper to present a HF dataset as a sequence of trajectories."""
+
+            def __init__(self, dataset: datasets.Dataset):
+                self._dataset = dataset
+                self._trajectory_class = (
+                    TrajectoryWithRew if "rews" in dataset.features else Trajectory
+                )
+
+            def __len__(self) -> int:
+                return len(self._dataset)
+
+            def __getitem__(self, idx):
+                if isinstance(idx, slice):
+                    dataslice = self._dataset[idx]
+                    trajectory_kwargs = [
+                        {key: dataslice[key][i] for key in dataslice}
+                        for i in range(len(dataslice["obs"]))
+                    ]
+                    return [
+                        self._trajectory_class(**kwargs) for kwargs in trajectory_kwargs
+                    ]
+                else:
+                    return self._trajectory_class(**self._dataset[idx])
+
+        return TrajectoryDatasetSequence(dataset)
+
     data = np.load(path, allow_pickle=True)
-    if isinstance(data, Sequence):  # old format
+    if isinstance(data, Sequence):  # pickle format
         warnings.warn("Loading old version of Trajectory's", DeprecationWarning)
         return data
-    elif isinstance(data, Mapping):  # new format
+    elif isinstance(data, Mapping):  # .npz format
         num_trajs = len(data["indices"])
         fields = [
             # Account for the extra obs in each trajectory
@@ -474,20 +512,14 @@ def load(path: AnyPath) -> Sequence[Trajectory]:
 
 
 def save(path: AnyPath, trajectories: Sequence[Trajectory]):
-    """Save a sequence of Trajectories to disk using a NumPy-based format.
+    """Save a sequence of Trajectories to disk using HuggingFace's datasets library.
 
-    We create an .npz dictionary with the following keys:
-    * obs: flattened observations from all trajectories. Note that the leading
-    dimension of this array will be `len(trajectories)` longer than the `acts`
-    and `infos` arrays, because we always have one more observation than we have
-    actions in any trajectory.
-    * acts: flattened actions from all trajectories
-    * infos: flattened info dicts from all trajectories. Any trajectories with
-    no info dict will have their entry in this array set to the empty dictionary.
-    * terminal: boolean array indicating whether each trajectory is done.
-    * indices: indices indicating where to split the flattened action and infos
-    arrays, in order to recover the original trajectories. Will be a 1D array of
-    length `len(trajectories)`.
+    The dataset has the following fields:
+    * obs: The observations. Shape: (num_timesteps, obs_dim). dtype: float.
+    * acts: The actions. Shape: (num_timesteps, act_dim). dtype: float.
+    * infos: The infos. Shape: (num_timesteps, ). dtype: dict.
+    * terminal: The terminal flags. Shape: (num_timesteps, ). dtype: bool.
+    * rews: The rewards. Shape: (num_timesteps, ). dtype: float. if applicable.
 
     Args:
         path: Trajectories are saved to this path.
@@ -498,32 +530,24 @@ def save(path: AnyPath, trajectories: Sequence[Trajectory]):
             `Trajectory` and others are `TrajectoryWithRew`.
     """
     p = parse_path(path)
-    p.parent.mkdir(parents=True, exist_ok=True)
-    tmp_path = f"{p}.tmp"
 
-    infos = [
+    trajectory_dict = {
+        "obs": [traj.obs for traj in trajectories],
+        "acts": [traj.acts for traj in trajectories],
         # Replace 'None' values for `infos`` with array of empty dicts
-        traj.infos if traj.infos is not None else np.full(len(traj), {})
-        for traj in trajectories
-    ]
-    condensed = {
-        "obs": np.concatenate([traj.obs for traj in trajectories]),
-        "acts": np.concatenate([traj.acts for traj in trajectories]),
-        "infos": np.concatenate(infos),
-        "terminal": np.array([traj.terminal for traj in trajectories]),
-        "indices": np.cumsum([len(traj) for traj in trajectories[:-1]]),
+        "infos": [
+            traj.infos if traj.infos is not None else np.full(len(traj), {})
+            for traj in trajectories
+        ],
+        "terminal": [traj.terminal for traj in trajectories],
     }
     has_reward = [isinstance(traj, TrajectoryWithRew) for traj in trajectories]
     if all(has_reward):
-        condensed["rews"] = np.concatenate(
-            [cast(TrajectoryWithRew, traj).rews for traj in trajectories],
-        )
+        trajectory_dict["rews"] = [
+            cast(TrajectoryWithRew, traj).rews for traj in trajectories
+        ]
     elif any(has_reward):
         raise ValueError("Some trajectories have rewards but not all")
 
-    with open(tmp_path, "wb") as f:
-        np.savez_compressed(f, **condensed)
-
-    # Ensure atomic write
-    os.replace(tmp_path, p)
+    datasets.Dataset.from_dict(trajectory_dict).save_to_disk(p)
     logging.info(f"Dumped demonstrations to {p}.")

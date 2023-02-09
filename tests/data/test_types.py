@@ -43,7 +43,7 @@ def trajectory(
         pytest.skip()
     obs = np.array([obs_space.sample() for _ in range(length + 1)])
     acts = np.array([act_space.sample() for _ in range(length)])
-    infos = np.array([{i: i} for i in range(length)])
+    infos = np.array([{"key": i} for i in range(length)])
     return types.Trajectory(obs=obs, acts=acts, infos=infos, terminal=True)
 
 
@@ -227,7 +227,7 @@ class TestData:
                 with open(save_path, "wb") as f:
                     pickle.dump(trajs, f)
             else:
-                # .npz format
+                # HuggingFace Dataset Format
                 types.save(save_path, trajs)
 
                 # Test that heterogeneous lists of trajectories throw an error
