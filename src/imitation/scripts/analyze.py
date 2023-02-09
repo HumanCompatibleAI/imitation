@@ -167,6 +167,7 @@ def _get_algo_name(sd: sacred_util.SacredDicts) -> str:
 def _return_summaries(sd: sacred_util.SacredDicts) -> dict:
     imit_stats = get(sd.run, "result.imit_stats")
     if imit_stats is None:
+        # stored in rollout key for preference comparison
         imit_stats = get(sd.run, "result.rollout")
     expert_stats = get(sd.run, "result.expert_stats")
 
@@ -234,7 +235,7 @@ table_verbosity_mapping.append(table_verbosity_mapping[-1] | {"n_expert_demos"})
 # verbosity 2
 table_verbosity_mapping.append(
     table_verbosity_mapping[-1]
-    | {"status", "imit_expert_ratio", "exp_command", "run_name", "seed", ""},
+    | {"status", "imit_expert_ratio", "exp_command", "run_name"},
 )
 
 
@@ -264,14 +265,14 @@ def analyze_imitation(
         csv_output_path: If provided, then save a CSV output file to this path.
         tex_output_path: If provided, then save a LaTeX-format table to this path.
         print_table: If True, then print the dataframe to stdout.
-        table_verbosity: Increasing levels of verbosity, from 0 to 2, increase the
-            number of columns in the table.
+        table_verbosity: Increasing levels of verbosity, from 0 to 3, increase the
+            number of columns in the table. Level 3 prints all of the columns available.
 
     Returns:
         The DataFrame generated from the Sacred logs.
     """
-    if table_verbosity == -1:
-        table_entry_fns_subset = _get_table_entry_fns_subset(0)
+    if table_verbosity == 3:
+        table_entry_fns_subset = _get_table_entry_fns_subset(2)
     else:
         table_entry_fns_subset = _get_table_entry_fns_subset(table_verbosity)
 
@@ -279,6 +280,7 @@ def analyze_imitation(
     for sd in _gather_sacred_dicts():
         new_df = pd.DataFrame()
         if table_verbosity == -1:
+            # gets all config columns
             new_df = pd.json_normalize(sd.config)
         else:
             new_df = new_df.append({}, ignore_index=True)

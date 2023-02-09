@@ -33,7 +33,7 @@ def parallel(
     upload_dir: Optional[str],
     repeat: int = 1,
     eval_best_trial: bool = False,
-    eval_best_trial_resource_multiplier: int = 2,
+    eval_best_trial_resource_multiplier: int = 1,
     eval_trial_seeds: int = 5,
     experiment_checkpoint_path: str = "",
     syncer=None,
@@ -54,7 +54,8 @@ def parallel(
             under the 'experiment.name' key. This is equivalent to using the Sacred
             CLI '--name' option on the inner experiment. Offline analysis jobs can use
             this argument to group similar data.
-        num_samples: Number of times to sample from the hyperparameter space.
+        num_samples: Number of times to sample from the hyperparameter space without
+            considering repetition using `repeat`.
         search_space: A dictionary which can contain Ray Tune search objects like
             `ray.tune.grid_search` and `ray.tune.sample_from`, and is
             passed as the `config` argument to `ray.tune.run()`. After the
@@ -79,12 +80,12 @@ def parallel(
         upload_dir: `upload_dir` argument to `ray.tune.run()`.
         repeat: Number of runs to repeat each trial for.
         eval_best_trial: Whether to evaluate the trial with the best mean return
-            at the end of tuning on a different set of seeds.
+            at the end of tuning on a separate set of seeds.
         eval_best_trial_resource_multiplier: factor by which to multiply the
             number of cpus per trial in `resources_per_trial`.
         eval_trial_seeds: Number of distinct seeds to evaluate the best trial on.
         experiment_checkpoint_path: Path containing the checkpoints of a previous
-            experiment. ran using this script. Useful for resuming cancelled trials
+            experiment ran using this script. Useful for resuming cancelled trials
             of the experiments (using `resume`) or evaluating the best trial of the
             experiment (using `eval_best_trial`).
         resume: If true and `experiment_checkpoint_path` is given, then resumes the
@@ -159,6 +160,7 @@ def parallel(
             result.trials = None
             result.fetch_trial_dataframes()
         else:
+            # run hyperparameter tuning
             result = ray.tune.run(
                 trainable,
                 config=search_space,
@@ -174,15 +176,14 @@ def parallel(
                 metric="mean_return",
                 mode="max",
             )
-
-        key_prefix = (
-            "rollout/"
-            if sacred_ex_name == "train_preference_comparisons"
-            else ""
-            if sacred_ex_name == "train_rl"
-            else "imit_stats/"
-        )
+        if sacred_ex_name == "train_rl":
+            key_prefix = ""
+        elif sacred_ex_name == "train_preference_comparisons":
+            key_prefix = "rollout/"
+        else:
+            key_prefix = "imit_stats/"
         key = key_prefix + "monitor_return_mean"
+
         if eval_best_trial:
             df = result.results_df
             df = df[df["config/named_configs"].notna()]
@@ -230,8 +231,9 @@ def parallel(
                     resources_per_trial=resources_per_trial,
                 )
                 returns = eval_result.results_df["mean_return"].to_numpy()
-                print("Returns:", returns)
-                print(np.mean(returns), np.std(returns))
+                print("All returns:", returns)
+                print("Mean:", np.mean(returns))
+                print("Std:", np.std(returns))
     finally:
         ray.shutdown()
 
@@ -333,14 +335,7 @@ def _ray_tune_sacred_wrapper(
         )
         # Ray Tune has a string formatting error if raylet completes without
         # any calls to `reporter`.
-        # reporter(done=True)
-        # if sacred_ex_name == "train_preference_comparisons":
-        #     #reporter(mean_return=run.result["rollout"]["monitor_return_mean"])
-        #     #ray.tune.report(mean_return=run.result["rollout"]["monitor_return_mean"])
-        #     ray.tune.report(mean_return=234)
-        # else:
-        #     # reporter(mean_return=run.result["imit_stats"]["monitor_return_mean"])
-        #     ray.tune.report(mean_return=run.result["imit_stats"]["monitor_return_mean"])
+        reporter(done=True)
 
         assert run.status == "COMPLETED"
         return run.result

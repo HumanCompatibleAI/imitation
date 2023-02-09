@@ -99,8 +99,8 @@ def pendulum():
 
 @train_adversarial_ex.named_config
 def seals_ant():
-    # locals().update(**MUJOCO_SHARED_LOCALS)
-    # locals().update(**ANT_SHARED_LOCALS)
+    locals().update(**MUJOCO_SHARED_LOCALS)
+    locals().update(**ANT_SHARED_LOCALS)
     environment = dict(gym_id="seals/Ant-v0")
     demonstrations = dict(rollout_type="ppo-huggingface")
     rl = dict(
@@ -173,21 +173,6 @@ def seals_half_cheetah():
             vf_coef=0.11483689492120866,
         ),
     )
-    # algorithm_specific = dict(
-    #     airl=dict(total_timesteps=int(5e6)),
-    #     gail=dict(total_timesteps=int(8e6)),
-    # )
-    # reward = dict(
-    #     algorithm_specific=dict(
-    #         airl=dict(
-    #             net_cls=reward_nets.BasicShapedRewardNet,
-    #             net_kwargs=dict(
-    #                 reward_hid_sizes=(32,),
-    #                 potential_hid_sizes=(32,),
-    #             ),
-    #         ),
-    #     ),
-    # )
     algorithm_kwargs = dict(
         # Number of discriminator updates after each round of generator updates
         n_disc_updates_per_round=16,
@@ -257,7 +242,7 @@ def seals_swimmer():
 
 @train_adversarial_ex.named_config
 def seals_walker():
-    # locals().update(**MUJOCO_SHARED_LOCALS)
+    locals().update(**MUJOCO_SHARED_LOCALS)
     environment = dict(gym_id="seals/Walker2d-v0")
     demonstrations = dict(rollout_type="ppo-huggingface")
     train = dict(
@@ -311,22 +296,3 @@ def fast():
         demo_batch_size=1,
         n_disc_updates_per_round=4,
     )
-
-
-@train_adversarial_ex.named_config
-def debug_nans():
-    environment = {"wandb": {"wandb_kwargs": {"project": "algorithm-benchmark"}}}
-    total_timesteps = 1e7
-    algorithm_kwargs = dict(
-        demo_batch_size=128,
-        n_disc_updates_per_round=8,
-        # both are same as rl.batch_size
-        # gen_replay_buffer_capacity=tune.choice([512, 1024]),
-        # gen_train_timesteps=0,
-    )
-    rl = {
-        "batch_size": 4096,
-        "rl_kwargs": {"ent_coef": 0.1, "learning_rate": 7.316377404994506e-05},
-    }
-    seed = 0
-    checkpoint_interval = 1
