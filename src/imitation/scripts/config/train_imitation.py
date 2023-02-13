@@ -27,6 +27,7 @@ def config():
     dagger = dict(
         use_offline_rollouts=False,  # warm-start policy with BC from offline demos
         total_timesteps=1e5,
+        beta_schedule=None,
     )
 
 
