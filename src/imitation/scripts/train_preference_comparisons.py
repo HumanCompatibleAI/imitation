@@ -21,9 +21,8 @@ from imitation.scripts.config.train_preference_comparisons import (
 )
 from imitation.scripts.ingredients import environment
 from imitation.scripts.ingredients import logging as logging_ingredient
-from imitation.scripts.ingredients import reward
+from imitation.scripts.ingredients import policy_evaluation, reward
 from imitation.scripts.ingredients import rl as rl_common
-from imitation.scripts.ingredients import train
 
 
 def save_model(
@@ -279,7 +278,7 @@ def train_preference_comparisons(
         # Storing and evaluating policy only useful if we generated trajectory data
         if bool(trajectory_path is None):
             results = dict(results)
-            results["rollout"] = train.eval_policy(agent, venv)
+            results["rollout"] = policy_evaluation.eval_policy(agent, venv)
 
     if save_preferences:
         main_trainer.dataset.save(log_dir / "preferences.pkl")
