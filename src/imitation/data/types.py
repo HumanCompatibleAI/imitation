@@ -448,7 +448,14 @@ def load(path: AnyPath) -> Sequence[Trajectory]:
     # it's just the sequence of trajectories, and we can return it directly.
 
     if os.path.isdir(path):  # huggingface datasets format
-        dataset = datasets.load_from_disk(str(path)).with_format("numpy")
+
+        # TODO: this is just a temporary workaround for
+        #  https://github.com/huggingface/datasets/issues/5517
+        #  switch to .with_format("numpy") once it's fixed
+        def numpy_transform(batch):
+            return {key: np.asarray(val) for key, val in batch.items()}
+
+        dataset = datasets.load_from_disk(str(path)).with_transform(numpy_transform)
 
         if not isinstance(dataset, datasets.Dataset):
             raise ValueError(
