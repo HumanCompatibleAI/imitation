@@ -19,8 +19,9 @@ from stable_baselines3.common import policies, utils, vec_env
 from stable_baselines3.common.vec_env.base_vec_env import VecEnvStepReturn
 from torch.utils import data as th_data
 
+import imitation.data.serialize
 from imitation.algorithms import base, bc
-from imitation.data import rollout, types
+from imitation.data import rollout, serialize, types
 from imitation.util import logger as imit_logger
 
 
@@ -118,7 +119,7 @@ def reconstruct_trainer(
         A deserialized `DAggerTrainer`.
     """
     custom_logger = custom_logger or imit_logger.configure()
-    scratch_dir = types.parse_path(scratch_dir)
+    scratch_dir = imitation.data.serialize.parse_path(scratch_dir)
     checkpoint_path = scratch_dir / "checkpoint-latest.pt"
     trainer = th.load(checkpoint_path, map_location=utils.get_device(device))
     trainer.venv = venv
@@ -133,7 +134,7 @@ def _save_dagger_demo(
     rng: np.random.Generator,
     prefix: str = "",
 ) -> None:
-    save_dir = types.parse_path(save_dir)
+    save_dir = imitation.data.serialize.parse_path(save_dir)
     assert isinstance(trajectory, types.Trajectory)
     actual_prefix = f"{prefix}-" if prefix else ""
     randbits = int.from_bytes(rng.bytes(16), "big")
@@ -143,7 +144,7 @@ def _save_dagger_demo(
     assert (
         not npz_path.exists()
     ), "The following DAgger demonstration path already exists: {0}".format(npz_path)
-    types.save(npz_path, [trajectory])
+    serialize.save(npz_path, [trajectory])
     logging.info(f"Saved demo at '{npz_path}'")
 
 
@@ -353,7 +354,7 @@ class DAggerTrainer(base.BaseImitationAlgorithm):
         if beta_schedule is None:
             beta_schedule = LinearBetaSchedule(15)
         self.beta_schedule = beta_schedule
-        self.scratch_dir = types.parse_path(scratch_dir)
+        self.scratch_dir = imitation.data.serialize.parse_path(scratch_dir)
         self.venv = venv
         self.round_num = 0
         self._last_loaded_round = -1
@@ -399,7 +400,7 @@ class DAggerTrainer(base.BaseImitationAlgorithm):
         for round_num in range(self._last_loaded_round + 1, self.round_num + 1):
             round_dir = self._demo_dir_path_for_round(round_num)
             demo_paths = self._get_demo_paths(round_dir)
-            self._all_demos.extend(types.load(p)[0] for p in demo_paths)
+            self._all_demos.extend(serialize.load(p)[0] for p in demo_paths)
             num_demos_by_round.append(len(demo_paths))
         logging.info(f"Loaded {len(self._all_demos)} total")
         demo_transitions = rollout.flatten_trajectories(self._all_demos)

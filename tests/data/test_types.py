@@ -12,7 +12,7 @@ import gym
 import numpy as np
 import pytest
 
-from imitation.data import types
+from imitation.data import serialize, types
 
 SPACES = [
     gym.spaces.Discrete(3),
@@ -43,7 +43,7 @@ def trajectory(
         pytest.skip()
     obs = np.array([obs_space.sample() for _ in range(length + 1)])
     acts = np.array([act_space.sample() for _ in range(length)])
-    infos = np.array([{"key": i} for i in range(length)])
+    infos = np.array([{f"key{i}": i} for i in range(length)])
     return types.Trajectory(obs=obs, acts=acts, infos=infos, terminal=True)
 
 
@@ -218,7 +218,7 @@ class TestData:
             save_dir_str = tmpdir
 
         with chdir_context:
-            save_dir = types.parse_path(save_dir_str)
+            save_dir = serialize.parse_path(save_dir_str)
             trajs = [trajectory_rew if use_rewards else trajectory]
             save_path = save_dir / "trajs"
 
@@ -228,23 +228,23 @@ class TestData:
                     pickle.dump(trajs, f)
             else:
                 # HuggingFace Dataset Format
-                types.save(save_path, trajs)
+                serialize.save(save_path, trajs)
 
                 # Test that heterogeneous lists of trajectories throw an error
                 if use_rewards:
                     with pytest.raises(ValueError):
-                        types.save(save_path, [trajectory, trajectory_rew])
+                        serialize.save(save_path, [trajectory, trajectory_rew])
 
             loaded_trajs: Sequence[types.Trajectory]
             if type_safe:
                 if use_rewards:
-                    loaded_trajs = types.load_with_rewards(save_path)
+                    loaded_trajs = serialize.load_with_rewards(save_path)
                 else:
                     with pytest.raises(ValueError):
-                        types.load_with_rewards(save_path)
-                    loaded_trajs = types.load(save_path)
+                        serialize.load_with_rewards(save_path)
+                    loaded_trajs = serialize.load(save_path)
             else:
-                loaded_trajs = types.load(save_path)
+                loaded_trajs = serialize.load(save_path)
 
             assert len(trajs) == len(loaded_trajs)
             for t1, t2 in zip(trajs, loaded_trajs):
@@ -397,39 +397,41 @@ def test_parse_path():
             "cannot be compared directly to pathlib.Path objects.",
         )
     # absolute paths
-    assert types.parse_path("/foo/bar") == pathlib.Path("/foo/bar")
-    assert types.parse_path(pathlib.Path("/foo/bar")) == pathlib.Path("/foo/bar")
-    assert types.parse_path(b"/foo/bar") == pathlib.Path("/foo/bar")
+    assert serialize.parse_path("/foo/bar") == pathlib.Path("/foo/bar")
+    assert serialize.parse_path(pathlib.Path("/foo/bar")) == pathlib.Path("/foo/bar")
+    assert serialize.parse_path(b"/foo/bar") == pathlib.Path("/foo/bar")
 
     # relative paths. implicit conversion to cwd
-    assert types.parse_path("foo/bar") == pathlib.Path.cwd() / "foo/bar"
-    assert types.parse_path(pathlib.Path("foo/bar")) == pathlib.Path.cwd() / "foo/bar"
-    assert types.parse_path(b"foo/bar") == pathlib.Path.cwd() / "foo/bar"
+    assert serialize.parse_path("foo/bar") == pathlib.Path.cwd() / "foo/bar"
+    assert (
+        serialize.parse_path(pathlib.Path("foo/bar")) == pathlib.Path.cwd() / "foo/bar"
+    )
+    assert serialize.parse_path(b"foo/bar") == pathlib.Path.cwd() / "foo/bar"
 
     # relative paths. conversion using custom base directory
     base_dir = pathlib.Path("/foo/bar")
-    assert types.parse_path("baz", base_directory=base_dir) == base_dir / "baz"
+    assert serialize.parse_path("baz", base_directory=base_dir) == base_dir / "baz"
     assert (
-        types.parse_path(pathlib.Path("baz"), base_directory=base_dir)
+        serialize.parse_path(pathlib.Path("baz"), base_directory=base_dir)
         == base_dir / "baz"
     )
-    assert types.parse_path(b"baz", base_directory=base_dir) == base_dir / "baz"
+    assert serialize.parse_path(b"baz", base_directory=base_dir) == base_dir / "baz"
 
     # pass a relative path but disallowing relative paths. should raise error.
     with pytest.raises(ValueError, match="Path .* is not absolute"):
-        types.parse_path("foo/bar", allow_relative=False)
+        serialize.parse_path("foo/bar", allow_relative=False)
 
     # pass a base direectory but disallowing relative paths. should raise error.
     with pytest.raises(
         ValueError,
         match="If `base_directory` is specified, then `allow_relative` must be True.",
     ):
-        types.parse_path(
+        serialize.parse_path(
             "foo/bar",
             base_directory=pathlib.Path("/foo/bar"),
             allow_relative=False,
         )
 
     # Parse optional path. Works the same way but passes None down the line.
-    assert types.parse_optional_path(None) is None
-    assert types.parse_optional_path("/foo/bar") == types.parse_path("/foo/bar")
+    assert serialize.parse_optional_path(None) is None
+    assert serialize.parse_optional_path("/foo/bar") == serialize.parse_path("/foo/bar")

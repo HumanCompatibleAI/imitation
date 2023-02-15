@@ -11,7 +11,7 @@ format. The path is the same as the original but with an ".npz" extension
 
 import warnings
 
-from imitation.data import types
+import imitation.data.serialize
 
 
 def update_traj_file_in_place(path_str: str, /) -> None:
@@ -24,7 +24,7 @@ def update_traj_file_in_place(path_str: str, /) -> None:
             `Sequence[imitation.types.Trajectory]`
             or `Sequence[imitation.old_types.TrajectoryWithRew]`.
     """
-    path = types.parse_path(path_str)
+    path = imitation.data.serialize.parse_path(path_str)
     with warnings.catch_warnings():
         # Filter out DeprecationWarning because we expect to load old trajectories here.
         warnings.filterwarnings(
@@ -32,11 +32,11 @@ def update_traj_file_in_place(path_str: str, /) -> None:
             message="Loading old version of Trajectory.*",
             category=DeprecationWarning,
         )
-        trajs = types.load(path)
+        trajs = imitation.data.serialize.load(path)
 
     ext = path.suffix
     new_ext = ".npz" if ext in (".pkl", ".npz") else ext + ".npz"
-    types.save(path.with_suffix(new_ext), trajs)
+    imitation.data.serialize.save(path.with_suffix(new_ext), trajs)
 
 
 def main():

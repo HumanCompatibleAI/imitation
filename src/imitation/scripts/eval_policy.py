@@ -10,7 +10,8 @@ import numpy as np
 from sacred.observers import FileStorageObserver
 from stable_baselines3.common.vec_env import VecEnvWrapper
 
-from imitation.data import rollout, types
+import imitation.data.serialize
+from imitation.data import rollout
 from imitation.policies.exploration_wrapper import ExplorationWrapper
 from imitation.rewards import reward_wrapper
 from imitation.rewards.serialize import load_reward
@@ -119,7 +120,10 @@ def eval_policy(
         trajs = rollout.generate_trajectories(policy, venv, sample_until, rng=_rnd)
 
     if rollout_save_path:
-        types.save(log_dir / rollout_save_path.replace("{log_dir}/", ""), trajs)
+        imitation.data.serialize.save(
+            log_dir / rollout_save_path.replace("{log_dir}/", ""),
+            trajs,
+        )
 
     return rollout.rollout_stats(trajs)
 

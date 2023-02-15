@@ -24,6 +24,7 @@ import torch as th
 import tqdm
 from stable_baselines3.common import policies, utils, vec_env
 
+import imitation.data.serialize
 from imitation.algorithms import base as algo_base
 from imitation.data import rollout, types
 from imitation.policies import base as policy_base
@@ -490,4 +491,4 @@ class BC(algo_base.DemonstrationAlgorithm):
         Args:
             policy_path: path to save policy to.
         """
-        th.save(self.policy, types.parse_path(policy_path))
+        th.save(self.policy, imitation.data.serialize.parse_path(policy_path))

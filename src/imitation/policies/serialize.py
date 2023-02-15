@@ -10,7 +10,7 @@ from typing import Callable, Type, TypeVar
 import huggingface_sb3 as hfsb3
 from stable_baselines3.common import base_class, callbacks, policies, vec_env
 
-from imitation.data import types
+import imitation.data.serialize
 from imitation.policies import base
 from imitation.util import registry
 
@@ -52,7 +52,7 @@ def load_stable_baselines_model(
         The deserialized RL algorithm.
     """
     logging.info(f"Loading Stable Baselines policy for '{cls}' from '{path}'")
-    path_obj = types.parse_path(path)
+    path_obj = imitation.data.serialize.parse_path(path)
 
     if path_obj.is_dir():
         path_obj = path_obj / "model.zip"

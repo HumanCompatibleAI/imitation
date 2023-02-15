@@ -13,6 +13,7 @@ import pytest
 import torch.random
 from stable_baselines3.common import evaluation, policies
 
+import imitation.data.serialize
 from imitation.algorithms import bc, dagger
 from imitation.data import rollout, types
 from imitation.data.types import TrajectoryWithRew
@@ -127,7 +128,7 @@ def test_traj_collector(tmpdir, pendulum_venv, rng):
     file_paths = glob.glob(os.path.join(tmpdir, "dagger-demo-*.npz"))
     assert num_episodes == 5 * pendulum_venv.num_envs
     assert len(file_paths) == num_episodes
-    trajs = [types.load(p)[0] for p in file_paths]
+    trajs = [imitation.data.serialize.load(p)[0] for p in file_paths]
     nonzero_acts = sum(np.sum(traj.acts != 0) for traj in trajs)
     assert nonzero_acts == 0
 
@@ -170,7 +171,7 @@ def test_traj_collector_reproducible(tmpdir, pendulum_venv):
             file_paths = glob.glob(os.path.join(save_dir, "dagger-demo-*.npz"))
             filename_to_traj_dict = {}
             for fp in file_paths:
-                traj = types.load_with_rewards(fp)[0]
+                traj = imitation.data.serialize.load_with_rewards(fp)[0]
                 # For the purposes of testing, we remove `infos` from the
                 # trajectory, because `infos` contains the time that it
                 # takes to complete an episode, which we expect to differ

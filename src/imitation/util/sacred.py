@@ -10,6 +10,7 @@ import sacred
 import sacred.observers
 import sacred.run
 
+import imitation.data.serialize
 from imitation.data import types
 
 
@@ -77,7 +78,7 @@ def filter_subdirs(
 
 def build_sacred_symlink(log_dir: types.AnyPath, run: sacred.run.Run) -> None:
     """Constructs a symlink "{log_dir}/sacred" => "${SACRED_PATH}"."""
-    log_dir = types.parse_path(log_dir)
+    log_dir = imitation.data.serialize.parse_path(log_dir)
 
     sacred_dir = get_sacred_dir_from_run(run)
     if sacred_dir is None:
@@ -115,7 +116,7 @@ def get_sacred_dir_from_run(run: sacred.run.Run) -> Optional[pathlib.Path]:
     """Returns path to the sacred directory, or None if not found."""
     for obs in run.observers:
         if isinstance(obs, sacred.observers.FileStorageObserver):
-            return types.parse_path(obs.dir)
+            return imitation.data.serialize.parse_path(obs.dir)
     return None
 
 

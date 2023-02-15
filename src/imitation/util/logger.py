@@ -10,6 +10,7 @@ from typing import Any, Dict, Generator, List, Optional, Sequence, Tuple, Union
 
 import stable_baselines3.common.logger as sb_logger
 
+import imitation.data.serialize
 from imitation.data import types
 
 
@@ -269,7 +270,9 @@ class HierarchicalLogger(sb_logger.Logger):
         else:
             default_logger_dir = self.default_logger.dir
             assert default_logger_dir is not None
-            folder = types.parse_path(default_logger_dir) / "raw" / subdir
+            folder = (
+                imitation.data.serialize.parse_path(default_logger_dir) / "raw" / subdir
+            )
             folder.mkdir(exist_ok=True, parents=True)
             output_formats = _build_output_formats(folder, self.format_strs)
             logger = sb_logger.Logger(str(folder), list(output_formats))
@@ -402,12 +405,12 @@ def configure(
         The configured HierarchicalLogger instance.
     """
     if folder is None:
-        tempdir = types.parse_path(tempfile.gettempdir())
+        tempdir = imitation.data.serialize.parse_path(tempfile.gettempdir())
         now = datetime.datetime.now()
         timestamp = now.strftime("imitation-%Y-%m-%d-%H-%M-%S-%f")
         folder = tempdir / timestamp
     else:
-        folder = types.parse_path(folder)
+        folder = imitation.data.serialize.parse_path(folder)
     if format_strs is None:
         format_strs = ["stdout", "log", "csv"]
     output_formats = _build_output_formats(folder, format_strs)

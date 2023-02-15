@@ -18,7 +18,8 @@ from sacred.observers import FileStorageObserver
 from stable_baselines3.common import callbacks
 from stable_baselines3.common.vec_env import VecNormalize
 
-from imitation.data import rollout, types, wrappers
+import imitation.data.serialize
+from imitation.data import rollout, wrappers
 from imitation.policies import serialize
 from imitation.rewards.reward_wrapper import RewardVecEnvWrapper
 from imitation.rewards.serialize import load_reward
@@ -148,7 +149,7 @@ def train_rl(
                 rollout_save_n_timesteps,
                 rollout_save_n_episodes,
             )
-            types.save(
+            imitation.data.serialize.save(
                 save_path,
                 rollout.rollout(rl_algo, rl_algo.get_env(), sample_until, rng=_rnd),
             )
