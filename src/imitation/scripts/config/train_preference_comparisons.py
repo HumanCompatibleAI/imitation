@@ -3,6 +3,7 @@
 import sacred
 
 from imitation.algorithms import preference_comparisons
+from imitation.data.wrappers import RenderImageInfoWrapper
 from imitation.scripts.ingredients import environment
 from imitation.scripts.ingredients import logging as logging_ingredient
 from imitation.scripts.ingredients import policy_evaluation, reward, rl
@@ -62,6 +63,27 @@ def train_defaults():
 
     checkpoint_interval = 0  # Num epochs between saving (<0 disables, =0 final only)
     query_schedule = "hyperbolic"
+
+
+@train_preference_comparisons_ex.named_config
+def human_preferences():
+    gatherer_cls = preference_comparisons.PrefCollectGatherer
+    gatherer_kwargs = dict(
+        pref_collect_address="http://127.0.0.1:8000",
+        video_output_dir="../pref-collect/videofiles",
+        video_fps=20,
+        wait_for_user=True,
+        random_preferences=False,
+    )
+    environment = dict(
+        post_wrappers=dict(
+            RenderImageInfoWrapper=lambda env, env_id, **kwargs:
+                RenderImageInfoWrapper(env, **kwargs),
+        ),
+        post_wrappers_kwargs=dict(
+            RenderImageInfoWrapper=dict(scale_factor=0.5, use_file_cache=True),
+        ),
+    )
 
 
 @train_preference_comparisons_ex.named_config
