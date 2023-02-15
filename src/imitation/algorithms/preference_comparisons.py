@@ -7,6 +7,7 @@ import abc
 import math
 import pickle
 import re
+import uuid
 from collections import defaultdict
 from typing import (
     Any,
@@ -778,6 +779,36 @@ class ActiveSelectionFragmenter(Fragmenter):
         return var_estimate
 
 
+class PreferenceQuerent:
+    """Dummy class for querying preferences between trajectory fragments."""
+
+    def __init__(
+        self,
+        rng: Optional[np.random.Generator] = None,
+        custom_logger: Optional[imit_logger.HierarchicalLogger] = None,
+    ) -> None:
+        """Initializes the preference querent.
+
+        Args:
+            rng: random number generator, if applicable.
+            custom_logger: Where to log to; if None (default), creates a new logger.
+        """
+        del rng
+        self.logger = custom_logger or imit_logger.configure()
+
+    def __call__(self, queries: Sequence[TrajectoryWithRewPair]) -> Dict[str, Sequence[TrajectoryWithRewPair]]:
+        """Queries the user for their preferences.
+        This dummy implementation does nothing because by default the queries are answered by an oracle.
+        
+        Args:
+            queries: sequence of pairs of trajectory fragments
+        
+        Returns:
+            dictionary with queries and their respective UUIDs
+        """
+        return {str(uuid.uuid4()): query for query in queries}
+
+
 class PreferenceGatherer(abc.ABC):
     """Base class for gathering preference comparisons between trajectory fragments."""
 
@@ -798,15 +829,14 @@ class PreferenceGatherer(abc.ABC):
         # the PreferenceGatherer we use needs one).
         del rng
         self.logger = custom_logger or imit_logger.configure()
+        self.pending_queries = {}
 
     @abc.abstractmethod
-    def __call__(self, fragment_pairs: Sequence[TrajectoryWithRewPair]) -> np.ndarray:
-        """Gathers the probabilities that fragment 1 is preferred in `fragment_pairs`.
-
-        Args:
-            fragment_pairs: sequence of pairs of trajectory fragments
+    def __call__(self) -> Tuple[np.ndarray, np.ndarray]:
+        """Gathers the probabilities that fragment 1 is preferred in `queries`.
 
         Returns:
+            TODO return value
             A numpy array with shape (b, ), where b is the length of the input
             (i.e. batch size). Each item in the array is the probability that
             fragment 1 is preferred over fragment 2 for the corresponding
@@ -816,6 +846,14 @@ class PreferenceGatherer(abc.ABC):
             (or 0.5 in case of indifference), but synthetic models may yield other
             probabilities.
         """  # noqa: DAR202
+
+    def add(self, new_queries: Dict[str, Sequence[TrajectoryWithRewPair]]) -> None:
+        """Adds queries to pending queries.
+
+        Args:
+            new_queries: pairs of trajectory fragments
+        """
+        self.pending_queries = {**self.pending_queries, **new_queries}
 
 
 class SyntheticGatherer(PreferenceGatherer):
@@ -865,9 +903,10 @@ class SyntheticGatherer(PreferenceGatherer):
         if self.sample and self.rng is None:
             raise ValueError("If `sample` is True, then `rng` must be provided.")
 
-    def __call__(self, fragment_pairs: Sequence[TrajectoryWithRewPair]) -> np.ndarray:
+    def __call__(self) -> Tuple[Sequence[TrajectoryWithRewPair], np.ndarray]:
         """Computes probability fragment 1 is preferred over fragment 2."""
-        returns1, returns2 = self._reward_sums(fragment_pairs)
+        returns1, returns2 = self._reward_sums(self.pending_queries.values())
+
         if self.temperature == 0:
             return (np.sign(returns1 - returns2) + 1) / 2
 
@@ -878,20 +917,24 @@ class SyntheticGatherer(PreferenceGatherer):
         returns_diff = np.clip(returns2 - returns1, -self.threshold, self.threshold)
         # Instead of computing exp(rews1) / (exp(rews1) + exp(rews2)) directly,
         # we divide enumerator and denominator by exp(rews1) to prevent overflows:
-        model_probs = 1 / (1 + np.exp(returns_diff))
+        choice_probs = 1 / (1 + np.exp(returns_diff))
         # Compute the mean binary entropy. This metric helps estimate
         # how good we can expect the performance of the learned reward
         # model to be at predicting preferences.
         entropy = -(
-            special.xlogy(model_probs, model_probs)
-            + special.xlogy(1 - model_probs, 1 - model_probs)
+            special.xlogy(choice_probs, choice_probs)
+            + special.xlogy(1 - choice_probs, 1 - choice_probs)
         ).mean()
         self.logger.record("entropy", entropy)
 
+        # Clear pending queries because the oracle has answered all
+        queries = list(self.pending_queries.values())
+        self.pending_queries.clear()
+
         if self.sample:
             assert self.rng is not None
-            return self.rng.binomial(n=1, p=model_probs).astype(np.float32)
-        return model_probs
+            return queries, self.rng.binomial(n=1, p=choice_probs).astype(np.float32)
+        return queries, choice_probs
 
     def _reward_sums(self, fragment_pairs) -> Tuple[np.ndarray, np.ndarray]:
         rews1, rews2 = zip(
@@ -1488,6 +1531,7 @@ class PreferenceComparisons(base.BaseImitationAlgorithm):
         reward_model: reward_nets.RewardNet,
         num_iterations: int,
         fragmenter: Optional[Fragmenter] = None,
+        preference_querent: Optional[PreferenceQuerent] = None,
         preference_gatherer: Optional[PreferenceGatherer] = None,
         reward_trainer: Optional[RewardTrainer] = None,
         comparison_queue_size: Optional[int] = None,
@@ -1516,7 +1560,8 @@ class PreferenceComparisons(base.BaseImitationAlgorithm):
                 for which preferences will be gathered. These fragments could be random,
                 or they could be selected more deliberately (active learning).
                 Default is a random fragmenter.
-            preference_gatherer: how to get preferences between trajectory fragments.
+            preference_querent: queries preferences between trajectory fragments.
+            preference_gatherer: gathers preferences between trajectory fragments.
                 Default (and currently the only option) is to use synthetic preferences
                 based on ground-truth rewards. Human preferences could be implemented
                 here in the future.
@@ -1628,6 +1673,15 @@ class PreferenceComparisons(base.BaseImitationAlgorithm):
                 rng=self.rng,
             )
         self.fragmenter.logger = self.logger
+        if preference_querent:
+            self.preference_querent = preference_querent
+        else:
+            # TODO add querent to train script
+            #assert self.rng is not None
+            self.preference_querent = PreferenceQuerent(
+                custom_logger=self.logger,
+                rng=self.rng,
+            )
         if preference_gatherer:
             self.preference_gatherer = preference_gatherer
         else:
@@ -1688,15 +1742,15 @@ class PreferenceComparisons(base.BaseImitationAlgorithm):
         reward_loss = None
         reward_accuracy = None
 
-        for i, num_pairs in enumerate(schedule):
+        for i, num_queries in enumerate(schedule):
             ##########################
             # Gather new preferences #
             ##########################
             num_steps = math.ceil(
-                self.transition_oversampling * 2 * num_pairs * self.fragment_length,
+                self.transition_oversampling * 2 * num_queries * self.fragment_length,
             )
             self.logger.log(
-                f"Collecting {2 * num_pairs} fragments ({num_steps} transitions)",
+                f"Collecting {2 * num_queries} fragments ({num_steps} transitions)",
             )
             trajectories = self.trajectory_generator.sample(num_steps)
             # This assumes there are no fragments missing initial timesteps
@@ -1704,11 +1758,18 @@ class PreferenceComparisons(base.BaseImitationAlgorithm):
             horizons = (len(traj) for traj in trajectories if traj.terminal)
             self._check_fixed_horizon(horizons)
             self.logger.log("Creating fragment pairs")
-            fragments = self.fragmenter(trajectories, self.fragment_length, num_pairs)
+            
+            queries = self.fragmenter(trajectories, self.fragment_length, num_queries)
+
+            identified_queries = self.preference_querent(queries)
+            self.preference_gatherer.add(identified_queries)
+
             with self.logger.accumulate_means("preferences"):
                 self.logger.log("Gathering preferences")
-                preferences = self.preference_gatherer(fragments)
-            self.dataset.push(fragments, preferences)
+                # Gather fragment pairs (queries) for which preferences have been provided
+                queries, preferences = self.preference_gatherer()
+
+            self.dataset.push(queries, preferences)
             self.logger.log(f"Dataset now contains {len(self.dataset)} comparisons")
 
             ##########################
