@@ -44,17 +44,18 @@ def load(path: AnyPath) -> Sequence[Trajectory]:
         dataset = datasets.load_from_disk(str(path))
         if not isinstance(dataset, datasets.Dataset):
             raise ValueError(
-                f"Expected to load a `datasets.Dataset` but got "
-                f"{type(dataset).__name__}",
+                f"Expected to load a `datasets.Dataset` but got {type(dataset)}",
             )
 
         return hfds.TrajectoryDatasetSequence(dataset)
 
-    data = np.load(path, allow_pickle=True)
+    data = np.load(path, allow_pickle=True)  # works for both .npz and .pkl
+
     if isinstance(data, Sequence):  # pickle format
-        warnings.warn("Loading old version of Trajectory's", DeprecationWarning)
+        warnings.warn("Loading old pickle version of Trajectories", DeprecationWarning)
         return data
-    elif isinstance(data, Mapping):  # .npz format
+    if isinstance(data, Mapping):  # .npz format
+        warnings.warn("Loading old npz version of Trajectories", DeprecationWarning)
         num_trajs = len(data["indices"])
         fields = [
             # Account for the extra obs in each trajectory
