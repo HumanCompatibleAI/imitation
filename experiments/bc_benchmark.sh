@@ -27,7 +27,7 @@ while true; do
     -f | --fast)
       # Fast mode (debug)
       SEEDS=(0)
-      extra_configs=("${extra_configs[@]}" environment.fast demonstrations.fast train.fast fast)
+      extra_configs=("${extra_configs[@]}" environment.fast demonstrations.fast policy_evaluation.fast fast)
       shift
       ;;
     --paper)  # Table benchmark settings

@@ -118,7 +118,7 @@ available in ``scripts/``. You can take a look at the following doc links to und
     imitation.scripts.ingredients.expert
     imitation.scripts.ingredients.reward
     imitation.scripts.ingredients.rl
-    imitation.scripts.ingredients.train
+    imitation.scripts.ingredients.policy
     imitation.scripts.ingredients.wb
 
 - `Configurations <https://sacred.readthedocs.io/en/stable/configuration.html>`_: Explains how to use configurations to parametrize runs. The configurations for different algorithms are defined in their file in ``scripts/``. Some of the commonly used configs and ingredients used across algorithms are defined in ``scripts/ingredients/``.

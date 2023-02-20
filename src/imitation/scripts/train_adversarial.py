@@ -17,7 +17,7 @@ from imitation.policies import serialize
 from imitation.scripts.config.train_adversarial import train_adversarial_ex
 from imitation.scripts.ingredients import demonstrations, environment
 from imitation.scripts.ingredients import logging as logging_ingredient
-from imitation.scripts.ingredients import reward, rl, train
+from imitation.scripts.ingredients import policy_evaluation, reward, rl
 
 logger = logging.getLogger("imitation.scripts.train_adversarial")
 
@@ -158,7 +158,7 @@ def train_adversarial(
                 save(trainer, log_dir / "checkpoints" / f"{round_num:05d}")
 
         trainer.train(total_timesteps, callback)
-        imit_stats = train.eval_policy(trainer.policy, trainer.venv_train)
+        imit_stats = policy_evaluation.eval_policy(trainer.policy, trainer.venv_train)
 
     # Save final artifacts.
     if checkpoint_interval >= 0:

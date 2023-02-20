@@ -6,7 +6,7 @@ from torch import nn
 from imitation.algorithms import preference_comparisons
 from imitation.scripts.ingredients import environment
 from imitation.scripts.ingredients import logging as logging_ingredient
-from imitation.scripts.ingredients import reward, rl, train
+from imitation.scripts.ingredients import policy_evaluation, reward, rl
 
 train_preference_comparisons_ex = sacred.Experiment(
     "train_preference_comparisons",
@@ -15,7 +15,7 @@ train_preference_comparisons_ex = sacred.Experiment(
         environment.environment_ingredient,
         reward.reward_ingredient,
         rl.rl_ingredient,
-        train.train_ingredient,
+        policy_evaluation.policy_evaluation_ingredient,
     ],
 )
 
