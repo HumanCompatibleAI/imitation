@@ -20,6 +20,7 @@ executors:
     environment:
       # more CPUs visible but we're throttled to 8, which breaks auto-detect
       NUM_CPUS: 8
+      GIT_LFS_SKIP_SMUDGE: 1
   static-analysis-xlarge:
     <<: *defaults
     # darglint is slow enough that we benefit from xlarge even for linting.
@@ -45,6 +46,18 @@ commands:
     description: "Check out and update Python dependencies on Linux."
     steps:
       - checkout
+
+      # Download and cache git-lfs files
+      - run: git lfs ls-files -l | cut -d' ' -f1 | sort > .lfs-assets-id
+      - restore_cache:
+          keys:
+            - v1-lfscache-{{ checksum ".lfs-assets-id" }}
+            - v1-lfscache-
+      - run: git lfs pull
+      - save_cache:
+          paths:
+            - .git/lfs
+          key: v1-lfscache-{{ checksum ".lfs-assets-id" }}
 
       # Download and cache dependencies
       - restore_cache:
