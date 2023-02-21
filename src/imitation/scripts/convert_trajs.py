@@ -50,7 +50,7 @@ def update_traj_file_in_place(path_str: types.AnyPath, /) -> pathlib.Path:
         return converted_path
 
 
-def main():
+def main():  # pragma: no cover
     import sys
 
     if len(sys.argv) <= 1:
