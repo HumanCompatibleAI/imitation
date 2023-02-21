@@ -2,7 +2,7 @@
 
 # base stage contains just binary dependencies.
 # This is used in the CI build.
-FROM nvidia/cuda:11.6.2-cudnn8-runtime-ubuntu20.04 AS base
+FROM nvidia/cuda:11.8.0-cudnn8-runtime-ubuntu20.04 AS base
 ARG DEBIAN_FRONTEND=noninteractive
 
 RUN apt-get update -q \
@@ -12,6 +12,8 @@ RUN apt-get update -q \
     wget \
     ffmpeg \
     git \
+    git-lfs \
+    ssh \
     libgl1-mesa-dev \
     libgl1-mesa-glx \
     libglew-dev \
@@ -31,6 +33,8 @@ RUN apt-get update -q \
     patchelf  \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
+
+RUN git lfs install
 
 ENV LANG C.UTF-8
 
