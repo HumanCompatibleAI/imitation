@@ -280,7 +280,6 @@ def train_preference_comparisons(
             results = dict(results)
             results["rollout"] = policy_evaluation.eval_policy(agent, venv)
             results["mean_return"] = results["rollout"]["monitor_return_mean"]
-            
 
     if save_preferences:
         main_trainer.dataset.save(log_dir / "preferences.pkl")
