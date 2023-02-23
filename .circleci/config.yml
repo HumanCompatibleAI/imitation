@@ -20,6 +20,9 @@ executors:
     environment:
       # more CPUs visible but we're throttled to 8, which breaks auto-detect
       NUM_CPUS: 8
+      # Prevent git lfs from downloading files upon checkout
+      # (we want to do this explicitly, so we can cache them)
+      # see https://naiyer.dev/post/2020/09/05/using-git-lfs-in-ci/ for details
       GIT_LFS_SKIP_SMUDGE: 1
   static-analysis-xlarge:
     <<: *defaults
