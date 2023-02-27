@@ -72,7 +72,7 @@ def load(path: AnyPath) -> Sequence[Trajectory]:
             return [TrajectoryWithRew(*args) for args in zip(*fields)]
         else:
             return [Trajectory(*args) for args in zip(*fields)]
-    else:
+    else:  # pragma: no cover
         raise ValueError(
             f"Expected either an .npz file or a pickled sequence of trajectories; "
             f"got a pickled object of type {type(data).__name__}",
