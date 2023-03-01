@@ -38,6 +38,7 @@ def config():
     dagger = dict(
         use_offline_rollouts=False,  # warm-start policy with BC from offline demos
         total_timesteps=1e5,
+        beta_schedule=None,
     )
     agent_path = None  # Path to load agent from, optional.
 

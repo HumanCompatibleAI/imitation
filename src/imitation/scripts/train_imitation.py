@@ -125,6 +125,7 @@ def train_imitation(
                 expert_policy=expert_policy,
                 custom_logger=custom_logger,
                 bc_trainer=bc_trainer,
+                beta_schedule=dagger["beta_schedule"],
                 rng=_rnd,
             )
             model.train(
