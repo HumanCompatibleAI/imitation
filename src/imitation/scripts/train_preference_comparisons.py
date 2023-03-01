@@ -77,6 +77,8 @@ def train_preference_comparisons(
     reward_trainer_kwargs: Mapping[str, Any],
     gatherer_cls: Type[preference_comparisons.PreferenceGatherer],
     gatherer_kwargs: Mapping[str, Any],
+    querent_cls: Type[preference_comparisons.PreferenceQuerent],
+    querent_kwargs: Mapping[str, Any],
     active_selection: bool,
     active_selection_oversampling: int,
     uncertainty_on: str,
@@ -121,6 +123,8 @@ def train_preference_comparisons(
         reward_trainer_kwargs: passed to BasicRewardTrainer or EnsembleRewardTrainer
         gatherer_cls: type of PreferenceGatherer to use (defaults to SyntheticGatherer)
         gatherer_kwargs: passed to the PreferenceGatherer specified by gatherer_cls
+        querent_cls: type of PreferenceQuerent to use (defaults to PreferenceQuerent)
+        querent_kwargs: passed to the PreferenceQuerent specified by querent_cls
         active_selection: use active selection fragmenter instead of random fragmenter
         active_selection_oversampling: factor by which to oversample random fragments
             from the base fragmenter of active selection.
@@ -235,6 +239,11 @@ def train_preference_comparisons(
             rng=_rnd,
             custom_logger=custom_logger,
         )
+        querent = querent_cls(
+            **querent_kwargs,
+            rng=_rnd,
+            custom_logger=custom_logger,
+        )
 
         loss = preference_comparisons.CrossEntropyRewardLoss()
 
@@ -251,6 +260,7 @@ def train_preference_comparisons(
             num_iterations=num_iterations,
             fragmenter=fragmenter,
             preference_gatherer=gatherer,
+            preference_querent=querent,
             reward_trainer=reward_trainer,
             comparison_queue_size=comparison_queue_size,
             fragment_length=fragment_length,

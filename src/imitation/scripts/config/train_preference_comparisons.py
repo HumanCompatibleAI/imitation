@@ -70,10 +70,13 @@ def human_preferences():
     gatherer_cls = preference_comparisons.PrefCollectGatherer
     gatherer_kwargs = dict(
         pref_collect_address="http://127.0.0.1:8000",
+        wait_for_user=True,
+    )
+    querent_cls = preference_comparisons.PrefCollectQuerent
+    querent_kwargs = dict(
+        pref_collect_address="http://127.0.0.1:8000",
         video_output_dir="../pref-collect/videofiles",
         video_fps=20,
-        wait_for_user=True,
-        random_preferences=False,
     )
     environment = dict(
         post_wrappers=dict(
