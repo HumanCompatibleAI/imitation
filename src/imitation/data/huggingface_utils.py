@@ -80,17 +80,59 @@ class _LazyDecodedList(Sequence[Any]):
             return jsonpickle.decode(self._encoded_list[idx])
 
 
-def trajectories_to_dataset(
-    trajectories: Sequence[types.Trajectory],
-) -> datasets.Dataset:
-    """Save a sequence of Trajectories to disk using HuggingFace's datasets library.
+def make_dict_from_trajectory(trajectory: types.Trajectory):
+    """Convert a Trajectory to a dict.
 
-    The dataset has the following fields:
+    The dict has the following fields:
     * obs: The observations. Shape: (num_timesteps, obs_dim). dtype: float.
     * acts: The actions. Shape: (num_timesteps, act_dim). dtype: float.
     * infos: The infos. Shape: (num_timesteps, ). dtype: (jsonpickled) str.
     * terminal: The terminal flags. Shape: (num_timesteps, ). dtype: bool.
     * rews: The rewards. Shape: (num_timesteps, ). dtype: float. if applicable.
+
+    Args:
+        trajectory: The trajectory to convert.
+
+    Returns:
+        A dict representing the trajectory.
+    """
+    # Replace 'None' values for `infos`` with array of empty dicts
+    infos = cast(
+        Sequence[Dict[str, Any]],
+        trajectory.infos if trajectory.infos is not None else [{}] * len(trajectory),
+    )
+
+    # Encode infos as jsonpickled strings
+    encoded_infos = [jsonpickle.encode(info) for info in infos]
+
+    trajectory_dict = dict(
+        obs=trajectory.obs,
+        acts=trajectory.acts,
+        infos=encoded_infos,
+        terminal=trajectory.terminal,
+    )
+
+    # Add rewards if applicable
+    if isinstance(trajectory, types.TrajectoryWithRew):
+        trajectory_dict["rews"] = trajectory.rews
+
+    return trajectory_dict
+
+
+def trajectories_to_dict(
+    trajectories: Sequence[types.Trajectory],
+) -> Dict[str, Sequence[Any]]:
+    """Convert a sequence of trajectories to a dict.
+
+    The dict has the following fields:
+
+    * obs: The observations. Shape: (num_trajectories, num_timesteps, obs_dim).
+    * acts: The actions. Shape: (num_trajectories, num_timesteps, act_dim).
+    * infos: The infos. Shape: (num_trajectories, num_timesteps) as jsonpickled str.
+    * terminal: The terminal flags. Shape: (num_trajectories, num_timesteps, ).
+    * rews: The rewards. Shape: (num_trajectories, num_timesteps) if applicable.
+
+    This dict can be used to construct a HuggingFace dataset.
 
     Args:
         trajectories: The trajectories to save.
@@ -100,7 +142,7 @@ def trajectories_to_dataset(
             `Trajectory` and others are `TrajectoryWithRew`.
 
     Returns:
-        The dataset.
+        A dict representing the trajectories.
     """
     # Check that all trajectories have rewards or none have rewards
     has_reward = [isinstance(traj, types.TrajectoryWithRew) for traj in trajectories]
@@ -109,7 +151,7 @@ def trajectories_to_dataset(
         raise ValueError("Some trajectories have rewards but not all")
 
     # Convert to dict
-    trajectory_dict = dict(
+    trajectory_dict: Dict[str, Sequence[Any]] = dict(
         obs=[traj.obs for traj in trajectories],
         acts=[traj.acts for traj in trajectories],
         # Replace 'None' values for `infos`` with array of empty dicts
@@ -131,5 +173,4 @@ def trajectories_to_dataset(
         trajectory_dict["rews"] = [
             cast(types.TrajectoryWithRew, traj).rews for traj in trajectories
         ]
-
-    return datasets.Dataset.from_dict(trajectory_dict)
+    return trajectory_dict

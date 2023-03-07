@@ -8,26 +8,20 @@ from typing import Mapping, Optional, Sequence, cast
 import datasets
 import numpy as np
 
-from imitation.data import huggingface_datasets_conversion as hfds
+from imitation.data import huggingface_utils
 from imitation.data.types import AnyPath, Trajectory, TrajectoryWithRew
 
 
-def save(path: AnyPath, trajectories: Sequence[Trajectory]):
+def save(path: AnyPath, trajectories: Sequence[Trajectory]) -> None:
     """Save a sequence of Trajectories to disk using HuggingFace's datasets library.
-
-    The dataset has the following fields:
-    * obs: The observations. Shape: (num_timesteps, obs_dim). dtype: float.
-    * acts: The actions. Shape: (num_timesteps, act_dim). dtype: float.
-    * infos: The infos. Shape: (num_timesteps, ). dtype: (jsonpickled) str.
-    * terminal: The terminal flags. Shape: (num_timesteps, ). dtype: bool.
-    * rews: The rewards. Shape: (num_timesteps, ). dtype: float. if applicable.
 
     Args:
         path: Trajectories are saved to this path.
         trajectories: The trajectories to save.
     """
     p = parse_path(path)
-    hfds.trajectories_to_dataset(trajectories).save_to_disk(p)
+    d = datasets.Dataset.from_dict(huggingface_utils.trajectories_to_dict(trajectories))
+    d.save_to_disk(p)
     logging.info(f"Dumped demonstrations to {p}.")
 
 
@@ -47,7 +41,7 @@ def load(path: AnyPath) -> Sequence[Trajectory]:
                 f"Expected to load a `datasets.Dataset` but got {type(dataset)}",
             )
 
-        return hfds.TrajectoryDatasetSequence(dataset)
+        return huggingface_utils.TrajectoryDatasetSequence(dataset)
 
     data = np.load(path, allow_pickle=True)  # works for both .npz and .pkl
 

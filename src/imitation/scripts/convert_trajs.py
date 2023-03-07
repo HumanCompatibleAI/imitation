@@ -40,7 +40,7 @@ def update_traj_file_in_place(path_str: types.AnyPath, /) -> pathlib.Path:
 
     if isinstance(
         trajs,
-        imitation.data.huggingface_datasets_conversion.TrajectoryDatasetSequence,
+        imitation.data.huggingface_utils.TrajectoryDatasetSequence,
     ):
         warnings.warn(f"File {path} is already in the new format. Skipping.")
         return path
