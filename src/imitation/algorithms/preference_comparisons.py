@@ -839,11 +839,14 @@ class PrefCollectQuerent(PreferenceQuerent):
         for query_id, query in identified_queries.items():
             self._write_fragment_video(query[0], name=f"{query_id}-left")
             self._write_fragment_video(query[1], name=f"{query_id}-right")
-            requests.put(
-                self.query_endpoint + query_id, json={"uuid": "{}".format(query_id)}
-            )
+            self._query(query_id)
         
         return identified_queries
+
+    def _query(self, query_id):
+        requests.put(
+            self.query_endpoint + query_id, json={"uuid": "{}".format(query_id)}
+        )
 
     def _write_fragment_video(self, fragment, name: str) -> None:
 
