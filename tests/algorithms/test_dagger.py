@@ -366,8 +366,8 @@ def test_trainer_makes_progress(init_trainer_fn, pendulum_venv, pendulum_expert_
         novice_rewards, _ = evaluation.evaluate_policy(
             trainer.policy,
             pendulum_venv,
-            15,
-            deterministic=False,
+            25,
+            deterministic=True,
             return_episode_rewards=True,
         )
         # note a randomly initialised policy does well for some seeds -- so may
@@ -377,10 +377,10 @@ def test_trainer_makes_progress(init_trainer_fn, pendulum_venv, pendulum_expert_
         assert np.mean(novice_rewards) < -1000
         # Train for 10 iterations. (6 or less causes test to fail on some configs.)
         # see https://github.com/HumanCompatibleAI/imitation/issues/580 for details
-        for i in range(10):
+        for i in range(5):
             # roll out a few trajectories for dataset, then train for a few steps
             collector = trainer.create_trajectory_collector()
-            for _ in range(5):
+            for _ in range(4):
                 obs = collector.reset()
                 dones = [False] * pendulum_venv.num_envs
                 while not np.any(dones):
@@ -394,7 +394,8 @@ def test_trainer_makes_progress(init_trainer_fn, pendulum_venv, pendulum_expert_
         rewards_after_training, _ = evaluation.evaluate_policy(
             trainer.policy,
             pendulum_venv,
-            15,
+            25,
+            deterministic=True,
             return_episode_rewards=True,
         )
 
