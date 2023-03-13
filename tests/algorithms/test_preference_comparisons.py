@@ -21,6 +21,7 @@ from imitation.data import types
 from imitation.data.types import TrajectoryWithRew
 from imitation.regularization import regularizers, updaters
 from imitation.rewards import reward_nets
+from imitation.testing import reward_improvement
 from imitation.util import networks, util
 
 UNCERTAINTY_ON = ["logit", "probability", "label"]
@@ -1064,7 +1065,7 @@ def test_that_trainer_improves(
     novice_agent_rewards, _ = evaluation.evaluate_policy(
         agent_trainer.algorithm.policy,
         action_is_reward_venv,
-        15,
+        25,
         return_episode_rewards=True,
     )
 
@@ -1073,7 +1074,7 @@ def test_that_trainer_improves(
     # after this training, and thus `later_rewards` should have lower loss.
     first_reward_network_stats = main_trainer.train(20, 20)
 
-    later_reward_network_stats = main_trainer.train(1000, 20)
+    later_reward_network_stats = main_trainer.train(50, 20)
     assert (
         first_reward_network_stats["reward_loss"]
         > later_reward_network_stats["reward_loss"]
@@ -1083,8 +1084,11 @@ def test_that_trainer_improves(
     trained_agent_rewards, _ = evaluation.evaluate_policy(
         agent_trainer.algorithm.policy,
         action_is_reward_venv,
-        15,
+        25,
         return_episode_rewards=True,
     )
 
-    assert np.mean(trained_agent_rewards) > np.mean(novice_agent_rewards)
+    assert reward_improvement.is_significant_reward_improvement(
+        novice_agent_rewards,
+        trained_agent_rewards,
+    )
