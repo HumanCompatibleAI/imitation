@@ -149,7 +149,7 @@ def test_smoke_bc_creation(
     expert_data_type=expert_data_types,
     rng=rngs,
 )
-@hypothesis.settings(deadline=20000, max_examples=50)
+@hypothesis.settings(deadline=20000, max_examples=15)
 def test_smoke_bc_training(
     env_name: str,
     bc_args: dict,
@@ -169,7 +169,7 @@ def test_smoke_bc_training(
             expert_data_type=expert_data_type,
             env_name=env_name,
             rng=rng,
-            num_trajectories=3,  # Only use 3 trajectories to speed up the test
+            num_trajectories=2,  # Only use 2 trajectories to speed up the test
         ),
     )
     # WHEN
