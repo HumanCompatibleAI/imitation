@@ -110,7 +110,12 @@ def test_density_with_other_trajectory_types(
     pendulum_venv,
     rng,
 ):
-    rl_algo = stable_baselines3.PPO(policies.ActorCriticPolicy, pendulum_venv)
+    rl_algo = stable_baselines3.PPO(
+        policies.ActorCriticPolicy,
+        pendulum_venv,
+        n_steps=10,  # small value to make test faster
+        n_epochs=2,  # small value to make test faster
+    )
     rollouts = pendulum_expert_trajectories[:2]
     transitions = rollout.flatten_trajectories_with_rew(rollouts)
     transitions_mappings = [
