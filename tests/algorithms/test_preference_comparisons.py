@@ -3,7 +3,7 @@
 import math
 import re
 import uuid
-from typing import Any, Sequence
+from typing import Any, Sequence, Tuple
 from unittest.mock import Mock
 
 import gym
@@ -13,13 +13,14 @@ import seals  # noqa: F401
 import stable_baselines3
 import torch as th
 from gym import spaces
-from imitation.algorithms.preference_comparisons import PreferenceQuerent, PrefCollectQuerent
 from stable_baselines3.common import evaluation
 from stable_baselines3.common.envs import FakeImageEnv
 from stable_baselines3.common.vec_env import DummyVecEnv
 
 import imitation.testing.reward_nets as testing_reward_nets
 from imitation.algorithms import preference_comparisons
+from imitation.algorithms.preference_comparisons import PreferenceQuerent, PrefCollectQuerent, PreferenceGatherer, \
+    SyntheticGatherer
 from imitation.data import types
 from imitation.data.types import TrajectoryWithRew
 from imitation.regularization import regularizers, updaters
@@ -73,6 +74,23 @@ def random_fragmenter(rng):
 @pytest.fixture
 def agent_trainer(agent, reward_net, venv, rng):
     return preference_comparisons.AgentTrainer(agent, reward_net, venv, rng)
+
+
+# TODO: trajectory_with_rew fixture already exists in data.test_types, should be moved to a conftest.py
+@pytest.fixture
+def trajectory_with_rew(venv):
+    observations, rewards, dones, infos, actions = [], [], [], [], []
+    observations.append(venv.observation_space.sample())
+    for _ in range(2):
+        observations.append(venv.observation_space.sample())
+        actions.append(venv.action_space.sample())
+        rewards.append(0.0)
+        infos.append({})
+    return TrajectoryWithRew(obs=np.array(observations),
+                             acts=np.array(actions),
+                             rews=np.array(rewards),
+                             infos=np.array(infos),
+                             terminal=False)
 
 
 def assert_info_arrs_equal(arr1, arr2):  # pragma: no cover
@@ -1122,3 +1140,29 @@ def test_sends_put_request_for_each_query(requests_mock):
 
     assert requests_mock.last_request.method == "PUT"
     assert requests_mock.last_request.text == f'{{"uuid": "{query_id}"}}'
+
+
+class ConcretePreferenceGatherer(PreferenceGatherer):
+
+    def __call__(self) -> Tuple[np.ndarray, np.ndarray]:
+        pass
+
+
+def test_adds_queries_to_pending_queries():
+    gatherer = ConcretePreferenceGatherer()
+    query_id = "id"
+    queries = {query_id: Mock()}
+
+    gatherer.add(new_queries=queries)
+    assert query_id in list(gatherer.pending_queries.keys())
+
+
+def test_clears_pending_queries(trajectory_with_rew):
+    gatherer = SyntheticGatherer(sample=False)
+
+    queries = {"id": (trajectory_with_rew, trajectory_with_rew)}
+    gatherer.add(new_queries=queries)
+
+    gatherer()
+
+    assert len(gatherer.pending_queries) == 0
