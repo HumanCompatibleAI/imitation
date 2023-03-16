@@ -941,7 +941,7 @@ class PreferenceGatherer(abc.ABC):
             probabilities.
         """  # noqa: DAR202
 
-    def add(self, new_queries: Dict[str, Sequence[TrajectoryWithRewPair]]) -> None:
+    def add(self, new_queries: Dict[str, TrajectoryWithRewPair]) -> None:
         """Adds queries to pending queries.
 
         Args:
