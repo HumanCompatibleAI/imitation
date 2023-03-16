@@ -20,6 +20,10 @@ executors:
     environment:
       # more CPUs visible but we're throttled to 8, which breaks auto-detect
       NUM_CPUS: 8
+      # Prevent git lfs from downloading files upon checkout
+      # (we want to do this explicitly, so we can cache them)
+      # see https://naiyer.dev/post/2020/09/05/using-git-lfs-in-ci/ for details
+      GIT_LFS_SKIP_SMUDGE: 1
   static-analysis-xlarge:
     <<: *defaults
     # darglint is slow enough that we benefit from xlarge even for linting.
@@ -45,6 +49,18 @@ commands:
     description: "Check out and update Python dependencies on Linux."
     steps:
       - checkout
+
+      # Download and cache git-lfs files
+      - run: git lfs ls-files -l | cut -d' ' -f1 | sort > .lfs-assets-id
+      - restore_cache:
+          keys:
+            - v1-lfscache-{{ checksum ".lfs-assets-id" }}
+            - v1-lfscache-
+      - run: git lfs pull
+      - save_cache:
+          paths:
+            - .git/lfs
+          key: v1-lfscache-{{ checksum ".lfs-assets-id" }}
 
       # Download and cache dependencies
       - restore_cache:
@@ -313,8 +329,8 @@ jobs:
           name: run tests
           command: |
             Xdummy-entrypoint.py pytest -n ${NUM_CPUS} --cov=/venv/lib/python3.8/site-packages/imitation \
-                   --cov=tests --junitxml=/tmp/test-reports/junit.xml \
-                    -vv tests/
+                  --cov=tests --junitxml=/tmp/test-reports/junit.xml \
+                  --durations=500 -vv tests/
             mv .coverage .coverage.imitation
             coverage combine  # rewrite paths from virtualenv to src/
 
