@@ -187,7 +187,7 @@ def seals_hopper():
     # locals().update(**MUJOCO_SHARED_LOCALS)
     environment = dict(gym_id="seals/Hopper-v0")
     demonstrations = dict(rollout_type="ppo-huggingface")
-    train = dict(
+    policy = dict(
         policy_cls="MlpPolicy",
         policy_kwargs=dict(
             activation_fn=nn.ReLU,
@@ -216,7 +216,7 @@ def seals_swimmer():
     environment = dict(gym_id="seals/Swimmer-v0")
     total_timesteps = int(2e6)
     demonstrations = dict(rollout_type="ppo-huggingface")
-    train = dict(
+    policy = dict(
         policy_cls="MlpPolicy",
         policy_kwargs=dict(
             activation_fn=nn.ReLU,
@@ -245,7 +245,7 @@ def seals_walker():
     locals().update(**MUJOCO_SHARED_LOCALS)
     environment = dict(gym_id="seals/Walker2d-v0")
     demonstrations = dict(rollout_type="ppo-huggingface")
-    train = dict(
+    policy = dict(
         policy_cls="MlpPolicy",
         policy_kwargs=dict(
             activation_fn=nn.ReLU,

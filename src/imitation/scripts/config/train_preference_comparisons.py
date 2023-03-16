@@ -120,20 +120,13 @@ def seals_half_cheetah():
     )
     num_iterations = 50
     total_timesteps = 20000000
-    # train = dict(
-    #     policy_cls="MlpPolicy",
-    #     policy_kwargs=dict(
-    #         activation_fn=nn.ReLU,
-    #         # net_arch=[dict(pi=[64, 64], vf=[64, 64])],
-    #     ),
-    # )
 
 
 @train_preference_comparisons_ex.named_config
 def seals_hopper():
     # locals().update(**MUJOCO_SHARED_LOCALS)
     environment = dict(gym_id="seals/Hopper-v0")
-    train = dict(
+    policy = dict(
         policy_cls="MlpPolicy",
         policy_kwargs=dict(
             activation_fn=nn.ReLU,
@@ -160,7 +153,7 @@ def seals_hopper():
 def seals_swimmer():
     # locals().update(**MUJOCO_SHARED_LOCALS)
     environment = dict(gym_id="seals/Swimmer-v0")
-    train = dict(
+    policy = dict(
         policy_cls="MlpPolicy",
         policy_kwargs=dict(
             activation_fn=nn.ReLU,
@@ -188,7 +181,7 @@ def seals_swimmer():
 def seals_walker():
     # locals().update(**MUJOCO_SHARED_LOCALS)
     environment = dict(gym_id="seals/Walker2d-v0")
-    train = dict(
+    policy = dict(
         policy_cls="MlpPolicy",
         policy_kwargs=dict(
             activation_fn=nn.ReLU,

@@ -74,7 +74,7 @@ def cartpole():
 def seals_cartpole():
     environment = dict(gym_id="seals/CartPole-v0", num_vec=8)
     total_timesteps = int(1e5)
-    train = dict(
+    policy = dict(
         policy_cls="MlpPolicy",
         policy_kwargs=dict(
             activation_fn=nn.ReLU,
@@ -111,7 +111,7 @@ def seals_half_cheetah():
         num_vec=1,
     )
 
-    train = dict(
+    policy = dict(
         policy_cls="MlpPolicy",
         policy_kwargs=dict(
             activation_fn=nn.Tanh,
@@ -141,7 +141,7 @@ def seals_half_cheetah():
 @train_rl_ex.named_config
 def seals_hopper():
     environment = dict(gym_id="seals/Hopper-v0", num_vec=1)
-    train = dict(
+    policy = dict(
         policy_cls="MlpPolicy",
         policy_kwargs=dict(
             activation_fn=nn.ReLU,
@@ -211,7 +211,7 @@ def seals_ant():
         num_vec=1,
     )
 
-    train = dict(
+    policy = dict(
         policy_cls="MlpPolicy",
         policy_kwargs=dict(
             activation_fn=nn.Tanh,
@@ -242,7 +242,7 @@ def seals_ant():
 @train_rl_ex.named_config
 def seals_swimmer():
     environment = dict(gym_id="seals/Swimmer-v0", num_vec=1)
-    train = dict(
+    policy = dict(
         policy_cls="MlpPolicy",
         policy_kwargs=dict(
             activation_fn=nn.ReLU,
@@ -273,7 +273,7 @@ def seals_swimmer():
 @train_rl_ex.named_config
 def seals_walker():
     environment = dict(gym_id="seals/Walker2d-v0", num_vec=1)
-    train = dict(
+    policy = dict(
         policy_cls="MlpPolicy",
         policy_kwargs=dict(
             activation_fn=nn.ReLU,
