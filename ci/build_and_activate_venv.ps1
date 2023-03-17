@@ -15,8 +15,8 @@ python -m pip install --upgrade pip setuptools==66.1.1
 
 # download roms and separately install autorom
 pip install autorom
-wget ${atari_roms}
-base64 Roms.tar.gz.b64 --decode &> Roms.tar.gz
+curl $atari_roms -o Roms.tar.gz.b64
+certutil -decode Roms.tar.gz.b64 Roms.tar.gz
 AutoROM --accept-license --source-file Roms.tar.gz
 
 pip install ".[docs,parallel,test]"

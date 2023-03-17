@@ -8,12 +8,12 @@
 
 set -e  # exit immediately on any error
 
-venv=$1
-atari_roms=$2
+atari_roms=$1
+venv=$2
 if [[ ${venv} == "" ]]; then
   venv="venv"
 fi
-python_version=$2
+python_version=$3
 if [[ ${python_version} == "" ]]; then
   python_version="python3.8"
 fi
@@ -26,7 +26,7 @@ python -m pip install --upgrade pip setuptools==66.1.1
 
 # download roms and separately install autorom
 pip install autorom
-wget ${atari_roms}
+curl ${atari_roms} -o Roms.tar.gz.b64
 base64 Roms.tar.gz.b64 --decode &> Roms.tar.gz
 AutoROM --accept-license --source-file Roms.tar.gz
 
