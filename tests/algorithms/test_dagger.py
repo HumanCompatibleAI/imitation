@@ -375,7 +375,7 @@ def test_trainer_makes_progress(init_trainer_fn, pendulum_venv, pendulum_expert_
         # from -1,200 to -130 (approx.), per Figure 3 in this PDF (on page 3):
         # https://arxiv.org/pdf/2106.09556.pdf
         assert np.mean(novice_rewards) < -1000
-        # Train for 10 iterations. (6 or less causes test to fail on some configs.)
+        # Train for 5 iterations. (4 or fewer causes test to fail on some configs.)
         # see https://github.com/HumanCompatibleAI/imitation/issues/580 for details
         for i in range(5):
             # roll out a few trajectories for dataset, then train for a few steps
