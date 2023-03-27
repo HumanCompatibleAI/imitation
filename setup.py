@@ -18,7 +18,7 @@ ATARI_REQUIRE = [
     "opencv-python",
     "ale-py==0.7.4",
     "pillow",
-    "autorom[accept-rom-license]~=0.5.5",
+    "autorom[accept-rom-license]~=0.6.0",
 ]
 PYTYPE = ["pytype==2022.7.26"] if IS_NOT_WINDOWS else []
 STABLE_BASELINES3 = "stable-baselines3>=1.7.0"

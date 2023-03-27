@@ -70,7 +70,7 @@ commands:
       - run:
           name: install dependencies
           # Only create venv if it's not been restored from cache
-          command: "[[ -d /venv ]] || ./ci/build_and_activate_venv.sh $ATARI_ROMS /venv"
+          command: "[[ -d /venv ]] || ./ci/build_and_activate_venv.sh /venv"
 
       - save_cache:
           paths:
@@ -103,7 +103,7 @@ commands:
           # Only create venv if it's not been restored from cache.
           # We use python3.9 on macOS due to a bug with importing `ray` in python3.8:
           # https://github.com/ray-project/ray/issues/27380
-          command: "[[ -d ~/venv ]] || ./ci/build_and_activate_venv.sh $ATARI_ROMS ~/venv python3.9"
+          command: "[[ -d ~/venv ]] || ./ci/build_and_activate_venv.sh ~/venv python3.9"
 
       - save_cache:
           paths:
@@ -162,7 +162,7 @@ commands:
       - run:
           name: install dependencies
           # Only create venv if it's not been restored from cache
-          command: if (-not (Test-Path venv)) { .\ci\build_and_activate_venv.ps1 -venv venv -atari_roms "$env:ATARI_ROMS"}
+          command: if (-not (Test-Path venv)) { .\ci\build_and_activate_venv.ps1 -venv venv}
           shell: powershell.exe
 
       - save_cache:
