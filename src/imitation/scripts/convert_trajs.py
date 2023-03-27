@@ -11,8 +11,8 @@ extension (i.e. "A.pkl" -> "A/", "A.npz" -> "A/", "A/" -> "A/", "A.foo" -> "A/")
 import pathlib
 import warnings
 
-import imitation.data.serialize
-from imitation.data import types
+from imitation.data import huggingface_utils, serialize, types
+from imitation.util import util
 
 
 def update_traj_file_in_place(path_str: types.AnyPath, /) -> pathlib.Path:
@@ -28,7 +28,7 @@ def update_traj_file_in_place(path_str: types.AnyPath, /) -> pathlib.Path:
     Returns:
         The path to the converted trajectory dataset.
     """
-    path = imitation.data.serialize.parse_path(path_str)
+    path = util.parse_path(path_str)
     with warnings.catch_warnings():
         # Filter out DeprecationWarning because we expect to load old trajectories here.
         warnings.filterwarnings(
@@ -36,17 +36,17 @@ def update_traj_file_in_place(path_str: types.AnyPath, /) -> pathlib.Path:
             message="Loading old .* version of Trajectories.*",
             category=DeprecationWarning,
         )
-        trajs = imitation.data.serialize.load(path)
+        trajs = serialize.load(path)
 
     if isinstance(
         trajs,
-        imitation.data.huggingface_utils.TrajectoryDatasetSequence,
+        huggingface_utils.TrajectoryDatasetSequence,
     ):
         warnings.warn(f"File {path} is already in the new format. Skipping.")
         return path
     else:
         converted_path = path.with_suffix("")
-        imitation.data.serialize.save(converted_path, trajs)
+        serialize.save(converted_path, trajs)
         return converted_path
 
 

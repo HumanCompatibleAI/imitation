@@ -1,15 +1,16 @@
 """Serialization utilities for trajectories."""
 import logging
 import os
-import pathlib
 import warnings
-from typing import Mapping, Optional, Sequence, cast
+from typing import Mapping, Sequence, cast
 
 import datasets
+import huggingface_sb3 as hfsb3
 import numpy as np
 
 from imitation.data import huggingface_utils
 from imitation.data.types import AnyPath, Trajectory, TrajectoryWithRew
+from imitation.util import util
 
 
 def save(path: AnyPath, trajectories: Sequence[Trajectory]) -> None:
@@ -19,7 +20,7 @@ def save(path: AnyPath, trajectories: Sequence[Trajectory]) -> None:
         path: Trajectories are saved to this path.
         trajectories: The trajectories to save.
     """
-    p = parse_path(path)
+    p = util.parse_path(path)
     d = datasets.Dataset.from_dict(huggingface_utils.trajectories_to_dict(trajectories))
     d.save_to_disk(p)
     logging.info(f"Dumped demonstrations to {p}.")
@@ -89,84 +90,12 @@ def load_with_rewards(path: AnyPath) -> Sequence[TrajectoryWithRew]:
     return cast(Sequence[TrajectoryWithRew], data)
 
 
-def parse_path(
-    path: AnyPath,
-    allow_relative: bool = True,
-    base_directory: Optional[pathlib.Path] = None,
-) -> pathlib.Path:
-    """Parse a path to a `pathlib.Path` object.
-
-    All resulting paths are resolved, absolute paths. If `allow_relative` is True,
-    then relative paths are allowed as input, and are resolved relative to the
-    current working directory, or relative to `base_directory` if it is
-    specified.
-
-    Args:
-        path: The path to parse. Can be a string, bytes, or `os.PathLike`.
-        allow_relative: If True, then relative paths are allowed as input, and
-            are resolved relative to the current working directory. If False,
-            an error is raised if the path is not absolute.
-        base_directory: If specified, then relative paths are resolved relative
-            to this directory, instead of the current working directory.
-
-    Returns:
-        A `pathlib.Path` object.
-
-    Raises:
-        ValueError: If `allow_relative` is False and the path is not absolute.
-        ValueError: If `base_directory` is specified and `allow_relative` is
-            False.
-    """
-    if base_directory is not None and not allow_relative:
-        raise ValueError(
-            "If `base_directory` is specified, then `allow_relative` must be True.",
-        )
-
-    parsed_path: pathlib.Path
-    if isinstance(path, pathlib.Path):
-        parsed_path = path
-    elif isinstance(path, str):
-        parsed_path = pathlib.Path(path)
-    elif isinstance(path, bytes):
-        parsed_path = pathlib.Path(path.decode())
-    else:
-        parsed_path = pathlib.Path(str(path))
-
-    if parsed_path.is_absolute():
-        return parsed_path
-    else:
-        if allow_relative:
-            base_directory = base_directory or pathlib.Path.cwd()
-            # relative to current working directory
-            return base_directory / parsed_path
-        else:
-            raise ValueError(f"Path {str(parsed_path)} is not absolute")
-
-
-def parse_optional_path(
-    path: Optional[AnyPath],
-    allow_relative: bool = True,
-    base_directory: Optional[pathlib.Path] = None,
-) -> Optional[pathlib.Path]:
-    """Parse an optional path to a `pathlib.Path` object.
-
-    All resulting paths are resolved, absolute paths. If `allow_relative` is True,
-    then relative paths are allowed as input, and are resolved relative to the
-    current working directory, or relative to `base_directory` if it is
-    specified.
-
-    Args:
-        path: The path to parse. Can be a string, bytes, or `os.PathLike`.
-        allow_relative: If True, then relative paths are allowed as input, and
-            are resolved relative to the current working directory. If False,
-            an error is raised if the path is not absolute.
-        base_directory: If specified, then relative paths are resolved relative
-            to this directory, instead of the current working directory.
-
-    Returns:
-        A `pathlib.Path` object, or None if `path` is None.
-    """
-    if path is None:
-        return None
-    else:
-        return parse_path(path, allow_relative, base_directory)
+def load_rollouts_from_huggingface(
+    algo_name: str,
+    env_name: str,
+    organization: str = "HumanCompatibleAI",
+) -> str:
+    model_name = hfsb3.ModelName(algo_name, hfsb3.EnvironmentName(env_name))
+    repo_id = hfsb3.ModelRepoId(organization, model_name)
+    filename = hfsb3.load_from_hub(repo_id, "rollouts.npz")
+    return filename

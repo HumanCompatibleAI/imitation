@@ -13,9 +13,9 @@ import torch as th
 from sacred.observers import FileStorageObserver
 from stable_baselines3.common import type_aliases
 
-import imitation.data.serialize
+import imitation.data.serialize as data_serialize
+import imitation.policies.serialize as policies_serialize
 from imitation.algorithms import preference_comparisons
-from imitation.policies import serialize
 from imitation.scripts.config.train_preference_comparisons import (
     train_preference_comparisons_ex,
 )
@@ -30,7 +30,7 @@ def save_model(
     save_path: pathlib.Path,
 ):
     """Save the model as `model.zip`."""
-    serialize.save_stable_model(
+    policies_serialize.save_stable_model(
         output_dir=save_path / "policy",
         model=agent_trainer.algorithm,
     )
@@ -205,7 +205,7 @@ def train_preference_comparisons(
                     "exploration_frac can't be set when a trajectory dataset is used",
                 )
             trajectory_generator = preference_comparisons.TrajectoryDataset(
-                trajectories=imitation.data.serialize.load_with_rewards(
+                trajectories=data_serialize.load_with_rewards(
                     trajectory_path,
                 ),
                 rng=_rnd,

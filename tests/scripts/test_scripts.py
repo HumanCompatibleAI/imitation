@@ -29,7 +29,7 @@ import torch as th
 from stable_baselines3.common import buffers
 from stable_baselines3.her.her_replay_buffer import HerReplayBuffer
 
-import imitation.data.serialize
+from imitation.data import serialize
 from imitation.rewards import reward_nets
 from imitation.scripts import (
     analyze,
@@ -53,7 +53,7 @@ ALL_SCRIPTS_MODS = [
     train_rl,
 ]
 
-TEST_DATA_PATH = imitation.data.serialize.parse_path("tests/testdata")
+TEST_DATA_PATH = util.parse_path("tests/testdata")
 
 if not TEST_DATA_PATH.exists():  # pragma: no cover
     raise RuntimeError(
@@ -297,7 +297,7 @@ def test_train_dagger_warmstart(tmpdir):
     )
     assert run.status == "COMPLETED"
 
-    log_dir = imitation.data.serialize.parse_path(run.config["logging"]["log_dir"])
+    log_dir = util.parse_path(run.config["logging"]["log_dir"])
     policy_path = log_dir / "scratch" / "policy-latest.pt"
     run_warmstart = train_imitation.train_imitation_ex.run(
         command_name="dagger",
@@ -420,10 +420,7 @@ def test_train_bc_warmstart(tmpdir):
     assert run.status == "COMPLETED"
     assert isinstance(run.result, dict)
 
-    policy_path = (
-        imitation.data.serialize.parse_path(run.config["logging"]["log_dir"])
-        / "final.th"
-    )
+    policy_path = util.parse_path(run.config["logging"]["log_dir"]) / "final.th"
     run_warmstart = train_imitation.train_imitation_ex.run(
         command_name="bc",
         named_configs=["seals_cartpole"] + ALGO_FAST_CONFIGS["imitation"],
@@ -586,7 +583,7 @@ def test_train_adversarial_warmstart(tmpdir, command):
         config_updates=config_updates,
     )
 
-    log_dir = imitation.data.serialize.parse_path(run.config["logging"]["log_dir"])
+    log_dir = util.parse_path(run.config["logging"]["log_dir"])
     policy_path = log_dir / "checkpoints" / "final" / "gen_policy"
 
     run_warmstart = train_adversarial.train_adversarial_ex.run(
@@ -671,7 +668,7 @@ def test_transfer_learning(tmpdir: str) -> None:
     Args:
         tmpdir: Temporary directory to save results to.
     """
-    tmpdir_path = imitation.data.serialize.parse_path(tmpdir)
+    tmpdir_path = util.parse_path(tmpdir)
     log_dir_train = tmpdir_path / "train"
     run = train_adversarial.train_adversarial_ex.run(
         command_name="airl",
@@ -720,7 +717,7 @@ def test_preference_comparisons_transfer_learning(
         tmpdir: Temporary directory to save results to.
         named_configs_dict: Named configs for preference_comparisons and rl.
     """
-    tmpdir_path = imitation.data.serialize.parse_path(tmpdir)
+    tmpdir_path = util.parse_path(tmpdir)
 
     log_dir_train = tmpdir_path / "train"
     run = train_preference_comparisons.train_preference_comparisons_ex.run(
@@ -888,7 +885,7 @@ def test_parallel_arg_errors(tmpdir):
 
 
 def _generate_test_rollouts(tmpdir: str, env_named_config: str) -> pathlib.Path:
-    tmpdir_path = imitation.data.serialize.parse_path(tmpdir)
+    tmpdir_path = util.parse_path(tmpdir)
     train_rl.train_rl_ex.run(
         named_configs=[env_named_config] + ALGO_FAST_CONFIGS["rl"],
         config_updates=dict(
@@ -960,7 +957,7 @@ def _run_train_bc_for_test_analyze_imit(run_name, sacred_logs_dir, log_dir):
     ),
 )
 def test_analyze_imitation(tmpdir: str, run_names: List[str], run_sacred_fn):
-    sacred_logs_dir = tmpdir_path = imitation.data.serialize.parse_path(tmpdir)
+    sacred_logs_dir = tmpdir_path = util.parse_path(tmpdir)
 
     # Generate sacred logs (other logs are put in separate tmpdir for deletion).
     for run_name in run_names:
@@ -1051,13 +1048,13 @@ def new_rollouts_file_in_tmp(tmpdir) -> Generator[pathlib.Path, None, None]:
 
 def test_converted_trajectories_equal_original(old_rollouts_file_in_tmp: str):
     # GIVEN
-    old_trajs = imitation.data.serialize.load(old_rollouts_file_in_tmp)
+    old_trajs = serialize.load(old_rollouts_file_in_tmp)
 
     # WHEN
     converted_path = convert_trajs.update_traj_file_in_place(old_rollouts_file_in_tmp)
 
     # THEN
-    converted_trajs = imitation.data.serialize.load(converted_path)
+    converted_trajs = serialize.load(converted_path)
 
     assert len(old_trajs) == len(converted_trajs)
     for t_old, t_converted in zip(old_trajs, converted_trajs):

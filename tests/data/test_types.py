@@ -13,6 +13,7 @@ import numpy as np
 import pytest
 
 from imitation.data import serialize, types
+from imitation.util import util
 
 SPACES = [
     gym.spaces.Discrete(3),
@@ -218,7 +219,7 @@ class TestData:
             save_dir_str = tmpdir
 
         with chdir_context:
-            save_dir = serialize.parse_path(save_dir_str)
+            save_dir = util.parse_path(save_dir_str)
             trajs = [trajectory_rew if use_rewards else trajectory]
             save_path = save_dir / "trajs"
 
@@ -397,41 +398,39 @@ def test_parse_path():
             "cannot be compared directly to pathlib.Path objects.",
         )
     # absolute paths
-    assert serialize.parse_path("/foo/bar") == pathlib.Path("/foo/bar")
-    assert serialize.parse_path(pathlib.Path("/foo/bar")) == pathlib.Path("/foo/bar")
-    assert serialize.parse_path(b"/foo/bar") == pathlib.Path("/foo/bar")
+    assert util.parse_path("/foo/bar") == pathlib.Path("/foo/bar")
+    assert util.parse_path(pathlib.Path("/foo/bar")) == pathlib.Path("/foo/bar")
+    assert util.parse_path(b"/foo/bar") == pathlib.Path("/foo/bar")
 
     # relative paths. implicit conversion to cwd
-    assert serialize.parse_path("foo/bar") == pathlib.Path.cwd() / "foo/bar"
-    assert (
-        serialize.parse_path(pathlib.Path("foo/bar")) == pathlib.Path.cwd() / "foo/bar"
-    )
-    assert serialize.parse_path(b"foo/bar") == pathlib.Path.cwd() / "foo/bar"
+    assert util.parse_path("foo/bar") == pathlib.Path.cwd() / "foo/bar"
+    assert util.parse_path(pathlib.Path("foo/bar")) == pathlib.Path.cwd() / "foo/bar"
+    assert util.parse_path(b"foo/bar") == pathlib.Path.cwd() / "foo/bar"
 
     # relative paths. conversion using custom base directory
     base_dir = pathlib.Path("/foo/bar")
-    assert serialize.parse_path("baz", base_directory=base_dir) == base_dir / "baz"
+    assert util.parse_path("baz", base_directory=base_dir) == base_dir / "baz"
     assert (
-        serialize.parse_path(pathlib.Path("baz"), base_directory=base_dir)
+        util.parse_path(pathlib.Path("baz"), base_directory=base_dir)
         == base_dir / "baz"
     )
-    assert serialize.parse_path(b"baz", base_directory=base_dir) == base_dir / "baz"
+    assert util.parse_path(b"baz", base_directory=base_dir) == base_dir / "baz"
 
     # pass a relative path but disallowing relative paths. should raise error.
     with pytest.raises(ValueError, match="Path .* is not absolute"):
-        serialize.parse_path("foo/bar", allow_relative=False)
+        util.parse_path("foo/bar", allow_relative=False)
 
     # pass a base direectory but disallowing relative paths. should raise error.
     with pytest.raises(
         ValueError,
         match="If `base_directory` is specified, then `allow_relative` must be True.",
     ):
-        serialize.parse_path(
+        util.parse_path(
             "foo/bar",
             base_directory=pathlib.Path("/foo/bar"),
             allow_relative=False,
         )
 
     # Parse optional path. Works the same way but passes None down the line.
-    assert serialize.parse_optional_path(None) is None
-    assert serialize.parse_optional_path("/foo/bar") == serialize.parse_path("/foo/bar")
+    assert util.parse_optional_path(None) is None
+    assert util.parse_optional_path("/foo/bar") == util.parse_path("/foo/bar")

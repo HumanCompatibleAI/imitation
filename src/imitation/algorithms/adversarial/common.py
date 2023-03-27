@@ -12,7 +12,6 @@ from stable_baselines3.common import base_class, on_policy_algorithm, policies, 
 from stable_baselines3.sac import policies as sac_policies
 from torch.nn import functional as F
 
-import imitation.data.serialize
 from imitation.algorithms import base
 from imitation.data import buffer, rollout, types, wrappers
 from imitation.rewards import reward_nets, reward_wrapper
@@ -203,7 +202,7 @@ class AdversarialTrainer(base.DemonstrationAlgorithm[types.Transitions]):
         self.venv = venv
         self.gen_algo = gen_algo
         self._reward_net = reward_net.to(gen_algo.device)
-        self._log_dir = imitation.data.serialize.parse_path(log_dir)
+        self._log_dir = util.parse_path(log_dir)
 
         # Create graph for optimising/recording stats on discriminator
         self._disc_opt_cls = disc_opt_cls

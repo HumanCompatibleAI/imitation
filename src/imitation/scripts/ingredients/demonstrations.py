@@ -8,9 +8,7 @@ from typing import Optional, Sequence, Union
 import numpy as np
 import sacred
 
-import imitation.data.serialize
-from imitation.data import rollout, types
-from imitation.policies import serialize
+from imitation.data import rollout, serialize, types
 from imitation.scripts.ingredients import environment, expert
 from imitation.scripts.ingredients import logging as logging_ingredient
 
@@ -129,7 +127,7 @@ def load_local_expert_trajs(
     Raises:
         ValueError: There are fewer trajectories than `n_expert_demos`.
     """
-    expert_trajs = imitation.data.serialize.load(rollout_path)
+    expert_trajs = serialize.load(rollout_path)
     logger.info(f"Loaded {len(expert_trajs)} expert trajectories from '{rollout_path}'")
     if n_expert_demos is not None:
         if len(expert_trajs) < n_expert_demos:

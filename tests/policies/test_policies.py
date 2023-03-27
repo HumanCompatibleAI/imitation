@@ -10,7 +10,6 @@ import torch as th
 from stable_baselines3.common import preprocessing
 from torch import nn
 
-import imitation.data.serialize
 from imitation.data import rollout
 from imitation.policies import base, serialize
 from imitation.util import registry, util
@@ -59,7 +58,7 @@ def test_save_stable_model_errors_and_warnings(
 ):
     """Check errors and warnings in `save_stable_model()`."""
     policy, env_name = policy_env_name_pair
-    tmpdir = imitation.data.serialize.parse_path(tmpdir)
+    tmpdir = util.parse_path(tmpdir)
     venv = util.make_vec_env(env_name, rng=rng)
 
     # Trigger FileNotFoundError for no model.{zip,pkl}
@@ -104,7 +103,7 @@ def _test_serialize_identity(env_name, model_cfg, tmpdir, rng):
         rng=np.random.default_rng(0),
     )
 
-    serialize.save_stable_model(imitation.data.serialize.parse_path(tmpdir), model)
+    serialize.save_stable_model(util.parse_path(tmpdir), model)
     loaded = serialize.load_policy(model_name, venv, path=tmpdir)
     venv.env_method("seed", 0)
     venv.reset()

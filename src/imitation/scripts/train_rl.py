@@ -18,9 +18,9 @@ from sacred.observers import FileStorageObserver
 from stable_baselines3.common import callbacks
 from stable_baselines3.common.vec_env import VecNormalize
 
-import imitation.data.serialize
+import imitation.data.serialize as data_serialize
+import imitation.policies.serialize as policies_serialize
 from imitation.data import rollout, wrappers
-from imitation.policies import serialize
 from imitation.rewards.reward_wrapper import RewardVecEnvWrapper
 from imitation.rewards.serialize import load_reward
 from imitation.scripts.config.train_rl import train_rl_ex
@@ -126,7 +126,7 @@ def train_rl(
 
         if policy_save_interval > 0:
             save_policy_callback: callbacks.EventCallback = (
-                serialize.SavePolicyCallback(policy_dir)
+                policies_serialize.SavePolicyCallback(policy_dir)
             )
             save_policy_callback = callbacks.EveryNTimesteps(
                 policy_save_interval,
@@ -149,13 +149,13 @@ def train_rl(
                 rollout_save_n_timesteps,
                 rollout_save_n_episodes,
             )
-            imitation.data.serialize.save(
+            data_serialize.save(  # pytype: disable=module-attr
                 save_path,
                 rollout.rollout(rl_algo, rl_algo.get_env(), sample_until, rng=_rnd),
             )
         if policy_save_final:
             output_dir = policy_dir / "final"
-            serialize.save_stable_model(output_dir, rl_algo)
+            policies_serialize.save_stable_model(output_dir, rl_algo)
 
         # Final evaluation of expert policy.
         return policy_evaluation.eval_policy(rl_algo, venv)
