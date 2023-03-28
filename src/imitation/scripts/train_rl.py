@@ -149,7 +149,7 @@ def train_rl(
                 rollout_save_n_timesteps,
                 rollout_save_n_episodes,
             )
-            data_serialize.save(  # pytype: disable=module-attr
+            data_serialize.save(
                 save_path,
                 rollout.rollout(rl_algo, rl_algo.get_env(), sample_until, rng=_rnd),
             )
