@@ -871,7 +871,7 @@ class PrefCollectQuerent(PreferenceQuerent):
                     frame = frame_info
                 frames.append(frame)
         else:
-            frames = frames.obs
+            frames = fragment.obs
 
         for frame in frames:
             # Transform to RGB frame if necessary
