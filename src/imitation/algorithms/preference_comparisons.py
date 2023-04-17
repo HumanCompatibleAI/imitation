@@ -1068,8 +1068,9 @@ class PrefCollectGatherer(PreferenceGatherer):
 
     def __call__(self) -> Tuple[Sequence[TrajectoryPair], np.ndarray]:
 
+        # TODO: create user-independent (automated) waiting policy
         if self.wait_for_user:
-            self.logger.log("Waiting for user to provide preferences. Press enter to continue.")
+            print("Waiting for user to provide preferences. Press enter to continue.")
             input()
 
         gathered_queries = []

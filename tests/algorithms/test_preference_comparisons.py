@@ -20,7 +20,7 @@ from stable_baselines3.common.vec_env import DummyVecEnv
 import imitation.testing.reward_nets as testing_reward_nets
 from imitation.algorithms import preference_comparisons
 from imitation.algorithms.preference_comparisons import PreferenceQuerent, PrefCollectQuerent, PreferenceGatherer, \
-    SyntheticGatherer
+    SyntheticGatherer, PrefCollectGatherer
 from imitation.data import types
 from imitation.data.types import TrajectoryWithRew
 from imitation.regularization import regularizers, updaters
@@ -1166,3 +1166,32 @@ def test_clears_pending_queries(trajectory_with_rew):
     gatherer()
 
     assert len(gatherer.pending_queries) == 0
+
+
+def test_returns_none_for_unanswered_query(requests_mock):
+    address = "https://test.de"
+    query_id = "1234"
+    answer = None
+
+    gatherer = PrefCollectGatherer(pref_collect_address=address)
+
+    requests_mock.get(f"{address}/preferences/query/{query_id}", json={"query_id": query_id, "label": answer})
+
+    preference = gatherer._gather_preference(query_id)
+
+    assert preference is answer
+
+
+def test_returns_preference_for_answered_query(requests_mock):
+    address = "https://test.de"
+    query_id = "1234"
+    answer = 1.0
+
+    gatherer = PrefCollectGatherer(pref_collect_address=address)
+
+    requests_mock.get(f"{address}/preferences/query/{query_id}", json={"query_id": query_id, "label": answer})
+
+    preference = gatherer._gather_preference(query_id)
+
+    assert preference == answer
+
