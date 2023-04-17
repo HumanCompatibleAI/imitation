@@ -1,0 +1,15 @@
+defaults:
+  - airl
+  - expert_trajs: generated
+  - gen_algo: on_disk
+  - _self_
+
+gen_algo:
+  environment:
+    max_episode_steps: 32
+
+hydra:
+  mode: MULTIRUN
+  sweeper:
+    params:
+      environment: glob(*,exclude=gym_env)

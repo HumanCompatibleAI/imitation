@@ -1,0 +1,38 @@
+import dataclasses
+
+from hydra.core.config_store import ConfigStore
+from hydra.utils import call
+from omegaconf import MISSING
+
+
+@dataclasses.dataclass
+class Config:
+    # Note: we don't define _target_ here so in the subclasses it can be defined last.
+    #  This way we can instantiate a fixed schedule with `FixedSchedule(0.1)`.
+    #  If we defined _target_ here, then we would have to instantiate a fixed schedule
+    #  with `FixedSchedule(val=0.1)`. Otherwise we would set _target_ to 0.1.
+    pass
+
+
+@dataclasses.dataclass
+class FixedSchedule(Config):
+    val: float = MISSING
+    _target_: str = "stable_baselines3.common.utils.constant_fn"
+
+
+@dataclasses.dataclass
+class LinearSchedule(Config):
+    start: float = MISSING
+    end: float = MISSING
+    end_fraction: float = MISSING
+    _target_: str = "stable_baselines3.common.utils.get_linear_fn"
+
+
+def make_schedule(cfg: Config):
+    return call(cfg)
+
+
+def register_configs(group: str):
+    cs = ConfigStore.instance()
+    cs.store(group=group, name="fixed", node=FixedSchedule)
+    cs.store(group=group, name="linear", node=LinearSchedule)

@@ -1,0 +1,5 @@
+defaults:
+  - gym_env
+
+env_name: CartPole-v0
+max_episode_steps: 500
