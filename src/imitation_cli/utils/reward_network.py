@@ -28,10 +28,9 @@ class BasicRewardNet(Config):
 
     @staticmethod
     def make(environment: gym_env.Config, normalize_input_layer: bool, **kwargs):
-        env = gym_env.make_venv(environment, rnd=np.random.default_rng())
         reward_net = reward_nets.BasicRewardNet(
-            env.observation_space,
-            env.action_space,
+            environment.observation_space,
+            environment.action_space,
             **kwargs,
         )
         if normalize_input_layer:
@@ -49,10 +48,9 @@ class BasicShapedRewardNet(BasicRewardNet):
 
     @staticmethod
     def make(environment: gym_env.Config, normalize_input_layer: bool, **kwargs):
-        env = gym_env.make_venv(environment, rnd=np.random.default_rng())
         reward_net = reward_nets.BasicShapedRewardNet(
-            env.observation_space,
-            env.action_space,
+            environment.observation_space,
+            environment.action_space,
             **kwargs,
         )
         if normalize_input_layer:
@@ -76,10 +74,9 @@ class RewardEnsemble(Config):
         ensemble_member_config: BasicRewardNet,
         add_std_alpha: Optional[float],
     ):
-        env = gym_env.make_venv(environment, rnd=np.random.default_rng())
         members = [call(ensemble_member_config)]
         reward_net = reward_nets.RewardEnsemble(
-            env.observation_space, env.action_space, members
+            environment.observation_space, environment.action_space, members
         )
         if add_std_alpha is not None:
             reward_net = reward_nets.AddSTDRewardWrapper(

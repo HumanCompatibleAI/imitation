@@ -3,20 +3,13 @@ import logging
 from typing import Optional
 
 import hydra
-import numpy as np
 from hydra.core.config_store import ConfigStore
+from hydra.utils import call
 from omegaconf import MISSING
 
 from imitation.algorithms.adversarial.airl import AIRL
 from imitation.data import rollout
-from imitation_cli.utils import environment as gym_env
-from imitation_cli.utils import (
-    optimizer,
-    policy,
-    reward_network,
-    rl_algorithm,
-    trajectories,
-)
+from imitation_cli.utils import environment as gym_env, optimizer, policy, reward_network, rl_algorithm, trajectories
 
 
 @dataclasses.dataclass
@@ -63,15 +56,14 @@ reward_network.register_configs("reward_net")
 )
 def run_airl(cfg: AIRLConfig) -> None:
 
-    rng = np.random.default_rng(cfg.seed)
-    expert_trajs = trajectories.get_trajectories(cfg.expert_trajs, rng)
+    expert_trajs = call(cfg.expert_trajs)
     print(len(expert_trajs))
 
-    venv = gym_env.make_venv(cfg.environment, rng)
+    venv = call(cfg.environment)
 
     reward_net = reward_network.make_reward_net(cfg.reward_net)
 
-    gen_algo = rl_algorithm.make_rl_algo(cfg.gen_algo, rng)
+    gen_algo = call(cfg.gen_algo)
 
     trainer = AIRL(
         venv=venv,
@@ -80,7 +72,7 @@ def run_airl(cfg: AIRLConfig) -> None:
         reward_net=reward_net,
         demo_batch_size=cfg.demo_batch_size,
         n_disc_updates_per_round=cfg.n_disc_updates_per_round,
-        disc_opt_cls=optimizer.make_optimizer(cfg.disc_opt_cls),
+        disc_opt_cls=call(cfg.disc_opt_cls),
         gen_train_timesteps=cfg.gen_train_timesteps,
         gen_replay_buffer_capacity=cfg.gen_replay_buffer_capacity,
         init_tensorboard=cfg.init_tensorboard,

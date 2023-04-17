@@ -32,10 +32,6 @@ class SGD(Config):
         return torch.optim.SGD
 
 
-def make_optimizer(cfg: Config):
-    return call(cfg)
-
-
 def register_configs(group: str):
     cs = ConfigStore.instance()
     cs.store(group=group, name="adam", node=Adam)

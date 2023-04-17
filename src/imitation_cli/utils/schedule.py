@@ -28,10 +28,6 @@ class LinearSchedule(Config):
     _target_: str = "stable_baselines3.common.utils.get_linear_fn"
 
 
-def make_schedule(cfg: Config):
-    return call(cfg)
-
-
 def register_configs(group: str):
     cs = ConfigStore.instance()
     cs.store(group=group, name="fixed", node=FixedSchedule)

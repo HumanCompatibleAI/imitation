@@ -1,12 +1,11 @@
 import dataclasses
 import pathlib
 
-import numpy as np
 from hydra.core.config_store import ConfigStore
 from hydra.utils import call
 from omegaconf import MISSING
 
-from imitation_cli.utils import environment, policy
+from imitation_cli.utils import policy, randomness
 
 
 @dataclasses.dataclass
@@ -20,7 +19,7 @@ class OnDisk(Config):
     path: pathlib.Path = MISSING
 
     @staticmethod
-    def make(path: pathlib.Path, rng: np.random.Generator):
+    def make(path: pathlib.Path):
         from imitation.data import serialize
 
         serialize.load(path)
@@ -29,29 +28,29 @@ class OnDisk(Config):
 @dataclasses.dataclass
 class Generated(Config):
     _target_: str = "imitation_cli.utils.trajectories.Generated.make"
-    _recursive_: bool = False  # This way the expert_policy is not aut-filled.
+    _recursive_: bool = False
     total_timesteps: int = int(10)  # TODO: this is low for debugging
     expert_policy: policy.Config = policy.Config(environment="${environment}")
+    rng: randomness.Config = randomness.Config()
 
     @staticmethod
     def make(
-        total_timesteps: int, expert_policy: policy.Config, rng: np.random.Generator
+        total_timesteps: int,
+        expert_policy: policy.Config,
+        rng: randomness.Config,
     ):
         from imitation.data import rollout
 
-        expert = policy.make_policy(expert_policy, rng)
-        venv = environment.make_venv(expert_policy.environment, rng)
+        expert = call(expert_policy)
+        env = call(expert_policy.environment)
+        rng = call(rng)
         return rollout.generate_trajectories(
             expert,
-            venv,
+            env,
             rollout.make_sample_until(min_timesteps=total_timesteps),
             rng,
             deterministic_policy=True,
         )
-
-
-def get_trajectories(config: Config, rng: np.random.Generator):
-    return call(config, rng=rng)
 
 
 def register_configs(group: str):

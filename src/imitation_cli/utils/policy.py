@@ -25,11 +25,9 @@ class Random(Config):
     _target_: str = "imitation_cli.utils.policy.Random.make"
 
     @staticmethod
-    def make(environment: gym_env.Config, rng: np.random.Generator):
+    def make(environment: gym_env.Config):
         from imitation.policies import base
-
-        env = gym_env.make_venv(environment, rng)
-        return base.RandomPolicy(env.observation_space, env.action_space)
+        return base.RandomPolicy(environment.observation_space, environment.action_space)
 
 
 @dataclasses.dataclass
@@ -37,18 +35,16 @@ class ZeroPolicy(Config):
     _target_: str = "imitation_cli.utils.policy.ZeroPolicy.make"
 
     @staticmethod
-    def make(environment: gym_env.Config, rng: np.random.Generator):
+    def make(environment: gym_env.Config):
         from imitation.policies import base
 
-        env = gym_env.make_venv(environment, rng)
-        return base.ZeroPolicy(env.observation_space, env.action_space)
+        return base.ZeroPolicy(environment.observation_space, environment.action_space)
 
 
 @dataclasses.dataclass
 class ActorCriticPolicy(Config):
     _target_: str = "imitation_cli.utils.policy.ActorCriticPolicy.make"
-    _recursive_: bool = False
-    lr_schedule: schedule.Config = MISSING
+    lr_schedule: schedule.Config = schedule.FixedSchedule(3e-4)  # TODO: make sure this is copied from the rl_algorithm instead
     net_arch: Optional[Dict[str, List[int]]] = None
     activation_fn: activation_function.Config = activation_function.TanH()
     ortho_init: bool = True
@@ -68,56 +64,30 @@ class ActorCriticPolicy(Config):
 
     @staticmethod
     def make_args(
-        lr_schedule: schedule.Config,
         activation_fn: activation_function.Config,
         features_extractor_class: feature_extractor.Config,
         optimizer_class: optimizer.Config,
         **kwargs,
     ):
-        activation_fn = activation_function.make_activation_function(activation_fn)
-        lr_schedule = schedule.make_schedule(lr_schedule)
-        features_extractor_class = feature_extractor.make_feature_extractor(
-            features_extractor_class
-        )
-        optimizer_class = optimizer.make_optimizer(optimizer_class)
-
-        del kwargs["environment"]
         del kwargs["_target_"]
-        del kwargs["_recursive_"]
+        del kwargs["environment"]
+
+        kwargs["activation_fn"] = call(activation_fn)
+        kwargs["features_extractor_class"] = call(features_extractor_class)
+        kwargs["optimizer_class"] = call(optimizer_class)
 
         return dict(
-            lr_schedule=lr_schedule,
-            activation_fn=activation_fn,
-            features_extractor_class=features_extractor_class,
-            optimizer_class=optimizer_class,
             **kwargs,
         )
 
     @staticmethod
     def make(
         environment: gym_env.Config,
-        rng: np.random.Generator,
-        lr_schedule: schedule.Config,
-        activation_fn: activation_function.Config,
-        features_extractor_class: feature_extractor.Config,
-        optimizer_class: optimizer.Config,
         **kwargs,
     ):
-        env = gym_env.make_venv(environment, rng)
-        activation_fn = activation_function.make_activation_function(activation_fn)
-        lr_schedule = schedule.make_schedule(lr_schedule)
-        features_extractor_class = feature_extractor.make_feature_extractor(
-            features_extractor_class
-        )
-        optimizer_class = optimizer.make_optimizer(optimizer_class)
-
         return sb3.common.policies.ActorCriticPolicy(
-            lr_schedule=lr_schedule,
-            activation_fn=activation_fn,
-            features_extractor_class=features_extractor_class,
-            optimizer_class=optimizer_class,
-            observation_space=env.observation_space,
-            action_space=env.action_space,
+            observation_space=environment.observation_space,
+            action_space=environment.action_space,
             **kwargs,
         )
 
@@ -148,13 +118,11 @@ class PolicyOnDisk(Loaded):
         environment: gym_env.Config,
         path: pathlib.Path,
         type: str,
-        rng: np.random.Generator,
     ):
         from imitation.policies import serialize
 
-        env = gym_env.make_venv(environment, rng)
         return serialize.load_stable_baselines_model(
-            Loaded.type_to_class(type), path, env
+            Loaded.type_to_class(type), path, environment
         ).policy
 
 
@@ -168,7 +136,6 @@ class PolicyFromHuggingface(Loaded):
         type: str,
         environment: gym_env.Config,
         organization: str,
-        rng: np.random.Generator,
     ):
         import huggingface_sb3 as hfsb3
 
@@ -179,15 +146,10 @@ class PolicyFromHuggingface(Loaded):
         )
         repo_id = hfsb3.ModelRepoId(organization, model_name)
         filename = hfsb3.load_from_hub(repo_id, model_name.filename)
-        env = gym_env.make_venv(environment, rng)
         model = serialize.load_stable_baselines_model(
-            Loaded.type_to_class(type), filename, env
+            Loaded.type_to_class(type), filename, environment
         )
         return model.policy
-
-
-def make_policy(cfg: Config, rng: np.random.Generator):
-    return call(cfg, rng=rng)
 
 
 def register_configs(group: str):

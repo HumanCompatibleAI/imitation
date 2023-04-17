@@ -32,10 +32,6 @@ class NatureCNNConfig(Config):
         return stable_baselines3.common.torch_layers.NatureCNN
 
 
-def make_feature_extractor(cfg: Config):
-    return call(cfg)
-
-
 def register_configs(group: str):
     cs = ConfigStore.instance()
     cs.store(group=group, name="flatten", node=FlattenExtractorConfig)
