@@ -1,5 +1,0 @@
-defaults:
-  - gym_env
-
-env_name: my_own_env
-max_episode_steps: 42

@@ -1,7 +1,6 @@
 import dataclasses
 
 from hydra.core.config_store import ConfigStore
-from hydra.utils import call
 from omegaconf import MISSING
 
 
@@ -12,7 +11,7 @@ class Config:
 
 @dataclasses.dataclass
 class Adam(Config):
-    _target_: str = "imitation_cli.utils.optimizer.Adam.make"
+    _target_: str = "imitation_cli.utils.optimizer_class.Adam.make"
 
     @staticmethod
     def make():
@@ -23,7 +22,7 @@ class Adam(Config):
 
 @dataclasses.dataclass
 class SGD(Config):
-    _target_: str = "imitation_cli.utils.optimizer.SGD.make"
+    _target_: str = "imitation_cli.utils.optimizer_class.SGD.make"
 
     @staticmethod
     def make():

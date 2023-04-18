@@ -1,8 +1,6 @@
 import dataclasses
 
 from hydra.core.config_store import ConfigStore
-from hydra.utils import call
-from omegaconf import MISSING
 
 
 @dataclasses.dataclass
@@ -14,7 +12,7 @@ class Config:
 
 @dataclasses.dataclass
 class TanH(Config):
-    _target_: str = "imitation_cli.utils.activation_function.TanH.make"
+    _target_: str = "imitation_cli.utils.activation_function_class.TanH.make"
 
     @staticmethod
     def make():
@@ -25,7 +23,7 @@ class TanH(Config):
 
 @dataclasses.dataclass
 class ReLU(Config):
-    _target_: str = "imitation_cli.utils.activation_function.ReLU.make"
+    _target_: str = "imitation_cli.utils.activation_function_class.ReLU.make"
 
     @staticmethod
     def make():
@@ -36,17 +34,13 @@ class ReLU(Config):
 
 @dataclasses.dataclass
 class LeakyReLU(Config):
-    _target_: str = "imitation_cli.utils.activation_function.LeakyReLU.make"
+    _target_: str = "imitation_cli.utils.activation_function_class.LeakyReLU.make"
 
     @staticmethod
     def make():
         import torch
 
         return torch.nn.LeakyReLU
-
-
-def make_activation_function(cfg: Config):
-    return call(cfg)
 
 
 def register_configs(group: str):

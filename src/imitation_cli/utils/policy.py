@@ -1,23 +1,25 @@
 import dataclasses
 import pathlib
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Mapping
 
-import numpy as np
 import stable_baselines3 as sb3
 from hydra.core.config_store import ConfigStore
 from hydra.utils import call
 from omegaconf import MISSING
 from stable_baselines3.common.torch_layers import FlattenExtractor
 
-from imitation_cli.utils import activation_function
-from imitation_cli.utils import environment as gym_env
-from imitation_cli.utils import feature_extractor, optimizer, schedule
+from imitation_cli.utils import \
+    activation_function_class as activation_function_class_cfg, \
+    environment as environment_cfg,\
+    feature_extractor_class as feature_extractor_class_cfg,\
+    optimizer_class as optimizer_class_cfg, \
+    schedule
 
 
 @dataclasses.dataclass
 class Config:
     _target_: str = MISSING
-    environment: gym_env.Config = "${environment}"
+    environment: environment_cfg.Config = MISSING
 
 
 @dataclasses.dataclass
@@ -25,7 +27,7 @@ class Random(Config):
     _target_: str = "imitation_cli.utils.policy.Random.make"
 
     @staticmethod
-    def make(environment: gym_env.Config):
+    def make(environment: environment_cfg.Config):
         from imitation.policies import base
         return base.RandomPolicy(environment.observation_space, environment.action_space)
 
@@ -35,7 +37,7 @@ class ZeroPolicy(Config):
     _target_: str = "imitation_cli.utils.policy.ZeroPolicy.make"
 
     @staticmethod
-    def make(environment: gym_env.Config):
+    def make(environment: environment_cfg.Config):
         from imitation.policies import base
 
         return base.ZeroPolicy(environment.observation_space, environment.action_space)
@@ -46,27 +48,27 @@ class ActorCriticPolicy(Config):
     _target_: str = "imitation_cli.utils.policy.ActorCriticPolicy.make"
     lr_schedule: schedule.Config = schedule.FixedSchedule(3e-4)  # TODO: make sure this is copied from the rl_algorithm instead
     net_arch: Optional[Dict[str, List[int]]] = None
-    activation_fn: activation_function.Config = activation_function.TanH()
+    activation_fn: activation_function_class_cfg.Config = activation_function_class_cfg.TanH()
     ortho_init: bool = True
     use_sde: bool = False
     log_std_init: float = 0.0
     full_std: bool = True
     use_expln: bool = False
     squash_output: bool = False
-    features_extractor_class: feature_extractor.Config = (
-        feature_extractor.FlattenExtractorConfig()
+    features_extractor_class: feature_extractor_class_cfg.Config = (
+        feature_extractor_class_cfg.FlattenExtractorConfig()
     )
     features_extractor_kwargs: Optional[Dict[str, Any]] = None
     share_features_extractor: bool = True
     normalize_images: bool = True
-    optimizer_class: optimizer.Config = optimizer.Adam()
+    optimizer_class: optimizer_class_cfg.Config = optimizer_class_cfg.Adam()
     optimizer_kwargs: Optional[Dict[str, Any]] = None
 
     @staticmethod
     def make_args(
-        activation_fn: activation_function.Config,
-        features_extractor_class: feature_extractor.Config,
-        optimizer_class: optimizer.Config,
+        activation_fn: activation_function_class_cfg.Config,
+        features_extractor_class: feature_extractor_class_cfg.Config,
+        optimizer_class: optimizer_class_cfg.Config,
         **kwargs,
     ):
         del kwargs["_target_"]
@@ -82,7 +84,7 @@ class ActorCriticPolicy(Config):
 
     @staticmethod
     def make(
-        environment: gym_env.Config,
+        environment: environment_cfg.Config,
         **kwargs,
     ):
         return sb3.common.policies.ActorCriticPolicy(
@@ -115,7 +117,7 @@ class PolicyOnDisk(Loaded):
 
     @staticmethod
     def make(
-        environment: gym_env.Config,
+        environment: environment_cfg.Config,
         path: pathlib.Path,
         type: str,
     ):
@@ -134,7 +136,7 @@ class PolicyFromHuggingface(Loaded):
     @staticmethod
     def make(
         type: str,
-        environment: gym_env.Config,
+        environment: environment_cfg.Config,
         organization: str,
     ):
         import huggingface_sb3 as hfsb3
@@ -152,10 +154,10 @@ class PolicyFromHuggingface(Loaded):
         return model.policy
 
 
-def register_configs(group: str):
+def register_configs(group: str, defaults: Mapping[str, Any] = {}):
     cs = ConfigStore.instance()
-    cs.store(group=group, name="random", node=Random)
-    cs.store(group=group, name="zero", node=ZeroPolicy)
-    cs.store(group=group, name="on_disk", node=PolicyOnDisk)
-    cs.store(group=group, name="from_huggingface", node=PolicyFromHuggingface)
-    cs.store(group=group, name="actor_critic", node=ActorCriticPolicy)
+    cs.store(group=group, name="random", node=Random(**defaults))
+    cs.store(group=group, name="zero", node=ZeroPolicy(**defaults))
+    cs.store(group=group, name="on_disk", node=PolicyOnDisk(**defaults))
+    cs.store(group=group, name="from_huggingface", node=PolicyFromHuggingface(**defaults))
+    cs.store(group=group, name="actor_critic", node=ActorCriticPolicy(**defaults))

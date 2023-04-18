@@ -7,31 +7,21 @@ from hydra.core.config_store import ConfigStore
 from hydra.utils import call
 from omegaconf import MISSING
 
-from imitation.algorithms.adversarial.airl import AIRL
 from imitation.data import rollout
-from imitation_cli.utils import environment as gym_env, optimizer, policy, reward_network, rl_algorithm, trajectories
+from imitation_cli.utils import environment as gym_env, optimizer_class, policy, reward_network, rl_algorithm, trajectories
+from imitation_cli.utils import policy as policy_conf
 
 
 @dataclasses.dataclass
 class AIRLConfig:
-    defaults: list = dataclasses.field(
-        default_factory=lambda: [
-            {"environment": "gym_env"},
-            {"reward_net": "shaped"},
-            # {"gen_algo": "ppo"},
-            "_self_",
-        ]
-    )
-    environment: gym_env.Config = MISSING
-    expert_trajs: trajectories.Config = MISSING
-    total_timesteps: int = int(1e6)
-    checkpoint_interval: int = 0
-    gen_algo: rl_algorithm.Config = rl_algorithm.PPO()
+    _target_: str = "imitation.algorithms.adversarial.airl.AIRL"
+    venv: gym_env.Config = "${venv}"
+    demonstrations: trajectories.Config = "${demonstrations}"
+    gen_algo: rl_algorithm.Config = MISSING
     reward_net: reward_network.Config = MISSING
-    seed: int = 0
     demo_batch_size: int = 64
     n_disc_updates_per_round: int = 2
-    disc_opt_cls: optimizer.Config = optimizer.Adam
+    disc_opt_cls: optimizer_class.Config = optimizer_class.Adam
     gen_train_timesteps: Optional[int] = None
     gen_replay_buffer_capacity: Optional[int] = None
     init_tensorboard: bool = False
@@ -40,46 +30,42 @@ class AIRLConfig:
     allow_variable_horizon: bool = True  # TODO: true just for debugging
 
 
+@dataclasses.dataclass
+class AIRLRunConfig:
+    defaults: list = dataclasses.field(
+        default_factory=lambda: [
+            {"venv": "gym_env"},
+            {"airl/reward_net": "shaped"},
+            {"airl/gen_algo": "ppo"},
+            "_self_",
+        ]
+    )
+    seed: int = 0
+    venv: gym_env.Config = MISSING
+    demonstrations: trajectories.Config = MISSING
+    airl: AIRLConfig = AIRLConfig()
+    total_timesteps: int = int(1e6)
+    checkpoint_interval: int = 0
+
+
 cs = ConfigStore.instance()
 cs.store(name="airl", node=AIRLConfig)
-policy.register_configs("expert_trajs/expert_policy")
-rl_algorithm.register_configs("gen_algo")
-trajectories.register_configs("expert_trajs")
-gym_env.register_configs("environment")
-reward_network.register_configs("reward_net")
+cs.store(name="airl_run", node=AIRLRunConfig)
+trajectories.register_configs("demonstrations")
+gym_env.register_configs("venv")
+policy.register_configs("demonstrations/expert_policy", dict(environment="${venv}"))  # Make sure the expert generating the demonstrations uses the same env as the main env
+rl_algorithm.register_configs("airl/gen_algo", dict(environment="${venv}", policy=policy_conf.ActorCriticPolicy(environment="${venv}")))  # The generation algo and its policy should use the main env by default
+reward_network.register_configs("airl/reward_net", dict(environment="${venv}"))  # The reward network should be tailored to the default environment by default
 
 
 @hydra.main(
     version_base=None,
     config_path="config",
-    config_name="airl",
+    config_name="airl_run",
 )
-def run_airl(cfg: AIRLConfig) -> None:
+def run_airl(cfg: AIRLRunConfig) -> None:
 
-    expert_trajs = call(cfg.expert_trajs)
-    print(len(expert_trajs))
-
-    venv = call(cfg.environment)
-
-    reward_net = reward_network.make_reward_net(cfg.reward_net)
-
-    gen_algo = call(cfg.gen_algo)
-
-    trainer = AIRL(
-        venv=venv,
-        demonstrations=expert_trajs,
-        gen_algo=gen_algo,
-        reward_net=reward_net,
-        demo_batch_size=cfg.demo_batch_size,
-        n_disc_updates_per_round=cfg.n_disc_updates_per_round,
-        disc_opt_cls=call(cfg.disc_opt_cls),
-        gen_train_timesteps=cfg.gen_train_timesteps,
-        gen_replay_buffer_capacity=cfg.gen_replay_buffer_capacity,
-        init_tensorboard=cfg.init_tensorboard,
-        init_tensorboard_graph=cfg.init_tensorboard_graph,
-        debug_use_ground_truth=cfg.debug_use_ground_truth,
-        allow_variable_horizon=cfg.allow_variable_horizon,
-    )
+    trainer = call(cfg.airl)
 
     def callback(round_num: int, /) -> None:
         if cfg.checkpoint_interval > 0 and round_num % cfg.checkpoint_interval == 0:
@@ -98,7 +84,7 @@ def run_airl(cfg: AIRLConfig) -> None:
 
     return {
         # "imit_stats": imit_stats,
-        "expert_stats": rollout.rollout_stats(expert_trajs),
+        "expert_stats": rollout.rollout_stats(cfg.airl.demonstrations),
     }
 
 

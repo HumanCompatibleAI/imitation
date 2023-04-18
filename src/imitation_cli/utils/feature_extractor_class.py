@@ -1,7 +1,6 @@
 import dataclasses
 
 from hydra.core.config_store import ConfigStore
-from hydra.utils import call
 from omegaconf import MISSING
 
 
@@ -12,7 +11,7 @@ class Config:
 
 @dataclasses.dataclass
 class FlattenExtractorConfig(Config):
-    _target_: str = "imitation_cli.utils.feature_extractor.FlattenExtractorConfig.make"
+    _target_: str = "imitation_cli.utils.feature_extractor_class.FlattenExtractorConfig.make"
 
     @staticmethod
     def make():
@@ -23,7 +22,7 @@ class FlattenExtractorConfig(Config):
 
 @dataclasses.dataclass
 class NatureCNNConfig(Config):
-    _target_: str = "imitation_cli.utils.feature_extractor.NatureCNNConfig.make"
+    _target_: str = "imitation_cli.utils.feature_extractor_class.NatureCNNConfig.make"
 
     @staticmethod
     def make():

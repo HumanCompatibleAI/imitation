@@ -1,5 +1,0 @@
-defaults:
-  - gym_env
-
-env_name: Retro-v0
-max_episode_steps: 4500

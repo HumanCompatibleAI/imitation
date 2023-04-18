@@ -1,13 +1,13 @@
 import dataclasses
 import pathlib
-from typing import Optional
+from typing import Optional, Mapping, Any
 
 import numpy as np
 import stable_baselines3 as sb3
 from hydra.utils import call
 from omegaconf import MISSING
 
-from imitation_cli.utils import environment as gym_env
+from imitation_cli.utils import environment as environment_cfg
 from imitation_cli.utils import policy as policy_conf
 from imitation_cli.utils import schedule
 
@@ -15,15 +15,15 @@ from imitation_cli.utils import schedule
 @dataclasses.dataclass
 class Config:
     _target_: str = MISSING
-    environment: str = "${environment}"
+    environment: environment_cfg.Config = MISSING
 
 
 @dataclasses.dataclass
 class PPO(Config):
     _target_: str = "imitation_cli.utils.rl_algorithm.PPO.make"
+    # We disable recursive instantiation, so we can just make the arguments of the policy but not the policy itself
     _recursive_: bool = False
-    policy: policy_conf.ActorCriticPolicy = policy_conf.ActorCriticPolicy
-    environment: gym_env.Config = "${environment}"
+    policy: policy_conf.ActorCriticPolicy = MISSING
     learning_rate: schedule.Config = schedule.FixedSchedule(3e-4)
     n_steps: int = 2048
     batch_size: int = 64
@@ -46,7 +46,7 @@ class PPO(Config):
 
     @staticmethod
     def make(
-        environment: gym_env.Config,
+        environment: environment_cfg.Config,
         policy: policy_conf.ActorCriticPolicy,
         learning_rate: schedule.Config,
         clip_range: schedule.Config,
@@ -71,15 +71,15 @@ class PPOOnDisk(PPO):
     path: pathlib.Path = MISSING
 
     @staticmethod
-    def make(path: pathlib.Path, environment: gym_env.Config, rng: np.random.Generator):
+    def make(path: pathlib.Path, environment: environment_cfg.Config, rng: np.random.Generator):
         from imitation.policies import serialize
 
         return serialize.load_stable_baselines_model(sb3.PPO, path, environment)
 
 
-def register_configs(group: str = "rl_algorithm"):
+def register_configs(group: str = "rl_algorithm", defaults: Mapping[str, Any] = {}):
     from hydra.core.config_store import ConfigStore
 
     cs = ConfigStore.instance()
-    cs.store(name="ppo", group=group, node=PPO)
-    cs.store(name="ppo_on_disk", group=group, node=PPOOnDisk)
+    cs.store(name="ppo", group=group, node=PPO(**defaults))
+    cs.store(name="ppo_on_disk", group=group, node=PPOOnDisk(**defaults))

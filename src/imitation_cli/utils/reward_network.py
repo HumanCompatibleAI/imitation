@@ -1,12 +1,11 @@
 import dataclasses
-from typing import Optional
+from typing import Optional, Any, Mapping
 
-import numpy as np
 from hydra.core.config_store import ConfigStore
 from hydra.utils import call
 from omegaconf import MISSING
 
-import imitation_cli.utils.environment as gym_env
+import imitation_cli.utils.environment as environment_cg
 from imitation.rewards import reward_nets
 from imitation.util import networks
 
@@ -14,7 +13,7 @@ from imitation.util import networks
 @dataclasses.dataclass
 class Config:
     _target_: str = MISSING
-    environment: gym_env.Config = "${environment}"
+    environment: environment_cg.Config = MISSING
 
 
 @dataclasses.dataclass
@@ -27,7 +26,7 @@ class BasicRewardNet(Config):
     normalize_input_layer: bool = True
 
     @staticmethod
-    def make(environment: gym_env.Config, normalize_input_layer: bool, **kwargs):
+    def make(environment: environment_cg.Config, normalize_input_layer: bool, **kwargs):
         reward_net = reward_nets.BasicRewardNet(
             environment.observation_space,
             environment.action_space,
@@ -47,7 +46,7 @@ class BasicShapedRewardNet(BasicRewardNet):
     discount_factor: float = 0.99
 
     @staticmethod
-    def make(environment: gym_env.Config, normalize_input_layer: bool, **kwargs):
+    def make(environment: environment_cg.Config, normalize_input_layer: bool, **kwargs):
         reward_net = reward_nets.BasicShapedRewardNet(
             environment.observation_space,
             environment.action_space,
@@ -70,7 +69,7 @@ class RewardEnsemble(Config):
 
     @staticmethod
     def make(
-        environment: gym_env.Config,
+        environment: environment_cg.Config,
         ensemble_member_config: BasicRewardNet,
         add_std_alpha: Optional[float],
     ):
@@ -86,12 +85,8 @@ class RewardEnsemble(Config):
         return reward_net
 
 
-def make_reward_net(config: Config):
-    return call(config)
-
-
-def register_configs(group: str):
+def register_configs(group: str, defaults: Mapping[str, Any] = {}):
     cs = ConfigStore.instance()
-    cs.store(group=group, name="basic", node=BasicRewardNet)
-    cs.store(group=group, name="shaped", node=BasicShapedRewardNet)
-    cs.store(group=group, name="ensemble", node=RewardEnsemble)
+    cs.store(group=group, name="basic", node=BasicRewardNet(**defaults))
+    cs.store(group=group, name="shaped", node=BasicShapedRewardNet(**defaults))
+    cs.store(group=group, name="ensemble", node=RewardEnsemble(**defaults))
