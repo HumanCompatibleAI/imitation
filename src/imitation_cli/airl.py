@@ -7,7 +7,6 @@ from hydra.core.config_store import ConfigStore
 from hydra.utils import call
 from omegaconf import MISSING
 
-from imitation.data import rollout
 from imitation_cli.utils import environment as gym_env, optimizer_class, policy, reward_network, rl_algorithm, trajectories
 from imitation_cli.utils import policy as policy_conf
 
@@ -64,6 +63,7 @@ reward_network.register_configs("airl/reward_net", dict(environment="${venv}")) 
     config_name="airl_run",
 )
 def run_airl(cfg: AIRLRunConfig) -> None:
+    from imitation.data import rollout
 
     trainer = call(cfg.airl)
 

@@ -2,8 +2,6 @@ import dataclasses
 import pathlib
 from typing import Optional, Mapping, Any
 
-import numpy as np
-import stable_baselines3 as sb3
 from hydra.utils import call
 from omegaconf import MISSING
 
@@ -52,6 +50,8 @@ class PPO(Config):
         clip_range: schedule.Config,
         **kwargs,
     ):
+        import stable_baselines3 as sb3
+
         policy_kwargs = policy_conf.ActorCriticPolicy.make_args(**policy)
         del policy_kwargs["use_sde"]
         del policy_kwargs["lr_schedule"]
@@ -71,9 +71,10 @@ class PPOOnDisk(PPO):
     path: pathlib.Path = MISSING
 
     @staticmethod
-    def make(path: pathlib.Path, environment: environment_cfg.Config, rng: np.random.Generator):
+    def make(path: pathlib.Path, environment: environment_cfg.Config):
         from imitation.policies import serialize
-
+        import stable_baselines3 as sb3
+        
         return serialize.load_stable_baselines_model(sb3.PPO, path, environment)
 
 

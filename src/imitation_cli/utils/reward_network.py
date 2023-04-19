@@ -6,8 +6,7 @@ from hydra.utils import call
 from omegaconf import MISSING
 
 import imitation_cli.utils.environment as environment_cg
-from imitation.rewards import reward_nets
-from imitation.util import networks
+
 
 
 @dataclasses.dataclass
@@ -27,6 +26,9 @@ class BasicRewardNet(Config):
 
     @staticmethod
     def make(environment: environment_cg.Config, normalize_input_layer: bool, **kwargs):
+        from imitation.rewards import reward_nets
+        from imitation.util import networks
+
         reward_net = reward_nets.BasicRewardNet(
             environment.observation_space,
             environment.action_space,
@@ -47,6 +49,9 @@ class BasicShapedRewardNet(BasicRewardNet):
 
     @staticmethod
     def make(environment: environment_cg.Config, normalize_input_layer: bool, **kwargs):
+        from imitation.rewards import reward_nets
+        from imitation.util import networks
+
         reward_net = reward_nets.BasicShapedRewardNet(
             environment.observation_space,
             environment.action_space,
@@ -73,6 +78,8 @@ class RewardEnsemble(Config):
         ensemble_member_config: BasicRewardNet,
         add_std_alpha: Optional[float],
     ):
+        from imitation.rewards import reward_nets
+
         members = [call(ensemble_member_config)]
         reward_net = reward_nets.RewardEnsemble(
             environment.observation_space, environment.action_space, members

@@ -2,11 +2,10 @@ import dataclasses
 import pathlib
 from typing import Any, Dict, List, Optional, Mapping
 
-import stable_baselines3 as sb3
+
 from hydra.core.config_store import ConfigStore
 from hydra.utils import call
 from omegaconf import MISSING
-from stable_baselines3.common.torch_layers import FlattenExtractor
 
 from imitation_cli.utils import \
     activation_function_class as activation_function_class_cfg, \
@@ -87,6 +86,8 @@ class ActorCriticPolicy(Config):
         environment: environment_cfg.Config,
         **kwargs,
     ):
+        import stable_baselines3 as sb3
+
         return sb3.common.policies.ActorCriticPolicy(
             observation_space=environment.observation_space,
             action_space=environment.action_space,
