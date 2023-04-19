@@ -1,7 +1,12 @@
+from __future__ import annotations
 import dataclasses
 import pathlib
+import typing
 from typing import Any, Dict, List, Optional, Mapping
 
+if typing.TYPE_CHECKING:
+    from stable_baselines3.common.vec_env import VecEnv
+    from stable_baselines3.common.policies import BasePolicy
 
 from hydra.core.config_store import ConfigStore
 from hydra.utils import call
@@ -26,7 +31,7 @@ class Random(Config):
     _target_: str = "imitation_cli.utils.policy.Random.make"
 
     @staticmethod
-    def make(environment: environment_cfg.Config):
+    def make(environment: VecEnv) -> BasePolicy:
         from imitation.policies import base
         return base.RandomPolicy(environment.observation_space, environment.action_space)
 
@@ -36,7 +41,7 @@ class ZeroPolicy(Config):
     _target_: str = "imitation_cli.utils.policy.ZeroPolicy.make"
 
     @staticmethod
-    def make(environment: environment_cfg.Config):
+    def make(environment: VecEnv) -> BasePolicy:
         from imitation.policies import base
 
         return base.ZeroPolicy(environment.observation_space, environment.action_space)
@@ -83,9 +88,9 @@ class ActorCriticPolicy(Config):
 
     @staticmethod
     def make(
-        environment: environment_cfg.Config,
+        environment: VecEnv,
         **kwargs,
-    ):
+    ) -> BasePolicy:
         import stable_baselines3 as sb3
 
         return sb3.common.policies.ActorCriticPolicy(
@@ -118,14 +123,14 @@ class PolicyOnDisk(Loaded):
 
     @staticmethod
     def make(
-        environment: environment_cfg.Config,
-        path: pathlib.Path,
+        environment: VecEnv,
         type: str,
-    ):
+        path: pathlib.Path,
+    ) -> BasePolicy:
         from imitation.policies import serialize
 
         return serialize.load_stable_baselines_model(
-            Loaded.type_to_class(type), path, environment
+            Loaded.type_to_class(type), str(path), environment
         ).policy
 
 
@@ -136,10 +141,10 @@ class PolicyFromHuggingface(Loaded):
 
     @staticmethod
     def make(
+        environment: VecEnv,
         type: str,
-        environment: environment_cfg.Config,
         organization: str,
-    ):
+    ) -> BasePolicy:
         import huggingface_sb3 as hfsb3
 
         from imitation.policies import serialize

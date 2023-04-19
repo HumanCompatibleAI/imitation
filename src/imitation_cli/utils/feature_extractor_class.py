@@ -14,7 +14,7 @@ class FlattenExtractorConfig(Config):
     _target_: str = "imitation_cli.utils.feature_extractor_class.FlattenExtractorConfig.make"
 
     @staticmethod
-    def make():
+    def make() -> type:
         import stable_baselines3
 
         return stable_baselines3.common.torch_layers.FlattenExtractor
@@ -25,7 +25,7 @@ class NatureCNNConfig(Config):
     _target_: str = "imitation_cli.utils.feature_extractor_class.NatureCNNConfig.make"
 
     @staticmethod
-    def make():
+    def make() -> type:
         import stable_baselines3
 
         return stable_baselines3.common.torch_layers.NatureCNN

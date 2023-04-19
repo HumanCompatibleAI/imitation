@@ -14,7 +14,7 @@ class Adam(Config):
     _target_: str = "imitation_cli.utils.optimizer_class.Adam.make"
 
     @staticmethod
-    def make():
+    def make() -> type:
         import torch
 
         return torch.optim.Adam
@@ -25,7 +25,7 @@ class SGD(Config):
     _target_: str = "imitation_cli.utils.optimizer_class.SGD.make"
 
     @staticmethod
-    def make():
+    def make() -> type:
         import torch
 
         return torch.optim.SGD

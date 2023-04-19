@@ -1,12 +1,17 @@
+from __future__ import annotations
 import dataclasses
+import typing
 from typing import Optional, Any, Mapping
+
+if typing.TYPE_CHECKING:
+    from stable_baselines3.common.vec_env import VecEnv
+    from imitation.rewards.reward_nets import RewardNet
 
 from hydra.core.config_store import ConfigStore
 from hydra.utils import call
 from omegaconf import MISSING
 
 import imitation_cli.utils.environment as environment_cg
-
 
 
 @dataclasses.dataclass
@@ -25,7 +30,11 @@ class BasicRewardNet(Config):
     normalize_input_layer: bool = True
 
     @staticmethod
-    def make(environment: environment_cg.Config, normalize_input_layer: bool, **kwargs):
+    def make(
+            environment: VecEnv,
+            normalize_input_layer: bool,
+            **kwargs
+    ) -> RewardNet:
         from imitation.rewards import reward_nets
         from imitation.util import networks
 
@@ -48,7 +57,11 @@ class BasicShapedRewardNet(BasicRewardNet):
     discount_factor: float = 0.99
 
     @staticmethod
-    def make(environment: environment_cg.Config, normalize_input_layer: bool, **kwargs):
+    def make(
+            environment: VecEnv,
+            normalize_input_layer: bool,
+            **kwargs
+    ) -> RewardNet:
         from imitation.rewards import reward_nets
         from imitation.util import networks
 
@@ -74,10 +87,10 @@ class RewardEnsemble(Config):
 
     @staticmethod
     def make(
-        environment: environment_cg.Config,
+        environment: VecEnv,
         ensemble_member_config: BasicRewardNet,
         add_std_alpha: Optional[float],
-    ):
+    ) -> RewardNet:
         from imitation.rewards import reward_nets
 
         members = [call(ensemble_member_config)]

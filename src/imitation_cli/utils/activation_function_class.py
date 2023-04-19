@@ -15,7 +15,7 @@ class TanH(Config):
     _target_: str = "imitation_cli.utils.activation_function_class.TanH.make"
 
     @staticmethod
-    def make():
+    def make() -> type:
         import torch
 
         return torch.nn.Tanh
@@ -26,7 +26,7 @@ class ReLU(Config):
     _target_: str = "imitation_cli.utils.activation_function_class.ReLU.make"
 
     @staticmethod
-    def make():
+    def make() -> type:
         import torch
 
         return torch.nn.ReLU
@@ -37,7 +37,7 @@ class LeakyReLU(Config):
     _target_: str = "imitation_cli.utils.activation_function_class.LeakyReLU.make"
 
     @staticmethod
-    def make():
+    def make()  -> type:
         import torch
 
         return torch.nn.LeakyReLU

@@ -1,4 +1,10 @@
+from __future__ import annotations
 import dataclasses
+import typing
+from typing import Optional
+
+if typing.TYPE_CHECKING:
+    from stable_baselines3.common.vec_env import VecEnv
 
 from hydra.core.config_store import ConfigStore
 from hydra.utils import call
@@ -17,16 +23,16 @@ class Config:
     env_make_kwargs: dict = dataclasses.field(
         default_factory=dict
     )  # The kwargs passed to `spec.make`.
-    rng: randomness.Config = randomness.Config
+    rng: randomness.Config = randomness.Config()
 
     @staticmethod
-    def make(log_dir=None, **kwargs):
+    def make(log_dir: Optional[str]=None, **kwargs) -> VecEnv:
         from imitation.util import util
 
         return util.make_vec_env(log_dir=log_dir, **kwargs)
 
 
-def make_rollout_venv(environment_config: Config):
+def make_rollout_venv(environment_config: Config) -> VecEnv:
     from imitation.data import wrappers
 
     return call(

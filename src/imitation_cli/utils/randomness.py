@@ -1,13 +1,18 @@
+from __future__ import annotations
 import dataclasses
+import typing
+
+if typing.TYPE_CHECKING:
+    import numpy as np
 
 
 @dataclasses.dataclass
 class Config:
     _target_: str = "imitation_cli.utils.randomness.Config.make"
-    seed: int = "${seed}"
+    seed: int = "${seed}"  # type: ignore
 
     @staticmethod
-    def make(seed: int):
+    def make(seed: int) -> np.random.Generator:
         import numpy as np
         import torch
 

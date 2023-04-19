@@ -1,26 +1,32 @@
+"""Config and run configuration for AIRL."""
 import dataclasses
 import logging
-from typing import Optional
+from typing import Any, Dict, Optional, Sequence, cast
 
 import hydra
 from hydra.core.config_store import ConfigStore
 from hydra.utils import call
 from omegaconf import MISSING
 
-from imitation_cli.utils import environment as gym_env, optimizer_class, policy, reward_network, rl_algorithm, trajectories
+from imitation_cli.utils import environment as gym_env
+from imitation_cli.utils import optimizer_class
+from imitation_cli.utils import policy
 from imitation_cli.utils import policy as policy_conf
+from imitation_cli.utils import reward_network, rl_algorithm, trajectories
 
 
 @dataclasses.dataclass
 class AIRLConfig:
+    """Config for AIRL."""
+
     _target_: str = "imitation.algorithms.adversarial.airl.AIRL"
-    venv: gym_env.Config = "${venv}"
-    demonstrations: trajectories.Config = "${demonstrations}"
+    venv: gym_env.Config = MISSING
+    demonstrations: trajectories.Config = MISSING
     gen_algo: rl_algorithm.Config = MISSING
     reward_net: reward_network.Config = MISSING
     demo_batch_size: int = 64
     n_disc_updates_per_round: int = 2
-    disc_opt_cls: optimizer_class.Config = optimizer_class.Adam
+    disc_opt_cls: optimizer_class.Config = optimizer_class.Adam()
     gen_train_timesteps: Optional[int] = None
     gen_replay_buffer_capacity: Optional[int] = None
     init_tensorboard: bool = False
@@ -31,13 +37,15 @@ class AIRLConfig:
 
 @dataclasses.dataclass
 class AIRLRunConfig:
+    """Config for running AIRL."""
+
     defaults: list = dataclasses.field(
         default_factory=lambda: [
             {"venv": "gym_env"},
             {"airl/reward_net": "shaped"},
             {"airl/gen_algo": "ppo"},
             "_self_",
-        ]
+        ],
     )
     seed: int = 0
     venv: gym_env.Config = MISSING
@@ -48,13 +56,34 @@ class AIRLRunConfig:
 
 
 cs = ConfigStore.instance()
-cs.store(name="airl", node=AIRLConfig)
-cs.store(name="airl_run", node=AIRLRunConfig)
+cs.store(
+    name="airl_run",
+    node=AIRLRunConfig(
+        airl=AIRLConfig(
+            venv="${venv}",  # type: ignore
+            demonstrations="${demonstrations}",  # type: ignore
+        ),
+    ),
+)
 trajectories.register_configs("demonstrations")
 gym_env.register_configs("venv")
-policy.register_configs("demonstrations/expert_policy", dict(environment="${venv}"))  # Make sure the expert generating the demonstrations uses the same env as the main env
-rl_algorithm.register_configs("airl/gen_algo", dict(environment="${venv}", policy=policy_conf.ActorCriticPolicy(environment="${venv}")))  # The generation algo and its policy should use the main env by default
-reward_network.register_configs("airl/reward_net", dict(environment="${venv}"))  # The reward network should be tailored to the default environment by default
+
+# Make sure the expert generating the demonstrations uses the same env as the main env
+policy.register_configs(
+    "demonstrations/expert_policy",
+    dict(environment="${venv}"),
+)
+rl_algorithm.register_configs(
+    "airl/gen_algo",
+    dict(
+        environment="${venv}",
+        policy=policy_conf.ActorCriticPolicy(environment="${venv}"),  # type: ignore
+    ),
+)  # The generation algo and its policy should use the main env by default
+reward_network.register_configs(
+    "airl/reward_net",
+    dict(environment="${venv}"),
+)  # The reward network should be tailored to the default environment by default
 
 
 @hydra.main(
@@ -62,8 +91,9 @@ reward_network.register_configs("airl/reward_net", dict(environment="${venv}")) 
     config_path="config",
     config_name="airl_run",
 )
-def run_airl(cfg: AIRLRunConfig) -> None:
+def run_airl(cfg: AIRLRunConfig) -> Dict[str, Any]:
     from imitation.data import rollout
+    from imitation.data.types import TrajectoryWithRew
 
     trainer = call(cfg.airl)
 
@@ -80,11 +110,13 @@ def run_airl(cfg: AIRLRunConfig) -> None:
 
     # Save final artifacts.
     if cfg.checkpoint_interval >= 0:
-        logging.log(logging.INFO, f"Saving final checkpoint. TODO implement this")
+        logging.log(logging.INFO, "Saving final checkpoint. TODO implement this")
 
     return {
         # "imit_stats": imit_stats,
-        "expert_stats": rollout.rollout_stats(cfg.airl.demonstrations),
+        "expert_stats": rollout.rollout_stats(
+            cast(Sequence[TrajectoryWithRew], cfg.airl.demonstrations),
+        ),
     }
 
 

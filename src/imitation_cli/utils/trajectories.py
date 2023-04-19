@@ -1,5 +1,13 @@
+from __future__ import annotations
 import dataclasses
 import pathlib
+import typing
+
+if typing.TYPE_CHECKING:
+    from stable_baselines3.common.policies import BasePolicy
+    from imitation.data.types import Trajectory
+    from typing import Sequence
+    import numpy as np
 
 from hydra.core.config_store import ConfigStore
 from hydra.utils import call
@@ -19,10 +27,10 @@ class OnDisk(Config):
     path: pathlib.Path = MISSING
 
     @staticmethod
-    def make(path: pathlib.Path):
+    def make(path: pathlib.Path) -> Sequence[Trajectory]:
         from imitation.data import serialize
 
-        serialize.load(path)
+        return serialize.load(path)
 
 
 @dataclasses.dataclass
@@ -36,9 +44,9 @@ class Generated(Config):
     @staticmethod
     def make(
         total_timesteps: int,
-        expert_policy: policy.Config,
-        rng: randomness.Config,
-    ):
+        expert_policy: BasePolicy,
+        rng: np.random.Generator,
+    ) -> Sequence[Trajectory]:
         from imitation.data import rollout
 
         expert = call(expert_policy)
