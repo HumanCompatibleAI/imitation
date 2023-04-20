@@ -187,6 +187,7 @@ class AdversarialTrainer(base.DemonstrationAlgorithm[types.Transitions]):
         if self.demo_batch_size % self.demo_minibatch_size != 0:
             raise ValueError("Batch size must be a multiple of minibatch size.")
         self._demo_data_loader = None
+        self._demonstrations: Optional[base.AnyTransitions] = None
         self._endless_expert_iterator = None
         super().__init__(
             demonstrations=demonstrations,
@@ -298,11 +299,15 @@ class AdversarialTrainer(base.DemonstrationAlgorithm[types.Transitions]):
         """Reward used to train policy at "test" time after adversarial training."""
 
     def set_demonstrations(self, demonstrations: base.AnyTransitions) -> None:
+        self._demonstrations = demonstrations
         self._demo_data_loader = base.make_data_loader(
             demonstrations,
             self.demo_batch_size,
         )
         self._endless_expert_iterator = util.endless_iter(self._demo_data_loader)
+
+    def get_demonstrations(self) -> Optional[base.AnyTransitions]:
+        return self._demonstrations
 
     def _next_expert_batch(self) -> Mapping:
         assert self._endless_expert_iterator is not None

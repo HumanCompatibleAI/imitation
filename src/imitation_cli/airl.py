@@ -12,7 +12,12 @@ from imitation_cli.utils import environment as gym_env
 from imitation_cli.utils import optimizer_class
 from imitation_cli.utils import policy
 from imitation_cli.utils import policy as policy_conf
-from imitation_cli.utils import reward_network, rl_algorithm, trajectories
+from imitation_cli.utils import (
+    policy_evaluation,
+    reward_network,
+    rl_algorithm,
+    trajectories,
+)
 
 
 @dataclasses.dataclass
@@ -44,6 +49,7 @@ class AIRLRunConfig:
             {"venv": "gym_env"},
             {"airl/reward_net": "shaped"},
             {"airl/gen_algo": "ppo"},
+            {"evaluation": "default_evaluation"},
             "_self_",
         ],
     )
@@ -53,6 +59,7 @@ class AIRLRunConfig:
     airl: AIRLConfig = AIRLConfig()
     total_timesteps: int = int(1e6)
     checkpoint_interval: int = 0
+    evaluation: policy_evaluation.Config = MISSING
 
 
 cs = ConfigStore.instance()
@@ -84,6 +91,7 @@ reward_network.register_configs(
     "airl/reward_net",
     dict(environment="${venv}"),
 )  # The reward network should be tailored to the default environment by default
+policy_evaluation.register_configs("evaluation", dict(environment="${venv}"))
 
 
 @hydra.main(
@@ -92,10 +100,11 @@ reward_network.register_configs(
     config_name="airl_run",
 )
 def run_airl(cfg: AIRLRunConfig) -> Dict[str, Any]:
+    from imitation.algorithms.adversarial import airl
     from imitation.data import rollout
     from imitation.data.types import TrajectoryWithRew
 
-    trainer = call(cfg.airl)
+    trainer: airl.AIRL = call(cfg.airl)
 
     def callback(round_num: int, /) -> None:
         if cfg.checkpoint_interval > 0 and round_num % cfg.checkpoint_interval == 0:
@@ -106,16 +115,16 @@ def run_airl(cfg: AIRLRunConfig) -> Dict[str, Any]:
 
     trainer.train(cfg.total_timesteps, callback)
     # TODO: implement evaluation
-    # imit_stats = policy_evaluation.eval_policy(trainer.policy, trainer.venv_train)
+    imit_stats = policy_evaluation.eval_policy(trainer.policy, cfg.evaluation)
 
     # Save final artifacts.
     if cfg.checkpoint_interval >= 0:
         logging.log(logging.INFO, "Saving final checkpoint. TODO implement this")
 
     return {
-        # "imit_stats": imit_stats,
+        "imit_stats": imit_stats,
         "expert_stats": rollout.rollout_stats(
-            cast(Sequence[TrajectoryWithRew], cfg.airl.demonstrations),
+            cast(Sequence[TrajectoryWithRew], trainer.get_demonstrations())
         ),
     }
 
