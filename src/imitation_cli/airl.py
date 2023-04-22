@@ -7,7 +7,6 @@ from typing import Any, Dict, Sequence, cast
 import hydra
 import torch as th
 from hydra.core.config_store import ConfigStore
-from hydra.core.hydra_config import HydraConfig
 from hydra.utils import call
 from omegaconf import MISSING
 
@@ -46,6 +45,10 @@ class RunConfig:
     demonstrations: trajectories.Config = MISSING
     airl: airl_cfg.Config = MISSING
     evaluation: policy_evaluation.Config = MISSING
+    # This ensures that the working directory is changed
+    # to the hydra output dir
+    hydra: Any = dataclasses.field(
+        default_factory=lambda: dict(job=dict(chdir=True)))
 
 
 cs = ConfigStore.instance()
@@ -96,7 +99,7 @@ def run_airl(cfg: RunConfig) -> Dict[str, Any]:
 
     trainer: airl.AIRL = call(cfg.airl)
 
-    checkpoints_path = HydraConfig.get().run.dir / pathlib.Path("checkpoints")
+    checkpoints_path = pathlib.Path("checkpoints")
 
     def save(path: str):
         """Save discriminator and generator."""
