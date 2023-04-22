@@ -60,7 +60,7 @@ def eval_policy(
         "monitor_return" key). "expert_stats" gives the return value of
         `rollout_stats()` on the expert demonstrations loaded from `rollout_path`.
     """
-    from stable_baselines3.common import base_class
+    from stable_baselines3.common import base_class, vec_env
 
     from imitation.data import rollout
 

@@ -1,13 +1,17 @@
 """Config and run configuration for AIRL."""
 import dataclasses
 import logging
+import pathlib
 from typing import Any, Dict, Sequence, cast
 
 import hydra
+import torch as th
 from hydra.core.config_store import ConfigStore
+from hydra.core.hydra_config import HydraConfig
 from hydra.utils import call
 from omegaconf import MISSING
 
+from imitation.policies import serialize
 from imitation_cli.algorithm_configurations import airl as airl_cfg
 from imitation_cli.utils import environment as environment_cfg
 from imitation_cli.utils import policy
@@ -67,6 +71,8 @@ reward_network.register_configs(
     dict(environment="${venv}"),
 )  # The reward network should be tailored to the default environment by default
 
+policy_evaluation.register_configs("evaluation", dict(environment="${venv}"))
+
 cs.store(
     name="airl_run",
     node=RunConfig(
@@ -76,8 +82,6 @@ cs.store(
         ),
     ),
 )
-
-policy_evaluation.register_configs("evaluation", dict(environment="${venv}"))
 
 
 @hydra.main(
@@ -92,20 +96,31 @@ def run_airl(cfg: RunConfig) -> Dict[str, Any]:
 
     trainer: airl.AIRL = call(cfg.airl)
 
+    checkpoints_path = HydraConfig.get().run.dir / pathlib.Path("checkpoints")
+
+    def save(path: str):
+        """Save discriminator and generator."""
+        # We implement this here and not in Trainer since we do not want to actually
+        # serialize the whole Trainer (including e.g. expert demonstrations).
+        save_path = checkpoints_path / path
+        save_path.mkdir(parents=True, exist_ok=True)
+
+        th.save(trainer.reward_train, save_path / "reward_train.pt")
+        th.save(trainer.reward_test, save_path / "reward_test.pt")
+        serialize.save_stable_model(save_path / "gen_policy", trainer.gen_algo)
+
     def callback(round_num: int, /) -> None:
         if cfg.checkpoint_interval > 0 and round_num % cfg.checkpoint_interval == 0:
-            logging.log(
-                logging.INFO,
-                f"Saving checkpoint at round {round_num}. TODO implement this",
-            )
+            logging.log(logging.INFO, f"Saving checkpoint at round {round_num}")
+            save(f"{round_num:05d}")
 
     trainer.train(cfg.total_timesteps, callback)
-    # TODO: implement evaluation
     imit_stats = policy_evaluation.eval_policy(trainer.policy, cfg.evaluation)
 
     # Save final artifacts.
     if cfg.checkpoint_interval >= 0:
-        logging.log(logging.INFO, "Saving final checkpoint. TODO implement this")
+        logging.log(logging.INFO, "Saving final checkpoint.")
+        save("final")
 
     return {
         "imit_stats": imit_stats,
