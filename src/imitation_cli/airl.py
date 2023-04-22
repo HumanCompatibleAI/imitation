@@ -1,15 +1,15 @@
 """Config and run configuration for AIRL."""
 import dataclasses
 import logging
-from typing import Any, Dict, Optional, Sequence, cast
+from typing import Any, Dict, Sequence, cast
 
 import hydra
 from hydra.core.config_store import ConfigStore
 from hydra.utils import call
 from omegaconf import MISSING
 
-from imitation_cli.utils import environment as gym_env
-from imitation_cli.utils import optimizer_class
+from imitation_cli.algorithm_configurations import airl as airl_cfg
+from imitation_cli.utils import environment as environment_cfg
 from imitation_cli.utils import policy
 from imitation_cli.utils import policy as policy_conf
 from imitation_cli.utils import (
@@ -21,27 +21,7 @@ from imitation_cli.utils import (
 
 
 @dataclasses.dataclass
-class AIRLConfig:
-    """Config for AIRL."""
-
-    _target_: str = "imitation.algorithms.adversarial.airl.AIRL"
-    venv: gym_env.Config = MISSING
-    demonstrations: trajectories.Config = MISSING
-    gen_algo: rl_algorithm.Config = MISSING
-    reward_net: reward_network.Config = MISSING
-    demo_batch_size: int = 64
-    n_disc_updates_per_round: int = 2
-    disc_opt_cls: optimizer_class.Config = optimizer_class.Adam()
-    gen_train_timesteps: Optional[int] = None
-    gen_replay_buffer_capacity: Optional[int] = None
-    init_tensorboard: bool = False
-    init_tensorboard_graph: bool = False
-    debug_use_ground_truth: bool = False
-    allow_variable_horizon: bool = True  # TODO: true just for debugging
-
-
-@dataclasses.dataclass
-class AIRLRunConfig:
+class RunConfig:
     """Config for running AIRL."""
 
     defaults: list = dataclasses.field(
@@ -54,32 +34,27 @@ class AIRLRunConfig:
         ],
     )
     seed: int = 0
-    venv: gym_env.Config = MISSING
-    demonstrations: trajectories.Config = MISSING
-    airl: AIRLConfig = AIRLConfig()
+
     total_timesteps: int = int(1e6)
     checkpoint_interval: int = 0
+
+    venv: environment_cfg.Config = MISSING
+    demonstrations: trajectories.Config = MISSING
+    airl: airl_cfg.Config = MISSING
     evaluation: policy_evaluation.Config = MISSING
 
 
 cs = ConfigStore.instance()
-cs.store(
-    name="airl_run",
-    node=AIRLRunConfig(
-        airl=AIRLConfig(
-            venv="${venv}",  # type: ignore
-            demonstrations="${demonstrations}",  # type: ignore
-        ),
-    ),
-)
-trajectories.register_configs("demonstrations")
-gym_env.register_configs("venv")
 
+environment_cfg.register_configs("venv")
+
+trajectories.register_configs("demonstrations")
 # Make sure the expert generating the demonstrations uses the same env as the main env
 policy.register_configs(
     "demonstrations/expert_policy",
     dict(environment="${venv}"),
 )
+
 rl_algorithm.register_configs(
     "airl/gen_algo",
     dict(
@@ -91,6 +66,17 @@ reward_network.register_configs(
     "airl/reward_net",
     dict(environment="${venv}"),
 )  # The reward network should be tailored to the default environment by default
+
+cs.store(
+    name="airl_run",
+    node=RunConfig(
+        airl=airl_cfg.Config(
+            venv="${venv}",  # type: ignore
+            demonstrations="${demonstrations}",  # type: ignore
+        ),
+    ),
+)
+
 policy_evaluation.register_configs("evaluation", dict(environment="${venv}"))
 
 
@@ -99,7 +85,7 @@ policy_evaluation.register_configs("evaluation", dict(environment="${venv}"))
     config_path="config",
     config_name="airl_run",
 )
-def run_airl(cfg: AIRLRunConfig) -> Dict[str, Any]:
+def run_airl(cfg: RunConfig) -> Dict[str, Any]:
     from imitation.algorithms.adversarial import airl
     from imitation.data import rollout
     from imitation.data.types import TrajectoryWithRew
@@ -124,7 +110,7 @@ def run_airl(cfg: AIRLRunConfig) -> Dict[str, Any]:
     return {
         "imit_stats": imit_stats,
         "expert_stats": rollout.rollout_stats(
-            cast(Sequence[TrajectoryWithRew], trainer.get_demonstrations())
+            cast(Sequence[TrajectoryWithRew], trainer.get_demonstrations()),
         ),
     }
 
