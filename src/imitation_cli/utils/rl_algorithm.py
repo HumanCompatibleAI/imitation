@@ -9,7 +9,7 @@ if typing.TYPE_CHECKING:
     from stable_baselines3.common.policies import BasePolicy
     from stable_baselines3 import PPO
 
-from hydra.utils import call
+from hydra.utils import call, to_absolute_path
 from omegaconf import MISSING
 
 from imitation_cli.utils import environment as environment_cfg
@@ -73,7 +73,7 @@ class PPO(Config):
 
 
 @dataclasses.dataclass
-class PPOOnDisk(PPO):
+class PPOOnDisk(Config):
     _target_: str = "imitation_cli.utils.rl_algorithm.PPOOnDisk.make"
     path: pathlib.Path = MISSING
 
@@ -82,7 +82,7 @@ class PPOOnDisk(PPO):
         from imitation.policies import serialize
         import stable_baselines3 as sb3
 
-        return serialize.load_stable_baselines_model(sb3.PPO, str(path), environment)
+        return serialize.load_stable_baselines_model(sb3.PPO, str(to_absolute_path(path)), environment)
 
 
 def register_configs(group: str = "rl_algorithm"):
