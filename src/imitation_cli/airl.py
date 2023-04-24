@@ -30,8 +30,7 @@ class RunConfig:
     total_timesteps: int = int(1e6)
     checkpoint_interval: int = 0
 
-    venv: environment_cfg.Config = MISSING
-    demonstrations: trajectories.Config = MISSING
+    environment: environment_cfg.Config = MISSING
     airl: airl_cfg.Config = MISSING
     evaluation: policy_evaluation.Config = MISSING
     # This ensures that the working directory is changed
@@ -40,30 +39,18 @@ class RunConfig:
 
 
 cs = ConfigStore.instance()
-trajectories.register_configs("demonstrations")
-policy.register_configs("demonstrations/expert_policy")
-environment_cfg.register_configs("venv")
-rl_algorithm.register_configs("airl/gen_algo")
-reward_network.register_configs("airl/reward_net")
-policy_evaluation.register_configs("evaluation")
+environment_cfg.register_configs("environment")
+trajectories.register_configs("airl/demonstrations", "${environment}")
+policy.register_configs("airl/demonstrations/expert_policy", "${environment}")
+rl_algorithm.register_configs("airl/gen_algo", "${environment}")
+reward_network.register_configs("airl/reward_net", "${environment}")
+policy_evaluation.register_configs("evaluation", "${environment}")
 
 cs.store(
     name="airl_run_base",
     node=RunConfig(
-        demonstrations=trajectories.Generated(
-            expert_policy=policy.Random(environment="${venv}"),  # type: ignore
-        ),
         airl=airl_cfg.Config(
-            venv="${venv}",  # type: ignore
-            demonstrations="${demonstrations}",  # type: ignore
-            reward_net=reward_network.Config(environment="${venv}"),  # type: ignore
-            gen_algo=rl_algorithm.PPO(
-                environment="${venv}",  # type: ignore
-                policy=policy.ActorCriticPolicy(environment="${venv}"),  # type: ignore
-            ),
-        ),
-        evaluation=policy_evaluation.Config(
-            environment="${venv}",  # type: ignore
+            venv="${environment}",  # type: ignore
         ),
     ),
 )

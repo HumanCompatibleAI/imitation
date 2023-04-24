@@ -2,18 +2,18 @@ from __future__ import annotations
 import dataclasses
 import pathlib
 import typing
+from typing import Sequence, Optional, Union
 
 if typing.TYPE_CHECKING:
     from stable_baselines3.common.policies import BasePolicy
     from imitation.data.types import Trajectory
-    from typing import Sequence
     import numpy as np
 
 from hydra.core.config_store import ConfigStore
 from hydra.utils import call
 from omegaconf import MISSING
 
-from imitation_cli.utils import policy, randomness
+from imitation_cli.utils import policy, randomness, environment as environment_cfg
 
 
 @dataclasses.dataclass
@@ -61,7 +61,7 @@ class Generated(Config):
         )
 
 
-def register_configs(group: str):
+def register_configs(group: str, default_environment: Optional[Union[environment_cfg.Config, str]] = MISSING):
     cs = ConfigStore.instance()
     cs.store(group=group, name="on_disk", node=OnDisk)
-    cs.store(group=group, name="generated", node=Generated)
+    cs.store(group=group, name="generated", node=Generated(expert_policy=policy.Config(environment=default_environment)))

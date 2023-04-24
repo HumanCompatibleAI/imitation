@@ -1,7 +1,8 @@
 from __future__ import annotations
+
 import dataclasses
 import typing
-from typing import Optional, Any, Mapping
+from typing import Optional, Union
 
 if typing.TYPE_CHECKING:
     from stable_baselines3.common.vec_env import VecEnv
@@ -105,8 +106,8 @@ class RewardEnsemble(Config):
         return reward_net
 
 
-def register_configs(group: str, defaults: Mapping[str, Any] = {}):
+def register_configs(group: str, default_environment: Optional[Union[environment_cg.Config, str]] = MISSING):
     cs = ConfigStore.instance()
-    cs.store(group=group, name="basic", node=BasicRewardNet(**defaults))
-    cs.store(group=group, name="shaped", node=BasicShapedRewardNet(**defaults))
-    cs.store(group=group, name="ensemble", node=RewardEnsemble(**defaults))
+    cs.store(group=group, name="basic", node=BasicRewardNet(environment=default_environment))
+    cs.store(group=group, name="shaped", node=BasicShapedRewardNet(environment=default_environment))
+    cs.store(group=group, name="ensemble", node=RewardEnsemble(environment=default_environment))

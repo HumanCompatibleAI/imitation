@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import dataclasses
 import typing
-from typing import Any, Mapping, Union
+from typing import Optional, Union
 
 from hydra.utils import call
 from omegaconf import MISSING
@@ -24,12 +24,12 @@ class Config:
     rng: randomness.Config = randomness.Config()
 
 
-def register_configs(group: str) -> None:
+def register_configs(group: str, default_environment: Optional[Union[environment_cfg.Config, str]] = MISSING) -> None:
     from hydra.core.config_store import ConfigStore
 
     cs = ConfigStore.instance()
-    cs.store(name="default_evaluation", group=group, node=Config)
-    cs.store(name="fast_evaluation", group=group, node=Config(n_episodes_eval=2))
+    cs.store(name="default_evaluation", group=group, node=Config(environment=default_environment))
+    cs.store(name="fast_evaluation", group=group, node=Config(environment=default_environment, n_episodes_eval=2))
 
 
 def eval_policy(

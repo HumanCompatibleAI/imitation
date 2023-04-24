@@ -1,8 +1,9 @@
 from __future__ import annotations
+
 import dataclasses
 import pathlib
 import typing
-from typing import Optional, Mapping, Any
+from typing import Optional, Union
 
 if typing.TYPE_CHECKING:
     from stable_baselines3.common.vec_env import VecEnv
@@ -85,9 +86,9 @@ class PPOOnDisk(Config):
         return serialize.load_stable_baselines_model(sb3.PPO, str(to_absolute_path(path)), environment)
 
 
-def register_configs(group: str = "rl_algorithm"):
+def register_configs(group: str = "rl_algorithm", default_environment: Optional[Union[environment_cfg.Config, str]] = MISSING):
     from hydra.core.config_store import ConfigStore
 
     cs = ConfigStore.instance()
-    cs.store(name="ppo", group=group, node=PPO)
-    cs.store(name="ppo_on_disk", group=group, node=PPOOnDisk)
+    cs.store(name="ppo", group=group, node=PPO(environment=default_environment, policy=policy_cfg.ActorCriticPolicy(environment=default_environment)))
+    cs.store(name="ppo_on_disk", group=group, node=PPOOnDisk(environment=default_environment))

@@ -1,8 +1,9 @@
 from __future__ import annotations
+
 import dataclasses
 import pathlib
 import typing
-from typing import Any, Dict, List, Optional, Mapping
+from typing import Any, Dict, List, Optional, Union
 
 if typing.TYPE_CHECKING:
     from stable_baselines3.common.vec_env import VecEnv
@@ -160,10 +161,10 @@ class PolicyFromHuggingface(Loaded):
         return model.policy
 
 
-def register_configs(group: str):
+def register_configs(group: str, default_environment: Optional[Union[environment_cfg.Config, str]] = MISSING):
     cs = ConfigStore.instance()
-    cs.store(group=group, name="random", node=Random)
-    cs.store(group=group, name="zero", node=ZeroPolicy)
-    cs.store(group=group, name="on_disk", node=PolicyOnDisk)
-    cs.store(group=group, name="from_huggingface", node=PolicyFromHuggingface)
-    cs.store(group=group, name="actor_critic", node=ActorCriticPolicy)
+    cs.store(group=group, name="random", node=Random(environment=default_environment))
+    cs.store(group=group, name="zero", node=ZeroPolicy(environment=default_environment))
+    cs.store(group=group, name="on_disk", node=PolicyOnDisk(environment=default_environment))
+    cs.store(group=group, name="from_huggingface", node=PolicyFromHuggingface(environment=default_environment))
+    cs.store(group=group, name="actor_critic", node=ActorCriticPolicy(environment=default_environment))
