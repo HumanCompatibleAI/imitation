@@ -1,15 +1,24 @@
 defaults:
-  - airl
-  - expert_trajs: generated
-  - gen_algo: on_disk
+  - airl_run_base
+  - environment: gym_env
+  - airl/reward_net: shaped
+  - airl/gen_algo: ppo
+  - evaluation: default_evaluation
+  - airl/demonstrations: generated
+  - airl/demonstrations/expert_policy: random
   - _self_
 
-gen_algo:
-  environment:
-    max_episode_steps: 32
+total_timesteps: 40000
+checkpoint_interval: 1
+
+airl:
+  demo_batch_size: 128
+  demonstrations:
+    total_timesteps: 10
 
 hydra:
   mode: MULTIRUN
   sweeper:
     params:
       environment: glob(*,exclude=gym_env)
+      airl/reward_net: glob(*)
