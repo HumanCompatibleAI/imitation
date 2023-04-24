@@ -160,10 +160,10 @@ class PolicyFromHuggingface(Loaded):
         return model.policy
 
 
-def register_configs(group: str, defaults: Mapping[str, Any] = {}):
+def register_configs(group: str):
     cs = ConfigStore.instance()
-    cs.store(group=group, name="random", node=Random(**defaults))
-    cs.store(group=group, name="zero", node=ZeroPolicy(**defaults))
-    cs.store(group=group, name="on_disk", node=PolicyOnDisk(**defaults))
-    cs.store(group=group, name="from_huggingface", node=PolicyFromHuggingface(**defaults))
-    cs.store(group=group, name="actor_critic", node=ActorCriticPolicy(**defaults))
+    cs.store(group=group, name="random", node=Random)
+    cs.store(group=group, name="zero", node=ZeroPolicy)
+    cs.store(group=group, name="on_disk", node=PolicyOnDisk)
+    cs.store(group=group, name="from_huggingface", node=PolicyFromHuggingface)
+    cs.store(group=group, name="actor_critic", node=ActorCriticPolicy)

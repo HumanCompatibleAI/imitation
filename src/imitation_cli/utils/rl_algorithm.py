@@ -28,7 +28,7 @@ class PPO(Config):
     _target_: str = "imitation_cli.utils.rl_algorithm.PPO.make"
     # We disable recursive instantiation, so we can just make the arguments of the policy but not the policy itself
     _recursive_: bool = False
-    policy: policy_cfg.ActorCriticPolicy = MISSING
+    policy: policy_cfg.ActorCriticPolicy = policy_cfg.ActorCriticPolicy()
     learning_rate: schedule.Config = schedule.FixedSchedule(3e-4)
     n_steps: int = 2048
     batch_size: int = 64
@@ -85,9 +85,9 @@ class PPOOnDisk(PPO):
         return serialize.load_stable_baselines_model(sb3.PPO, str(path), environment)
 
 
-def register_configs(group: str = "rl_algorithm", defaults: Mapping[str, Any] = {}):
+def register_configs(group: str = "rl_algorithm"):
     from hydra.core.config_store import ConfigStore
 
     cs = ConfigStore.instance()
-    cs.store(name="ppo", group=group, node=PPO(**defaults))
-    cs.store(name="ppo_on_disk", group=group, node=PPOOnDisk(**defaults))
+    cs.store(name="ppo", group=group, node=PPO)
+    cs.store(name="ppo_on_disk", group=group, node=PPOOnDisk)

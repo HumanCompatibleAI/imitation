@@ -24,20 +24,12 @@ class Config:
     rng: randomness.Config = randomness.Config()
 
 
-def register_configs(group: str, defaults: Mapping[str, Any] = {}) -> None:
+def register_configs(group: str) -> None:
     from hydra.core.config_store import ConfigStore
 
     cs = ConfigStore.instance()
-    cs.store(
-        name="default_evaluation",
-        group=group,
-        node=Config(**defaults),
-    )
-    cs.store(
-        name="fast_evaluation",
-        group=group,
-        node=Config(n_episodes_eval=2, **defaults),
-    )
+    cs.store(name="default_evaluation", group=group, node=Config)
+    cs.store(name="fast_evaluation", group=group, node=Config(n_episodes_eval=2))
 
 
 def eval_policy(

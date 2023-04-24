@@ -1,0 +1,14 @@
+defaults:
+  - airl_run_base
+  - venv: cartpole
+  - airl/reward_net: shaped
+  - airl/gen_algo: ppo
+  - evaluation: default_evaluation
+#  - venv@airl.reward_net.environment: pendulum  # This is how we inject a different environment
+  - _self_
+
+total_timesteps: 40000
+checkpoint_interval: 1
+
+airl:
+  demo_batch_size: 128

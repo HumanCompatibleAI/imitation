@@ -13,9 +13,8 @@ from omegaconf import MISSING
 from imitation.policies import serialize
 from imitation_cli.algorithm_configurations import airl as airl_cfg
 from imitation_cli.utils import environment as environment_cfg
-from imitation_cli.utils import policy
-from imitation_cli.utils import policy as policy_conf
 from imitation_cli.utils import (
+    policy,
     policy_evaluation,
     reward_network,
     rl_algorithm,
@@ -27,17 +26,7 @@ from imitation_cli.utils import (
 class RunConfig:
     """Config for running AIRL."""
 
-    defaults: list = dataclasses.field(
-        default_factory=lambda: [
-            {"venv": "gym_env"},
-            {"airl/reward_net": "shaped"},
-            {"airl/gen_algo": "ppo"},
-            {"evaluation": "default_evaluation"},
-            "_self_",
-        ],
-    )
     seed: int = 0
-
     total_timesteps: int = int(1e6)
     checkpoint_interval: int = 0
 
@@ -47,41 +36,34 @@ class RunConfig:
     evaluation: policy_evaluation.Config = MISSING
     # This ensures that the working directory is changed
     # to the hydra output dir
-    hydra: Any = dataclasses.field(
-        default_factory=lambda: dict(job=dict(chdir=True)))
+    hydra: Any = dataclasses.field(default_factory=lambda: dict(job=dict(chdir=True)))
 
 
 cs = ConfigStore.instance()
-
-environment_cfg.register_configs("venv")
-
 trajectories.register_configs("demonstrations")
-# Make sure the expert generating the demonstrations uses the same env as the main env
-policy.register_configs(
-    "demonstrations/expert_policy",
-    dict(environment="${venv}"),
-)
-
-rl_algorithm.register_configs(
-    "airl/gen_algo",
-    dict(
-        environment="${venv}",
-        policy=policy_conf.ActorCriticPolicy(environment="${venv}"),  # type: ignore
-    ),
-)  # The generation algo and its policy should use the main env by default
-reward_network.register_configs(
-    "airl/reward_net",
-    dict(environment="${venv}"),
-)  # The reward network should be tailored to the default environment by default
-
-policy_evaluation.register_configs("evaluation", dict(environment="${venv}"))
+policy.register_configs("demonstrations/expert_policy")
+environment_cfg.register_configs("venv")
+rl_algorithm.register_configs("airl/gen_algo")
+reward_network.register_configs("airl/reward_net")
+policy_evaluation.register_configs("evaluation")
 
 cs.store(
-    name="airl_run",
+    name="airl_run_base",
     node=RunConfig(
+        demonstrations=trajectories.Generated(
+            expert_policy=policy.Random(environment="${venv}"),  # type: ignore
+        ),
         airl=airl_cfg.Config(
             venv="${venv}",  # type: ignore
             demonstrations="${demonstrations}",  # type: ignore
+            reward_net=reward_network.Config(environment="${venv}"),  # type: ignore
+            gen_algo=rl_algorithm.PPO(
+                environment="${venv}",  # type: ignore
+                policy=policy.ActorCriticPolicy(environment="${venv}"),  # type: ignore
+            ),
+        ),
+        evaluation=policy_evaluation.Config(
+            environment="${venv}",  # type: ignore
         ),
     ),
 )
