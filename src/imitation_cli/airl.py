@@ -41,7 +41,6 @@ class RunConfig:
 cs = ConfigStore.instance()
 environment_cfg.register_configs("environment")
 trajectories.register_configs("airl/demonstrations", "${environment}")
-policy.register_configs("airl/demonstrations/expert_policy", "${environment}")
 rl_algorithm.register_configs("airl/gen_algo", "${environment}")
 reward_network.register_configs("airl/reward_net", "${environment}")
 policy_evaluation.register_configs("evaluation", "${environment}")

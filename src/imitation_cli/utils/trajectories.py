@@ -64,4 +64,5 @@ class Generated(Config):
 def register_configs(group: str, default_environment: Optional[Union[environment_cfg.Config, str]] = MISSING):
     cs = ConfigStore.instance()
     cs.store(group=group, name="on_disk", node=OnDisk)
-    cs.store(group=group, name="generated", node=Generated(expert_policy=policy.Config(environment=default_environment)))
+    cs.store(group=group, name="generated", node=Generated)
+    policy.register_configs(group=group + "/expert_policy", default_environment=default_environment)
