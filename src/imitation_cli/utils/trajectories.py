@@ -37,7 +37,7 @@ class OnDisk(Config):
 class Generated(Config):
     _target_: str = "imitation_cli.utils.trajectories.Generated.make"
     _recursive_: bool = False  # We disable the recursive flag, so we can extract the environment from the expert policy
-    total_timesteps: int = int(10)  # TODO: this is low for debugging
+    total_timesteps: int = MISSING
     expert_policy: policy.Config = MISSING
     rng: randomness.Config = randomness.Config()
 

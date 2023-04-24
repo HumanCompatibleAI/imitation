@@ -11,4 +11,5 @@ total_timesteps: 40000
 checkpoint_interval: 1
 
 airl:
-  demo_batch_size: 128
+  demo_batch_size: 128  demonstrations:
+    total_timesteps: 10
