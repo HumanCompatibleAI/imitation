@@ -45,3 +45,6 @@ def make_rollout_venv(environment_config: Config) -> VecEnv:
 def register_configs(group: str):
     cs = ConfigStore.instance()
     cs.store(group=group, name="gym_env", node=Config)
+    cs.store(group=group, name="cartpole", node=Config(env_name="CartPole-v0", max_episode_steps=500))
+    cs.store(group=group, name="pendulum", node=Config(env_name="Pendulum-v1", max_episode_steps=500))
+
