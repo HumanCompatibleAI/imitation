@@ -1,3 +1,4 @@
+"""Register Hydra configs for stable_baselines3 feature extractors."""
 import dataclasses
 
 from hydra.core.config_store import ConfigStore
@@ -6,12 +7,18 @@ from omegaconf import MISSING
 
 @dataclasses.dataclass
 class Config:
+    """Base config for stable_baselines3 feature extractors."""
+
     _target_: str = MISSING
 
 
 @dataclasses.dataclass
 class FlattenExtractorConfig(Config):
-    _target_: str = "imitation_cli.utils.feature_extractor_class.FlattenExtractorConfig.make"
+    """Config for FlattenExtractor."""
+
+    _target_: str = (
+        "imitation_cli.utils.feature_extractor_class.FlattenExtractorConfig.make"
+    )
 
     @staticmethod
     def make() -> type:
@@ -22,6 +29,8 @@ class FlattenExtractorConfig(Config):
 
 @dataclasses.dataclass
 class NatureCNNConfig(Config):
+    """Config for NatureCNN."""
+
     _target_: str = "imitation_cli.utils.feature_extractor_class.NatureCNNConfig.make"
 
     @staticmethod

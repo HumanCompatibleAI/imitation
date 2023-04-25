@@ -14,8 +14,8 @@ from imitation.policies import serialize
 from imitation_cli.algorithm_configurations import airl as airl_cfg
 from imitation_cli.utils import environment as environment_cfg
 from imitation_cli.utils import (
-    policy,
     policy_evaluation,
+    randomness,
     reward_network,
     rl_algorithm,
     trajectories,
@@ -26,7 +26,7 @@ from imitation_cli.utils import (
 class RunConfig:
     """Config for running AIRL."""
 
-    seed: int = 0
+    rng: randomness.Config = randomness.Config(seed=0)
     total_timesteps: int = int(1e6)
     checkpoint_interval: int = 0
 
@@ -39,11 +39,11 @@ class RunConfig:
 
 
 cs = ConfigStore.instance()
-environment_cfg.register_configs("environment")
-trajectories.register_configs("airl/demonstrations", "${environment}")
-rl_algorithm.register_configs("airl/gen_algo", "${environment}")
+environment_cfg.register_configs("environment", "${rng}")
+trajectories.register_configs("airl/demonstrations", "${environment}", "${rng}")
+rl_algorithm.register_configs("airl/gen_algo", "${environment}", "${rng.seed}")
 reward_network.register_configs("airl/reward_net", "${environment}")
-policy_evaluation.register_configs("evaluation", "${environment}")
+policy_evaluation.register_configs("evaluation", "${environment}", "${rng}")
 
 cs.store(
     name="airl_run_base",

@@ -22,4 +22,4 @@ hydra:
   sweeper:
     params:
       environment: cartpole,pendulum
-      airl/reward_net: basic,shaped,ensemble
+      airl/reward_net: basic,shaped,small_ensemble
