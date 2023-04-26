@@ -12,7 +12,7 @@ if typing.TYPE_CHECKING:
     import numpy as np
 
 from hydra.core.config_store import ConfigStore
-from hydra.utils import call
+from hydra.utils import instantiate
 from omegaconf import MISSING
 
 from imitation_cli.utils import environment as environment_cfg
@@ -60,9 +60,9 @@ class Generated(Config):
     ) -> Sequence[Trajectory]:
         from imitation.data import rollout
 
-        expert = call(expert_policy)
-        env = call(expert_policy.environment)
-        rng = call(rng)
+        expert = instantiate(expert_policy)
+        env = instantiate(expert_policy.environment)
+        rng = instantiate(rng)
         return rollout.generate_trajectories(
             expert,
             env,

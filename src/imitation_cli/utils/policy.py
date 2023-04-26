@@ -11,7 +11,7 @@ if typing.TYPE_CHECKING:
     from stable_baselines3.common.policies import BasePolicy
 
 from hydra.core.config_store import ConfigStore
-from hydra.utils import call
+from hydra.utils import instantiate
 from omegaconf import MISSING
 
 from imitation_cli.utils import activation_function_class as act_fun_class_cfg
@@ -91,9 +91,9 @@ class ActorCriticPolicy(Config):
         del kwargs["_target_"]
         del kwargs["environment"]
 
-        kwargs["activation_fn"] = call(activation_fn)
-        kwargs["features_extractor_class"] = call(features_extractor_class)
-        kwargs["optimizer_class"] = call(optimizer_class)
+        kwargs["activation_fn"] = instantiate(activation_fn)
+        kwargs["features_extractor_class"] = instantiate(features_extractor_class)
+        kwargs["optimizer_class"] = instantiate(optimizer_class)
 
         return dict(
             **kwargs,
@@ -182,7 +182,7 @@ class PolicyFromHuggingface(Loaded):
         model = serialize.load_stable_baselines_model(
             Loaded.type_to_class(policy_type),
             filename,
-            call(environment),
+            instantiate(environment),
         )
         return model.policy
 

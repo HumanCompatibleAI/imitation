@@ -10,7 +10,7 @@ if typing.TYPE_CHECKING:
     import stable_baselines3 as sb3
     from stable_baselines3.common.vec_env import VecEnv
 
-from hydra.utils import call, to_absolute_path
+from hydra.utils import instantiate, to_absolute_path
 from omegaconf import MISSING
 
 from imitation_cli.utils import environment as environment_cfg
@@ -73,9 +73,9 @@ class PPO(Config):
         return sb3.PPO(
             policy=sb3.common.policies.ActorCriticPolicy,
             policy_kwargs=policy_kwargs,
-            env=call(environment),
-            learning_rate=call(learning_rate),
-            clip_range=call(clip_range),
+            env=instantiate(environment),
+            learning_rate=instantiate(learning_rate),
+            clip_range=instantiate(clip_range),
             **kwargs,
         )
 

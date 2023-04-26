@@ -9,7 +9,7 @@ if typing.TYPE_CHECKING:
     from stable_baselines3.common.vec_env import VecEnv
 
 from hydra.core.config_store import ConfigStore
-from hydra.utils import call
+from hydra.utils import instantiate
 from omegaconf import MISSING
 
 from imitation_cli.utils import randomness
@@ -40,7 +40,7 @@ class Config:
 def make_rollout_venv(environment_config: Config) -> VecEnv:
     from imitation.data import wrappers
 
-    return call(
+    return instantiate(
         environment_config,
         log_dir=None,
         post_wrappers=[lambda env, i: wrappers.RolloutInfoWrapper(env)],

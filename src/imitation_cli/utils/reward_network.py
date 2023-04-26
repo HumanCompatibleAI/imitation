@@ -10,7 +10,7 @@ if typing.TYPE_CHECKING:
     from imitation.rewards.reward_nets import RewardNet
 
 from hydra.core.config_store import ConfigStore
-from hydra.utils import call
+from hydra.utils import instantiate
 from omegaconf import MISSING
 
 import imitation_cli.utils.environment as environment_cfg
@@ -99,11 +99,11 @@ class RewardEnsemble(Config):
     ) -> RewardNet:
         from imitation.rewards import reward_nets
 
-        venv = call(environment)
+        venv = instantiate(environment)
         reward_net = reward_nets.RewardEnsemble(
             venv.observation_space,
             venv.action_space,
-            [call(ensemble_member_config) for _ in range(ensemble_size)],
+            [instantiate(ensemble_member_config) for _ in range(ensemble_size)],
         )
         if add_std_alpha is not None:
             return reward_nets.AddSTDRewardWrapper(

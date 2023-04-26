@@ -7,7 +7,7 @@ from typing import Any, Dict, Sequence, cast
 import hydra
 import torch as th
 from hydra.core.config_store import ConfigStore
-from hydra.utils import call
+from hydra.utils import instantiate
 from omegaconf import MISSING
 
 from imitation.policies import serialize
@@ -65,7 +65,7 @@ def run_airl(cfg: RunConfig) -> Dict[str, Any]:
     from imitation.data import rollout
     from imitation.data.types import TrajectoryWithRew
 
-    trainer: airl.AIRL = call(cfg.airl)
+    trainer: airl.AIRL = instantiate(cfg.airl)
 
     checkpoints_path = pathlib.Path("checkpoints")
 
