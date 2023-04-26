@@ -55,9 +55,13 @@ def config_hook(config, command_name, logger):
 @rl_ingredient.named_config
 def fast():
     batch_size = 2
-    # SB3 RL seems to need batch size of 2, otherwise it runs into numeric
-    # issues when computing multinomial distribution during predict()
-    rl_kwargs = dict(batch_size=2)
+    rl_kwargs = dict(
+        # SB3 RL seems to need batch size of 2, otherwise it runs into numeric
+        # issues when computing multinomial distribution during predict()
+        batch_size=2,
+        # Setting n_epochs=1 speeds up thing a lot
+        n_epochs=1,
+    )
     locals()  # quieten flake8
 
 
@@ -133,6 +137,11 @@ def make_rl_algo(
             f"num_envs={venv.num_envs} must evenly divide batch_size={batch_size}.",
         )
     rl_kwargs = dict(rl_kwargs)
+
+    # TODO: this is a hack and an indicator that the rl ingredient should be refactored
+    if rl_cls == sb3.SAC:
+        del rl_kwargs["n_epochs"]
+
     # If on-policy, collect `batch_size` many timesteps each update.
     # If off-policy, train on `batch_size` many timesteps each update.
     # These are different notion of batches, but this seems the closest
@@ -180,6 +189,11 @@ def load_rl_algo_from_path(
     relabel_reward_fn: Optional[RewardFn] = None,
 ) -> base_class.BaseAlgorithm:
     rl_kwargs = dict(rl_kwargs)
+
+    # TODO: this is a hack and an indicator that the rl ingredient should be refactored
+    if rl_cls == sb3.SAC:
+        del rl_kwargs["n_epochs"]
+
     if issubclass(rl_cls, off_policy_algorithm.OffPolicyAlgorithm):
         rl_kwargs = _maybe_add_relabel_buffer(
             rl_kwargs=rl_kwargs,
