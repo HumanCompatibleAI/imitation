@@ -49,7 +49,7 @@ cs.store(
     name="airl_run_base",
     node=RunConfig(
         airl=airl_cfg.Config(
-            venv="${environment}",  # type: ignore
+            venv="${environment}",  # type: ignore[assignment]
         ),
     ),
 )
