@@ -1,44 +1,35 @@
 """Register optimizer classes with Hydra."""
 import dataclasses
+from enum import Enum
 
+import torch
 from hydra.core.config_store import ConfigStore
-from omegaconf import MISSING
+
+
+class OptimizerClass(Enum):
+    """Enum of optimizer classes."""
+
+    Adam = torch.optim.Adam
+    SGD = torch.optim.SGD
 
 
 @dataclasses.dataclass
 class Config:
     """Base config for optimizer classes."""
 
-    _target_: str = MISSING
-
-
-@dataclasses.dataclass
-class Adam(Config):
-    """Config for Adam optimizer class."""
-
-    _target_: str = "imitation_cli.utils.optimizer_class.Adam.make"
+    optimizer_class: OptimizerClass
+    _target_: str = "imitation_cli.utils.optimizer_class.Config.make"
 
     @staticmethod
-    def make() -> type:
-        import torch
-
-        return torch.optim.Adam
+    def make(optimizer_class: OptimizerClass) -> type:
+        return optimizer_class.value
 
 
-@dataclasses.dataclass
-class SGD(Config):
-    """Config for SGD optimizer class."""
-
-    _target_: str = "imitation_cli.utils.optimizer_class.SGD.make"
-
-    @staticmethod
-    def make() -> type:
-        import torch
-
-        return torch.optim.SGD
+Adam = Config(OptimizerClass.Adam)
+SGD = Config(OptimizerClass.SGD)
 
 
 def register_configs(group: str):
     cs = ConfigStore.instance()
-    cs.store(group=group, name="adam", node=Adam)
-    cs.store(group=group, name="sgd", node=SGD)
+    for cls in OptimizerClass:
+        cs.store(group=group, name=cls.name.lower(), node=Config(cls))

@@ -1,59 +1,37 @@
 """Classes for configuring activation functions."""
 import dataclasses
+from enum import Enum
 
+import torch
 from hydra.core.config_store import ConfigStore
+
+
+class ActivationFunctionClass(Enum):
+    """Enum of activation function classes."""
+
+    TanH = torch.nn.Tanh
+    ReLU = torch.nn.ReLU
+    LeakyReLU = torch.nn.LeakyReLU
 
 
 @dataclasses.dataclass
 class Config:
     """Base class for activation function configs."""
 
-    # Note: we don't define _target_ here so in the subclasses it can be defined last.
-    #  This is the same pattern we use as in schedule.py.
-    pass
-
-
-@dataclasses.dataclass
-class TanH(Config):
-    """Config for TanH activation function."""
-
-    _target_: str = "imitation_cli.utils.activation_function_class.TanH.make"
+    activation_function_class: ActivationFunctionClass
+    _target_: str = "imitation_cli.utils.activation_function_class.Config.make"
 
     @staticmethod
-    def make() -> type:
-        import torch
-
-        return torch.nn.Tanh
+    def make(activation_function_class: ActivationFunctionClass) -> type:
+        return activation_function_class.value
 
 
-@dataclasses.dataclass
-class ReLU(Config):
-    """Config for ReLU activation function."""
-
-    _target_: str = "imitation_cli.utils.activation_function_class.ReLU.make"
-
-    @staticmethod
-    def make() -> type:
-        import torch
-
-        return torch.nn.ReLU
-
-
-@dataclasses.dataclass
-class LeakyReLU(Config):
-    """Config for LeakyReLU activation function."""
-
-    _target_: str = "imitation_cli.utils.activation_function_class.LeakyReLU.make"
-
-    @staticmethod
-    def make() -> type:
-        import torch
-
-        return torch.nn.LeakyReLU
+TanH = Config(ActivationFunctionClass.TanH)
+ReLU = Config(ActivationFunctionClass.ReLU)
+LeakyReLU = Config(ActivationFunctionClass.LeakyReLU)
 
 
 def register_configs(group: str):
     cs = ConfigStore.instance()
-    cs.store(group=group, name="tanh", node=TanH)
-    cs.store(group=group, name="relu", node=ReLU)
-    cs.store(group=group, name="leaky_relu", node=LeakyReLU)
+    for cls in ActivationFunctionClass:
+        cs.store(group=group, name=cls.name.lower(), node=Config(cls))

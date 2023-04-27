@@ -1,46 +1,35 @@
 """Register Hydra configs for stable_baselines3 feature extractors."""
 import dataclasses
+from enum import Enum
 
+import stable_baselines3.common.torch_layers as torch_layers
 from hydra.core.config_store import ConfigStore
-from omegaconf import MISSING
+
+
+class FeatureExtractorClass(Enum):
+    """Enum of feature extractor classes."""
+
+    FlattenExtractor = torch_layers.FlattenExtractor
+    NatureCNN = torch_layers.NatureCNN
 
 
 @dataclasses.dataclass
 class Config:
     """Base config for stable_baselines3 feature extractors."""
 
-    _target_: str = MISSING
-
-
-@dataclasses.dataclass
-class FlattenExtractorConfig(Config):
-    """Config for FlattenExtractor."""
-
-    _target_: str = (
-        "imitation_cli.utils.feature_extractor_class.FlattenExtractorConfig.make"
-    )
+    feature_extractor_class: FeatureExtractorClass
+    _target_: str = "imitation_cli.utils.feature_extractor_class.Config.make"
 
     @staticmethod
-    def make() -> type:
-        import stable_baselines3
-
-        return stable_baselines3.common.torch_layers.FlattenExtractor
+    def make(feature_extractor_class: FeatureExtractorClass) -> type:
+        return feature_extractor_class.value
 
 
-@dataclasses.dataclass
-class NatureCNNConfig(Config):
-    """Config for NatureCNN."""
-
-    _target_: str = "imitation_cli.utils.feature_extractor_class.NatureCNNConfig.make"
-
-    @staticmethod
-    def make() -> type:
-        import stable_baselines3
-
-        return stable_baselines3.common.torch_layers.NatureCNN
+FlattenExtractor = Config(FeatureExtractorClass.FlattenExtractor)
+NatureCNN = Config(FeatureExtractorClass.NatureCNN)
 
 
 def register_configs(group: str):
     cs = ConfigStore.instance()
-    cs.store(group=group, name="flatten", node=FlattenExtractorConfig)
-    cs.store(group=group, name="nature_cnn", node=NatureCNNConfig)
+    for cls in FeatureExtractorClass:
+        cs.store(group=group, name=cls.name.lower(), node=Config(cls))

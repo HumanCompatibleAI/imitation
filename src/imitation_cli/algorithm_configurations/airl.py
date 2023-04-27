@@ -24,7 +24,7 @@ class Config:
     reward_net: reward_network.Config = MISSING
     demo_batch_size: int = 64
     n_disc_updates_per_round: int = 2
-    disc_opt_cls: optimizer_class.Config = optimizer_class.Adam()
+    disc_opt_cls: optimizer_class.Config = optimizer_class.Adam
     gen_train_timesteps: Optional[int] = None
     gen_replay_buffer_capacity: Optional[int] = None
     init_tensorboard: bool = False

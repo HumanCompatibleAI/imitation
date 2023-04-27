@@ -65,7 +65,7 @@ class ActorCriticPolicy(Config):
     _target_: str = "imitation_cli.utils.policy.ActorCriticPolicy.make"
     lr_schedule: schedule.Config = schedule.FixedSchedule(3e-4)
     net_arch: Optional[Dict[str, List[int]]] = None
-    activation_fn: act_fun_class_cfg.Config = act_fun_class_cfg.TanH()
+    activation_fn: act_fun_class_cfg.Config = act_fun_class_cfg.TanH
     ortho_init: bool = True
     use_sde: bool = False
     log_std_init: float = 0.0
@@ -73,12 +73,12 @@ class ActorCriticPolicy(Config):
     use_expln: bool = False
     squash_output: bool = False
     features_extractor_class: feature_extractor_class_cfg.Config = (
-        feature_extractor_class_cfg.FlattenExtractorConfig()
+        feature_extractor_class_cfg.FlattenExtractor
     )
     features_extractor_kwargs: Optional[Dict[str, Any]] = None
     share_features_extractor: bool = True
     normalize_images: bool = True
-    optimizer_class: optimizer_class_cfg.Config = optimizer_class_cfg.Adam()
+    optimizer_class: optimizer_class_cfg.Config = optimizer_class_cfg.Adam
     optimizer_kwargs: Optional[Dict[str, Any]] = None
 
     @staticmethod
