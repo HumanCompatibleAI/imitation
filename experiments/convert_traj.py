@@ -8,7 +8,7 @@ from typing import Sequence
 
 import numpy as np
 
-from imitation.data import rollout, types
+from imitation.data import rollout, serialize, types
 
 
 def convert_trajs_to_sb(trajs: Sequence[types.TrajectoryWithRew]) -> dict:
@@ -32,7 +32,7 @@ def main():
     dst_path = Path(args.dst_path)
 
     assert src_path.is_file()
-    src_trajs = types.load_with_rewards(src_path)
+    src_trajs = serialize.load_with_rewards(src_path)
     dst_trajs = convert_trajs_to_sb(src_trajs)
     os.makedirs(dst_path.parent, exist_ok=True)
     with open(dst_path, "wb") as f:

@@ -4,6 +4,7 @@ import datetime
 import functools
 import itertools
 import os
+import pathlib
 import uuid
 import warnings
 from typing import (
@@ -27,6 +28,8 @@ import torch as th
 from gym.wrappers import TimeLimit
 from stable_baselines3.common import monitor
 from stable_baselines3.common.vec_env import DummyVecEnv, SubprocVecEnv, VecEnv
+
+from imitation.data.types import AnyPath
 
 
 def oric(x: np.ndarray) -> np.ndarray:
@@ -359,3 +362,86 @@ def get_first_iter_element(iterable: Iterable[T]) -> Tuple[T, Iterable[T]]:
         return_iterable = iterable
 
     return first_element, return_iterable
+
+
+def parse_path(
+    path: AnyPath,
+    allow_relative: bool = True,
+    base_directory: Optional[pathlib.Path] = None,
+) -> pathlib.Path:
+    """Parse a path to a `pathlib.Path` object.
+
+    All resulting paths are resolved, absolute paths. If `allow_relative` is True,
+    then relative paths are allowed as input, and are resolved relative to the
+    current working directory, or relative to `base_directory` if it is
+    specified.
+
+    Args:
+        path: The path to parse. Can be a string, bytes, or `os.PathLike`.
+        allow_relative: If True, then relative paths are allowed as input, and
+            are resolved relative to the current working directory. If False,
+            an error is raised if the path is not absolute.
+        base_directory: If specified, then relative paths are resolved relative
+            to this directory, instead of the current working directory.
+
+    Returns:
+        A `pathlib.Path` object.
+
+    Raises:
+        ValueError: If `allow_relative` is False and the path is not absolute.
+        ValueError: If `base_directory` is specified and `allow_relative` is
+            False.
+    """
+    if base_directory is not None and not allow_relative:
+        raise ValueError(
+            "If `base_directory` is specified, then `allow_relative` must be True.",
+        )
+
+    parsed_path: pathlib.Path
+    if isinstance(path, pathlib.Path):
+        parsed_path = path
+    elif isinstance(path, str):
+        parsed_path = pathlib.Path(path)
+    elif isinstance(path, bytes):
+        parsed_path = pathlib.Path(path.decode())
+    else:
+        parsed_path = pathlib.Path(str(path))
+
+    if parsed_path.is_absolute():
+        return parsed_path
+    else:
+        if allow_relative:
+            base_directory = base_directory or pathlib.Path.cwd()
+            # relative to current working directory
+            return base_directory / parsed_path
+        else:
+            raise ValueError(f"Path {str(parsed_path)} is not absolute")
+
+
+def parse_optional_path(
+    path: Optional[AnyPath],
+    allow_relative: bool = True,
+    base_directory: Optional[pathlib.Path] = None,
+) -> Optional[pathlib.Path]:
+    """Parse an optional path to a `pathlib.Path` object.
+
+    All resulting paths are resolved, absolute paths. If `allow_relative` is True,
+    then relative paths are allowed as input, and are resolved relative to the
+    current working directory, or relative to `base_directory` if it is
+    specified.
+
+    Args:
+        path: The path to parse. Can be a string, bytes, or `os.PathLike`.
+        allow_relative: If True, then relative paths are allowed as input, and
+            are resolved relative to the current working directory. If False,
+            an error is raised if the path is not absolute.
+        base_directory: If specified, then relative paths are resolved relative
+            to this directory, instead of the current working directory.
+
+    Returns:
+        A `pathlib.Path` object, or None if `path` is None.
+    """
+    if path is None:
+        return None
+    else:
+        return parse_path(path, allow_relative, base_directory)

@@ -208,6 +208,7 @@ setup(
         "sacred>=0.8.4",
         "tensorboard>=1.14",
         "huggingface_sb3>=2.2.1",
+        "datasets>=2.8.0",
     ],
     tests_require=TESTS_REQUIRE,
     extras_require={

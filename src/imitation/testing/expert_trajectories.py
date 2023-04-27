@@ -12,8 +12,9 @@ import numpy as np
 from filelock import FileLock
 from torch.utils import data as th_data
 
+import imitation.data.serialize as data_serialize
+import imitation.policies.serialize as policies_serialize
 from imitation.data import rollout, types, wrappers
-from imitation.policies import serialize
 from imitation.util import util
 
 
@@ -40,7 +41,7 @@ def generate_expert_trajectories(
         rng=rng,
     )
     try:
-        expert = serialize.load_policy("ppo-huggingface", env, env_name=env_id)
+        expert = policies_serialize.load_policy("ppo-huggingface", env, env_name=env_id)
         return rollout.rollout(
             expert,
             env,
@@ -77,7 +78,7 @@ def lazy_generate_expert_trajectories(
     # Note: we cast to str here because FileLock doesn't support pathlib.Path.
     with FileLock(str(environment_cache_path / "rollout.npz.lock")):
         try:
-            trajectories = types.load_with_rewards(trajectories_path)
+            trajectories = data_serialize.load_with_rewards(trajectories_path)
         except (FileNotFoundError, pickle.PickleError) as e:  # pragma: no cover
             generation_reason = (
                 "the cache is cold"
@@ -89,7 +90,7 @@ def lazy_generate_expert_trajectories(
                 f"{generation_reason}.",
             )
             trajectories = generate_expert_trajectories(env_id, num_trajectories, rng)
-            types.save(trajectories_path, trajectories)
+            data_serialize.save(trajectories_path, trajectories)
 
     if len(trajectories) >= num_trajectories:
         return trajectories[:num_trajectories]

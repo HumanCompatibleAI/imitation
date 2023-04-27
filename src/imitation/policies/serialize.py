@@ -10,9 +10,8 @@ from typing import Callable, Type, TypeVar
 import huggingface_sb3 as hfsb3
 from stable_baselines3.common import base_class, callbacks, policies, vec_env
 
-from imitation.data import types
 from imitation.policies import base
-from imitation.util import registry
+from imitation.util import registry, util
 
 Algorithm = TypeVar("Algorithm", bound=base_class.BaseAlgorithm)
 
@@ -52,7 +51,7 @@ def load_stable_baselines_model(
         The deserialized RL algorithm.
     """
     logging.info(f"Loading Stable Baselines policy for '{cls}' from '{path}'")
-    path_obj = types.parse_path(path)
+    path_obj = util.parse_path(path)
 
     if path_obj.is_dir():
         path_obj = path_obj / "model.zip"
@@ -230,14 +229,3 @@ class SavePolicyCallback(callbacks.EventCallback):
         output_dir = self.policy_dir / f"{self.num_timesteps:012d}"
         save_stable_model(output_dir, self.model)
         return True
-
-
-def load_rollouts_from_huggingface(
-    algo_name: str,
-    env_name: str,
-    organization: str = "HumanCompatibleAI",
-) -> str:
-    model_name = hfsb3.ModelName(algo_name, hfsb3.EnvironmentName(env_name))
-    repo_id = hfsb3.ModelRepoId(organization, model_name)
-    filename = hfsb3.load_from_hub(repo_id, "rollouts.npz")
-    return filename
