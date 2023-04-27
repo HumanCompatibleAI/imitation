@@ -16,3 +16,4 @@ airl:
   demo_batch_size: 128
   demonstrations:
     total_timesteps: 10
+  allow_variable_horizon: true

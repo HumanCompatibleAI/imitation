@@ -30,4 +30,4 @@ class Config:
     init_tensorboard: bool = False
     init_tensorboard_graph: bool = False
     debug_use_ground_truth: bool = False
-    allow_variable_horizon: bool = True  # TODO: true just for debugging
+    allow_variable_horizon: bool = False
