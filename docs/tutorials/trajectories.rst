@@ -1,0 +1,67 @@
+==========================
+Handle Expert Trajectories
+==========================
+
+For imitation learning we need expert trajectories.
+In this library they are stored in a :class:`Trajectory <imitation.data.types.Trajectory>` dataclass:
+
+.. code-block:: python
+
+    @dataclasses.dataclass(frozen=True)
+    class Trajectory:
+        obs: np.ndarray
+        """Observations, shape (trajectory_len + 1, ) + observation_shape."""
+
+        acts: np.ndarray
+        """Actions, shape (trajectory_len, ) + action_shape."""
+
+        infos: Optional[np.ndarray]
+        """An array of info dicts, length trajectory_len."""
+
+        terminal: bool
+        """Does this trajectory (fragment) end in a terminal state?"""
+
+:class:`TrajectoryWithRew <imitation.data.types.TrajectoryWithRew>` have another :class:`rews <imitation.data.types.TrajectoryWithRew.rews>` field, which is an array of rewards of shape `(trajectory_len, )`.
+
+Usually, they are passed around as sequences of trajectories.
+
+Some algorithms do not care about entire trajectories, but only for individual
+:class:`Transitions <imitation.data.types.Transitions>` (:func:`flattened <imitation.data.rollout.flatten_trajectories>` trajectories).
+
+Generating Trajectories
+-----------------------
+To generate trajectories from a given (expert) policy, run the following command:
+
+.. code-block:: python
+
+    import numpy as np
+    from imitation.data.rollout import rollout
+
+    your_trajectories = rollout(
+        your_policy,
+        your_env,
+        sample_until=make_sample_until(timesteps=1000),
+        rng=np.random.default_rng(),
+    )
+
+Storing/Loading Trajectories
+----------------------------
+
+Trajectories can be stored on disk or uploaded to the HuggingFace Dataset Hub.
+
+This will store the sequence of trajectories into a directory at `your_path` as a HuggingFace Dataset:
+
+.. code-block:: python
+
+    from imitation.data import serialize
+    serialize.save(your_path, your_trajectories)
+
+In the same way you can load trajectories from a HuggingFace Dataset:
+
+.. code-block:: python
+
+    from imitation.data import serialize
+    your_trajectories = serialize.load(your_path)
+
+Note that some older, now deprecated, trajectory formats are supported by :func:`this loader <imitation.data.serialize.load>`,
+but not by the :func:`saver <imitation.data.serialize.save>`.
