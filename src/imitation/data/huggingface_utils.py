@@ -10,7 +10,7 @@ from imitation.data import types
 
 
 class TrajectoryDatasetSequence(Sequence[types.Trajectory]):
-    """A wrapper to present a HF dataset as a sequence of trajectories.
+    """A wrapper to present an HF dataset as a sequence of trajectories.
 
     Converts the dataset to a sequence of trajectories on the fly.
     """

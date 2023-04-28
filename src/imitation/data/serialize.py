@@ -29,9 +29,9 @@ def load(path: AnyPath) -> Sequence[Trajectory]:
     """Loads a sequence of trajectories saved by `save()` from `path`."""
     # Interestingly, np.load will just silently load a normal pickle file when you
     # set `allow_pickle=True`. So this call should succeed for both the new compressed
-    # .npz format and the old pickle based format. To tell the difference we need to
+    # .npz format and the old pickle based format. To tell the difference, we need to
     # look at the type of the resulting object. If it's the new compressed format,
-    # it should be a Mapping that we need to decode, whereas if it's the old format
+    # it should be a Mapping that we need to decode, whereas if it's the old format,
     # it's just the sequence of trajectories, and we can return it directly.
 
     if os.path.isdir(path):  # huggingface datasets format
