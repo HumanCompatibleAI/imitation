@@ -4,7 +4,7 @@ import math
 import re
 import uuid
 from typing import Any, Sequence, Tuple
-from unittest.mock import Mock
+from unittest.mock import Mock, MagicMock
 
 import gym
 import numpy as np
@@ -1194,4 +1194,27 @@ def test_returns_preference_for_answered_query(requests_mock):
     preference = gatherer._gather_preference(query_id)
 
     assert preference == answer
+
+
+def test_keeps_pending_query_for_unanswered_query():
+    gatherer = PrefCollectGatherer(pref_collect_address="https://test.de", wait_for_user=False)
+    gatherer._gather_preference = MagicMock(return_value=None)
+    gatherer.pending_queries = {"1234": Mock()}
+
+    pending_queries_pre = gatherer.pending_queries.copy()
+    gatherer()
+
+    assert pending_queries_pre == gatherer.pending_queries
+
+
+def test_delete_pending_query_for_answered_query():
+    gatherer = PrefCollectGatherer(pref_collect_address="https://test.de", wait_for_user=False)
+    gatherer._gather_preferences = MagicMock(return_value=None)
+
+    pending_queries_pre = gatherer.pending_queries.copy()
+    gatherer()
+
+    assert pending_queries_pre == gatherer.pending_queries
+
+
 
