@@ -76,3 +76,33 @@ In the same way you can load trajectories from a HuggingFace Dataset:
 
 Note that some older, now deprecated, trajectory formats are supported by :func:`this loader <imitation.data.serialize.load>`,
 but not by the :func:`saver <imitation.data.serialize.save>`.
+
+Sharing Trajectories with the HuggingFace Dataset Hub
+-----------------------------------------------------
+
+To share your trajectories with the HuggingFace Dataset Hub, you need to create a HuggingFace account and log in with the HuggingFace CLI:
+
+.. code-block:: bash
+
+    $ huggingface-cli login
+
+Then you can upload your trajectories to the HuggingFace Dataset Hub:
+
+.. code-block:: python
+
+    from imitation.data.huggingface_utils import trajectories_to_dataset
+
+    trajectories_to_dataset(your_trajectories).push_to_hub("your_hf_name/your_dataset_name")
+
+To use a public dataset from the HuggingFace Dataset Hub, you can use the following code:
+
+.. code-block:: python
+
+    import datasets
+    from imitation.data.huggingface_utils import TrajectoryDatasetSequence
+
+    your_dataset = datasets.load_dataset("your_hf_name/your_dataset_name")
+    your_trajectories = TrajectoryDatasetSequence(your_dataset)
+
+The :class:`TrajectoryDatasetSequence <imitation.data.huggingface_utils.TrajectoryDatasetSequence>`
+wraps a HuggingFace dataset so it can be used in the same way as a list of trajectories.
