@@ -1,6 +1,6 @@
 """Helpers to convert between Trajectories and HuggingFace's datasets library."""
 import functools
-from typing import Any, Dict, Iterable, Sequence, cast
+from typing import Any, Dict, Iterable, Sequence, cast, Optional
 
 import datasets
 import jsonpickle
@@ -55,6 +55,11 @@ class TrajectoryDatasetSequence(Sequence[types.Trajectory]):
             kwargs["infos"] = _LazyDecodedList(kwargs["infos"])
 
             return self._trajectory_class(**kwargs)
+
+    @property
+    def dataset(self):
+        """Return the underlying HF dataset."""
+        return self._dataset
 
 
 class _LazyDecodedList(Sequence[Any]):
@@ -174,3 +179,14 @@ def trajectories_to_dict(
             cast(types.TrajectoryWithRew, traj).rews for traj in trajectories
         ]
     return trajectory_dict
+
+
+def trajectories_to_dataset(
+    trajectories: Sequence[types.Trajectory],
+    info: Optional[datasets.DatasetInfo] = None,
+) -> datasets.Dataset:
+    """Convert a sequence of trajectories to a HuggingFace dataset."""
+    if isinstance(trajectories, TrajectoryDatasetSequence):
+        return trajectories.dataset
+    else:
+        return datasets.Dataset.from_dict(trajectories_to_dict(trajectories), info=info)

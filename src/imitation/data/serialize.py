@@ -21,8 +21,7 @@ def save(path: AnyPath, trajectories: Sequence[Trajectory]) -> None:
         trajectories: The trajectories to save.
     """
     p = util.parse_path(path)
-    d = datasets.Dataset.from_dict(huggingface_utils.trajectories_to_dict(trajectories))
-    d.save_to_disk(p)
+    huggingface_utils.trajectories_to_dataset(trajectories).save_to_disk(p)
     logging.info(f"Dumped demonstrations to {p}.")
 
 
