@@ -1207,14 +1207,37 @@ def test_keeps_pending_query_for_unanswered_query():
     assert pending_queries_pre == gatherer.pending_queries
 
 
-def test_delete_pending_query_for_answered_query():
+def test_deletes_pending_query_for_answered_query():
     gatherer = PrefCollectGatherer(pref_collect_address="https://test.de", wait_for_user=False)
-    gatherer._gather_preferences = MagicMock(return_value=None)
+    preference = 0.5
+    gatherer._gather_preference = MagicMock(return_value=preference)
+    gatherer.pending_queries = {"1234": Mock()}
 
-    pending_queries_pre = gatherer.pending_queries.copy()
     gatherer()
 
-    assert pending_queries_pre == gatherer.pending_queries
+    assert len(gatherer.pending_queries) == 0
 
 
+def test_gathers_valid_preference():
+    gatherer = PrefCollectGatherer(pref_collect_address="https://test.de", wait_for_user=False)
+    preference = 0.5
+    gatherer._gather_preference = MagicMock(return_value=preference)
+    query = Mock()
+    gatherer.pending_queries = {"1234": query}
 
+    gathered_queries, gathered_preferences = gatherer()
+
+    assert gathered_preferences[0] == preference
+    assert gathered_queries[0] == query
+
+
+def test_ignores_incomparable_answer():
+    gatherer = PrefCollectGatherer(pref_collect_address="https://test.de", wait_for_user=False)
+    # incomparable preference value = -1
+    gatherer._gather_preference = MagicMock(return_value=-1.)
+    gatherer.pending_queries = {"1234": Mock()}
+
+    gathered_queries, gathered_preferences = gatherer()
+
+    assert len(gathered_preferences) == 0
+    assert len(gathered_queries) == 0
