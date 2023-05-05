@@ -256,14 +256,15 @@ def test_preference_comparisons_raises(
         loss,
         rng=rng,
     )
+    # TODO: also instantiate querent
     gatherer = preference_comparisons.SyntheticGatherer(rng=rng)
-    # no rng, must provide fragmenter, preference gatherer, reward trainer
+    # no rng, must provide fragmenter, preference gatherer, preference_querent, reward trainer
     no_rng_msg = (
         ".*don't provide.*random state.*provide.*fragmenter"
         ".*preference gatherer.*reward_trainer.*"
     )
 
-    def build_preference_comparsions(gatherer, reward_trainer, fragmenter, rng):
+    def build_preference_comparisons(gatherer, reward_trainer, fragmenter, rng):
         preference_comparisons.PreferenceComparisons(
             agent_trainer,
             reward_net,
@@ -278,16 +279,17 @@ def test_preference_comparisons_raises(
         )
 
     with pytest.raises(ValueError, match=no_rng_msg):
-        build_preference_comparsions(gatherer, None, None, rng=None)
+        build_preference_comparisons(gatherer, None, None, rng=None)
 
     with pytest.raises(ValueError, match=no_rng_msg):
-        build_preference_comparsions(None, reward_trainer, None, rng=None)
+        build_preference_comparisons(None, reward_trainer, None, rng=None)
 
     with pytest.raises(ValueError, match=no_rng_msg):
-        build_preference_comparsions(None, None, random_fragmenter, rng=None)
+        build_preference_comparisons(None, None, random_fragmenter, rng=None)
 
+    # TODO: this raises because querent not passed and has to be instantiated
     # This should not raise
-    build_preference_comparsions(gatherer, reward_trainer, random_fragmenter, rng=None)
+    build_preference_comparisons(gatherer, reward_trainer, random_fragmenter, rng=None)
 
     # if providing fragmenter, preference gatherer, reward trainer, does not need rng.
     with_rng_msg = (
@@ -296,7 +298,7 @@ def test_preference_comparisons_raises(
     )
 
     with pytest.raises(ValueError, match=with_rng_msg):
-        build_preference_comparsions(
+        build_preference_comparisons(
             gatherer,
             reward_trainer,
             random_fragmenter,
@@ -304,10 +306,10 @@ def test_preference_comparisons_raises(
         )
 
     # This should not raise
-    build_preference_comparsions(None, None, None, rng=rng)
-    build_preference_comparsions(gatherer, None, None, rng=rng)
-    build_preference_comparsions(None, reward_trainer, None, rng=rng)
-    build_preference_comparsions(None, None, random_fragmenter, rng=rng)
+    build_preference_comparisons(None, None, None, rng=rng)
+    build_preference_comparisons(gatherer, None, None, rng=rng)
+    build_preference_comparisons(None, reward_trainer, None, rng=rng)
+    build_preference_comparisons(None, None, random_fragmenter, rng=rng)
 
 
 @pytest.mark.parametrize(
@@ -495,6 +497,7 @@ def test_gradient_accumulation(
     minibatch_size = 3
     num_trajectories = 5
 
+    # TODO: create querent
     preference_gatherer = preference_comparisons.SyntheticGatherer(
         custom_logger=custom_logger,
         rng=rng,
@@ -502,6 +505,7 @@ def test_gradient_accumulation(
     dataset = preference_comparisons.PreferenceDataset()
     trajectory = agent_trainer.sample(num_trajectories)
     fragments = random_fragmenter(trajectory, 1, num_trajectories)
+    # TODO: call querent with fragments (= queries)
     preferences = preference_gatherer(fragments)
     dataset.push(fragments, preferences)
 
@@ -534,7 +538,7 @@ def test_gradient_accumulation(
         for p1, p2 in zip(reward_net1.parameters(), reward_net2.parameters()):
             th.testing.assert_close(p1, p2, atol=atol, rtol=rtol)
 
-
+# TODO: fix test (same as test_gradient_accumulation)
 def test_synthetic_gatherer_deterministic(
         agent_trainer,
         random_fragmenter,
@@ -618,7 +622,7 @@ def test_preference_dataset_errors(agent_trainer, random_fragmenter):
         dataset.push(fragments, preferences)
 
 
-# TODO: update test
+# TODO: fix test (same as test_gradient_accumulation)
 def test_preference_dataset_queue(agent_trainer, random_fragmenter, rng):
     dataset = preference_comparisons.PreferenceDataset(max_size=5)
     trajectories = agent_trainer.sample(10)
@@ -635,6 +639,7 @@ def test_preference_dataset_queue(agent_trainer, random_fragmenter, rng):
     assert len(dataset) == 5
 
 
+# TODO: fix test (same as test_gradient_accumulation)
 def test_store_and_load_preference_dataset(
         agent_trainer,
         random_fragmenter,

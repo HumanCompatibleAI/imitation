@@ -1793,6 +1793,7 @@ class PreferenceComparisons(base.BaseImitationAlgorithm):
             reward_trainer,
         )
 
+        # TODO: update messages with preference querent
         if self.rng is None and has_any_rng_args_none:
             raise ValueError(
                 "If you don't provide a random state, you must provide your own "
