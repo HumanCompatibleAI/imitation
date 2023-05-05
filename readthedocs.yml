@@ -12,8 +12,7 @@ build:
 
 python:
   install:
-    - method: pip
-      path: setuptools==65.5.0  # specific version needed for gym==0.21.0
+    - requirements: docs/requirements.txt
     - method: pip
       path: .
       extra_requirements:
