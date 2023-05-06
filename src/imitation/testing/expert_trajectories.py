@@ -98,6 +98,8 @@ def lazy_generate_expert_trajectories(
     else:  # pragma: no cover
         # If it is not enough, just throw away the cache and generate more.
         if trajectories_path.is_dir():
+            # rmtree won't remove directory on Windows until the last handle to the directory is closed
+            del trajectories
             shutil.rmtree(trajectories_path)
         else:
             trajectories_path.unlink()
