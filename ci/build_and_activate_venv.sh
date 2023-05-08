@@ -22,4 +22,12 @@ virtualenv -p ${python_version} ${venv}
 source ${venv}/bin/activate
 # Note: We need to install setuptools==66.1.1 to allow installing gym==0.21.0.
 python -m pip install --upgrade pip setuptools==66.1.1
+
+# If platform is linux, install pytorch CPU version.
+# This will prevent installing the CUDA version in the pip install ".[docs,parallel,test]" command.
+# The CUDA version is a couple of gigabytes larger than the CPU version.
+# Since we don't need the CUDA version for testing, we can save some time by not installing it.
+if [[ "$OSTYPE" == "linux-gnu"* ]]; then
+  pip install torch --index-url https://download.pytorch.org/whl/cpu
+fi
 pip install ".[docs,parallel,test]"
