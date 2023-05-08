@@ -22,7 +22,7 @@ import scipy
 from imitation.data import types
 
 
-def compare_results_to_baseline(results_file: types.AnyPath) -> str:
+def compare_results_to_baseline(results_file: types.AnyPath) -> pd.DataFrame:
     """Compare benchmark results to baseline results.
 
     Args:
@@ -83,7 +83,7 @@ def compare_results_to_baseline(results_file: types.AnyPath) -> str:
         comparison["count_y"],
     ).pvalue
 
-    return comparison[["algo", "env_name", "pvalue"]].to_string()
+    return comparison[["algo", "env_name", "pvalue"]]
 
 
 def main() -> None:  # pragma: no cover
@@ -93,7 +93,7 @@ def main() -> None:  # pragma: no cover
     if len(sys.argv) != 2:
         print("Supply a path to a results file")
     else:
-        print(compare_results_to_baseline(sys.argv[1]))
+        print(compare_results_to_baseline(sys.argv[1]).to_string())
 
 
 if __name__ == "__main__":
