@@ -12,6 +12,7 @@ from typing import (
     Mapping,
     Optional,
     Sequence,
+    Tuple,
     Union,
 )
 
@@ -264,7 +265,10 @@ def make_sample_until(
 
 # A PolicyCallable is a function that takes an array of observations
 # and returns an array of corresponding actions.
-PolicyCallable = Callable[[np.ndarray], np.ndarray]
+PolicyCallable = Callable[
+    [np.ndarray, Optional[Tuple[np.ndarray, ...]], Optional[np.ndarray]],
+    Tuple[np.ndarray, Optional[Tuple[np.ndarray, ...]]],
+]
 AnyPolicy = Union[BaseAlgorithm, BasePolicy, PolicyCallable, None]
 
 
@@ -276,9 +280,13 @@ def policy_to_callable(
     """Converts any policy-like object into a function from observations to actions."""
     if policy is None:
 
-        def get_actions(states):
-            acts = [venv.action_space.sample() for _ in range(len(states))]
-            return np.stack(acts, axis=0)
+        def get_actions(
+            observation: np.ndarray,
+            state: Optional[Tuple[np.ndarray, ...]],
+            episode_start: Optional[np.ndarray],
+        ) -> Tuple[np.ndarray, Optional[Tuple[np.ndarray, ...]]]:
+            acts = [venv.action_space.sample() for _ in range(len(observation))]
+            return np.stack(acts, axis=0), None  # is None the right state?
 
     elif isinstance(policy, (BaseAlgorithm, BasePolicy)):
         # There's an important subtlety here: BaseAlgorithm and BasePolicy
@@ -286,14 +294,20 @@ def policy_to_callable(
         # we want to use the .predict() method, rather than __call__()
         # (which would call .forward()). So this elif clause must come first!
 
-        def get_actions(states):
+        def get_actions(
+            observation: np.ndarray,
+            state: Optional[Tuple[np.ndarray, ...]],
+            episode_start: Optional[np.ndarray],
+        ) -> Tuple[np.ndarray, Optional[Tuple[np.ndarray, ...]]]:
             # pytype doesn't seem to understand that policy is a BaseAlgorithm
             # or BasePolicy here, rather than a Callable
-            acts, _ = policy.predict(  # pytype: disable=attribute-error
-                states,
+            acts, state = policy.predict(  # pytype: disable=attribute-error # type: ignore[union-attr]
+                observation,
+                state=state,
+                episode_start=episode_start,
                 deterministic=deterministic_policy,
             )
-            return acts
+            return acts, state
 
     elif callable(policy):
         # When a policy callable is passed, by default we will use it directly.
@@ -304,7 +318,7 @@ def policy_to_callable(
                 "Cannot set deterministic_policy=True when policy is a callable, "
                 "since deterministic_policy argument is ignored.",
             )
-        get_actions = policy
+        get_actions = policy # type: ignore[assignment]
 
     else:
         raise TypeError(
@@ -402,8 +416,9 @@ def generate_trajectories(
     # To start with, all environments are active.
     active = np.ones(venv.num_envs, dtype=bool)
     assert isinstance(obs, np.ndarray), "Dict/tuple observations are not supported."
+    state = None
     while np.any(active):
-        acts = get_actions(obs)
+        acts, state = get_actions(obs, state, ~active)
         obs, rews, dones, infos = venv.step(acts)
         assert isinstance(obs, np.ndarray)
 

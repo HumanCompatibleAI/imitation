@@ -7,8 +7,8 @@ from imitation.policies import exploration_wrapper
 from imitation.util import util
 
 
-def constant_policy(obs):
-    return np.zeros(len(obs), dtype=int)
+def constant_policy(obs, state, mask):
+    return np.zeros(len(obs), dtype=int), None
 
 
 def make_wrapper(random_prob, switch_prob, rng):
@@ -92,7 +92,7 @@ def test_switch_prob(rng):
     policy = wrapper.current_policy
 
     obs = np.random.rand(100, 2)
-    for action in wrapper(obs):
+    for action in wrapper(obs, None, None)[0]:
         assert venv.action_space.contains(action)
         assert wrapper.current_policy == policy
 
@@ -102,7 +102,7 @@ def test_switch_prob(rng):
         num_constant = 0
         for _ in range(num_steps):
             obs = np.random.rand(1, 2)
-            wrapper(obs)
+            wrapper(obs, None, None)
             if wrapper.current_policy == wrapper._random_policy:
                 num_random += 1
             elif wrapper.current_policy == constant_policy:
@@ -137,5 +137,5 @@ def test_valid_output(rng):
         wrapper, venv = make_wrapper(random_prob=random_prob, switch_prob=0.5, rng=rng)
         np.random.seed(0)
         obs = np.random.rand(100, 2)
-        for action in wrapper(obs):
+        for action in wrapper(obs, None, None)[0]:
             assert venv.action_space.contains(action)
