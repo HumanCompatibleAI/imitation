@@ -46,7 +46,7 @@ def compare_results_to_baseline(results_file: types.AnyPath) -> str:
 
     # Table 2 (https://arxiv.org/pdf/2211.11972.pdf)
     # todo: store results in this repo outside this file
-    paper = pd.DataFrame.from_records(
+    baseline = pd.DataFrame.from_records(
         [
             {
                 "algo": "??exp_command=bc",
@@ -62,15 +62,17 @@ def compare_results_to_baseline(results_file: types.AnyPath) -> str:
             },
         ],
     )
-    paper["count"] = 5
-    paper["confidence_level"] = 0.95
+    baseline["count"] = 5
+    baseline["confidence_level"] = 0.95
     # Back out the standard deviation from the margin of error.
-    paper["std"] = (paper["margin"] * np.sqrt(paper["count"])) / scipy.stats.t.ppf(
-        1 - ((1 - paper["confidence_level"]) / 2),
-        paper["count"] - 1,
+    baseline["std"] = (
+        baseline["margin"] * np.sqrt(baseline["count"])
+    ) / scipy.stats.t.ppf(
+        1 - ((1 - baseline["confidence_level"]) / 2),
+        baseline["count"] - 1,
     )
 
-    comparison = pd.merge(summary, paper, on=["algo", "env_name"])
+    comparison = pd.merge(summary, baseline, on=["algo", "env_name"])
 
     comparison["pvalue"] = scipy.stats.ttest_ind_from_stats(
         comparison["mean_x"],

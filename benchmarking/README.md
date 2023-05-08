@@ -1,8 +1,8 @@
 # Benchmarking imitation
 
-This directory contains sacred configuration files for benchmarking imitation's algorithms. For v0.3.2, these correspond to the hyperparameters used in the paper [imitation: Clean Imitation Learning Implementations](https://www.rocamonde.com/publication/gleave-imitation-2022/).
+This directory contains Sacred configuration files for benchmarking imitation's algorithms. For v0.3.2, these correspond to the hyperparameters used in the paper [imitation: Clean Imitation Learning Implementations](https://www.rocamonde.com/publication/gleave-imitation-2022/).
 
-Configuration files can be loaded either from the CLI or from the Python API. The examples below assume that your current working directory is the root of the `imitation` repository. This is not necessarily the case and you should adjust your paths accordingly.
+Configuration files can be loaded either from the CLI or from the Python API. The examples below assume that your current working directory is the root of the `imitation` repository.
 
 ## Single benchmark
 
@@ -24,7 +24,7 @@ python -m imitation.scripts.analyze analyze_imitation with \
     run_name="<name>"
 ```
 
-To run a single benchmark from Python add the config to your experiment: (what does this mean?? do we have an example Python experiment?)
+To run a single benchmark from Python add the config to your experiment:
 
 ```python
 ...
