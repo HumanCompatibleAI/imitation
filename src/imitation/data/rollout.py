@@ -301,7 +301,10 @@ def policy_to_callable(
         ) -> Tuple[np.ndarray, Optional[Tuple[np.ndarray, ...]]]:
             # pytype doesn't seem to understand that policy is a BaseAlgorithm
             # or BasePolicy here, rather than a Callable
-            acts, state = policy.predict(  # pytype: disable=attribute-error # type: ignore[union-attr]
+            (
+                acts,
+                state,
+            ) = policy.predict(  # pytype: disable=attribute-error # type: ignore[union-attr]
                 observation,
                 state=state,
                 episode_start=episode_start,
@@ -318,7 +321,7 @@ def policy_to_callable(
                 "Cannot set deterministic_policy=True when policy is a callable, "
                 "since deterministic_policy argument is ignored.",
             )
-        get_actions = policy # type: ignore[assignment]
+        get_actions = policy  # type: ignore[assignment]
 
     else:
         raise TypeError(

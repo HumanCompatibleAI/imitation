@@ -57,8 +57,8 @@ def _sample_fixed_length_trajectories(
 
         # Simple way to get a valid callable: just use a policies .predict() method
         # (still tests another code path inside generate_trajectories)
-        def policy(x):
-            return random_policy.predict(x)[0]
+        def policy(x, state, mask):
+            return random_policy.predict(x)[0], None
 
     elif policy_type == "random":
         policy = None
