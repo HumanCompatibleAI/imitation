@@ -1077,17 +1077,25 @@ def test_convert_trajs_from_current_format_is_idempotent(
         filecmp.dircmp(converted_path, original_path).diff_files == []
     ), "convert_trajs not idempotent"
 
+
 @pytest.mark.parametrize(
     "imit_returns,p_value",
-    [(
-        [2000, 1900, 2100],
-        0.6,
-    ), (
-        [1000, 900, 1100],
-        0.05,
-)],
+    [
+        (
+            [2000, 1900, 2100],
+            0.6,
+        ),
+        (
+            [1000, 900, 1100],
+            0.05,
+        ),
+    ],
 )
-def test_compare_to_baseline_p_values(tmpdir: str, imit_returns: List[float], p_value: float):
+def test_compare_to_baseline_p_values(
+    tmpdir: str,
+    imit_returns: List[float],
+    p_value: float,
+):
     comparison = pd.DataFrame.from_records(
         [
             {
@@ -1101,4 +1109,9 @@ def test_compare_to_baseline_p_values(tmpdir: str, imit_returns: List[float], p_
     tmpfile = pathlib.Path(tmpdir) / "comparison.csv"
     comparison.to_csv(tmpfile)
 
-    assert compare_to_baseline.compare_results_to_baseline(results_file=tmpfile)["pvalue"][0] < p_value
+    assert (
+        compare_to_baseline.compare_results_to_baseline(results_file=tmpfile)["pvalue"][
+            0
+        ]
+        < p_value
+    )
