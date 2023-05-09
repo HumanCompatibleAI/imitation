@@ -55,7 +55,7 @@ python experiments/commands.py \
   --output_dir=output | parallel -j 8
 ```
 
-(You may need to `brew install parallel` to get this to work on Mac)
+(You may need to `brew install parallel` to get this to work on Mac.)
 
 ### Running on Hofvarpnir
 
