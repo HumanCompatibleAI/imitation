@@ -65,12 +65,14 @@ def compare_results_to_baseline(results_file: types.AnyPath) -> pd.DataFrame:
     baseline["count"] = 5
     baseline["confidence_level"] = 0.95
     # Back out the standard deviation from the margin of error.
-    baseline["std"] = (
-        baseline["margin"] * np.sqrt(baseline["count"])
-    ) / scipy.stats.t.ppf(
+
+    t_score = scipy.stats.t.ppf(
         1 - ((1 - baseline["confidence_level"]) / 2),
         baseline["count"] - 1,
     )
+    std_err = baseline["margin"] / t_score
+
+    baseline["std"] = std_err * np.sqrt(baseline["count"])
 
     comparison = pd.merge(summary, baseline, on=["algo", "env_name"])
 
