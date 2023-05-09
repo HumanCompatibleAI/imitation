@@ -314,6 +314,31 @@ def test_tabular_policy(rng):
     np.testing.assert_equal(timesteps[0], 2 - mask.astype(int))
 
 
+def test_tabular_policy_rollouts(rng):
+    """Tests tabular policy prediction, especially timestep calculation and masking."""
+    state_space = gym.spaces.Discrete(5)
+    action_space = gym.spaces.Discrete(3)
+
+    s_a = np.stack([np.eye(3)] * 5, axis=1)
+    pi = np.concatenate([s_a] * 7, axis=0)
+    tabular = TabularPolicy(
+        state_space=state_space,
+        action_space=action_space,
+        pi=pi,
+        rng=rng,
+    )
+    mdp = ReasonablePOMDP()
+    state_env = base_envs.ExposePOMDPStateWrapper(mdp)
+    state_venv = vec_env.DummyVecEnv([lambda: state_env])
+    trajs = rollout.generate_trajectories(
+        tabular,
+        state_venv,
+        sample_until=rollout.make_min_episodes(1),
+        rng=rng,
+    )
+    assert (trajs[0].acts == pi[:, 0, :].nonzero()[1][: len(trajs[0].acts)]).all()
+
+
 def test_tabular_policy_randomness(rng):
     state_space = gym.spaces.Discrete(2)
     action_space = gym.spaces.Discrete(2)
