@@ -301,7 +301,9 @@ def policy_to_callable(
             episode_start: Optional[np.ndarray],
         ) -> Tuple[np.ndarray, Optional[Tuple[np.ndarray, ...]]]:
             assert isinstance(policy, (BaseAlgorithm, BasePolicy))
-            (acts, state) = policy.predict(
+            # pytype doesn't seem to understand that policy is a BaseAlgorithm
+            # or BasePolicy here, rather than a Callable
+            (acts, state) = policy.predict( # pytype: disable=attribute-error
                 observation,
                 state=state,
                 episode_start=episode_start,
