@@ -58,11 +58,9 @@ class ExplorationWrapper:
     def _random_policy(
         self,
         obs: np.ndarray,
-        state: Optional[Tuple[np.ndarray, ...]],
-        episode_start: Optional[np.ndarray],
+        _state: Optional[Tuple[np.ndarray, ...]],
+        _episode_start: Optional[np.ndarray],
     ) -> Tuple[np.ndarray, Optional[Tuple[np.ndarray, ...]]]:
-        if state is not None:
-            raise ValueError("Exploration wrapper does not support stateful policies.")
         acts = [self.venv.action_space.sample() for _ in range(len(obs))]
         return np.stack(acts, axis=0), None
 
@@ -76,12 +74,17 @@ class ExplorationWrapper:
     def __call__(
         self,
         observation: np.ndarray,
-        _state: Optional[Tuple[np.ndarray, ...]],
+        state: Optional[Tuple[np.ndarray, ...]],
         _episode_start: Optional[np.ndarray],
     ) -> Tuple[np.ndarray, Optional[Tuple[np.ndarray, ...]]]:
-        acts, state = self.current_policy(observation, None, None)
         if state is not None:
             raise ValueError("Exploration wrapper does not support stateful policies.")
+
+        acts, state = self.current_policy(observation, None, None)
+
+        if state is not None:
+            raise ValueError("Exploration wrapper does not support stateful policies.")
+        
         if self.rng.random() < self.switch_prob:
             self._switch()
         return acts, None
