@@ -282,12 +282,12 @@ def policy_to_callable(
     if policy is None:
 
         def get_actions(
-            observation: np.ndarray,
-            state: Optional[Tuple[np.ndarray, ...]],
-            episode_start: Optional[np.ndarray],
+            observations: np.ndarray,
+            states: Optional[Tuple[np.ndarray, ...]],
+            episode_starts: Optional[np.ndarray],
         ) -> Tuple[np.ndarray, Optional[Tuple[np.ndarray, ...]]]:
-            acts = [venv.action_space.sample() for _ in range(len(observation))]
-            return np.stack(acts, axis=0), None  # is None the right state?
+            acts = [venv.action_space.sample() for _ in range(len(observations))]
+            return np.stack(acts, axis=0), None
 
     elif isinstance(policy, (BaseAlgorithm, BasePolicy)):
         # There's an important subtlety here: BaseAlgorithm and BasePolicy
@@ -296,20 +296,20 @@ def policy_to_callable(
         # (which would call .forward()). So this elif clause must come first!
 
         def get_actions(
-            observation: np.ndarray,
-            state: Optional[Tuple[np.ndarray, ...]],
-            episode_start: Optional[np.ndarray],
+            observations: np.ndarray,
+            states: Optional[Tuple[np.ndarray, ...]],
+            episode_starts: Optional[np.ndarray],
         ) -> Tuple[np.ndarray, Optional[Tuple[np.ndarray, ...]]]:
             assert isinstance(policy, (BaseAlgorithm, BasePolicy))
             # pytype doesn't seem to understand that policy is a BaseAlgorithm
             # or BasePolicy here, rather than a Callable
-            (acts, state) = policy.predict( # pytype: disable=attribute-error
-                observation,
-                state=state,
-                episode_start=episode_start,
+            (acts, states) = policy.predict( # pytype: disable=attribute-error
+                observations,
+                state=states,
+                episode_start=episode_starts,
                 deterministic=deterministic_policy,
             )
-            return acts, state
+            return acts, states
 
     elif callable(policy):
         # When a policy callable is passed, by default we will use it directly.
