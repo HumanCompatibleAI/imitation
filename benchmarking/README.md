@@ -24,7 +24,7 @@ python -m imitation.scripts.analyze analyze_imitation with \
     run_name="<name>"
 ```
 
-To run a single benchmark from Python add the config to your experiment:
+To run a single benchmark from Python add the config to your Sacred experiment `ex`:
 
 ```python
 ...
