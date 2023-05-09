@@ -278,6 +278,7 @@ def policy_to_callable(
     deterministic_policy: bool = False,
 ) -> PolicyCallable:
     """Converts any policy-like object into a function from observations to actions."""
+    get_actions: PolicyCallable
     if policy is None:
 
         def get_actions(
@@ -301,10 +302,8 @@ def policy_to_callable(
         ) -> Tuple[np.ndarray, Optional[Tuple[np.ndarray, ...]]]:
             # pytype doesn't seem to understand that policy is a BaseAlgorithm
             # or BasePolicy here, rather than a Callable
-            (
-                acts,
-                state,
-            ) = policy.predict(  # pytype: disable=attribute-error # type: ignore[union-attr]
+            assert isinstance(policy, (BaseAlgorithm, BasePolicy))
+            (acts, state) = policy.predict(
                 observation,
                 state=state,
                 episode_start=episode_start,
@@ -321,7 +320,7 @@ def policy_to_callable(
                 "Cannot set deterministic_policy=True when policy is a callable, "
                 "since deterministic_policy argument is ignored.",
             )
-        get_actions = policy  # type: ignore[assignment]
+        get_actions = policy
 
     else:
         raise TypeError(
@@ -420,8 +419,9 @@ def generate_trajectories(
     active = np.ones(venv.num_envs, dtype=bool)
     assert isinstance(obs, np.ndarray), "Dict/tuple observations are not supported."
     state = None
+    dones = np.zeros(venv.num_envs, dtype=bool)
     while np.any(active):
-        acts, state = get_actions(obs, state, ~active)
+        acts, state = get_actions(obs, state, dones)
         obs, rews, dones, infos = venv.step(acts)
         assert isinstance(obs, np.ndarray)
 
