@@ -1,6 +1,6 @@
 """Helpers to convert between Trajectories and HuggingFace's datasets library."""
 import functools
-from typing import Any, Dict, Iterable, Sequence, cast, Optional
+from typing import Any, Dict, Iterable, Optional, Sequence, cast
 
 import datasets
 import jsonpickle
