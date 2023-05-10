@@ -263,8 +263,9 @@ def make_sample_until(
     return sample_until
 
 
-# A PolicyCallable is a function that takes an array of observations
-# and returns an array of corresponding actions.
+# A PolicyCallable is a function that takes an array of observations, an optional
+# array of states, and an optional array of episode starts and returns an array of
+# corresponding actions.
 PolicyCallable = Callable[
     [np.ndarray, Optional[Tuple[np.ndarray, ...]], Optional[np.ndarray]],
     Tuple[np.ndarray, Optional[Tuple[np.ndarray, ...]]],
@@ -303,7 +304,7 @@ def policy_to_callable(
             assert isinstance(policy, (BaseAlgorithm, BasePolicy))
             # pytype doesn't seem to understand that policy is a BaseAlgorithm
             # or BasePolicy here, rather than a Callable
-            (acts, states) = policy.predict( # pytype: disable=attribute-error
+            (acts, states) = policy.predict(  # pytype: disable=attribute-error
                 observations,
                 state=states,
                 episode_start=episode_starts,
