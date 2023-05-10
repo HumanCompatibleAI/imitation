@@ -9,10 +9,12 @@ from imitation.util import util
 
 
 def constant_policy(obs, state, mask):
+    del state, mask
     return np.zeros(len(obs), dtype=int), None
 
 
 def fake_stateful_policy(obs, state, mask):
+    del state, mask
     return np.zeros(len(obs), dtype=int), (np.zeros(1),)
 
 
@@ -145,6 +147,7 @@ def test_valid_output(rng):
         for action in wrapper(obs, None, None)[0]:
             assert venv.action_space.contains(action)
 
+
 def test_throws_for_stateful_policy(rng):
     venv = util.make_vec_env(
         "seals/CartPole-v0",
@@ -161,8 +164,14 @@ def test_throws_for_stateful_policy(rng):
 
     np.random.seed(0)
     obs = np.random.rand(100, 2)
-    with pytest.raises(ValueError, match="Exploration wrapper does not support stateful policies."):
+    with pytest.raises(
+        ValueError,
+        match="Exploration wrapper does not support stateful policies.",
+    ):
         wrapper(obs, (np.ones_like(obs)), None)
 
-    with pytest.raises(ValueError, match="Exploration wrapper does not support stateful policies."):
+    with pytest.raises(
+        ValueError,
+        match="Exploration wrapper does not support stateful policies.",
+    ):
         wrapper(obs, None, None)

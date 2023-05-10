@@ -315,28 +315,43 @@ def test_tabular_policy(rng):
 
 
 def test_tabular_policy_rollouts(rng):
-    """Tests tabular policy prediction, especially timestep calculation and masking."""
+    """Tests that rolling out a tabular policy that varies at each timestep works."""
     state_space = gym.spaces.Discrete(5)
     action_space = gym.spaces.Discrete(3)
+    mdp = ReasonablePOMDP()
+    state_env = base_envs.ExposePOMDPStateWrapper(mdp)
+    state_venv = vec_env.DummyVecEnv([lambda: state_env])
 
-    s_a = np.stack([np.eye(3)] * 5, axis=1)
-    pi = np.concatenate([s_a] * 7, axis=0)
+    # alternate actions every step
+    subpolicy = np.stack([np.eye(action_space.n)] * state_space.n, axis=1)
+
+    # repeat 7 times for a total of 21 (greater than 20)
+    pi = np.repeat(
+        subpolicy,
+        ((mdp.horizon + action_space.n - 1) // action_space.n),
+        axis=0,
+    )
+
     tabular = TabularPolicy(
         state_space=state_space,
         action_space=action_space,
         pi=pi,
         rng=rng,
     )
-    mdp = ReasonablePOMDP()
-    state_env = base_envs.ExposePOMDPStateWrapper(mdp)
-    state_venv = vec_env.DummyVecEnv([lambda: state_env])
+
     trajs = rollout.generate_trajectories(
         tabular,
         state_venv,
         sample_until=rollout.make_min_episodes(1),
         rng=rng,
     )
-    assert (trajs[0].acts == pi[:, 0, :].nonzero()[1][: len(trajs[0].acts)]).all()
+
+    # pi[t,s,a] is the same for every state, so drop that dimension
+    exposed_actions_onehot = pi[:, 0, :]
+    exposed_actions = exposed_actions_onehot.nonzero()[1]
+
+    # check that the trajectory chooses the same actions as the policy
+    assert (trajs[0].acts == exposed_actions[: len(trajs[0].acts)]).all()
 
 
 def test_tabular_policy_randomness(rng):
