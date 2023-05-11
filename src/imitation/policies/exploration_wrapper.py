@@ -1,5 +1,7 @@
 """Wrapper to turn a policy into a more exploratory version."""
 
+from typing import Optional, Tuple
+
 import numpy as np
 from stable_baselines3.common import vec_env
 
@@ -53,9 +55,15 @@ class ExplorationWrapper:
         # Choose the initial policy at random
         self._switch()
 
-    def _random_policy(self, obs: np.ndarray) -> np.ndarray:
+    def _random_policy(
+        self,
+        obs: np.ndarray,
+        state: Optional[Tuple[np.ndarray, ...]],
+        episode_start: Optional[np.ndarray],
+    ) -> Tuple[np.ndarray, Optional[Tuple[np.ndarray, ...]]]:
+        del state, episode_start  # Unused
         acts = [self.venv.action_space.sample() for _ in range(len(obs))]
-        return np.stack(acts, axis=0)
+        return np.stack(acts, axis=0), None
 
     def _switch(self) -> None:
         """Pick a new policy at random."""
@@ -64,8 +72,24 @@ class ExplorationWrapper:
         else:
             self.current_policy = self.wrapped_policy
 
-    def __call__(self, obs: np.ndarray) -> np.ndarray:
-        acts = self.current_policy(obs)
+    def __call__(
+        self,
+        observation: np.ndarray,
+        input_state: Optional[Tuple[np.ndarray, ...]],
+        episode_start: Optional[np.ndarray],
+    ) -> Tuple[np.ndarray, Optional[Tuple[np.ndarray, ...]]]:
+        del episode_start  # Unused
+
+        if input_state is not None:
+            # This checks that we aren't passed a state
+            raise ValueError("Exploration wrapper does not support stateful policies.")
+
+        acts, output_state = self.current_policy(observation, None, None)
+
+        if output_state is not None:
+            # This checks that the policy doesn't return a state
+            raise ValueError("Exploration wrapper does not support stateful policies.")
+
         if self.rng.random() < self.switch_prob:
             self._switch()
-        return acts
+        return acts, None
