@@ -31,6 +31,7 @@ class VideoWrapper(gym.Wrapper):
         env: gym.Env,
         directory: pathlib.Path,
         single_video: bool = True,
+        delete_on_close: bool = True,
     ):
         """Builds a VideoWrapper.
 
@@ -42,11 +43,15 @@ class VideoWrapper(gym.Wrapper):
                 Usually a single video file is what is desired. However, if one is
                 searching for an interesting episode (perhaps by looking at the
                 metadata), then saving to different files can be useful.
+            delete_on_close: if True, deletes the video file when the environment is
+                closed. If False, the video file is left on disk.
         """
         super().__init__(env)
         self.episode_id = 0
         self.video_recorder = None
         self.single_video = single_video
+        self.delete_on_close = delete_on_close
+        self.current_video_path: Optional[pathlib.Path] = None
 
         self.directory = directory
         self.directory.mkdir(parents=True, exist_ok=True)
@@ -71,6 +76,7 @@ class VideoWrapper(gym.Wrapper):
                 base_path=str(self.directory / f"video.{self.episode_id:06}"),
                 metadata={"episode_id": self.episode_id},
             )
+            self.current_video_path = pathlib.Path(self.video_recorder.path)
 
     def reset(self, **kwargs):
         new_obs = super().reset(**kwargs)
@@ -82,17 +88,14 @@ class VideoWrapper(gym.Wrapper):
         obs, rew, done, info = self.env.step(action)
         self.video_recorder.capture_frame()
         # is it crazy to save the video path at every step?
-        info["video_path"] = self.get_current_video_path()
+        info["video_path"] = self.current_video_path
         return obs, rew, done, info
 
     def close(self) -> None:
         if self.video_recorder is not None:
             self.video_recorder.close()
             self.video_recorder = None
+        if self.delete_on_close:
+            for path in self.directory.glob("*.mp4"):
+                path.unlink()
         super().close()
-
-    def get_current_video_path(self) -> Optional[pathlib.Path]:
-        """Returns the path to the current video file, or None if no video is active."""
-        if self.video_recorder is None:
-            return None
-        return pathlib.Path(self.video_recorder.path)

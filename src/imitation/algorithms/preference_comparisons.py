@@ -938,15 +938,15 @@ class SynchronousCLIGatherer(PreferenceGatherer):
 
         Returns:
             A numpy array of 1 if fragment 1 is preferred and 0 otherwise, with shape
-            (b, ), where b is the length of the input
+            (b, ), where b is the length of `fragment_pairs`
         """
         preferences = np.zeros(len(fragment_pairs), dtype=np.float32)
         for i, (frag1, frag2) in enumerate(fragment_pairs):
-            if self._display_videos(frag1, frag2):
+            if self._display_videos_and_gather_preference(frag1, frag2):
                 preferences[i] = 1
         return preferences
 
-    def _display_videos(
+    def _display_videos_and_gather_preference(
         self,
         frag1: TrajectoryWithRew,
         frag2: TrajectoryWithRew,
@@ -965,7 +965,6 @@ class SynchronousCLIGatherer(PreferenceGatherer):
             RuntimeError: if the video files cannot be opened.
             ValueError: if the trajectory infos are not set.
         """
-        # display the videos
         if frag1.infos is None or frag2.infos is None:
             raise ValueError(
                 "TrajectoryWithRew.infos must be set to display videos.",
@@ -993,84 +992,113 @@ class SynchronousCLIGatherer(PreferenceGatherer):
             # should never be hit
             assert False
         else:
-            print("Which video is preferred? (1 or 2, or q to quit, or r to replay):\n")
-            cap1 = cv2.VideoCapture(str(frag1_video_path))
-            cap2 = cv2.VideoCapture(str(frag2_video_path))
-            cv2.namedWindow("Video 1", cv2.WINDOW_NORMAL)
-            cv2.namedWindow("Video 2", cv2.WINDOW_NORMAL)
+            return self._display_in_windows(frag1_video_path, frag2_video_path)
 
-            # set window sizes
-            cv2.resizeWindow("Video 1", 500, 500)
-            cv2.resizeWindow("Video 2", 500, 500)
+    def _display_in_windows(
+        self, frag1_video_path: pathlib.Path, frag2_video_path: pathlib.Path
+    ) -> bool:
+        """Displays the videos in separate windows.
 
-            # move windows side by side
-            cv2.moveWindow("Video 1", 0, 0)
-            cv2.moveWindow("Video 2", 500, 0)
+        The videos are displayed side by side and the user is asked to indicate
+        which one is preferred. The interaction is done in the window rather than
+        in the command line because the command line is not interactive when
+        the video is playing, and it's nice to allow the user to choose a video before
+        the videos are done playing. The downside is that the instructions appear on the
+        command line and the interaction happens in the video window.
 
-            if not cap1.isOpened():
-                raise RuntimeError(f"Error opening video file {frag1_video_path}.")
+        Args:
+            frag1_video_path: path to the video file of the first fragment
+            frag2_video_path: path to the video file of the second fragment
 
-            if not cap2.isOpened():
-                raise RuntimeError(f"Error opening video file {frag2_video_path}.")
+        Returns:
+            True if the first fragment is preferred, False if not.
 
-            ret1, frame1 = cap1.read()
-            ret2, frame2 = cap2.read()
-            while cap1.isOpened() and cap2.isOpened():
-                if ret1 or ret2:
-                    cv2.imshow("Video 1", frame1)
-                    cv2.imshow("Video 2", frame2)
-                    ret1, frame1 = cap1.read()
-                    ret2, frame2 = cap2.read()
+        Raises:
+            KeyboardInterrupt: if the user presses q to quit.
+            RuntimeError: if the video files cannot be opened.
+        """
+        print("Which video is preferred? (1 or 2, or q to quit, or r to replay):\n")
 
-                key = chr(cv2.waitKey(1) & 0xFF)
-                if key == "q":
-                    raise KeyboardInterrupt
-                elif key == "r":
-                    cap1.set(cv2.CAP_PROP_POS_FRAMES, 0)
-                    cap2.set(cv2.CAP_PROP_POS_FRAMES, 0)
-                    ret1, frame1 = cap1.read()
-                    ret2, frame2 = cap2.read()
-                elif key == "1" or key == "2":
-                    cap1.release()
-                    cap2.release()
-                    cv2.destroyAllWindows()
-                    return key == "1"
+        cap1 = cv2.VideoCapture(str(frag1_video_path))
+        cap2 = cv2.VideoCapture(str(frag2_video_path))
+        cv2.namedWindow("Video 1", cv2.WINDOW_NORMAL)
+        cv2.namedWindow("Video 2", cv2.WINDOW_NORMAL)
 
-            cap1.release()
-            cap2.release()
-            cv2.destroyAllWindows()
-            raise KeyboardInterrupt
+        # set window sizes
+        cv2.resizeWindow("Video 1", 500, 500)
+        cv2.resizeWindow("Video 2", 500, 500)
+
+        # move windows side by side
+        cv2.moveWindow("Video 1", 0, 0)
+        cv2.moveWindow("Video 2", 500, 0)
+
+        if not cap1.isOpened():
+            raise RuntimeError(f"Error opening video file {frag1_video_path}.")
+
+        if not cap2.isOpened():
+            raise RuntimeError(f"Error opening video file {frag2_video_path}.")
+
+        ret1, frame1 = cap1.read()
+        ret2, frame2 = cap2.read()
+        while cap1.isOpened() and cap2.isOpened():
+            if ret1 or ret2:
+                cv2.imshow("Video 1", frame1)
+                cv2.imshow("Video 2", frame2)
+                ret1, frame1 = cap1.read()
+                ret2, frame2 = cap2.read()
+
+            key = chr(cv2.waitKey(1) & 0xFF)
+            if key == "q":
+                cv2.destroyAllWindows()
+                raise KeyboardInterrupt
+            elif key == "r":
+                cap1.set(cv2.CAP_PROP_POS_FRAMES, 0)
+                cap2.set(cv2.CAP_PROP_POS_FRAMES, 0)
+                ret1, frame1 = cap1.read()
+                ret2, frame2 = cap2.read()
+            elif key == "1" or key == "2":
+                cv2.destroyAllWindows()
+                return key == "1"
+
+        cv2.destroyAllWindows()
+        raise KeyboardInterrupt
 
     def _display_videos_in_notebook(
         self,
         frag1_video_path: pathlib.Path,
         frag2_video_path: pathlib.Path,
     ) -> None:
+        """Displays the videos in a notebook.
+
+        Interaction can happen in the notebook while the videos are playing.
+
+        Args:
+            frag1_video_path: path to the video file of the first fragment
+            frag2_video_path: path to the video file of the second fragment
+
+        Raises:
+            RuntimeError: if the video files cannot be opened.
+        """
         from IPython.display import HTML, Video, clear_output, display
 
-        display(HTML("<h2>Video 1</h2>"))
-        display(
-            Video(
-                filename=str(frag1_video_path),
-                height=500,
-                width=500,
-                html_attributes="controls autoplay muted",
-            )
-        )
-        display(HTML("<h2>Video 2</h2>"))
-        display(
-            Video(
-                filename=str(frag2_video_path),
-                height=500,
-                width=500,
-                html_attributes="controls autoplay muted",
-            )
-        )
         clear_output(wait=True)
+
+        for i, path in enumerate([frag1_video_path, frag2_video_path]):
+            if not path.exists():
+                raise RuntimeError(f"Video file {path} does not exist.")
+            display(HTML(f"<h2>Video {i}</h2>"))
+            display(
+                Video(
+                    filename=str(path),
+                    height=500,
+                    width=500,
+                    html_attributes="controls autoplay muted",
+                )
+            )
 
     def _in_ipython(self) -> bool:
         try:
-            return get_ipython().__class__.__name__ == "ZMQInteractiveShell"  # type: ignore[attr-defined]
+            return get_ipython().__class__.__name__ == "ZMQInteractiveShell"  # type: ignore # noqa
         except NameError:
             return False
 
