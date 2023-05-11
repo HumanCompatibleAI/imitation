@@ -947,17 +947,19 @@ class SynchronousCLIGatherer(PreferenceGatherer):
         return preferences
 
     def _display_videos(
-        self, frag1: TrajectoryWithRew, frag2: TrajectoryWithRew,
+        self,
+        frag1: TrajectoryWithRew,
+        frag2: TrajectoryWithRew,
     ) -> bool:
         """Displays the videos of the two fragments.
 
         Args:
             frag1: first fragment
             frag2: second fragment
-        
+
         Returns:
             True if the first fragment is preferred, False if not.
-        
+
         Raises:
             KeyboardInterrupt: if the user presses q to quit.
             RuntimeError: if the video files cannot be opened.
@@ -1040,7 +1042,9 @@ class SynchronousCLIGatherer(PreferenceGatherer):
             raise KeyboardInterrupt
 
     def _display_videos_in_notebook(
-        self, frag1_video_path: pathlib.Path, frag2_video_path: pathlib.Path,
+        self,
+        frag1_video_path: pathlib.Path,
+        frag2_video_path: pathlib.Path,
     ) -> None:
         from IPython.display import HTML, Video, clear_output, display
 
@@ -1066,7 +1070,7 @@ class SynchronousCLIGatherer(PreferenceGatherer):
 
     def _in_ipython(self) -> bool:
         try:
-            return get_ipython().__class__.__name__ == "ZMQInteractiveShell" # type: ignore[attr-defined]
+            return get_ipython().__class__.__name__ == "ZMQInteractiveShell"  # type: ignore[attr-defined]
         except NameError:
             return False
 
