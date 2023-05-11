@@ -940,7 +940,6 @@ class SynchronousCLIGatherer(PreferenceGatherer):
             A numpy array of 1 if fragment 1 is preferred and 0 otherwise, with shape
             (b, ), where b is the length of the input
         """
-
         preferences = np.zeros(len(fragment_pairs), dtype=np.float32)
         for i, (frag1, frag2) in enumerate(fragment_pairs):
             if self._display_videos(frag1, frag2):
@@ -948,22 +947,34 @@ class SynchronousCLIGatherer(PreferenceGatherer):
         return preferences
 
     def _display_videos(
-        self, frag1: TrajectoryWithRew, frag2: TrajectoryWithRew
+        self, frag1: TrajectoryWithRew, frag2: TrajectoryWithRew,
     ) -> bool:
         """Displays the videos of the two fragments.
 
         Args:
             frag1: first fragment
             frag2: second fragment
+        
+        Returns:
+            True if the first fragment is preferred, False if not.
+        
+        Raises:
+            KeyboardInterrupt: if the user presses q to quit.
+            RuntimeError: if the video files cannot be opened.
+            ValueError: if the trajectory infos are not set.
         """
         # display the videos
+        if frag1.infos is None or frag2.infos is None:
+            raise ValueError(
+                "TrajectoryWithRew.infos must be set to display videos.",
+            )
         frag1_video_path = frag1.infos[0]["video_path"]
         frag2_video_path = frag2.infos[0]["video_path"]
         if self._in_ipython():
             self._display_videos_in_notebook(frag1_video_path, frag2_video_path)
 
             pref = input(
-                "Which video is preferred? (1 or 2, or q to quit, or r to replay): "
+                "Which video is preferred? (1 or 2, or q to quit, or r to replay): ",
             )
             while pref not in ["1", "2", "q"]:
                 if pref == "r":
@@ -978,7 +989,7 @@ class SynchronousCLIGatherer(PreferenceGatherer):
                 return False
 
             # should never be hit
-            raise ValueError(f"Unexpected input {pref}")
+            assert False
         else:
             print("Which video is preferred? (1 or 2, or q to quit, or r to replay):\n")
             cap1 = cv2.VideoCapture(str(frag1_video_path))
@@ -1029,7 +1040,7 @@ class SynchronousCLIGatherer(PreferenceGatherer):
             raise KeyboardInterrupt
 
     def _display_videos_in_notebook(
-        self, frag1_video_path: pathlib.Path, frag2_video_path: pathlib.Path
+        self, frag1_video_path: pathlib.Path, frag2_video_path: pathlib.Path,
     ) -> None:
         from IPython.display import HTML, Video, clear_output, display
 
@@ -1055,7 +1066,7 @@ class SynchronousCLIGatherer(PreferenceGatherer):
 
     def _in_ipython(self) -> bool:
         try:
-            return get_ipython().__class__.__name__ == "ZMQInteractiveShell"
+            return get_ipython().__class__.__name__ == "ZMQInteractiveShell" # type: ignore[attr-defined]
         except NameError:
             return False
 
