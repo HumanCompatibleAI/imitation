@@ -18,7 +18,7 @@ markdown_structure: Dict[str, Dict[str, Any]] = {
     "metadata": {"do": "constant", "value": dict()},
     "source": {"do": "keep"},
     "id": {"do": "keep"},
-    "attachments": {"do": "constant", "value": None},
+    "attachments": {"do": "constant", "value": {}},
 }
 
 code_structure: Dict[str, Dict[str, Any]] = {
@@ -110,7 +110,12 @@ def clean_notebook(file: pathlib.Path, check_only=False) -> None:
 
 
 def parse_args():
-    """Parse command-line arguments."""
+    """Parse command-line arguments.
+
+    Returns:
+        parser: The parser object.
+        args: The parsed arguments.
+    """
     # if the argument --check has been passed, check if the notebooks are clean
     # otherwise, clean them in-place
     parser = argparse.ArgumentParser()
@@ -127,7 +132,14 @@ def parse_args():
 
 
 def get_files(input_paths: List):
-    """Build list of files to scan from list of paths and files."""
+    """Build list of files to scan from list of paths and files.
+
+    Args:
+        input_paths: List of paths and files to scan.
+
+    Returns:
+        files: List of files to scan.
+    """
     files = []
     for file in input_paths:
         if file.is_dir():
