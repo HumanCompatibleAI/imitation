@@ -87,7 +87,6 @@ class VideoWrapper(gym.Wrapper):
     def step(self, action):
         obs, rew, done, info = self.env.step(action)
         self.video_recorder.capture_frame()
-        # is it crazy to save the video path at every step?
         info["video_path"] = self.current_video_path
         return obs, rew, done, info
 

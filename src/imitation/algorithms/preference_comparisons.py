@@ -908,12 +908,14 @@ class SyntheticGatherer(PreferenceGatherer):
         return np.array(rews1, dtype=np.float32), np.array(rews2, dtype=np.float32)
 
 
-class SynchronousCLIGatherer(PreferenceGatherer):
-    """Queries for human preferences using the command line interface."""
+class SynchronousHumanGatherer(PreferenceGatherer):
+    """Queries for human preferences using the command line or a notebook."""
 
     def __init__(
         self,
         video_dir: pathlib.Path,
+        video_width: int = 500,
+        video_height: int = 500,
         custom_logger: Optional[imit_logger.HierarchicalLogger] = None,
     ) -> None:
         """Initialize the human preference gatherer.
@@ -924,6 +926,8 @@ class SynchronousCLIGatherer(PreferenceGatherer):
         """
         super().__init__(custom_logger=custom_logger)
         self.video_dir = video_dir
+        self.video_width = video_width
+        self.video_height = video_height
 
     def __call__(self, fragment_pairs: Sequence[TrajectoryWithRewPair]) -> np.ndarray:
         """Displays each pair of fragments and asks for a preference.
@@ -1025,12 +1029,12 @@ class SynchronousCLIGatherer(PreferenceGatherer):
         cv2.namedWindow("Video 2", cv2.WINDOW_NORMAL)
 
         # set window sizes
-        cv2.resizeWindow("Video 1", 500, 500)
-        cv2.resizeWindow("Video 2", 500, 500)
+        cv2.resizeWindow("Video 1", self.video_width, self.video_height)
+        cv2.resizeWindow("Video 2", self.video_width, self.video_height)
 
         # move windows side by side
         cv2.moveWindow("Video 1", 0, 0)
-        cv2.moveWindow("Video 2", 500, 0)
+        cv2.moveWindow("Video 2", self.video_width, 0)
 
         if not cap1.isOpened():
             raise RuntimeError(f"Error opening video file {frag1_video_path}.")
@@ -1086,13 +1090,14 @@ class SynchronousCLIGatherer(PreferenceGatherer):
         for i, path in enumerate([frag1_video_path, frag2_video_path]):
             if not path.exists():
                 raise RuntimeError(f"Video file {path} does not exist.")
-            display(HTML(f"<h2>Video {i}</h2>"))
+            display(HTML(f"<h2>Video {i+1}</h2>"))
             display(
                 Video(
                     filename=str(path),
-                    height=500,
-                    width=500,
+                    height=self.video_height,
+                    width=self.video_width,
                     html_attributes="controls autoplay muted",
+                    embed=False,
                 )
             )
 
