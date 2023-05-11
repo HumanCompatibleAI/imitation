@@ -18,6 +18,7 @@ markdown_structure: Dict[str, Dict[str, Any]] = {
     "metadata": {"do": "constant", "value": dict()},
     "source": {"do": "keep"},
     "id": {"do": "keep"},
+    "attachments": {"do": "constant", "value": None},
 }
 
 code_structure: Dict[str, Dict[str, Any]] = {
@@ -27,7 +28,6 @@ code_structure: Dict[str, Dict[str, Any]] = {
     "outputs": {"do": "constant", "value": list()},
     "execution_count": {"do": "constant", "value": None},
     "id": {"do": "keep"},
-    "attachments": {"do": "constant", "value": None},
 }
 
 structure: Dict[str, Dict[str, Dict[str, Any]]] = {
@@ -77,7 +77,8 @@ def clean_notebook(file: pathlib.Path, check_only=False) -> None:
             if key not in structure[cell["cell_type"]]:
                 if check_only:
                     raise UncleanNotebookError(
-                        f"Notebook {file} has unknown cell key {key} for cell type {cell['cell_type']}",
+                        f"Notebook {file} has unknown cell key {key} for cell type "
+                        + f"{cell['cell_type']}",
                     )
                 del cell[key]
                 was_dirty = True
