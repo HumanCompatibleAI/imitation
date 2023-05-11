@@ -61,7 +61,7 @@ class ExplorationWrapper:
         state: Optional[Tuple[np.ndarray, ...]],
         episode_start: Optional[np.ndarray],
     ) -> Tuple[np.ndarray, Optional[Tuple[np.ndarray, ...]]]:
-        del state, episode_start
+        del state, episode_start  # Unused
         acts = [self.venv.action_space.sample() for _ in range(len(obs))]
         return np.stack(acts, axis=0), None
 
@@ -78,7 +78,7 @@ class ExplorationWrapper:
         input_state: Optional[Tuple[np.ndarray, ...]],
         episode_start: Optional[np.ndarray],
     ) -> Tuple[np.ndarray, Optional[Tuple[np.ndarray, ...]]]:
-        del episode_start
+        del episode_start  # Unused
 
         if input_state is not None:
             # This checks that we aren't passed a state

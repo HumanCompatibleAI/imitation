@@ -9,12 +9,12 @@ from imitation.util import util
 
 
 def constant_policy(obs, state, mask):
-    del state, mask
+    del state, mask  # Unused
     return np.zeros(len(obs), dtype=int), None
 
 
 def fake_stateful_policy(obs, state, mask):
-    del state, mask
+    del state, mask  # Unused
     return np.zeros(len(obs), dtype=int), (np.zeros(1),)
 
 
