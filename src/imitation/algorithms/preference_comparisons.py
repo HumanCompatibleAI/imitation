@@ -5,6 +5,7 @@ between trajectory fragments.
 """
 import abc
 import math
+import pathlib
 import pickle
 import re
 from collections import defaultdict
@@ -24,6 +25,7 @@ from typing import (
     overload,
 )
 
+import cv2
 import numpy as np
 import torch as th
 from scipy import special
@@ -904,6 +906,158 @@ class SyntheticGatherer(PreferenceGatherer):
             ],
         )
         return np.array(rews1, dtype=np.float32), np.array(rews2, dtype=np.float32)
+
+
+class SynchronousCLIGatherer(PreferenceGatherer):
+    """Queries for human preferences using the command line interface."""
+
+    def __init__(
+        self,
+        video_dir: pathlib.Path,
+        custom_logger: Optional[imit_logger.HierarchicalLogger] = None,
+    ) -> None:
+        """Initialize the human preference gatherer.
+
+        Args:
+            video_dir: directory where videos of the trajectories are saved.
+            custom_logger: Where to log to; if None (default), creates a new logger.
+        """
+        super().__init__(custom_logger=custom_logger)
+        self.video_dir = video_dir
+
+    def __call__(self, fragment_pairs: Sequence[TrajectoryWithRewPair]) -> np.ndarray:
+        """Displays each pair of fragments and asks for a preference.
+
+        It iteratively requests user feedback for each pair of fragments. If in the
+        command line, it will pop out a video player for each fragment. If in a
+        notebook, it will display the videos. Either way, it will request 1 or 2 to
+        indicate which is preferred.
+
+        Args:
+            fragment_pairs: sequence of pairs of trajectory fragments
+
+        Returns:
+            A numpy array of 1 if fragment 1 is preferred and 0 otherwise, with shape
+            (b, ), where b is the length of the input
+        """
+
+        preferences = np.zeros(len(fragment_pairs), dtype=np.float32)
+        for i, (frag1, frag2) in enumerate(fragment_pairs):
+            if self._display_videos(frag1, frag2):
+                preferences[i] = 1
+        return preferences
+
+    def _display_videos(
+        self, frag1: TrajectoryWithRew, frag2: TrajectoryWithRew
+    ) -> bool:
+        """Displays the videos of the two fragments.
+
+        Args:
+            frag1: first fragment
+            frag2: second fragment
+        """
+        # display the videos
+        frag1_video_path = frag1.infos[0]["video_path"]
+        frag2_video_path = frag2.infos[0]["video_path"]
+        if self._in_ipython():
+            self._display_videos_in_notebook(frag1_video_path, frag2_video_path)
+
+            pref = input(
+                "Which video is preferred? (1 or 2, or q to quit, or r to replay): "
+            )
+            while pref not in ["1", "2", "q"]:
+                if pref == "r":
+                    self._display_videos_in_notebook(frag1_video_path, frag2_video_path)
+                pref = input("Please enter 1 or 2 or q or r: ")
+
+            if pref == "q":
+                raise KeyboardInterrupt
+            elif pref == "1":
+                return True
+            elif pref == "2":
+                return False
+
+            # should never be hit
+            raise ValueError(f"Unexpected input {pref}")
+        else:
+            print("Which video is preferred? (1 or 2, or q to quit, or r to replay):\n")
+            cap1 = cv2.VideoCapture(str(frag1_video_path))
+            cap2 = cv2.VideoCapture(str(frag2_video_path))
+            cv2.namedWindow("Video 1", cv2.WINDOW_NORMAL)
+            cv2.namedWindow("Video 2", cv2.WINDOW_NORMAL)
+
+            # set window sizes
+            cv2.resizeWindow("Video 1", 500, 500)
+            cv2.resizeWindow("Video 2", 500, 500)
+
+            # move windows side by side
+            cv2.moveWindow("Video 1", 0, 0)
+            cv2.moveWindow("Video 2", 500, 0)
+
+            if not cap1.isOpened():
+                raise RuntimeError(f"Error opening video file {frag1_video_path}.")
+
+            if not cap2.isOpened():
+                raise RuntimeError(f"Error opening video file {frag2_video_path}.")
+
+            ret1, frame1 = cap1.read()
+            ret2, frame2 = cap2.read()
+            while cap1.isOpened() and cap2.isOpened():
+                if ret1 or ret2:
+                    cv2.imshow("Video 1", frame1)
+                    cv2.imshow("Video 2", frame2)
+                    ret1, frame1 = cap1.read()
+                    ret2, frame2 = cap2.read()
+
+                key = chr(cv2.waitKey(1) & 0xFF)
+                if key == "q":
+                    raise KeyboardInterrupt
+                elif key == "r":
+                    cap1.set(cv2.CAP_PROP_POS_FRAMES, 0)
+                    cap2.set(cv2.CAP_PROP_POS_FRAMES, 0)
+                    ret1, frame1 = cap1.read()
+                    ret2, frame2 = cap2.read()
+                elif key == "1" or key == "2":
+                    cap1.release()
+                    cap2.release()
+                    cv2.destroyAllWindows()
+                    return key == "1"
+
+            cap1.release()
+            cap2.release()
+            cv2.destroyAllWindows()
+            raise KeyboardInterrupt
+
+    def _display_videos_in_notebook(
+        self, frag1_video_path: pathlib.Path, frag2_video_path: pathlib.Path
+    ) -> None:
+        from IPython.display import HTML, Video, clear_output, display
+
+        display(HTML("<h2>Video 1</h2>"))
+        display(
+            Video(
+                filename=str(frag1_video_path),
+                height=500,
+                width=500,
+                html_attributes="controls autoplay muted",
+            )
+        )
+        display(HTML("<h2>Video 2</h2>"))
+        display(
+            Video(
+                filename=str(frag2_video_path),
+                height=500,
+                width=500,
+                html_attributes="controls autoplay muted",
+            )
+        )
+        clear_output(wait=True)
+
+    def _in_ipython(self) -> bool:
+        try:
+            return get_ipython().__class__.__name__ == "ZMQInteractiveShell"
+        except NameError:
+            return False
 
 
 class PreferenceDataset(data_th.Dataset):

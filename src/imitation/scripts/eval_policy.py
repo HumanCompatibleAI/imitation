@@ -41,17 +41,6 @@ class InteractiveRender(VecEnvWrapper):
         return ob
 
 
-def video_wrapper_factory(log_dir: pathlib.Path, **kwargs):
-    """Returns a function that wraps the environment in a video recorder."""
-
-    def f(env: gym.Env, i: int) -> video_wrapper.VideoWrapper:
-        """Wraps `env` in a recorder saving videos to `{log_dir}/videos/{i}`."""
-        directory = log_dir / "videos" / str(i)
-        return video_wrapper.VideoWrapper(env, directory=directory, **kwargs)
-
-    return f
-
-
 @eval_policy_ex.main
 def eval_policy(
     eval_n_timesteps: Optional[int],
@@ -94,7 +83,11 @@ def eval_policy(
     """
     log_dir = logging_ingredient.make_log_dir()
     sample_until = rollout.make_sample_until(eval_n_timesteps, eval_n_episodes)
-    post_wrappers = [video_wrapper_factory(log_dir, **video_kwargs)] if videos else None
+    post_wrappers = (
+        [video_wrapper.video_wrapper_factory(log_dir, **video_kwargs)]
+        if videos
+        else None
+    )
     with environment.make_venv(post_wrappers=post_wrappers) as venv:
         if render:
             venv = InteractiveRender(venv, render_fps)

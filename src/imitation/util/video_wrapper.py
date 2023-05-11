@@ -7,6 +7,17 @@ import gym
 from gym.wrappers.monitoring import video_recorder
 
 
+def video_wrapper_factory(log_dir: pathlib.Path, **kwargs):
+    """Returns a function that wraps the environment in a video recorder."""
+
+    def f(env: gym.Env, i: int) -> VideoWrapper:
+        """Wraps `env` in a recorder saving videos to `{log_dir}/videos/{i}`."""
+        directory = log_dir / "videos" / str(i)
+        return VideoWrapper(env, directory=directory, **kwargs)
+
+    return f
+
+
 class VideoWrapper(gym.Wrapper):
     """Creates videos from wrapped environment by calling render after each timestep."""
 
@@ -61,18 +72,27 @@ class VideoWrapper(gym.Wrapper):
                 metadata={"episode_id": self.episode_id},
             )
 
-    def reset(self):
+    def reset(self, **kwargs):
+        new_obs = super().reset(**kwargs)
         self._reset_video_recorder()
         self.episode_id += 1
-        return self.env.reset()
+        return new_obs
 
     def step(self, action):
-        res = self.env.step(action)
+        obs, rew, done, info = self.env.step(action)
         self.video_recorder.capture_frame()
-        return res
+        # is it crazy to save the video path at every step?
+        info["video_path"] = self.get_current_video_path()
+        return obs, rew, done, info
 
     def close(self) -> None:
         if self.video_recorder is not None:
             self.video_recorder.close()
             self.video_recorder = None
         super().close()
+
+    def get_current_video_path(self) -> Optional[pathlib.Path]:
+        """Returns the path to the current video file, or None if no video is active."""
+        if self.video_recorder is None:
+            return None
+        return pathlib.Path(self.video_recorder.path)
