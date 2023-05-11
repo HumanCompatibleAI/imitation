@@ -1110,8 +1110,8 @@ def test_compare_to_baseline_p_values(
     comparison.to_csv(tmpfile)
 
     assert (
-        compare_to_baseline.compare_results_to_baseline(results_file=tmpfile)["pvalue"][
-            0
-        ]
+        compare_to_baseline.compare_results_to_baseline(results_filename=tmpfile)[
+            "pvalue"
+        ][0]
         < p_value
     )

@@ -15,66 +15,26 @@ The results file should be a CSV file containing the following columns:
       experiment returns, as reported by `imitation.scripts.analyze`.
 """
 
-import numpy as np
 import pandas as pd
 import scipy
 
 from imitation.data import types
 
 
-def compare_results_to_baseline(results_file: types.AnyPath) -> pd.DataFrame:
+def compare_results_to_baseline(results_filename: types.AnyPath) -> pd.DataFrame:
     """Compare benchmark results to baseline results.
 
     Args:
-        results_file: Path to a CSV file containing experiment results.
+        results_filename: Path to a CSV file containing experiment results.
 
     Returns:
         A string containing a table of p-values comparing the experiment results to
         the baseline results.
     """
-    data = pd.read_csv(results_file)
-    data["imit_return"] = data["imit_return_summary"].apply(
-        lambda x: float(x.split(" ")[0]),
-    )
-    summary = (
-        data[["algo", "env_name", "imit_return"]]
-        .groupby(["algo", "env_name"])
-        .describe()
-    )
-    summary.columns = summary.columns.get_level_values(1)
-    summary = summary.reset_index()
+    results_summary = load_and_summarize_csv(results_filename)
+    baseline_summary = load_and_summarize_csv("baseline.csv")
 
-    # Table 2 (https://arxiv.org/pdf/2211.11972.pdf)
-    # todo: store results in this repo outside this file
-    baseline = pd.DataFrame.from_records(
-        [
-            {
-                "algo": "??exp_command=bc",
-                "env_name": "seals/Ant-v0",
-                "mean": 1953,
-                "margin": 123,
-            },
-            {
-                "algo": "??exp_command=bc",
-                "env_name": "seals/HalfCheetah-v0",
-                "mean": 3446,
-                "margin": 130,
-            },
-        ],
-    )
-    baseline["count"] = 5
-    baseline["confidence_level"] = 0.95
-    # Back out the standard deviation from the margin of error.
-
-    t_score = scipy.stats.t.ppf(
-        1 - ((1 - baseline["confidence_level"]) / 2),
-        baseline["count"] - 1,
-    )
-    std_err = baseline["margin"] / t_score
-
-    baseline["std"] = std_err * np.sqrt(baseline["count"])
-
-    comparison = pd.merge(summary, baseline, on=["algo", "env_name"])
+    comparison = pd.merge(results_summary, baseline_summary, on=["algo", "env_name"])
 
     comparison["pvalue"] = scipy.stats.ttest_ind_from_stats(
         comparison["mean_x"],
@@ -86,6 +46,30 @@ def compare_results_to_baseline(results_file: types.AnyPath) -> pd.DataFrame:
     ).pvalue
 
     return comparison[["algo", "env_name", "pvalue"]]
+
+
+def load_and_summarize_csv(results_filename: types.AnyPath) -> pd.DataFrame:
+    """Load a results CSV file and summarize the statistics.
+
+    Args:
+        results_filename: Path to a CSV file containing experiment results.
+
+    Returns:
+        A DataFrame containing the mean and standard deviation of the experiment
+        returns, grouped by algorithm and environment.
+    """
+    data = pd.read_csv(results_filename)
+    data["imit_return"] = data["imit_return_summary"].apply(
+        lambda x: float(x.split(" ")[0]),
+    )
+    summary = (
+        data[["algo", "env_name", "imit_return"]]
+        .groupby(["algo", "env_name"])
+        .describe()
+    )
+    summary.columns = summary.columns.get_level_values(1)
+    summary = summary.reset_index()
+    return summary
 
 
 def main() -> None:  # pragma: no cover
