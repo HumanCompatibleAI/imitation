@@ -1103,7 +1103,7 @@ class SynchronousHumanGatherer(PreferenceGatherer):
 
     def _in_ipython(self) -> bool:
         try:
-            return get_ipython().__class__.__name__ == "ZMQInteractiveShell"  # type: ignore # noqa
+            return get_ipython().__class__.__name__ == "ZMQInteractiveShell"  # type: ignore[name-defined] # noqa
         except NameError:
             return False
 
