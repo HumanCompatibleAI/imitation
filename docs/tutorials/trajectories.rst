@@ -35,7 +35,7 @@ Some algorithms do not care about entire trajectories, but only for individual
 
 Generating Trajectories
 -----------------------
-To generate trajectories from a given (expert) policy, run the following command:
+To generate trajectories from a given policy, run the following command:
 
 .. code-block:: python
 
