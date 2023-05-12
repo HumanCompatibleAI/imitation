@@ -23,7 +23,10 @@ In this library they are stored in a :class:`Trajectory <imitation.data.types.Tr
         terminal: bool
         """Does this trajectory (fragment) end in a terminal state?"""
 
-:class:`TrajectoryWithRew <imitation.data.types.TrajectoryWithRew>` have another :class:`rews <imitation.data.types.TrajectoryWithRew.rews>` field, which is an array of rewards of shape `(trajectory_len, )`.
+:class:`TrajectoryWithRew <imitation.data.types.TrajectoryWithRew>` is a subclass of
+:class:`Trajectory <imitation.data.types.Trajectory>` and has another
+:class:`rews <imitation.data.types.TrajectoryWithRew.rews>` field,
+which is an array of rewards of shape `(trajectory_len, )`.
 
 Usually, they are passed around as sequences of trajectories.
 
