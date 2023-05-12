@@ -52,7 +52,12 @@ class Trajectory:
     """Actions, shape (trajectory_len, ) + action_shape."""
 
     infos: Optional[np.ndarray]
-    """An array of info dicts, length trajectory_len."""
+    """An array of info dicts, shape (trajectory_len, ).
+    
+    The info dict is returned by some environments `step()` and contains auxiliary
+    diagnostic information. For example the monitor wrapper adds an info dict
+    to the last step of each episode containing the episode return and length. 
+    """
 
     terminal: bool
     """Does this trajectory (fragment) end in a terminal state?

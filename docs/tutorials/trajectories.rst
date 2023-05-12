@@ -18,7 +18,7 @@ In this library they are stored in a :class:`Trajectory <imitation.data.types.Tr
         """Actions, shape (trajectory_len, ) + action_shape."""
 
         infos: Optional[np.ndarray]
-        """An array of info dicts, length trajectory_len."""
+            """An array of info dicts, shape (trajectory_len, )."""
 
         terminal: bool
         """Does this trajectory (fragment) end in a terminal state?"""
