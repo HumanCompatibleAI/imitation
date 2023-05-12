@@ -106,3 +106,13 @@ To use a public dataset from the HuggingFace Dataset Hub, you can use the follow
 
 The :class:`TrajectoryDatasetSequence <imitation.data.huggingface_utils.TrajectoryDatasetSequence>`
 wraps a HuggingFace dataset so it can be used in the same way as a list of trajectories.
+
+For example, you can analyze the dataset with :func:`imitation.data.rollout.rollout_stats` to get the mean return:
+
+.. code-block:: python
+
+    from imitation.data.rollout import rollout_stats
+
+    stats = rollout_stats(your_trajectories)
+    print(stats["return_mean"])
+
