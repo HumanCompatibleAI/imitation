@@ -143,7 +143,7 @@ def fast():
 def real_reward():
     bypass_reward_net = True
     reward_trainer_kwargs = {
-        "epochs": 1,  # 5 might be better? but 1 looks better in his thing
+        "epochs": 1,
     }
 
 
@@ -152,7 +152,7 @@ def best_hps():
     initial_comparison_frac = 0.2
     num_iterations = 20
     reward_trainer_kwargs = {
-        "epochs": 1,  # 5 might be better? but 1 looks better in his thing
+        "epochs": 1,
     }
     rl = {
         "batch_size": 512,
@@ -175,7 +175,7 @@ def more_hps():
     initial_comparison_frac = 0.2
     num_iterations = 20
     reward_trainer_kwargs = {
-        "epochs": 1,  # 5 might be better? but 1 looks better in his thing
+        "epochs": 1,
     }
     rl = {
         "batch_size": 512,
