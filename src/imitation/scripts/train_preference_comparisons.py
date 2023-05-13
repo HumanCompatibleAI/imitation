@@ -146,7 +146,10 @@ def train_preference_comparisons(
             be allocated to each iteration. "hyperbolic" and "inverse_quadratic"
             apportion fewer queries to later iterations when the policy is assumed
             to be better and more stable.
-        bypass_reward_net: if True, use the environments's reward function directly
+        bypass_reward_net: if True, use the environments's reward function directly.
+        initial_epoch_multiplier: factor by which to multiply the number of epochs in
+            the first training iteration before the policy is trained. Set to 200 for
+            Atari to learn complex environments in the original paper.
         _rnd: Random number generator provided by Sacred.
 
     Returns:
