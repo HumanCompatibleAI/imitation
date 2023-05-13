@@ -1,8 +1,10 @@
 """Tests for the preference comparisons reward learning implementation."""
 
 import math
+import pathlib
 import re
 from typing import Any, Sequence
+from unittest.mock import patch
 
 import gym
 import numpy as np
@@ -288,6 +290,57 @@ def test_preference_comparisons_raises(
     build_preference_comparsions(gatherer, None, None, rng=rng)
     build_preference_comparsions(None, reward_trainer, None, rng=rng)
     build_preference_comparsions(None, None, random_fragmenter, rng=rng)
+
+
+@patch("builtins.input")
+@patch("IPython.display.display")
+def test_synchronous_human_gatherer(mock_display, mock_input):
+    del mock_display  # unused
+    gatherer = preference_comparisons.SynchronousHumanGatherer(
+        video_dir=pathlib.Path(".")
+    )
+
+    # these inputs are designed solely to pass the test. they aren't tested for anything
+    trajectory_pairs = [
+        (
+            types.TrajectoryWithRew(
+                np.array([1, 2]),
+                np.array([1]),
+                np.array(
+                    [
+                        {
+                            "video_path": pathlib.Path(
+                                "tests/algorithms/test_preference_comparisons.py"
+                            )
+                        }
+                    ]
+                ),
+                True,
+                np.array([1.0]),
+            ),
+            types.TrajectoryWithRew(
+                np.array([1, 2]),
+                np.array([1]),
+                np.array(
+                    [
+                        {
+                            "video_path": pathlib.Path(
+                                "tests/algorithms/test_preference_comparisons.py"
+                            )
+                        }
+                    ]
+                ),
+                True,
+                np.array([1.0]),
+            ),
+        )
+    ]
+
+    # this is the actual test
+    mock_input.return_value = "1"
+    assert gatherer(trajectory_pairs) == np.array([1.0])
+    mock_input.return_value = "2"
+    assert gatherer(trajectory_pairs) == np.array([0.0])
 
 
 @pytest.mark.parametrize(

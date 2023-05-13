@@ -5,6 +5,7 @@ between trajectory fragments.
 """
 import abc
 import math
+import os
 import pathlib
 import pickle
 import re
@@ -1103,9 +1104,12 @@ class SynchronousHumanGatherer(PreferenceGatherer):
 
     def _in_ipython(self) -> bool:
         try:
-            return get_ipython().__class__.__name__ == "ZMQInteractiveShell"  # type: ignore[name-defined] # noqa
+            return self.is_running_pytest_test() or get_ipython().__class__.__name__ == "ZMQInteractiveShell"  # type: ignore[name-defined] # noqa
         except NameError:
             return False
+
+    def is_running_pytest_test(self) -> bool:
+        return "PYTEST_CURRENT_TEST" in os.environ
 
 
 class PreferenceDataset(data_th.Dataset):
