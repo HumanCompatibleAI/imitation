@@ -15,6 +15,8 @@ The results file should be a CSV file containing the following columns:
       experiment returns, as reported by `imitation.scripts.analyze`.
 """
 
+import glob
+
 import pandas as pd
 import scipy
 
@@ -32,7 +34,10 @@ def compare_results_to_baseline(results_filename: types.AnyPath) -> pd.DataFrame
         the baseline results.
     """
     results_summary = load_and_summarize_csv(results_filename)
-    baseline_summary = load_and_summarize_csv("baseline.csv")
+
+    baseline_filenames = glob.glob("benchmarking/results/*.csv")
+    baseline_dfs = [load_and_summarize_csv(filename) for filename in baseline_filenames]
+    baseline_summary = pd.concat(baseline_dfs)
 
     comparison = pd.merge(results_summary, baseline_summary, on=["algo", "env_name"])
 

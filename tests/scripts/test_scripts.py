@@ -1083,7 +1083,7 @@ def test_convert_trajs_from_current_format_is_idempotent(
     [
         (
             [2000, 1900, 2100],
-            0.6,
+            0.8,
         ),
         (
             [1000, 900, 1100],
@@ -1099,7 +1099,7 @@ def test_compare_to_baseline_p_values(
     comparison = pd.DataFrame.from_records(
         [
             {
-                "algo": "??exp_command=bc",
+                "algo": "BC",
                 "env_name": "seals/Ant-v0",
                 "imit_return_summary": f"{imit_return} +/- 0.0",
             }
