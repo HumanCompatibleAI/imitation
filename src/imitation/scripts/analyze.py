@@ -160,6 +160,7 @@ def _get_algo_name(sd: sacred_util.SacredDicts) -> str:
         "gail": "GAIL",
         "airl": "AIRL",
         "preference_comparisons": "Preference Comparisons",
+        "train_preference_comparisons": "Preference Comparisons",
     }
 
     if exp_command.lower() in COMMAND_TO_ALGO.keys():
@@ -171,6 +172,7 @@ def _get_algo_name(sd: sacred_util.SacredDicts) -> str:
 def _return_summaries(sd: sacred_util.SacredDicts) -> dict:
     imit_stats = get(sd.run, "result.imit_stats")
     expert_stats = get(sd.run, "result.expert_stats")
+    rollout = get(sd.run, "result.rollout")
 
     expert_return_summary = None
     if expert_stats is not None:
@@ -179,6 +181,10 @@ def _return_summaries(sd: sacred_util.SacredDicts) -> dict:
     imit_return_summary = None
     if imit_stats is not None:
         imit_return_summary = _make_return_summary(imit_stats, "monitor_")
+
+    rollout_summary = None
+    if rollout is not None:
+        rollout_summary = _make_return_summary(rollout)
 
     if imit_stats is not None and expert_stats is not None:
         # Assuming here that `result.imit_stats` and `result.expert_stats` are
@@ -195,6 +201,7 @@ def _return_summaries(sd: sacred_util.SacredDicts) -> dict:
         expert_return_summary=expert_return_summary,
         imit_return_summary=imit_return_summary,
         imit_expert_ratio=imit_expert_ratio,
+        rollout_summary=rollout_summary,
     )
 
 
@@ -212,6 +219,7 @@ table_entry_fns: sd_to_table_entry_type = {
     "expert_return_summary": lambda sd: _return_summaries(sd)["expert_return_summary"],
     "imit_return_summary": lambda sd: _return_summaries(sd)["imit_return_summary"],
     "imit_expert_ratio": lambda sd: _return_summaries(sd)["imit_expert_ratio"],
+    "rollout_summary": lambda sd: _return_summaries(sd)["rollout_summary"],
 }
 
 # If `verbosity` is at least the length of this list, then we use all table_entry_fns

@@ -130,7 +130,7 @@ class AgentTrainer(TrajectoryGenerator):
     def __init__(
         self,
         algorithm: base_class.BaseAlgorithm,
-        reward_fn: Union[reward_function.RewardFn, reward_nets.RewardNet],
+        reward_fn: Union[reward_function.RewardFn, reward_nets.RewardNet, None],
         venv: vec_env.VecEnv,
         rng: np.random.Generator,
         exploration_frac: float = 0.0,
@@ -179,12 +179,25 @@ class AgentTrainer(TrajectoryGenerator):
         # SB3 may move the image-channel dimension in the observation space, making
         # `algorithm.get_env()` not match with `reward_fn`.
         self.buffering_wrapper = wrappers.BufferingWrapper(venv)
-        self.venv = self.reward_venv_wrapper = reward_wrapper.RewardVecEnvWrapper(
-            self.buffering_wrapper,
-            reward_fn=self.reward_fn,
+        self.reward_venv_wrapper = (
+            reward_wrapper.RewardVecEnvWrapper(
+                self.buffering_wrapper,
+                reward_fn=self.reward_fn,
+            )
+            if self.reward_fn
+            else None
+        )
+        self.venv = (
+            self.reward_venv_wrapper
+            if self.reward_venv_wrapper
+            else self.buffering_wrapper
         )
 
-        self.log_callback = self.reward_venv_wrapper.make_log_callback()
+        self.log_callback = (
+            self.reward_venv_wrapper.make_log_callback()
+            if self.reward_venv_wrapper
+            else None
+        )
 
         self.algorithm.set_env(self.venv)
         # Unlike with BufferingWrapper, we should use `algorithm.get_env()` instead

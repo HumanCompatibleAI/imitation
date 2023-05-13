@@ -43,7 +43,6 @@ def train_defaults():
     reward_trainer_kwargs = {
         "epochs": 3,
     }
-    save_preferences = False  # save preference dataset at the end?
     agent_path = None  # path to a (partially) trained agent to load at the beginning
     # type of PreferenceGatherer to use
     gatherer_cls = preference_comparisons.SyntheticGatherer
@@ -62,6 +61,9 @@ def train_defaults():
 
     checkpoint_interval = 0  # Num epochs between saving (<0 disables, =0 final only)
     query_schedule = "hyperbolic"
+    save_preferences = False
+    bypass_reward_net = False
+    initial_epoch_multiplier = 200.0
 
 
 @train_preference_comparisons_ex.named_config
@@ -81,6 +83,12 @@ def seals_ant():
 def half_cheetah():
     locals().update(**MUJOCO_SHARED_LOCALS)
     environment = dict(gym_id="HalfCheetah-v2")
+    rl = dict(batch_size=16384, rl_kwargs=dict(batch_size=1024))
+
+
+@train_preference_comparisons_ex.named_config
+def seals_half_cheetah():
+    environment = dict(gym_id="seals/HalfCheetah-v0")
     rl = dict(batch_size=16384, rl_kwargs=dict(batch_size=1024))
 
 
@@ -129,3 +137,63 @@ def fast():
     reward_trainer_kwargs = {
         "epochs": 1,
     }
+
+
+@train_preference_comparisons_ex.named_config
+def real_reward():
+    bypass_reward_net = True
+    reward_trainer_kwargs = {
+        "epochs": 1,  # 5 might be better? but 1 looks better in his thing
+    }
+
+
+@train_preference_comparisons_ex.named_config
+def best_hps():
+    initial_comparison_frac = 0.2
+    num_iterations = 20
+    reward_trainer_kwargs = {
+        "epochs": 1,  # 5 might be better? but 1 looks better in his thing
+    }
+    rl = {
+        "batch_size": 512,
+        "rl_kwargs": {
+            "ent_coef": 0.95,  # this number looks weird
+            "n_epochs": 5,
+            "gamma": 0.95,
+            "gae_lambda": 0.95,
+            "clip_range": 0.1,
+            "max_grad_norm": 0.8,
+            "vf_coef": 0.11483689492120900,
+        },
+    }
+    # reward = {"normalize_output_layer": None}
+    total_timesteps = 20000000.0
+
+
+@train_preference_comparisons_ex.named_config
+def more_hps():
+    initial_comparison_frac = 0.2
+    num_iterations = 20
+    reward_trainer_kwargs = {
+        "epochs": 1,  # 5 might be better? but 1 looks better in his thing
+    }
+    rl = {
+        "batch_size": 512,
+        "rl_kwargs": {
+            "ent_coef": 3.992371122209408e-6,
+            "n_epochs": 5,
+            "gamma": 0.95,
+            "gae_lambda": 0.95,
+            "clip_range": 0.1,
+            "max_grad_norm": 0.8,
+            "vf_coef": 0.11483689492120900,
+        },
+    }
+    # reward = {"normalize_output_layer": None}
+    total_timesteps = 20000000.0
+
+
+@train_preference_comparisons_ex.named_config
+def initial_epoch_multiplier():
+    initial_epoch_multiplier = 1.0
+    reward_trainer_kwargs = {"epochs": 5}

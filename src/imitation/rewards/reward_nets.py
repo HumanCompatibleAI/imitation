@@ -200,7 +200,7 @@ class RewardNet(nn.Module, abc.ABC):
         Returns:
             Computed processed rewards of shape `(batch_size,`).
         """
-        del kwargs
+        del kwargs  # unused
         return self.predict(state, action, next_state, done)
 
     @property

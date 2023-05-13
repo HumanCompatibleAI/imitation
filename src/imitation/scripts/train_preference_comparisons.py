@@ -84,6 +84,8 @@ def train_preference_comparisons(
     allow_variable_horizon: bool,
     checkpoint_interval: int,
     query_schedule: Union[str, type_aliases.Schedule],
+    bypass_reward_net: bool,
+    initial_epoch_multiplier: float,
     _rnd: np.random.Generator,
 ) -> Mapping[str, Any]:
     """Train a reward model using preference comparisons.
@@ -144,6 +146,7 @@ def train_preference_comparisons(
             be allocated to each iteration. "hyperbolic" and "inverse_quadratic"
             apportion fewer queries to later iterations when the policy is assumed
             to be better and more stable.
+        bypass_reward_net: if True, use the environments's reward function directly
         _rnd: Random number generator provided by Sacred.
 
     Returns:
@@ -184,9 +187,10 @@ def train_preference_comparisons(
         if trajectory_path is None:
             # Setting the logger here is not necessary (PreferenceComparisons takes care
             # of it automatically) but it avoids creating unnecessary loggers.
+            reward_fn = None if bypass_reward_net else reward_net
             agent_trainer = preference_comparisons.AgentTrainer(
                 algorithm=agent,
-                reward_fn=reward_net,
+                reward_fn=reward_fn,
                 venv=venv,
                 exploration_frac=exploration_frac,
                 rng=_rnd,
@@ -261,6 +265,7 @@ def train_preference_comparisons(
             custom_logger=custom_logger,
             allow_variable_horizon=allow_variable_horizon,
             query_schedule=query_schedule,
+            initial_epoch_multiplier=initial_epoch_multiplier,
         )
 
         def save_callback(iteration_num):
