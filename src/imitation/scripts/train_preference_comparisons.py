@@ -172,8 +172,9 @@ def train_preference_comparisons(
     post_wrappers = (
         [
             video_wrapper.video_wrapper_factory(
-                pathlib.Path(video_log_dir), single_video=False
-            )
+                pathlib.Path(video_log_dir),
+                single_video=False,
+            ),
         ]
         if video_log_dir
         else None

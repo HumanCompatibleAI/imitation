@@ -923,7 +923,12 @@ class SynchronousHumanGatherer(PreferenceGatherer):
 
         Args:
             video_dir: directory where videos of the trajectories are saved.
+            video_width: width of the video in pixels.
+            video_height: height of the video in pixels.
             custom_logger: Where to log to; if None (default), creates a new logger.
+
+        Raises:
+            ValueError: if `video_dir` is not a directory.
         """
         super().__init__(custom_logger=custom_logger)
         self.video_dir = video_dir
@@ -1000,7 +1005,9 @@ class SynchronousHumanGatherer(PreferenceGatherer):
             return self._display_in_windows(frag1_video_path, frag2_video_path)
 
     def _display_in_windows(
-        self, frag1_video_path: pathlib.Path, frag2_video_path: pathlib.Path
+        self,
+        frag1_video_path: pathlib.Path,
+        frag2_video_path: pathlib.Path,
     ) -> bool:
         """Displays the videos in separate windows.
 
@@ -1099,7 +1106,7 @@ class SynchronousHumanGatherer(PreferenceGatherer):
                     width=self.video_width,
                     html_attributes="controls autoplay muted",
                     embed=False,
-                )
+                ),
             )
 
     def _in_ipython(self) -> bool:

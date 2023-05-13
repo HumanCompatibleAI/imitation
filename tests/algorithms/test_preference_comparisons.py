@@ -297,7 +297,7 @@ def test_preference_comparisons_raises(
 def test_synchronous_human_gatherer(mock_display, mock_input):
     del mock_display  # unused
     gatherer = preference_comparisons.SynchronousHumanGatherer(
-        video_dir=pathlib.Path(".")
+        video_dir=pathlib.Path("."),
     )
 
     # these inputs are designed solely to pass the test. they aren't tested for anything
@@ -310,10 +310,10 @@ def test_synchronous_human_gatherer(mock_display, mock_input):
                     [
                         {
                             "video_path": pathlib.Path(
-                                "tests/algorithms/test_preference_comparisons.py"
-                            )
-                        }
-                    ]
+                                "tests/algorithms/test_preference_comparisons.py",
+                            ),
+                        },
+                    ],
                 ),
                 True,
                 np.array([1.0]),
@@ -325,15 +325,15 @@ def test_synchronous_human_gatherer(mock_display, mock_input):
                     [
                         {
                             "video_path": pathlib.Path(
-                                "tests/algorithms/test_preference_comparisons.py"
-                            )
-                        }
-                    ]
+                                "tests/algorithms/test_preference_comparisons.py",
+                            ),
+                        },
+                    ],
                 ),
                 True,
                 np.array([1.0]),
             ),
-        )
+        ),
     ]
 
     # this is the actual test
