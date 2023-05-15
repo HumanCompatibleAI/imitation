@@ -115,4 +115,3 @@ For example, you can analyze the dataset with :func:`imitation.data.rollout.roll
 
     stats = rollout_stats(your_trajectories)
     print(stats["return_mean"])
-
