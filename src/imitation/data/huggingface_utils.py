@@ -85,45 +85,6 @@ class _LazyDecodedList(Sequence[Any]):
             return jsonpickle.decode(self._encoded_list[idx])
 
 
-def make_dict_from_trajectory(trajectory: types.Trajectory):
-    """Convert a Trajectory to a dict.
-
-    The dict has the following fields:
-    * obs: The observations. Shape: (num_timesteps, obs_dim). dtype: float.
-    * acts: The actions. Shape: (num_timesteps, act_dim). dtype: float.
-    * infos: The infos. Shape: (num_timesteps, ). dtype: (jsonpickled) str.
-    * terminal: The terminal flags. Shape: (num_timesteps, ). dtype: bool.
-    * rews: The rewards. Shape: (num_timesteps, ). dtype: float. if applicable.
-
-    Args:
-        trajectory: The trajectory to convert.
-
-    Returns:
-        A dict representing the trajectory.
-    """
-    # Replace 'None' values for `infos`` with array of empty dicts
-    infos = cast(
-        Sequence[Dict[str, Any]],
-        trajectory.infos if trajectory.infos is not None else [{}] * len(trajectory),
-    )
-
-    # Encode infos as jsonpickled strings
-    encoded_infos = [jsonpickle.encode(info) for info in infos]
-
-    trajectory_dict = dict(
-        obs=trajectory.obs,
-        acts=trajectory.acts,
-        infos=encoded_infos,
-        terminal=trajectory.terminal,
-    )
-
-    # Add rewards if applicable
-    if isinstance(trajectory, types.TrajectoryWithRew):
-        trajectory_dict["rews"] = trajectory.rews
-
-    return trajectory_dict
-
-
 def trajectories_to_dict(
     trajectories: Sequence[types.Trajectory],
 ) -> Dict[str, Sequence[Any]]:
