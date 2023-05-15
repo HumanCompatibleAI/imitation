@@ -64,6 +64,10 @@ def train_defaults():
     checkpoint_interval = 0  # Num epochs between saving (<0 disables, =0 final only)
     query_schedule = "hyperbolic"
 
+    # If set, save trajectory videos to this directory. Must be present if gather_cls is
+    # SynchronousCLIGatherer
+    video_log_dir = None
+
 
 @train_preference_comparisons_ex.named_config
 def human_preferences():

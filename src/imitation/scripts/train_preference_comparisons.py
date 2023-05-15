@@ -23,6 +23,7 @@ from imitation.scripts.ingredients import environment
 from imitation.scripts.ingredients import logging as logging_ingredient
 from imitation.scripts.ingredients import policy_evaluation, reward
 from imitation.scripts.ingredients import rl as rl_common
+from imitation.util import video_wrapper
 
 
 def save_model(
@@ -86,6 +87,7 @@ def train_preference_comparisons(
     allow_variable_horizon: bool,
     checkpoint_interval: int,
     query_schedule: Union[str, type_aliases.Schedule],
+    video_log_dir: Optional[str],
     _rnd: np.random.Generator,
 ) -> Mapping[str, Any]:
     """Train a reward model using preference comparisons.
@@ -148,6 +150,7 @@ def train_preference_comparisons(
             be allocated to each iteration. "hyperbolic" and "inverse_quadratic"
             apportion fewer queries to later iterations when the policy is assumed
             to be better and more stable.
+        video_log_dir: If set, save videos to this directory.
         _rnd: Random number generator provided by Sacred.
 
     Returns:
@@ -170,7 +173,18 @@ def train_preference_comparisons(
 
     custom_logger, log_dir = logging_ingredient.setup_logging()
 
-    with environment.make_venv() as venv:
+    post_wrappers = (
+        [
+            video_wrapper.video_wrapper_factory(
+                pathlib.Path(video_log_dir),
+                single_video=False,
+            ),
+        ]
+        if video_log_dir
+        else None
+    )
+
+    with environment.make_venv(post_wrappers=post_wrappers) as venv:
         reward_net = reward.make_reward_net(venv)
         relabel_reward_fn = functools.partial(
             reward_net.predict_processed,

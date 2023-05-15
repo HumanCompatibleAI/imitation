@@ -72,6 +72,7 @@ If you use ``imitation`` in your research project, please cite our paper to help
    tutorials/4_train_airl
    tutorials/5_train_preference_comparisons
    tutorials/5a_train_preference_comparisons_with_cnn
+   tutorials/5b_train_preference_comparisons_with_synchronous_human_feedback
    tutorials/6_train_mce
    tutorials/7_train_density
 
