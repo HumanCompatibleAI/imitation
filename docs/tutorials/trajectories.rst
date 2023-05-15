@@ -46,13 +46,14 @@ To generate trajectories from a given policy, run the following command:
 .. code-block:: python
 
     import numpy as np
-    from imitation.data.rollout import rollout
+    import imitation.data.rollout as rollout
 
-    your_trajectories = rollout(
+    your_trajectories = rollout.rollout(
         your_policy,
         your_env,
-        sample_until=make_sample_until(min_episodes=10),
+        sample_until=rollout.make_sample_until(min_episodes=10),
         rng=np.random.default_rng(),
+        unwrap=False,
     )
 
 Storing/Loading Trajectories
