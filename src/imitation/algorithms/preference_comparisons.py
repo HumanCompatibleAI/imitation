@@ -838,8 +838,11 @@ class PrefCollectQuerent(PreferenceQuerent):
 
         # Save fragment videos and submit queries
         for query_id, query in identified_queries.items():
-            self._write_fragment_video(query[0], name=f"{query_id}-left")
-            self._write_fragment_video(query[1], name=f"{query_id}-right")
+            output_file_name = os.path.join(self.video_output_dir, f'{query_id}' + '{}.webm')
+            write_fragment_video(query[0], frames_per_second=self.frames_per_second,
+                                 output_path=output_file_name.format("left"))
+            write_fragment_video(query[1], frames_per_second=self.frames_per_second,
+                                 output_path=output_file_name.format("right"))
             self._query(query_id)
 
         return identified_queries
@@ -849,59 +852,58 @@ class PrefCollectQuerent(PreferenceQuerent):
             self.query_endpoint + query_id, json={"uuid": "{}".format(query_id)}
         )
 
-    def _write_fragment_video(self, fragment, name: str) -> None:
 
-        output_file_name = os.path.join(self.video_output_dir, f'{name}.webm')
-        frame_shape = self._get_frame_shape(fragment)
-        video_writer = cv2.VideoWriter(
-            output_file_name,
-            cv2.VideoWriter_fourcc(*'VP90'),
-            self.frames_per_second,
-            frame_shape,
-        )
+def write_fragment_video(fragment, frames_per_second: int, output_path: str) -> None:
+    frame_shape = get_frame_shape(fragment)
+    video_writer = cv2.VideoWriter(
+        output_path,
+        cv2.VideoWriter_fourcc(*'VP90'),
+        frames_per_second,
+        frame_shape,
+    )
 
-        # Make videos from rendered observations if available
-        if "rendered_img" in fragment.infos[0]:
-            frames = []
-            for i in range(len(fragment.infos)):
-                frame_info = fragment.infos[i]["rendered_img"]
-                # If path is provided load cached image
-                if isinstance(frame_info, AnyPath.__args__):
-                    frame = np.load(frame_info)
-                elif isinstance(frame_info, np.ndarray):
-                    frame = frame_info
-                frames.append(frame)
-        else:
-            frames = fragment.obs
-
-        for frame in frames:
-            # Transform to RGB frame if necessary
-            if frame.shape[-1] < 3:
-                missing_channels = 3 - frame.shape[-1]
-                frame = np.concatenate(
-                    [frame] + missing_channels * [frame[..., -1][..., None]], axis=-1
-                )
-            video_writer.write(cv2.cvtColor(frame, cv2.COLOR_RGB2BGR))
-
-        video_writer.release()
-
-    @staticmethod
-    def _get_frame_shape(fragment: TrajectoryWithRew) -> Tuple[int, int]:
-        if "rendered_img" in fragment.infos[0]:
-            rendered_img_info = fragment.infos[0]["rendered_img"]
+    # Make videos from rendered observations if available
+    if "rendered_img" in fragment.infos[0]:
+        frames = []
+        for i in range(len(fragment.infos)):
+            frame_info = fragment.infos[i]["rendered_img"]
             # If path is provided load cached image
-            if isinstance(rendered_img_info, AnyPath.__args__):
-                single_frame = np.load(rendered_img_info)
-            else:
-                single_frame = rendered_img_info
+            if isinstance(frame_info, AnyPath.__args__):
+                frame = np.load(frame_info)
+            elif isinstance(frame_info, np.ndarray):
+                frame = frame_info
+            frames.append(frame)
+    else:
+        frames = fragment.obs
+
+    for frame in frames:
+        # Transform to RGB frame if necessary
+        if frame.shape[-1] < 3:
+            missing_channels = 3 - frame.shape[-1]
+            frame = np.concatenate(
+                [frame] + missing_channels * [frame[..., -1][..., None]], axis=-1
+            )
+        video_writer.write(cv2.cvtColor(frame, cv2.COLOR_RGB2BGR))
+
+    video_writer.release()
+
+
+def get_frame_shape(fragment: TrajectoryWithRew) -> Tuple[int, int]:
+    if "rendered_img" in fragment.infos[0]:
+        rendered_img_info = fragment.infos[0]["rendered_img"]
+        # If path is provided load cached image
+        if isinstance(rendered_img_info, AnyPath.__args__):
+            single_frame = np.load(rendered_img_info)
         else:
-            single_frame = np.array(fragment.obs[0])
-            # Check whether obervations are image-like
-            if len(single_frame.shape) < 2:
-                raise ValueError("Observation must be an image, "
-                f"but shape {single_frame.shape} has too few dimensions!")
-        # Swap dimensions, because matrix and image dims are swapped
-        return single_frame.shape[1], single_frame.shape[0]
+            single_frame = rendered_img_info
+    else:
+        single_frame = np.array(fragment.obs[0])
+        # Check whether obervations are image-like
+        if len(single_frame.shape) < 2:
+            raise ValueError("Observation must be an image, "
+            f"but shape {single_frame.shape} has too few dimensions!")
+    # Swap dimensions, because matrix and image dims are swapped
+    return single_frame.shape[1], single_frame.shape[0]
 
 
 class PreferenceGatherer(abc.ABC):
@@ -1052,7 +1054,9 @@ class SynchronousHumanGatherer(PreferenceGatherer):
         video_dir: pathlib.Path,
         video_width: int = 500,
         video_height: int = 500,
+        frames_per_second: int = 25,
         custom_logger: Optional[imit_logger.HierarchicalLogger] = None,
+        rng: Optional[np.random.Generator] = None,
     ) -> None:
         """Initialize the human preference gatherer.
 
@@ -1065,12 +1069,14 @@ class SynchronousHumanGatherer(PreferenceGatherer):
         Raises:
             ValueError: if `video_dir` is not a directory.
         """
-        super().__init__(custom_logger=custom_logger)
+        super().__init__(custom_logger=custom_logger, rng=rng)
         self.video_dir = video_dir
+        os.makedirs(video_dir, exist_ok=True)
         self.video_width = video_width
         self.video_height = video_height
+        self.frames_per_second = frames_per_second
 
-    def __call__(self, fragment_pairs: Sequence[TrajectoryWithRewPair]) -> np.ndarray:
+    def __call__(self) -> Tuple[Sequence[TrajectoryWithRewPair], np.ndarray]:
         """Displays each pair of fragments and asks for a preference.
 
         It iteratively requests user feedback for each pair of fragments. If in the
@@ -1085,16 +1091,23 @@ class SynchronousHumanGatherer(PreferenceGatherer):
             A numpy array of 1 if fragment 1 is preferred and 0 otherwise, with shape
             (b, ), where b is the length of `fragment_pairs`
         """
-        preferences = np.zeros(len(fragment_pairs), dtype=np.float32)
-        for i, (frag1, frag2) in enumerate(fragment_pairs):
-            if self._display_videos_and_gather_preference(frag1, frag2):
+        preferences = np.zeros(len(self.pending_queries), dtype=np.float32)
+        for i, (query_id, query) in enumerate(self.pending_queries.items()):
+
+            write_fragment_video(query[0], frames_per_second=self.frames_per_second,
+                                 output_path=os.path.join(self.video_dir, f'{query_id}-left.webm'))
+            write_fragment_video(query[1], frames_per_second=self.frames_per_second,
+                                 output_path=os.path.join(self.video_dir, f'{query_id}-right.webm'))
+            if self._display_videos_and_gather_preference(query_id):
                 preferences[i] = 1
-        return preferences
+
+        queries = list(self.pending_queries.values())
+        self.pending_queries.clear()
+        return queries, preferences
 
     def _display_videos_and_gather_preference(
         self,
-        frag1: TrajectoryWithRew,
-        frag2: TrajectoryWithRew,
+        query_id
     ) -> bool:
         """Displays the videos of the two fragments.
 
@@ -1110,12 +1123,8 @@ class SynchronousHumanGatherer(PreferenceGatherer):
             RuntimeError: if the video files cannot be opened.
             ValueError: if the trajectory infos are not set.
         """
-        if frag1.infos is None or frag2.infos is None:
-            raise ValueError(
-                "TrajectoryWithRew.infos must be set to display videos.",
-            )
-        frag1_video_path = frag1.infos[0]["video_path"]
-        frag2_video_path = frag2.infos[0]["video_path"]
+        frag1_video_path = os.path.join(self.video_dir, f'{query_id}-left.webm')
+        frag2_video_path = os.path.join(self.video_dir, f'{query_id}-right.webm')
         if self._in_ipython():
             self._display_videos_in_notebook(frag1_video_path, frag2_video_path)
 

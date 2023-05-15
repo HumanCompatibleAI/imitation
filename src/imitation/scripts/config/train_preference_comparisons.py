@@ -70,6 +70,26 @@ def train_defaults():
 
 
 @train_preference_comparisons_ex.named_config
+def synch_human_preferences():
+    gatherer_cls = preference_comparisons.SynchronousHumanGatherer
+    gatherer_kwargs = dict(
+        video_dir="videos"
+    )
+    querent_cls = preference_comparisons.PreferenceQuerent
+    querent_kwargs = dict()
+    environment = dict(
+        post_wrappers=dict(
+            RenderImageInfoWrapper=lambda env, env_id, **kwargs:
+                RenderImageInfoWrapper(env, **kwargs),
+        ),
+        num_vec=2,
+        post_wrappers_kwargs=dict(
+            RenderImageInfoWrapper=dict(scale_factor=0.5, use_file_cache=True),
+        ),
+    )
+
+
+@train_preference_comparisons_ex.named_config
 def human_preferences():
     gatherer_cls = preference_comparisons.PrefCollectGatherer
     gatherer_kwargs = dict(

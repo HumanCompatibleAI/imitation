@@ -173,18 +173,7 @@ def train_preference_comparisons(
 
     custom_logger, log_dir = logging_ingredient.setup_logging()
 
-    post_wrappers = (
-        [
-            video_wrapper.video_wrapper_factory(
-                pathlib.Path(video_log_dir),
-                single_video=False,
-            ),
-        ]
-        if video_log_dir
-        else None
-    )
-
-    with environment.make_venv(post_wrappers=post_wrappers) as venv:
+    with environment.make_venv() as venv:
         reward_net = reward.make_reward_net(venv)
         relabel_reward_fn = functools.partial(
             reward_net.predict_processed,
