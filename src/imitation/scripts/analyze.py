@@ -13,8 +13,8 @@ import pandas as pd
 from sacred.observers import FileStorageObserver
 
 import imitation.util.sacred as sacred_util
-from imitation.data import types
 from imitation.scripts.config.analyze import analysis_ex
+from imitation.util import util
 from imitation.util.sacred import dict_get_nested as get
 
 
@@ -46,7 +46,7 @@ def _gather_sacred_dicts(
     # e.g. chain.from_iterable([["pathone", "pathtwo"], [], ["paththree"]]) =>
     # ("pathone", "pathtwo", "paththree")
     sacred_dirs = itertools.chain.from_iterable(
-        sacred_util.filter_subdirs(types.parse_path(source_dir))
+        sacred_util.filter_subdirs(util.parse_path(source_dir))
         for source_dir in source_dirs
     )
     sacred_dicts_list = []

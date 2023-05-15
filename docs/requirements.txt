@@ -1,0 +1,2 @@
+# specific version needed for gym==0.21.0
+setuptools==65.5.0

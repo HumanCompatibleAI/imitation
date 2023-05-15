@@ -5,9 +5,15 @@ sphinx:
 
 formats: all
 
+build:
+  os: ubuntu-22.04
+  tools:
+    python: "3.8"
+
 python:
-  version: 3.8
   install:
+    # TODO(GH#707): remove docs/requirements.txt once Gym upgraded
+    - requirements: docs/requirements.txt
     - method: pip
       path: .
       extra_requirements:

@@ -1,5 +1,6 @@
 """Tests `imitation.rewards.reward_nets` and `imitation.rewards.serialize`."""
 
+import functools
 import logging
 import os
 import tempfile
@@ -38,11 +39,29 @@ DESERIALIZATION_TYPES = [
 
 # Reward net classes, allowed kwargs
 MAKE_REWARD_NET = [
-    reward_nets.BasicRewardNet,
-    reward_nets.BasicShapedRewardNet,
-    testing_reward_nets.make_ensemble,
+    functools.partial(
+        reward_nets.BasicRewardNet,
+        hid_sizes=(3,),
+    ),
+    functools.partial(
+        reward_nets.BasicShapedRewardNet,
+        reward_hid_sizes=(3,),
+        potential_hid_sizes=(3,),
+    ),
+    functools.partial(
+        testing_reward_nets.make_ensemble,
+        hid_sizes=(3,),
+    ),
 ]
-MAKE_IMAGE_REWARD_NET = [reward_nets.CnnRewardNet]
+MAKE_IMAGE_REWARD_NET = [
+    functools.partial(
+        reward_nets.CnnRewardNet,
+        hid_channels=(3, 3, 3),
+        kernel_size=3,
+        padding=0,
+        stride=3,
+    ),
+]
 
 MakePredictProcessedWrapper = Callable[
     [reward_nets.RewardNet],
@@ -457,11 +476,14 @@ def _serialize_deserialize_identity(
     """Does output of deserialized reward network match that of original?"""
     logging.info(f"Testing {net_cls}")
 
+    ep_steps = 5
+
     venv = util.make_vec_env(
         env_name,
         n_envs=1,
         parallel=False,
         rng=rng,
+        max_episode_steps=ep_steps + 1,
     )
     original = net_cls(venv.observation_space, venv.action_space, **net_kwargs)
     if normalize_rewards:
@@ -478,7 +500,7 @@ def _serialize_deserialize_identity(
     transitions = rollout.generate_transitions(
         random,
         venv,
-        n_timesteps=100,
+        n_timesteps=ep_steps,
         rng=rng,
     )
 

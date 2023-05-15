@@ -261,7 +261,7 @@ class RolloutInfoWrapper(gym.Wrapper):
         self._rews = None
 
     def reset(self, **kwargs):
-        new_obs = super().reset()
+        new_obs = super().reset(**kwargs)
         self._obs = [new_obs]
         self._rews = []
         return new_obs
