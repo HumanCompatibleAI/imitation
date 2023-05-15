@@ -36,7 +36,7 @@ def load(path: AnyPath) -> Sequence[Trajectory]:
 
     if os.path.isdir(path):  # huggingface datasets format
         dataset = datasets.load_from_disk(str(path))
-        if not isinstance(dataset, datasets.Dataset):
+        if not isinstance(dataset, datasets.Dataset):  # pragma: no cover
             raise ValueError(
                 f"Expected to load a `datasets.Dataset` but got {type(dataset)}",
             )
@@ -65,7 +65,7 @@ def load(path: AnyPath) -> Sequence[Trajectory]:
             ]
             return [TrajectoryWithRew(*args) for args in zip(*fields)]
         else:
-            return [Trajectory(*args) for args in zip(*fields)]
+            return [Trajectory(*args) for args in zip(*fields)]  # pragma: no cover
     else:  # pragma: no cover
         raise ValueError(
             f"Expected either an .npz file or a pickled sequence of trajectories; "
