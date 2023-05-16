@@ -73,16 +73,24 @@ class _LazyDecodedList(Sequence[Any]):
     def __init__(self, encoded_list: Sequence[str]):
         self._encoded_list = encoded_list
 
+        # Note: we use this inline function instead of applying functools.lru_cache
+        #   to __getitem__ because then _LazyDecodedList is unhashable and can't be
+        #   used with functools.lru_cache.
+        # arbitrary cache size just to put a limit on memory usage
+        @functools.lru_cache(maxsize=100000)
+        def get_decoded_item(idx: int):
+            return jsonpickle.decode(self._encoded_list[idx])
+
+        self._get_decoded_item = get_decoded_item
+
     def __len__(self):
         return len(self._encoded_list)
 
-    # arbitrary cache size just to put a limit on memory usage
-    @functools.lru_cache(maxsize=100000)
     def __getitem__(self, idx):
         if isinstance(idx, slice):
-            return [jsonpickle.decode(info) for info in self._encoded_list[idx]]
+            return [self._get_decoded_item(i) for i in range(*idx.indices(len(self)))]
         else:
-            return jsonpickle.decode(self._encoded_list[idx])
+            return self._get_decoded_item(idx)
 
 
 def trajectories_to_dict(
