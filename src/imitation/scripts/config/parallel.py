@@ -165,8 +165,9 @@ def example_dagger():
     base_named_configs = ["logging.wandb_logging"]
     base_config_updates = {
         "environment": {"num_vec": 1},
+        "demonstrations": {"rollout_type": "ppo-huggingface"},
         "dagger": {"total_timesteps": 1e5},
-        "bc_kwargs": {
+        "bc": {
             "batch_size": 16,
             "l2_weight": 1e-4,
             "optimizer_kwargs": {"lr": 1e-3},
@@ -174,8 +175,10 @@ def example_dagger():
     }
     search_space = {
         "config_updates": {
-            "bc_train_kwargs": dict(
-                n_epochs=tune.choice([1, 5, 10]),
+            "bc": dict(
+                train_kwargs=dict(
+                    n_epochs=tune.choice([1, 5, 10]),
+                ),
             ),
             "dagger": dict(
                 beta_schedule=tune.choice(
@@ -201,6 +204,7 @@ def example_gail():
     base_named_configs = ["logging.wandb_logging"]
     base_config_updates = {
         "environment": {"num_vec": 1},
+        "demonstrations": {"rollout_type": "ppo-huggingface"},
         "total_timesteps": 1e7,
     }
     search_space = {
@@ -234,6 +238,7 @@ def example_airl():
     base_named_configs = ["logging.wandb_logging"]
     base_config_updates = {
         "environment": {"num_vec": 1},
+        "demonstrations": {"rollout_type": "ppo-huggingface"},
         "total_timesteps": 1e7,
     }
     search_space = {
@@ -273,11 +278,9 @@ def example_pc():
         "gatherer_kwargs": {"sample": True},
     }
     search_space = {
-        "named_configs": tune.choice(
-            [
-                ["reward.normalize_output_disable"],
-            ],
-        ),
+        "named_configs": [
+            ["reward.normalize_output_disable"],
+        ],
         "config_updates": {
             "train": {
                 "policy_kwargs": {
