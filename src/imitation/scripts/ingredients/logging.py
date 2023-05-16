@@ -7,7 +7,6 @@ from typing import Sequence, Tuple, Union
 import huggingface_sb3 as hfsb3
 import sacred
 
-from imitation.data import types
 from imitation.scripts.ingredients import environment, wb
 from imitation.util import logger as imit_logger
 from imitation.util import sacred as sacred_util
@@ -48,7 +47,7 @@ def hook(config, command_name: str, logger):
     updates = {}
     if config["logging"]["log_dir"] is None:
         config_log_root = config["logging"]["log_root"] or "output"
-        log_root = types.parse_path(config_log_root)
+        log_root = util.parse_path(config_log_root)
         env_sanitized = hfsb3.EnvironmentName(config["environment"]["gym_id"])
         assert isinstance(env_sanitized, str)
         log_dir = log_root / command_name / env_sanitized / util.make_unique_timestamp()
@@ -78,7 +77,7 @@ def make_log_dir(
     Returns:
         The `log_dir`. This avoids the caller needing to capture this argument.
     """
-    parsed_log_dir = types.parse_path(log_dir)
+    parsed_log_dir = util.parse_path(log_dir)
     parsed_log_dir.mkdir(parents=True, exist_ok=True)
     # convert strings of digits to numbers; but leave levels like 'INFO' unmodified
     try:

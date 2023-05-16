@@ -14,7 +14,7 @@ import torch.random
 from stable_baselines3.common import evaluation, policies
 
 from imitation.algorithms import bc, dagger
-from imitation.data import rollout, types
+from imitation.data import rollout, serialize, types
 from imitation.data.types import TrajectoryWithRew
 from imitation.policies import base
 from imitation.testing import reward_improvement
@@ -127,7 +127,7 @@ def test_traj_collector(tmpdir, pendulum_venv, rng):
     file_paths = glob.glob(os.path.join(tmpdir, "dagger-demo-*.npz"))
     assert num_episodes == 5 * pendulum_venv.num_envs
     assert len(file_paths) == num_episodes
-    trajs = [types.load(p)[0] for p in file_paths]
+    trajs = [serialize.load(p)[0] for p in file_paths]
     nonzero_acts = sum(np.sum(traj.acts != 0) for traj in trajs)
     assert nonzero_acts == 0
 
@@ -170,7 +170,7 @@ def test_traj_collector_reproducible(tmpdir, pendulum_venv):
             file_paths = glob.glob(os.path.join(save_dir, "dagger-demo-*.npz"))
             filename_to_traj_dict = {}
             for fp in file_paths:
-                traj = types.load_with_rewards(fp)[0]
+                traj = serialize.load_with_rewards(fp)[0]
                 # For the purposes of testing, we remove `infos` from the
                 # trajectory, because `infos` contains the time that it
                 # takes to complete an episode, which we expect to differ
@@ -366,8 +366,8 @@ def test_trainer_makes_progress(init_trainer_fn, pendulum_venv, pendulum_expert_
         novice_rewards, _ = evaluation.evaluate_policy(
             trainer.policy,
             pendulum_venv,
-            15,
-            deterministic=False,
+            25,
+            deterministic=True,
             return_episode_rewards=True,
         )
         # note a randomly initialised policy does well for some seeds -- so may
@@ -375,12 +375,12 @@ def test_trainer_makes_progress(init_trainer_fn, pendulum_venv, pendulum_expert_
         # from -1,200 to -130 (approx.), per Figure 3 in this PDF (on page 3):
         # https://arxiv.org/pdf/2106.09556.pdf
         assert np.mean(novice_rewards) < -1000
-        # Train for 10 iterations. (6 or less causes test to fail on some configs.)
+        # Train for 5 iterations. (4 or fewer causes test to fail on some configs.)
         # see https://github.com/HumanCompatibleAI/imitation/issues/580 for details
-        for i in range(10):
+        for i in range(5):
             # roll out a few trajectories for dataset, then train for a few steps
             collector = trainer.create_trajectory_collector()
-            for _ in range(5):
+            for _ in range(4):
                 obs = collector.reset()
                 dones = [False] * pendulum_venv.num_envs
                 while not np.any(dones):
@@ -394,7 +394,8 @@ def test_trainer_makes_progress(init_trainer_fn, pendulum_venv, pendulum_expert_
         rewards_after_training, _ = evaluation.evaluate_policy(
             trainer.policy,
             pendulum_venv,
-            15,
+            25,
+            deterministic=True,
             return_episode_rewards=True,
         )
 

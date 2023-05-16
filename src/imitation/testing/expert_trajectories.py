@@ -2,6 +2,7 @@
 import math
 import pathlib
 import pickle
+import shutil
 import warnings
 from os import PathLike
 from pathlib import Path
@@ -12,8 +13,9 @@ import numpy as np
 from filelock import FileLock
 from torch.utils import data as th_data
 
+import imitation.data.serialize as data_serialize
+import imitation.policies.serialize as policies_serialize
 from imitation.data import rollout, types, wrappers
-from imitation.policies import serialize
 from imitation.util import util
 
 
@@ -40,7 +42,7 @@ def generate_expert_trajectories(
         rng=rng,
     )
     try:
-        expert = serialize.load_policy("ppo-huggingface", env, env_name=env_id)
+        expert = policies_serialize.load_policy("ppo-huggingface", env, env_name=env_id)
         return rollout.rollout(
             expert,
             env,
@@ -72,12 +74,12 @@ def lazy_generate_expert_trajectories(
     environment_cache_path = pathlib.Path(cache_path) / hfsb3.EnvironmentName(env_id)
     environment_cache_path.mkdir(parents=True, exist_ok=True)
 
-    trajectories_path = environment_cache_path / "rollout.npz"
+    trajectories_path = environment_cache_path / "rollout"
 
     # Note: we cast to str here because FileLock doesn't support pathlib.Path.
-    with FileLock(str(environment_cache_path / "rollout.npz.lock")):
+    with FileLock(str(environment_cache_path / "rollout.lock")):
         try:
-            trajectories = types.load_with_rewards(trajectories_path)
+            trajectories = data_serialize.load_with_rewards(trajectories_path)
         except (FileNotFoundError, pickle.PickleError) as e:  # pragma: no cover
             generation_reason = (
                 "the cache is cold"
@@ -89,13 +91,19 @@ def lazy_generate_expert_trajectories(
                 f"{generation_reason}.",
             )
             trajectories = generate_expert_trajectories(env_id, num_trajectories, rng)
-            types.save(trajectories_path, trajectories)
+            data_serialize.save(trajectories_path, trajectories)
 
     if len(trajectories) >= num_trajectories:
         return trajectories[:num_trajectories]
     else:  # pragma: no cover
         # If it is not enough, just throw away the cache and generate more.
-        trajectories_path.unlink()
+        if trajectories_path.is_dir():
+            # rmtree won't remove directory on Windows
+            # until the last handle to the directory is closed
+            del trajectories
+            shutil.rmtree(trajectories_path)
+        else:
+            trajectories_path.unlink()
         return lazy_generate_expert_trajectories(
             cache_path,
             env_id,

@@ -15,7 +15,7 @@ import shutil
 import sys
 import tempfile
 from collections import Counter
-from typing import Any, Dict, List, Mapping, Optional
+from typing import Any, Dict, Generator, List, Mapping, Optional
 from unittest import mock
 
 import numpy as np
@@ -29,7 +29,7 @@ import torch as th
 from stable_baselines3.common import buffers
 from stable_baselines3.her.her_replay_buffer import HerReplayBuffer
 
-from imitation.data import types
+from imitation.data import serialize
 from imitation.rewards import reward_nets
 from imitation.scripts import (
     analyze,
@@ -53,7 +53,7 @@ ALL_SCRIPTS_MODS = [
     train_rl,
 ]
 
-TEST_DATA_PATH = types.parse_path("tests/testdata")
+TEST_DATA_PATH = util.parse_path("tests/testdata")
 
 if not TEST_DATA_PATH.exists():  # pragma: no cover
     raise RuntimeError(
@@ -68,7 +68,8 @@ CARTPOLE_TEST_POLICY_PATH = CARTPOLE_TEST_DATA_PATH / "policies/final"
 PENDULUM_TEST_DATA_PATH = TEST_DATA_PATH / "expert_models/pendulum_0/"
 PENDULUM_TEST_ROLLOUT_PATH = PENDULUM_TEST_DATA_PATH / "rollouts/final.npz"
 
-OLD_FMT_ROLLOUT_TEST_DATA_PATH = TEST_DATA_PATH / "old_format_rollout.pkl"
+PICKLE_FMT_ROLLOUT_TEST_DATA_PATH = TEST_DATA_PATH / "pickle_format_rollout.pkl"
+NPZ_FMT_ROLLOUT_TEST_DATA_PATH = TEST_DATA_PATH / "npz_format_rollout.npz"
 
 
 @pytest.fixture(autouse=True)
@@ -296,7 +297,7 @@ def test_train_dagger_warmstart(tmpdir):
     )
     assert run.status == "COMPLETED"
 
-    log_dir = types.parse_path(run.config["logging"]["log_dir"])
+    log_dir = util.parse_path(run.config["logging"]["log_dir"])
     policy_path = log_dir / "scratch" / "policy-latest.pt"
     run_warmstart = train_imitation.train_imitation_ex.run(
         command_name="dagger",
@@ -425,7 +426,7 @@ def test_train_bc_warmstart(tmpdir):
     assert run.status == "COMPLETED"
     assert isinstance(run.result, dict)
 
-    policy_path = types.parse_path(run.config["logging"]["log_dir"]) / "final.th"
+    policy_path = util.parse_path(run.config["logging"]["log_dir"]) / "final.th"
     run_warmstart = train_imitation.train_imitation_ex.run(
         command_name="bc",
         named_configs=["seals_cartpole"] + ALGO_FAST_CONFIGS["imitation"],
@@ -588,7 +589,7 @@ def test_train_adversarial_warmstart(tmpdir, command):
         config_updates=config_updates,
     )
 
-    log_dir = types.parse_path(run.config["logging"]["log_dir"])
+    log_dir = util.parse_path(run.config["logging"]["log_dir"])
     policy_path = log_dir / "checkpoints" / "final" / "gen_policy"
 
     run_warmstart = train_adversarial.train_adversarial_ex.run(
@@ -673,7 +674,7 @@ def test_transfer_learning(tmpdir: str) -> None:
     Args:
         tmpdir: Temporary directory to save results to.
     """
-    tmpdir_path = types.parse_path(tmpdir)
+    tmpdir_path = util.parse_path(tmpdir)
     log_dir_train = tmpdir_path / "train"
     run = train_adversarial.train_adversarial_ex.run(
         command_name="airl",
@@ -722,7 +723,7 @@ def test_preference_comparisons_transfer_learning(
         tmpdir: Temporary directory to save results to.
         named_configs_dict: Named configs for preference_comparisons and rl.
     """
-    tmpdir_path = types.parse_path(tmpdir)
+    tmpdir_path = util.parse_path(tmpdir)
 
     log_dir_train = tmpdir_path / "train"
     run = train_preference_comparisons.train_preference_comparisons_ex.run(
@@ -891,7 +892,7 @@ def test_parallel_arg_errors(tmpdir):
 
 
 def _generate_test_rollouts(tmpdir: str, env_named_config: str) -> pathlib.Path:
-    tmpdir_path = types.parse_path(tmpdir)
+    tmpdir_path = util.parse_path(tmpdir)
     train_rl.train_rl_ex.run(
         named_configs=[env_named_config] + ALGO_FAST_CONFIGS["rl"],
         config_updates=dict(
@@ -963,7 +964,7 @@ def _run_train_bc_for_test_analyze_imit(run_name, sacred_logs_dir, log_dir):
     ),
 )
 def test_analyze_imitation(tmpdir: str, run_names: List[str], run_sacred_fn):
-    sacred_logs_dir = tmpdir_path = types.parse_path(tmpdir)
+    sacred_logs_dir = tmpdir_path = util.parse_path(tmpdir)
 
     # Generate sacred logs (other logs are put in separate tmpdir for deletion).
     for run_name in run_names:
@@ -1018,32 +1019,67 @@ def test_analyze_gather_tb(tmpdir: str):
     assert run.result["n_tb_dirs"] == num_runs
 
 
-def test_convert_trajs(tmpdir: str):
-    """Tests that convert_trajs is idempotent and does not change the data."""
-    shutil.copy(OLD_FMT_ROLLOUT_TEST_DATA_PATH, tmpdir)
-    tmp_path = os.path.join(tmpdir, os.path.basename(OLD_FMT_ROLLOUT_TEST_DATA_PATH))
-    with open(tmp_path, "rb") as f:
-        pickle.load(f)  # check it's in pickle format to start with
-    args = ["convert_trajs.py", tmp_path]
-    with mock.patch.object(sys, "argv", args):
-        convert_trajs.main()
+def test_pickle_fmt_rollout_test_data_is_pickle():
+    # WHEN
+    with open(PICKLE_FMT_ROLLOUT_TEST_DATA_PATH, "rb") as f:
+        pickle.load(f)
 
-    npz_tmp_path = tmp_path.replace(".pkl", ".npz")
-    np.load(npz_tmp_path, allow_pickle=True)  # check it's now in npz format
+    # THEN
+    # No exception raised
 
-    shutil.copy(npz_tmp_path, npz_tmp_path + ".orig")
-    args = ["convert_trajs.py", npz_tmp_path]
-    with mock.patch.object(sys, "argv", args):
-        convert_trajs.main()
 
-    assert filecmp.cmp(
-        npz_tmp_path,
-        npz_tmp_path + ".orig",
+def test_npz_fmt_rollout_test_data_is_npz():
+    # WHEN
+    np.load(NPZ_FMT_ROLLOUT_TEST_DATA_PATH, allow_pickle=False)
+
+    # THEN
+    # No exception raised
+
+
+@pytest.fixture(
+    params=[PICKLE_FMT_ROLLOUT_TEST_DATA_PATH, NPZ_FMT_ROLLOUT_TEST_DATA_PATH],
+    ids=["pickle", "npz"],
+)
+def old_rollouts_file_in_tmp(tmpdir, request) -> Generator[str, None, None]:
+    old_rollouts_file = request.param
+    shutil.copy(old_rollouts_file, tmpdir)
+    yield os.path.join(tmpdir, os.path.basename(old_rollouts_file))
+
+
+@pytest.fixture()
+def new_rollouts_file_in_tmp(tmpdir) -> Generator[pathlib.Path, None, None]:
+    # Note: here we just convert some old rollouts to the new format, so we don't need
+    #  to keep trajectories in the new format in the testdata folder
+    npz_rollouts_in_tmp = shutil.copy(NPZ_FMT_ROLLOUT_TEST_DATA_PATH, tmpdir)
+    yield convert_trajs.update_traj_file_in_place(npz_rollouts_in_tmp)
+
+
+def test_converted_trajectories_equal_original(old_rollouts_file_in_tmp: str):
+    # GIVEN
+    old_trajs = serialize.load(old_rollouts_file_in_tmp)
+
+    # WHEN
+    converted_path = convert_trajs.update_traj_file_in_place(old_rollouts_file_in_tmp)
+
+    # THEN
+    converted_trajs = serialize.load(converted_path)
+
+    assert len(old_trajs) == len(converted_trajs)
+    for t_old, t_converted in zip(old_trajs, converted_trajs):
+        assert t_old == t_converted
+
+
+def test_convert_trajs_from_current_format_is_idempotent(
+    new_rollouts_file_in_tmp: pathlib.Path,
+):
+    # GIVEN
+    original_path = new_rollouts_file_in_tmp.with_suffix(".orig")
+
+    # WHEN
+    shutil.copytree(new_rollouts_file_in_tmp, original_path)
+    converted_path = convert_trajs.update_traj_file_in_place(new_rollouts_file_in_tmp)
+
+    # THEN
+    assert (
+        filecmp.dircmp(converted_path, original_path).diff_files == []
     ), "convert_trajs not idempotent"
-
-    from_pkl = types.load(tmp_path)
-    from_npz = types.load(npz_tmp_path)
-
-    assert len(from_pkl) == len(from_npz)
-    for t_pkl, t_npz in zip(from_pkl, from_npz):
-        assert t_pkl == t_npz
