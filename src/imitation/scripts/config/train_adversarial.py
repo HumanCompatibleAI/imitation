@@ -156,7 +156,6 @@ def half_cheetah():
 
 @train_adversarial_ex.named_config
 def seals_half_cheetah():
-    # locals().update(**MUJOCO_SHARED_LOCALS)
     environment = dict(gym_id="seals/HalfCheetah-v0")
     demonstrations = dict(rollout_type="ppo-huggingface")
     rl = dict(
@@ -184,7 +183,6 @@ def seals_half_cheetah():
 
 @train_adversarial_ex.named_config
 def seals_hopper():
-    # locals().update(**MUJOCO_SHARED_LOCALS)
     environment = dict(gym_id="seals/Hopper-v0")
     demonstrations = dict(rollout_type="ppo-huggingface")
     policy = dict(
@@ -212,7 +210,6 @@ def seals_hopper():
 
 @train_adversarial_ex.named_config
 def seals_swimmer():
-    # locals().update(**MUJOCO_SHARED_LOCALS)
     environment = dict(gym_id="seals/Swimmer-v0")
     total_timesteps = int(2e6)
     demonstrations = dict(rollout_type="ppo-huggingface")
@@ -242,7 +239,6 @@ def seals_swimmer():
 
 @train_adversarial_ex.named_config
 def seals_walker():
-    locals().update(**MUJOCO_SHARED_LOCALS)
     environment = dict(gym_id="seals/Walker2d-v0")
     demonstrations = dict(rollout_type="ppo-huggingface")
     policy = dict(

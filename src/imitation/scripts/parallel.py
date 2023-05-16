@@ -139,7 +139,7 @@ def parallel(
                         syncer=syncer,
                     ),
                     metric="mean_return",
-                    resume=resume,
+                    resume=True,
                 )
                 print(
                     "Live trials:",
@@ -176,14 +176,7 @@ def parallel(
                 metric="mean_return",
                 mode="max",
             )
-        if sacred_ex_name == "train_rl":
-            key_prefix = ""
-        elif sacred_ex_name == "train_preference_comparisons":
-            key_prefix = "rollout/"
-        else:
-            key_prefix = "imit_stats/"
-        key = key_prefix + "monitor_return_mean"
-
+        key = "mean_return"
         if eval_best_trial:
             df = result.results_df
             df = df[df["config/named_configs"].notna()]
@@ -199,7 +192,7 @@ def parallel(
             # store mean return of runs across all seeds in a group
             df["mean_return"] = grps[key].transform(lambda x: x.mean())
             best_config_df = df[df["mean_return"] == df["mean_return"].max()]
-            row = best_config_df.loc[0]
+            row = best_config_df.iloc[0]
             best_config_tag = row["experiment_tag"]
             if result.trials is not None:
                 trial = [
@@ -215,7 +208,10 @@ def parallel(
                 # update cpus per trial only if it is provided in `resources_per_trial`
                 # Uses the default values (cpu=1) if it is not provided
                 if "cpu" in resources_per_trial:
-                    resources_per_trial["cpu"] *= eval_best_trial_resource_multiplier
+                    resources_per_trial_eval = copy.deepcopy(resources_per_trial)
+                    resources_per_trial_eval[
+                        "cpu"
+                    ] *= eval_best_trial_resource_multiplier
                     best_config["config_updates"].update(
                         environment=dict(num_vec=resources_per_trial["cpu"]),
                     )

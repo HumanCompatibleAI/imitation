@@ -102,9 +102,6 @@ def example_cartpole_rl():
     resources_per_trial = dict(cpu=4)
 
 
-EASY_ENVS = ["cartpole", "pendulum", "mountain_car"]
-
-
 @parallel_ex.named_config
 def example_rl():
     sacred_ex_name = "train_rl"
@@ -135,18 +132,21 @@ def example_bc():
     sacred_ex_name = "train_imitation"
     run_name = "bc_tuning"
     base_named_configs = ["logging.wandb_logging"]
-    base_config_updates = {"environment": {"num_vec": 1}}
+    base_config_updates = {
+        "environment": {"num_vec": 1},
+        "demonstrations": {"rollout_type": "ppo-huggingface"},
+    }
     search_space = {
         "config_updates": {
-            "bc_kwargs": dict(
+            "bc": dict(
                 batch_size=tune.choice([8, 16, 32, 64]),
                 l2_weight=tune.loguniform(1e-6, 1e-2),  # L2 regularization weight
                 optimizer_kwargs=dict(
                     lr=tune.loguniform(1e-5, 1e-2),
                 ),
-            ),
-            "bc_train_kwargs": dict(
-                n_epochs=tune.choice([1, 5, 10, 20]),
+                train_kwargs=dict(
+                    n_epochs=tune.choice([1, 5, 10, 20]),
+                ),
             ),
         },
         "command_name": "bc",
