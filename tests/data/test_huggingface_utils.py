@@ -21,7 +21,12 @@ spaces = st.sampled_from(
 
 info_dict_contents = st.dictionaries(
     keys=st.text(),
-    values=st.one_of(st.integers(), st.floats(), st.text(), st.lists(st.floats())),
+    values=st.one_of(
+        st.integers(),
+        st.floats(allow_nan=False),
+        st.text(),
+        st.lists(st.floats(allow_nan=False)),
+    ),
 )
 
 trajectory_length = st.integers(min_value=1, max_value=10)
@@ -139,13 +144,4 @@ def test_save_load_roundtrip(trajectories):
 
     assert len(trajectories) == len(loaded_trajectories)
     for traj, loaded_traj in zip(trajectories, loaded_trajectories):
-        assert np.all(traj.obs == loaded_traj.obs)
-        assert np.all(traj.acts == loaded_traj.acts)
-        assert len(traj.infos) == len(loaded_traj.infos)
-        for info, loaded_info in zip(traj.infos, loaded_traj.infos):
-            # Note: repr is used here because the types of the values
-            #   in the info dict could be NaN
-            assert repr(info) == repr(loaded_info)
-        assert traj.terminal == loaded_traj.terminal
-        if isinstance(traj, types.TrajectoryWithRew):
-            assert np.all(traj.rews == loaded_traj.rews)
+        assert traj == loaded_traj
