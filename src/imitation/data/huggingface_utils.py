@@ -52,7 +52,11 @@ class TrajectoryDatasetSequence(Sequence[types.Trajectory]):
     @property
     def dataset(self):
         """Return the underlying HF dataset."""
-        return self._dataset
+        # Note: since we apply the custom numpy transform in the constructor, we remove
+        #   it again before returning the dataset. This ensures that the dataset is
+        #   returned in the original format and can be saved to disk
+        #   (the custom transform can not be saved to disk since it is not pickleable).
+        return self._dataset.with_transform(None)
 
 
 class _LazyDecodedList(Sequence[Any]):
