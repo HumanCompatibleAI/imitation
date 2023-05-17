@@ -34,19 +34,12 @@ class TrajectoryDatasetSequence(Sequence[types.Trajectory]):
     def __getitem__(self, idx):
 
         if isinstance(idx, slice):
-            dataslice = self._dataset[idx]
-
-            # Extract the trajectory kwargs from the dataset slice
-            trajectory_kwargs = [
-                {key: dataslice[key][i] for key in dataslice}
-                for i in range(len(dataslice["obs"]))
-            ]
-
-            # Ensure that the infos are decoded lazily using jsonpickle
-            for kwargs in trajectory_kwargs:
-                kwargs["infos"] = _LazyDecodedList(kwargs["infos"])
-
-            return [self._trajectory_class(**kwargs) for kwargs in trajectory_kwargs]
+            # Note: we could use self._dataset[idx] here and then convert the result of
+            #   that to a series of trajectories, but if we do that, we run into trouble
+            #   with the custom numpy transform that we apply in the constructor.
+            #   The transform is applied to the whole slice, which might contain
+            #   trajectories of different lengths which is not supported by numpy.
+            return [self[i] for i in range(*idx.indices(len(self)))]
         else:
             # Extract the trajectory kwargs from the dataset
             kwargs = self._dataset[idx]
