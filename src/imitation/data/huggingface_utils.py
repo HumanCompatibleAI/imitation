@@ -1,5 +1,4 @@
 """Helpers to convert between Trajectories and HuggingFace's datasets library."""
-import functools
 from typing import Any, Dict, Iterable, Optional, Sequence, cast
 
 import datasets
@@ -69,25 +68,18 @@ class _LazyDecodedList(Sequence[Any]):
 
     def __init__(self, encoded_list: Sequence[str]):
         self._encoded_list = encoded_list
-
-        # Note: we use this inline function instead of applying functools.lru_cache
-        #   to __getitem__ because then _LazyDecodedList is unhashable and can't be
-        #   used with functools.lru_cache.
-        # arbitrary cache size just to put a limit on memory usage
-        @functools.lru_cache(maxsize=100000)
-        def get_decoded_item(idx: int):
-            return jsonpickle.decode(self._encoded_list[idx])
-
-        self._get_decoded_item = get_decoded_item
+        self._decoded_cache: Dict[int, Any] = {}
 
     def __len__(self):
         return len(self._encoded_list)
 
     def __getitem__(self, idx):
         if isinstance(idx, slice):
-            return [self._get_decoded_item(i) for i in range(*idx.indices(len(self)))]
+            return [self[i] for i in range(*idx.indices(len(self)))]
         else:
-            return self._get_decoded_item(idx)
+            if idx not in self._decoded_cache:
+                self._decoded_cache[idx] = jsonpickle.decode(self._encoded_list[idx])
+            return self._decoded_cache[idx]
 
 
 def trajectories_to_dict(
