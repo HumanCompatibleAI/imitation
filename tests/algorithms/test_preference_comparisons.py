@@ -5,7 +5,7 @@ import pathlib
 import re
 import uuid
 from typing import Any, Sequence, Tuple
-from unittest.mock import Mock, MagicMock, patch
+from unittest.mock import MagicMock, Mock, patch
 
 import gym
 import numpy as np
@@ -20,8 +20,13 @@ from stable_baselines3.common.vec_env import DummyVecEnv
 
 import imitation.testing.reward_nets as testing_reward_nets
 from imitation.algorithms import preference_comparisons
-from imitation.algorithms.preference_comparisons import PreferenceQuerent, PrefCollectQuerent, PreferenceGatherer, \
-    SyntheticGatherer, PrefCollectGatherer
+from imitation.algorithms.preference_comparisons import (
+    PrefCollectGatherer,
+    PrefCollectQuerent,
+    PreferenceGatherer,
+    PreferenceQuerent,
+    SyntheticGatherer,
+)
 from imitation.data import types
 from imitation.data.types import TrajectoryWithRew
 from imitation.regularization import regularizers, updaters
@@ -78,21 +83,22 @@ def agent_trainer(agent, reward_net, venv, rng):
     return preference_comparisons.AgentTrainer(agent, reward_net, venv, rng)
 
 
-# TODO: trajectory_with_rew fixture already exists in data.test_types, should be moved to a conftest.py
 @pytest.fixture
 def trajectory_with_rew(venv):
-    observations, rewards, dones, infos, actions = [], [], [], [], []
+    observations, rewards, _, infos, actions = [], [], [], [], []
     observations.append(venv.observation_space.sample())
     for _ in range(2):
         observations.append(venv.observation_space.sample())
         actions.append(venv.action_space.sample())
         rewards.append(0.0)
         infos.append({})
-    return TrajectoryWithRew(obs=np.array(observations),
-                             acts=np.array(actions),
-                             rews=np.array(rewards),
-                             infos=np.array(infos),
-                             terminal=False)
+    return TrajectoryWithRew(
+        obs=np.array(observations),
+        acts=np.array(actions),
+        rews=np.array(rewards),
+        infos=np.array(infos),
+        terminal=False,
+    )
 
 
 def assert_info_arrs_equal(arr1, arr2):  # pragma: no cover
@@ -111,8 +117,8 @@ def assert_info_arrs_equal(arr1, arr2):  # pragma: no cover
 
 
 def _check_trajs_equal(
-        trajs1: Sequence[types.TrajectoryWithRew],
-        trajs2: Sequence[types.TrajectoryWithRew],
+    trajs1: Sequence[types.TrajectoryWithRew],
+    trajs2: Sequence[types.TrajectoryWithRew],
 ):
     assert len(trajs1) == len(trajs2)
     for traj1, traj2 in zip(trajs1, trajs2):
@@ -136,8 +142,8 @@ def test_mismatched_spaces(venv, agent, rng):
         other_venv.action_space,
     )
     with pytest.raises(
-            ValueError,
-            match="spaces do not match",
+        ValueError,
+        match="spaces do not match",
     ):
         preference_comparisons.AgentTrainer(
             agent,
@@ -148,8 +154,8 @@ def test_mismatched_spaces(venv, agent, rng):
 
 
 def test_trajectory_dataset_seeding(
-        cartpole_expert_trajectories: Sequence[TrajectoryWithRew],
-        num_samples: int = 400,
+    cartpole_expert_trajectories: Sequence[TrajectoryWithRew],
+    num_samples: int = 400,
 ):
     dataset1 = preference_comparisons.TrajectoryDataset(
         cartpole_expert_trajectories,
@@ -176,9 +182,9 @@ def test_trajectory_dataset_seeding(
 # CartPole max episode length is 200
 @pytest.mark.parametrize("num_steps", [0, 199, 200, 201, 400])
 def test_trajectory_dataset_len(
-        cartpole_expert_trajectories: Sequence[TrajectoryWithRew],
-        num_steps: int,
-        rng,
+    cartpole_expert_trajectories: Sequence[TrajectoryWithRew],
+    num_steps: int,
+    rng,
 ):
     dataset = preference_comparisons.TrajectoryDataset(
         cartpole_expert_trajectories,
@@ -192,8 +198,8 @@ def test_trajectory_dataset_len(
 
 
 def test_trajectory_dataset_too_long(
-        cartpole_expert_trajectories: Sequence[TrajectoryWithRew],
-        rng,
+    cartpole_expert_trajectories: Sequence[TrajectoryWithRew],
+    rng,
 ):
     dataset = preference_comparisons.TrajectoryDataset(
         cartpole_expert_trajectories,
@@ -204,9 +210,9 @@ def test_trajectory_dataset_too_long(
 
 
 def test_trajectory_dataset_not_static(
-        cartpole_expert_trajectories: Sequence[TrajectoryWithRew],
-        rng,
-        num_steps: int = 400,
+    cartpole_expert_trajectories: Sequence[TrajectoryWithRew],
+    rng,
+    num_steps: int = 400,
 ):
     """Tests sample() doesn't always return the same value."""
     dataset = preference_comparisons.TrajectoryDataset(
@@ -230,27 +236,27 @@ def test_transitions_left_in_buffer(agent_trainer):
     # with transitions.
     agent_trainer.buffering_wrapper.n_transitions = 2
     with pytest.raises(
-            RuntimeError,
-            match=re.escape(
-                "There are 2 transitions left in the buffer. "
-                "Call AgentTrainer.sample() first to clear them.",
-            ),
+        RuntimeError,
+        match=re.escape(
+            "There are 2 transitions left in the buffer. "
+            "Call AgentTrainer.sample() first to clear them.",
+        ),
     ):
         agent_trainer.train(steps=1)
 
 
 @pytest.mark.parametrize(
     "schedule",
-    ["constant", "hyperbolic", "inverse_quadratic", lambda t: 1 / (1 + t ** 3)],
+    ["constant", "hyperbolic", "inverse_quadratic", lambda t: 1 / (1 + t**3)],
 )
 def test_preference_comparisons_raises(
-        agent_trainer,
-        reward_net,
-        random_fragmenter,
-        preference_model,
-        custom_logger,
-        schedule,
-        rng,
+    agent_trainer,
+    reward_net,
+    random_fragmenter,
+    preference_model,
+    custom_logger,
+    schedule,
+    rng,
 ):
     loss = preference_comparisons.CrossEntropyRewardLoss()
     reward_trainer = preference_comparisons.BasicRewardTrainer(
@@ -258,21 +264,25 @@ def test_preference_comparisons_raises(
         loss,
         rng=rng,
     )
-    # TODO: also instantiate querent
+
+    querent = preference_comparisons.PreferenceQuerent(rng=rng)
     gatherer = preference_comparisons.SyntheticGatherer(rng=rng)
     # no rng, must provide fragmenter, preference gatherer, preference_querent, reward trainer
     no_rng_msg = (
         ".*don't provide.*random state.*provide.*fragmenter"
-        ".*preference gatherer.*reward_trainer.*"
+        ".*preference gatherer.*preference querent.*reward_trainer.*"
     )
 
-    def build_preference_comparisons(gatherer, reward_trainer, fragmenter, rng):
+    def build_preference_comparisons(
+        gatherer, querent, reward_trainer, fragmenter, rng
+    ):
         preference_comparisons.PreferenceComparisons(
             agent_trainer,
             reward_net,
             num_iterations=2,
             transition_oversampling=2,
             reward_trainer=reward_trainer,
+            preference_querent=querent,
             preference_gatherer=gatherer,
             fragmenter=fragmenter,
             custom_logger=custom_logger,
@@ -281,37 +291,43 @@ def test_preference_comparisons_raises(
         )
 
     with pytest.raises(ValueError, match=no_rng_msg):
-        build_preference_comparisons(gatherer, None, None, rng=None)
+        build_preference_comparisons(gatherer, None, None, None, rng=None)
 
     with pytest.raises(ValueError, match=no_rng_msg):
-        build_preference_comparisons(None, reward_trainer, None, rng=None)
+        build_preference_comparisons(None, None, reward_trainer, None, rng=None)
 
     with pytest.raises(ValueError, match=no_rng_msg):
-        build_preference_comparisons(None, None, random_fragmenter, rng=None)
+        build_preference_comparisons(None, None, None, random_fragmenter, rng=None)
 
-    # TODO: this raises because querent not passed and has to be instantiated
+    with pytest.raises(ValueError, match=no_rng_msg):
+        build_preference_comparisons(None, querent, None, None, rng=None)
+
     # This should not raise
-    build_preference_comparisons(gatherer, reward_trainer, random_fragmenter, rng=None)
+    build_preference_comparisons(
+        gatherer, querent, reward_trainer, random_fragmenter, rng=None
+    )
 
     # if providing fragmenter, preference gatherer, reward trainer, does not need rng.
     with_rng_msg = (
-        "provide.*fragmenter.*preference gatherer.*reward trainer"
+        "provide.*fragmenter.*preference gatherer.*preference querent.*reward trainer"
         ".*don't need.*random state.*"
     )
 
     with pytest.raises(ValueError, match=with_rng_msg):
         build_preference_comparisons(
             gatherer,
+            querent,
             reward_trainer,
             random_fragmenter,
             rng=rng,
         )
 
     # This should not raise
-    build_preference_comparisons(None, None, None, rng=rng)
-    build_preference_comparisons(gatherer, None, None, rng=rng)
-    build_preference_comparisons(None, reward_trainer, None, rng=rng)
-    build_preference_comparisons(None, None, random_fragmenter, rng=rng)
+    build_preference_comparisons(None, None, None, None, rng=rng)
+    build_preference_comparisons(gatherer, None, None, None, rng=rng)
+    build_preference_comparisons(None, querent, None, None, rng=rng)
+    build_preference_comparisons(None, None, reward_trainer, None, rng=rng)
+    build_preference_comparisons(None, None, None, random_fragmenter, rng=rng)
 
 
 @patch("builtins.input")
@@ -367,15 +383,15 @@ def test_synchronous_human_gatherer(mock_display, mock_input):
 
 @pytest.mark.parametrize(
     "schedule",
-    ["constant", "hyperbolic", "inverse_quadratic", lambda t: 1 / (1 + t ** 3)],
+    ["constant", "hyperbolic", "inverse_quadratic", lambda t: 1 / (1 + t**3)],
 )
 def test_trainer_no_crash(
-        agent_trainer,
-        reward_net,
-        random_fragmenter,
-        custom_logger,
-        schedule,
-        rng,
+    agent_trainer,
+    reward_net,
+    random_fragmenter,
+    custom_logger,
+    schedule,
+    rng,
 ):
     main_trainer = preference_comparisons.PreferenceComparisons(
         agent_trainer,
@@ -407,8 +423,8 @@ def test_reward_ensemble_trainer_raises_type_error(venv, rng):
     loss = preference_comparisons.CrossEntropyRewardLoss()
 
     with pytest.raises(
-            TypeError,
-            match=r"PreferenceModel of a RewardEnsemble expected by EnsembleTrainer.",
+        TypeError,
+        match=r"PreferenceModel of a RewardEnsemble expected by EnsembleTrainer.",
     ):
         preference_comparisons.EnsembleTrainer(
             preference_model,
@@ -418,11 +434,11 @@ def test_reward_ensemble_trainer_raises_type_error(venv, rng):
 
 
 def test_correct_reward_trainer_used_by_default(
-        agent_trainer,
-        reward_net,
-        random_fragmenter,
-        custom_logger,
-        rng,
+    agent_trainer,
+    reward_net,
+    random_fragmenter,
+    custom_logger,
+    rng,
 ):
     main_trainer = preference_comparisons.PreferenceComparisons(
         agent_trainer,
@@ -449,11 +465,11 @@ def test_correct_reward_trainer_used_by_default(
 
 
 def test_init_raises_error_when_trying_use_improperly_wrapped_ensemble(
-        agent_trainer,
-        venv,
-        random_fragmenter,
-        custom_logger,
-        rng,
+    agent_trainer,
+    venv,
+    random_fragmenter,
+    custom_logger,
+    rng,
 ):
     reward_net = testing_reward_nets.make_ensemble(
         venv.observation_space,
@@ -465,8 +481,8 @@ def test_init_raises_error_when_trying_use_improperly_wrapped_ensemble(
         r"AddSTDRewardWrapper but found NormalizedRewardNet."
     )
     with pytest.raises(
-            ValueError,
-            match=rgx,
+        ValueError,
+        match=rgx,
     ):
         preference_comparisons.PreferenceComparisons(
             agent_trainer,
@@ -481,11 +497,11 @@ def test_init_raises_error_when_trying_use_improperly_wrapped_ensemble(
 
 
 def test_discount_rate_no_crash(
-        agent_trainer,
-        venv,
-        random_fragmenter,
-        custom_logger,
-        rng,
+    agent_trainer,
+    venv,
+    random_fragmenter,
+    custom_logger,
+    rng,
 ):
     # also use a non-zero noise probability to check that doesn't cause errors
     reward_net = reward_nets.BasicRewardNet(venv.observation_space, venv.action_space)
@@ -517,10 +533,10 @@ def test_discount_rate_no_crash(
 
 
 def create_reward_trainer(
-        venv,
-        seed: int,
-        batch_size: int,
-        **kwargs: Any,
+    venv,
+    seed: int,
+    batch_size: int,
+    **kwargs: Any,
 ):
     th.manual_seed(seed)
     reward_net = reward_nets.BasicRewardNet(venv.observation_space, venv.action_space)
@@ -538,11 +554,11 @@ def create_reward_trainer(
 
 
 def test_gradient_accumulation(
-        agent_trainer,
-        venv,
-        random_fragmenter,
-        custom_logger,
-        rng,
+    agent_trainer,
+    venv,
+    random_fragmenter,
+    custom_logger,
+    rng,
 ):
     # Test that training steps on the same dataset with different minibatch sizes
     # result in the same reward network.
@@ -550,7 +566,7 @@ def test_gradient_accumulation(
     minibatch_size = 3
     num_trajectories = 5
 
-    # TODO: create querent
+    preference_querent = preference_comparisons.PreferenceQuerent(rng=rng)
     preference_gatherer = preference_comparisons.SyntheticGatherer(
         custom_logger=custom_logger,
         rng=rng,
@@ -558,11 +574,12 @@ def test_gradient_accumulation(
     dataset = preference_comparisons.PreferenceDataset()
     trajectory = agent_trainer.sample(num_trajectories)
     fragments = random_fragmenter(trajectory, 1, num_trajectories)
-    # TODO: call querent with fragments (= queries)
-    preferences = preference_gatherer(fragments)
+    identified_queries = preference_querent(fragments)
+    preference_gatherer.add(identified_queries)
+    fragments, preferences = preference_gatherer()
     dataset.push(fragments, preferences)
 
-    seed = rng.integers(2 ** 32)
+    seed = rng.integers(2**32)
     reward_trainer1, reward_net1 = create_reward_trainer(venv, seed, batch_size)
     reward_trainer2, reward_net2 = create_reward_trainer(
         venv,
@@ -573,7 +590,7 @@ def test_gradient_accumulation(
 
     for step in range(8):
         print("Step", step)
-        seed = rng.integers(2 ** 32)
+        seed = rng.integers(2**32)
 
         th.manual_seed(seed)
         reward_trainer1.train(dataset)
@@ -591,30 +608,34 @@ def test_gradient_accumulation(
         for p1, p2 in zip(reward_net1.parameters(), reward_net2.parameters()):
             th.testing.assert_close(p1, p2, atol=atol, rtol=rtol)
 
-# TODO: fix test (same as test_gradient_accumulation)
+
 def test_synthetic_gatherer_deterministic(
-        agent_trainer,
-        random_fragmenter,
-        rng,
+    agent_trainer,
+    random_fragmenter,
+    rng,
 ):
+    preference_querent = preference_comparisons.PreferenceQuerent(rng=rng)
     gatherer = preference_comparisons.SyntheticGatherer(
         temperature=0,
         rng=rng,
     )
     trajectories = agent_trainer.sample(10)
     fragments = random_fragmenter(trajectories, fragment_length=2, num_pairs=2)
-    preferences1 = gatherer(fragments)
-    preferences2 = gatherer(fragments)
+    identified_queries = preference_querent(fragments)
+    gatherer.add(identified_queries)
+    _, preferences1 = gatherer()
+    gatherer.add(identified_queries)
+    _, preferences2 = gatherer()
     assert np.all(preferences1 == preferences2)
 
 
 def test_synthetic_gatherer_raises(
-        agent_trainer,
-        random_fragmenter,
+    agent_trainer,
+    random_fragmenter,
 ):
     with pytest.raises(
-            ValueError,
-            match="If `sample` is True, then `rng` must be provided",
+        ValueError,
+        match="If `sample` is True, then `rng` must be provided",
     ):
         preference_comparisons.SyntheticGatherer(
             temperature=0,
@@ -652,8 +673,8 @@ def test_fragments_too_short_error(agent_trainer):
         warning_threshold=0,
     )
     with pytest.raises(
-            ValueError,
-            match="No trajectories are long enough for the desired fragment length.",
+        ValueError,
+        match="No trajectories are long enough for the desired fragment length.",
     ):
         # the only important bit is that fragment_length is higher than
         # we'll ever reach
@@ -675,15 +696,17 @@ def test_preference_dataset_errors(agent_trainer, random_fragmenter):
         dataset.push(fragments, preferences)
 
 
-# TODO: fix test (same as test_gradient_accumulation)
 def test_preference_dataset_queue(agent_trainer, random_fragmenter, rng):
     dataset = preference_comparisons.PreferenceDataset(max_size=5)
     trajectories = agent_trainer.sample(10)
 
+    querent = preference_comparisons.PreferenceQuerent(rng=rng)
     gatherer = preference_comparisons.SyntheticGatherer(rng=rng)
     for i in range(6):
         fragments = random_fragmenter(trajectories, fragment_length=2, num_pairs=1)
-        preferences = gatherer(fragments)
+        identified_queries = querent(fragments)
+        gatherer.add(identified_queries)
+        fragments, preferences = gatherer()
         assert len(dataset) == min(i, 5)
         dataset.push(fragments, preferences)
         assert len(dataset) == min(i + 1, 5)
@@ -692,18 +715,20 @@ def test_preference_dataset_queue(agent_trainer, random_fragmenter, rng):
     assert len(dataset) == 5
 
 
-# TODO: fix test (same as test_gradient_accumulation)
 def test_store_and_load_preference_dataset(
-        agent_trainer,
-        random_fragmenter,
-        tmp_path,
-        rng,
+    agent_trainer,
+    random_fragmenter,
+    tmp_path,
+    rng,
 ):
     dataset = preference_comparisons.PreferenceDataset()
     trajectories = agent_trainer.sample(10)
     fragments = random_fragmenter(trajectories, fragment_length=2, num_pairs=2)
+    querent = preference_comparisons.PreferenceQuerent(rng=rng)
     gatherer = preference_comparisons.SyntheticGatherer(rng=rng)
-    preferences = gatherer(fragments)
+    identified_queries = querent(fragments)
+    gatherer.add(identified_queries)
+    fragments, preferences = gatherer()
     dataset.push(fragments, preferences)
 
     path = tmp_path / "preferences.pkl"
@@ -719,12 +744,12 @@ def test_store_and_load_preference_dataset(
 
 
 def test_exploration_no_crash(
-        agent,
-        reward_net,
-        venv,
-        random_fragmenter,
-        custom_logger,
-        rng,
+    agent,
+    reward_net,
+    venv,
+    random_fragmenter,
+    custom_logger,
+    rng,
 ):
     agent_trainer = preference_comparisons.AgentTrainer(
         agent,
@@ -748,12 +773,12 @@ def test_exploration_no_crash(
 
 @pytest.mark.parametrize("uncertainty_on", UNCERTAINTY_ON)
 def test_active_fragmenter_discount_rate_no_crash(
-        agent_trainer,
-        venv,
-        random_fragmenter,
-        uncertainty_on,
-        custom_logger,
-        rng,
+    agent_trainer,
+    venv,
+    random_fragmenter,
+    uncertainty_on,
+    custom_logger,
+    rng,
 ):
     # also use a non-zero noise probability to check that doesn't cause errors
     reward_net = reward_nets.RewardEnsemble(
@@ -816,13 +841,13 @@ def interval_param_scaler() -> updaters.IntervalParamScaler:
 
 
 def test_reward_trainer_regularization_no_crash(
-        agent_trainer,
-        venv,
-        random_fragmenter,
-        custom_logger,
-        preference_model,
-        interval_param_scaler,
-        rng,
+    agent_trainer,
+    venv,
+    random_fragmenter,
+    custom_logger,
+    preference_model,
+    interval_param_scaler,
+    rng,
 ):
     reward_net = reward_nets.BasicRewardNet(venv.observation_space, venv.action_space)
     loss = preference_comparisons.CrossEntropyRewardLoss()
@@ -856,13 +881,13 @@ def test_reward_trainer_regularization_no_crash(
 
 
 def test_reward_trainer_regularization_raises(
-        agent_trainer,
-        venv,
-        random_fragmenter,
-        custom_logger,
-        preference_model,
-        interval_param_scaler,
-        rng,
+    agent_trainer,
+    venv,
+    random_fragmenter,
+    custom_logger,
+    preference_model,
+    interval_param_scaler,
+    rng,
 ):
     reward_net = reward_nets.BasicRewardNet(venv.observation_space, venv.action_space)
     loss = preference_comparisons.CrossEntropyRewardLoss()
@@ -893,8 +918,8 @@ def test_reward_trainer_regularization_raises(
         rng=rng,
     )
     with pytest.raises(
-            ValueError,
-            match="Not enough data samples to split " "into training and validation.*",
+        ValueError,
+        match="Not enough data samples to split " "into training and validation.*",
     ):
         main_trainer.train(100, 10)
 
@@ -929,8 +954,8 @@ def preference_model(venv) -> preference_comparisons.PreferenceModel:
 
 
 def test_active_fragmenter_uncertainty_on_not_supported_error(
-        ensemble_preference_model,
-        random_fragmenter,
+    ensemble_preference_model,
+    random_fragmenter,
 ):
     re_match = r".* not supported\.\n\s+`uncertainty_on` should be from .*"
     with pytest.raises(ValueError, match=re_match):
@@ -954,12 +979,12 @@ def test_active_fragmenter_uncertainty_on_not_supported_error(
 
 
 def test_active_selection_raises_error_when_initialized_without_an_ensemble(
-        preference_model,
-        random_fragmenter,
+    preference_model,
+    random_fragmenter,
 ):
     with pytest.raises(
-            ValueError,
-            match=r"PreferenceModel not wrapped over an ensemble.*",
+        ValueError,
+        match=r"PreferenceModel not wrapped over an ensemble.*",
     ):
         preference_comparisons.ActiveSelectionFragmenter(
             preference_model=preference_model,
@@ -1112,12 +1137,12 @@ def ensemble_reward_trainer(venv, rng):
     [basic_reward_trainer, ensemble_reward_trainer],
 )
 def test_that_trainer_improves(
-        action_is_reward_venv,
-        action_is_reward_agent,
-        action_is_reward_trainer_func,
-        random_fragmenter,
-        custom_logger,
-        rng,
+    action_is_reward_venv,
+    action_is_reward_agent,
+    action_is_reward_trainer_func,
+    random_fragmenter,
+    custom_logger,
+    rng,
 ):
     """Tests that training improves performance of the reward network and agent."""
     action_is_reward_trainer = action_is_reward_trainer_func(action_is_reward_venv, rng)
@@ -1155,8 +1180,8 @@ def test_that_trainer_improves(
 
     later_reward_network_stats = main_trainer.train(50, 20)
     assert (
-            first_reward_network_stats["reward_loss"]
-            > later_reward_network_stats["reward_loss"]
+        first_reward_network_stats["reward_loss"]
+        > later_reward_network_stats["reward_loss"]
     )
 
     # The agent should have also improved
@@ -1204,7 +1229,6 @@ def test_sends_put_request_for_each_query(requests_mock):
 
 
 class ConcretePreferenceGatherer(PreferenceGatherer):
-
     def __call__(self) -> Tuple[np.ndarray, np.ndarray]:
         pass
 
@@ -1236,7 +1260,10 @@ def test_returns_none_for_unanswered_query(requests_mock):
 
     gatherer = PrefCollectGatherer(pref_collect_address=address)
 
-    requests_mock.get(f"{address}/preferences/query/{query_id}", json={"query_id": query_id, "label": answer})
+    requests_mock.get(
+        f"{address}/preferences/query/{query_id}",
+        json={"query_id": query_id, "label": answer},
+    )
 
     preference = gatherer._gather_preference(query_id)
 
@@ -1250,7 +1277,10 @@ def test_returns_preference_for_answered_query(requests_mock):
 
     gatherer = PrefCollectGatherer(pref_collect_address=address)
 
-    requests_mock.get(f"{address}/preferences/query/{query_id}", json={"query_id": query_id, "label": answer})
+    requests_mock.get(
+        f"{address}/preferences/query/{query_id}",
+        json={"query_id": query_id, "label": answer},
+    )
 
     preference = gatherer._gather_preference(query_id)
 
@@ -1258,7 +1288,9 @@ def test_returns_preference_for_answered_query(requests_mock):
 
 
 def test_keeps_pending_query_for_unanswered_query():
-    gatherer = PrefCollectGatherer(pref_collect_address="https://test.de", wait_for_user=False)
+    gatherer = PrefCollectGatherer(
+        pref_collect_address="https://test.de", wait_for_user=False
+    )
     gatherer._gather_preference = MagicMock(return_value=None)
     gatherer.pending_queries = {"1234": Mock()}
 
@@ -1269,7 +1301,9 @@ def test_keeps_pending_query_for_unanswered_query():
 
 
 def test_deletes_pending_query_for_answered_query():
-    gatherer = PrefCollectGatherer(pref_collect_address="https://test.de", wait_for_user=False)
+    gatherer = PrefCollectGatherer(
+        pref_collect_address="https://test.de", wait_for_user=False
+    )
     preference = 0.5
     gatherer._gather_preference = MagicMock(return_value=preference)
     gatherer.pending_queries = {"1234": Mock()}
@@ -1280,7 +1314,9 @@ def test_deletes_pending_query_for_answered_query():
 
 
 def test_gathers_valid_preference():
-    gatherer = PrefCollectGatherer(pref_collect_address="https://test.de", wait_for_user=False)
+    gatherer = PrefCollectGatherer(
+        pref_collect_address="https://test.de", wait_for_user=False
+    )
     preference = 0.5
     gatherer._gather_preference = MagicMock(return_value=preference)
     query = Mock()
@@ -1293,9 +1329,11 @@ def test_gathers_valid_preference():
 
 
 def test_ignores_incomparable_answer():
-    gatherer = PrefCollectGatherer(pref_collect_address="https://test.de", wait_for_user=False)
+    gatherer = PrefCollectGatherer(
+        pref_collect_address="https://test.de", wait_for_user=False
+    )
     # incomparable preference value = -1
-    gatherer._gather_preference = MagicMock(return_value=-1.)
+    gatherer._gather_preference = MagicMock(return_value=-1.0)
     gatherer.pending_queries = {"1234": Mock()}
 
     gathered_queries, gathered_preferences = gatherer()
