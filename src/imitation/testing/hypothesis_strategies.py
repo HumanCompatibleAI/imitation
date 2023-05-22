@@ -66,6 +66,29 @@ def _build_trajectory_with_rew(
     )
 
 
+trajectory = st.one_of(
+    st.builds(
+        _build_trajectory_without_reward,
+        obs_space=gym_spaces,
+        act_space=gym_spaces,
+        length=trajectory_length,
+        info_dict_contents=info_dict_contents,
+        terminal=st.booleans(),
+    ),
+    st.builds(
+        _build_trajectory_with_rew,
+        obs_space=gym_spaces,
+        act_space=gym_spaces,
+        length=trajectory_length,
+        info_dict_contents=info_dict_contents,
+        terminal=st.booleans(),
+        min_rew=st.floats(min_value=-100, max_value=100),
+        max_rew=st.floats(min_value=-100, max_value=100),
+    ),
+)
+"""A strategy to generate a single trajectory (with or without reward) for testing."""
+
+
 # Note: those shared strategies are used to ensure that each trajectory in a list
 # is generated using the same spaces.
 _shared_obs_space = st.shared(gym_spaces, key="obs_space")
