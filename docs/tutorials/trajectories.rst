@@ -51,7 +51,7 @@ To generate trajectories from a given policy, run the following command:
     your_trajectories = rollout(
         your_policy,
         your_env,
-        sample_until=make_sample_until(timesteps=1000),
+        sample_until=make_sample_until(min_episodes=10),
         rng=np.random.default_rng(),
     )
 
