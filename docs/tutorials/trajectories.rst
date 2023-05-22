@@ -30,7 +30,7 @@ which is an array of rewards of shape `(trajectory_len, )`.
 
 Usually, they are passed around as sequences of trajectories.
 
-Some algorithms do not care about entire trajectories, but only for individual
+Some algorithms do not need as much information about the ordering of states, actions and rewards. Rather than using trajectories, these algorithms can make use of individual
 :class:`Transitions <imitation.data.types.Transitions>` (:func:`flattened <imitation.data.rollout.flatten_trajectories>` trajectories).
 
 Generating Trajectories
