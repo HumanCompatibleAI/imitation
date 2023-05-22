@@ -26,6 +26,9 @@ In this library they are stored in a :class:`Trajectory <imitation.data.types.Tr
         terminal: bool
         """Does this trajectory (fragment) end in a terminal state?"""
 
+The info dictionaries are optional and can contain arbitrary information.
+Look at the :class:`Trajectory <imitation.data.types.Trajectory>` class as well as the
+`gymnasium documentation <https://gymnasium.farama.org/api/env/#gymnasium.Env.step>`_ for more details.
 :class:`TrajectoryWithRew <imitation.data.types.TrajectoryWithRew>` is a subclass of
 :class:`Trajectory <imitation.data.types.Trajectory>` and has another
 :class:`rews <imitation.data.types.TrajectoryWithRew.rews>` field,
