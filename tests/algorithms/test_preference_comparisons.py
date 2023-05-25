@@ -267,14 +267,13 @@ def test_preference_comparisons_raises(
 
     querent = preference_comparisons.PreferenceQuerent(rng=rng)
     gatherer = preference_comparisons.SyntheticGatherer(rng=rng)
-    # no rng, must provide fragmenter, preference gatherer, preference_querent, reward trainer
     no_rng_msg = (
         ".*don't provide.*random state.*provide.*fragmenter"
         ".*preference gatherer.*preference querent.*reward_trainer.*"
     )
 
     def build_preference_comparisons(
-        gatherer, querent, reward_trainer, fragmenter, rng
+        gatherer, querent, reward_trainer, fragmenter, rng,
     ):
         preference_comparisons.PreferenceComparisons(
             agent_trainer,
@@ -304,7 +303,7 @@ def test_preference_comparisons_raises(
 
     # This should not raise
     build_preference_comparisons(
-        gatherer, querent, reward_trainer, random_fragmenter, rng=None
+        gatherer, querent, reward_trainer, random_fragmenter, rng=None,
     )
 
     # if providing fragmenter, preference gatherer, reward trainer, does not need rng.
@@ -1229,6 +1228,7 @@ def test_sends_put_request_for_each_query(requests_mock):
 
 
 class ConcretePreferenceGatherer(PreferenceGatherer):
+    """A concrete preference gatherer for unit testing purposes only."""
     def __call__(self) -> Tuple[np.ndarray, np.ndarray]:
         pass
 
@@ -1289,7 +1289,7 @@ def test_returns_preference_for_answered_query(requests_mock):
 
 def test_keeps_pending_query_for_unanswered_query():
     gatherer = PrefCollectGatherer(
-        pref_collect_address="https://test.de", wait_for_user=False
+        pref_collect_address="https://test.de", wait_for_user=False,
     )
     gatherer._gather_preference = MagicMock(return_value=None)
     gatherer.pending_queries = {"1234": Mock()}
@@ -1302,7 +1302,7 @@ def test_keeps_pending_query_for_unanswered_query():
 
 def test_deletes_pending_query_for_answered_query():
     gatherer = PrefCollectGatherer(
-        pref_collect_address="https://test.de", wait_for_user=False
+        pref_collect_address="https://test.de", wait_for_user=False,
     )
     preference = 0.5
     gatherer._gather_preference = MagicMock(return_value=preference)
@@ -1315,7 +1315,7 @@ def test_deletes_pending_query_for_answered_query():
 
 def test_gathers_valid_preference():
     gatherer = PrefCollectGatherer(
-        pref_collect_address="https://test.de", wait_for_user=False
+        pref_collect_address="https://test.de", wait_for_user=False,
     )
     preference = 0.5
     gatherer._gather_preference = MagicMock(return_value=preference)
@@ -1330,7 +1330,7 @@ def test_gathers_valid_preference():
 
 def test_ignores_incomparable_answer():
     gatherer = PrefCollectGatherer(
-        pref_collect_address="https://test.de", wait_for_user=False
+        pref_collect_address="https://test.de", wait_for_user=False,
     )
     # incomparable preference value = -1
     gatherer._gather_preference = MagicMock(return_value=-1.0)

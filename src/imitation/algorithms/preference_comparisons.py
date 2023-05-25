@@ -801,10 +801,12 @@ class PreferenceQuerent:
         self.logger = custom_logger or imit_logger.configure()
 
     def __call__(
-        self, queries: Sequence[TrajectoryWithRewPair]
+        self, queries: Sequence[TrajectoryWithRewPair],
     ) -> Dict[str, Sequence[TrajectoryWithRewPair]]:
         """Queries the user for their preferences.
-        This dummy implementation does nothing because by default the queries are answered by an oracle.
+
+        This dummy implementation does nothing because by default the queries are
+        answered by an oracle.
 
         Args:
             queries: sequence of pairs of trajectory fragments
@@ -816,7 +818,7 @@ class PreferenceQuerent:
 
 
 class PrefCollectQuerent(PreferenceQuerent):
-    """Sends queries to the PrefCollect interface."""
+    """Sends queries to a preference collection web service via HTTP requests."""
 
     def __init__(
         self,
@@ -826,6 +828,15 @@ class PrefCollectQuerent(PreferenceQuerent):
         rng: Optional[np.random.Generator] = None,
         custom_logger: Optional[imit_logger.HierarchicalLogger] = None,
     ):
+        """Initializes the PrefCollect querent.
+
+        Args:
+            pref_collect_address: end point of the PrefCollect web service.
+            video_output_dir: path to the video clip directory.
+            video_fps: frames per second of the generated videos.
+            rng: random number generator, if applicable.
+            custom_logger: Where to log to; if None (default), creates a new logger.
+        """
         super().__init__(custom_logger)
         self.rng = rng
         self.query_endpoint = pref_collect_address + "/preferences/query/"
@@ -836,7 +847,7 @@ class PrefCollectQuerent(PreferenceQuerent):
         os.makedirs(self.video_output_dir, exist_ok=True)
 
     def __call__(
-        self, queries: Sequence[TrajectoryWithRewPair]
+        self, queries: Sequence[TrajectoryWithRewPair],
     ) -> Dict[str, Sequence[TrajectoryWithRewPair]]:
         identified_queries = super().__call__(queries)
 
@@ -861,11 +872,12 @@ class PrefCollectQuerent(PreferenceQuerent):
 
     def _query(self, query_id):
         requests.put(
-            self.query_endpoint + query_id, json={"uuid": "{}".format(query_id)}
+            self.query_endpoint + query_id, json={"uuid": "{}".format(query_id)},
         )
 
 
 def write_fragment_video(fragment, frames_per_second: int, output_path: str) -> None:
+    """Write fragment video clip."""
     frame_shape = get_frame_shape(fragment)
     video_writer = cv2.VideoWriter(
         output_path,
@@ -901,6 +913,7 @@ def write_fragment_video(fragment, frames_per_second: int, output_path: str) -> 
 
 
 def get_frame_shape(fragment: TrajectoryWithRew) -> Tuple[int, int]:
+    """Calculate frame shape."""
     if "rendered_img" in fragment.infos[0]:
         rendered_img_info = fragment.infos[0]["rendered_img"]
         # If path is provided load cached image
@@ -1079,6 +1092,7 @@ class SynchronousHumanGatherer(PreferenceGatherer):
             video_width: width of the video in pixels.
             video_height: height of the video in pixels.
             custom_logger: Where to log to; if None (default), creates a new logger.
+            rng: random number generator
 
         Raises:
             ValueError: if `video_dir` is not a directory.
@@ -2163,7 +2177,7 @@ class PreferenceComparisons(base.BaseImitationAlgorithm):
 
             with self.logger.accumulate_means("preferences"):
                 self.logger.log("Gathering preferences")
-                # Gather fragment pairs (queries) for which preferences have been provided
+                # Gather fragment pairs for which preferences have been provided
                 queries, preferences = self.preference_gatherer()
 
             # Free up RAM or disk space from keeping rendered images

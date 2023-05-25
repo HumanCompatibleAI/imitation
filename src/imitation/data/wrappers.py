@@ -21,31 +21,28 @@ class RenderImageInfoWrapper(gym.Wrapper):
     Can be very memory intensive for large render images.
     Use `scale_factor` to reduce render image size.
     If you need to preserve the resolution and memory
-    runs out, you can activate `ues_file_cache` to save
-    render images and instead put their path into `info`.
+    runs out, you can activate `use_file_cache` to save
+    rendered images and instead put their path into `info`.
     """
 
     def __init__(
         self,
         env: gym.Env,
-        scale_factor: float = 1.,
+        scale_factor: float = 1.0,
         use_file_cache: bool = False,
     ):
         """Builds RenderImageInfoWrapper.
 
         Args:
             env: Environment to wrap.
+            scale_factor: scales rendered images to be stored.
+            use_file_cache: whether to save rendered images to disk.
         """
         super().__init__(env)
         self.scale_factor = scale_factor
         self.use_file_cache = use_file_cache
         if self.use_file_cache:
             self.file_cache = tempfile.mkdtemp("imitation_RenderImageInfoWrapper")
-
-        self._active = True
-
-    def set_render_image_active(self, active: bool):
-        self._active = active
 
     def step(self, action):
         obs, rew, done, info = self.env.step(action)

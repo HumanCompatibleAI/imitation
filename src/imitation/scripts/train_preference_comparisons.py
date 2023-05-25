@@ -23,7 +23,6 @@ from imitation.scripts.ingredients import environment
 from imitation.scripts.ingredients import logging as logging_ingredient
 from imitation.scripts.ingredients import policy_evaluation, reward
 from imitation.scripts.ingredients import rl as rl_common
-from imitation.util import video_wrapper
 
 
 def save_model(
