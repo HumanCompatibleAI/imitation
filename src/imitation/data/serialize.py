@@ -21,8 +21,7 @@ def save(path: AnyPath, trajectories: Sequence[Trajectory]) -> None:
         trajectories: The trajectories to save.
     """
     p = util.parse_path(path)
-    d = datasets.Dataset.from_dict(huggingface_utils.trajectories_to_dict(trajectories))
-    d.save_to_disk(p)
+    huggingface_utils.trajectories_to_dataset(trajectories).save_to_disk(p)
     logging.info(f"Dumped demonstrations to {p}.")
 
 
@@ -30,14 +29,14 @@ def load(path: AnyPath) -> Sequence[Trajectory]:
     """Loads a sequence of trajectories saved by `save()` from `path`."""
     # Interestingly, np.load will just silently load a normal pickle file when you
     # set `allow_pickle=True`. So this call should succeed for both the new compressed
-    # .npz format and the old pickle based format. To tell the difference we need to
+    # .npz format and the old pickle based format. To tell the difference, we need to
     # look at the type of the resulting object. If it's the new compressed format,
-    # it should be a Mapping that we need to decode, whereas if it's the old format
+    # it should be a Mapping that we need to decode, whereas if it's the old format,
     # it's just the sequence of trajectories, and we can return it directly.
 
     if os.path.isdir(path):  # huggingface datasets format
         dataset = datasets.load_from_disk(str(path))
-        if not isinstance(dataset, datasets.Dataset):
+        if not isinstance(dataset, datasets.Dataset):  # pragma: no cover
             raise ValueError(
                 f"Expected to load a `datasets.Dataset` but got {type(dataset)}",
             )
@@ -66,7 +65,7 @@ def load(path: AnyPath) -> Sequence[Trajectory]:
             ]
             return [TrajectoryWithRew(*args) for args in zip(*fields)]
         else:
-            return [Trajectory(*args) for args in zip(*fields)]
+            return [Trajectory(*args) for args in zip(*fields)]  # pragma: no cover
     else:  # pragma: no cover
         raise ValueError(
             f"Expected either an .npz file or a pickled sequence of trajectories; "
