@@ -78,7 +78,8 @@ def synch_human_preferences():
     environment = dict(
         post_wrappers=dict(
             RenderImageInfoWrapper=lambda env, env_id, **kwargs: RenderImageInfoWrapper(
-                env, **kwargs,
+                env,
+                **kwargs,
             ),
         ),
         num_vec=2,
@@ -104,7 +105,8 @@ def human_preferences():
     environment = dict(
         post_wrappers=dict(
             RenderImageInfoWrapper=lambda env, env_id, **kwargs: RenderImageInfoWrapper(
-                env, **kwargs,
+                env,
+                **kwargs,
             ),
         ),
         post_wrappers_kwargs=dict(
