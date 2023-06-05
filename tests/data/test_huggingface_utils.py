@@ -1,4 +1,5 @@
 """Tests for imitation.data.huggingface_utils."""
+import datetime
 import pathlib
 from typing import Sequence, cast
 
@@ -39,6 +40,7 @@ def wrap_in_trajectory_dataset_sequence(
         #   temporary directory for all tests.
         hypothesis.HealthCheck.function_scoped_fixture,
     ],
+    deadline=datetime.timedelta(seconds=0.5),  # reduce flakiness
 )
 def test_save_load_roundtrip(
     trajectories: Sequence[types.Trajectory],

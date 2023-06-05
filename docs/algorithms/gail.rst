@@ -8,9 +8,8 @@ Generative Adversarial Imitation Learning (GAIL)
 with a discriminator that aims to distinguish expert trajectories against
 trajectories from the learned policy.
 
-Notes
------
-- GAIL paper: `Generative Adversarial Imitation Learning <https://arxiv.org/abs/1606.03476>`_
+.. note::
+    GAIL paper: `Generative Adversarial Imitation Learning <https://arxiv.org/abs/1606.03476>`_
 
 Example
 =======
