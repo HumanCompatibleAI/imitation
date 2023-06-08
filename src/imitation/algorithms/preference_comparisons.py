@@ -847,7 +847,7 @@ class PrefCollectQuerent(PreferenceQuerent):
     def __call__(
         self,
         queries: Sequence[TrajectoryWithRewPair],
-    ) -> Dict[str, Sequence[TrajectoryWithRewPair]]:
+    ) -> Dict[str, TrajectoryWithRewPair]:
         identified_queries = super().__call__(queries)
 
         # Save fragment videos and submit queries
