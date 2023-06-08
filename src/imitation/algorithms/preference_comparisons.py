@@ -821,7 +821,7 @@ class PrefCollectQuerent(PreferenceQuerent):
     def __init__(
         self,
         pref_collect_address: str,
-        video_output_dir: AnyPath,
+        video_output_dir: str,
         video_fps: int = 20,
         rng: Optional[np.random.Generator] = None,
         custom_logger: Optional[imit_logger.HierarchicalLogger] = None,
@@ -877,7 +877,7 @@ class PrefCollectQuerent(PreferenceQuerent):
         )
 
 
-def write_fragment_video(fragment, frames_per_second: int, output_path: str) -> None:
+def write_fragment_video(fragment: TrajectoryWithRew, frames_per_second: int, output_path: AnyPath) -> None:
     """Write fragment video clip."""
     frame_shape = get_frame_shape(fragment)
     video_writer = cv2.VideoWriter(
@@ -888,16 +888,18 @@ def write_fragment_video(fragment, frames_per_second: int, output_path: str) -> 
     )
 
     # Make videos from rendered observations if available
-    if "rendered_img" in fragment.infos[0]:
-        frames = []
+    frames: np.ndarray
+    if fragment.infos is not None and "rendered_img" in fragment.infos[0]:
+        frames_list = []
         for i in range(len(fragment.infos)):
             frame_info = fragment.infos[i]["rendered_img"]
             # If path is provided load cached image
-            if isinstance(frame_info, AnyPath.__args__):
+            if isinstance(frame_info, (str, bytes, os.PathLike)):
                 frame = np.load(frame_info)
             elif isinstance(frame_info, np.ndarray):
                 frame = frame_info
-            frames.append(frame)
+            frames_list.append(frame)
+        frames = np.array(frames_list)
     else:
         frames = fragment.obs
 
@@ -916,10 +918,10 @@ def write_fragment_video(fragment, frames_per_second: int, output_path: str) -> 
 
 def get_frame_shape(fragment: TrajectoryWithRew) -> Tuple[int, int]:
     """Calculate frame shape."""
-    if "rendered_img" in fragment.infos[0]:
+    if fragment.infos is not None and "rendered_img" in fragment.infos[0]:
         rendered_img_info = fragment.infos[0]["rendered_img"]
         # If path is provided load cached image
-        if isinstance(rendered_img_info, AnyPath.__args__):
+        if isinstance(rendered_img_info, (str, bytes, os.PathLike)):
             single_frame = np.load(rendered_img_info)
         else:
             single_frame = rendered_img_info
@@ -955,7 +957,7 @@ class PreferenceGatherer(abc.ABC):
         # the PreferenceGatherer we use needs one).
         del rng
         self.logger = custom_logger or imit_logger.configure()
-        self.pending_queries = {}
+        self.pending_queries: Dict = {}
 
     @abc.abstractmethod
     def __call__(self) -> Tuple[Sequence[TrajectoryWithRewPair], np.ndarray]:
@@ -1136,7 +1138,7 @@ class SynchronousHumanGatherer(PreferenceGatherer):
         self.pending_queries.clear()
         return queries, preferences
 
-    def _display_videos_and_gather_preference(self, query_id) -> bool:
+    def _display_videos_and_gather_preference(self, query_id: uuid.UUID) -> bool:
         """Displays the videos of the two fragments.
 
         Args:
@@ -1148,8 +1150,8 @@ class SynchronousHumanGatherer(PreferenceGatherer):
         Raises:
             KeyboardInterrupt: if the user presses q to quit.
         """
-        frag1_video_path = os.path.join(self.video_dir, f"{query_id}-left.webm")
-        frag2_video_path = os.path.join(self.video_dir, f"{query_id}-right.webm")
+        frag1_video_path = pathlib.Path(self.video_dir, f"{query_id}-left.webm")
+        frag2_video_path = pathlib.Path(self.video_dir, f"{query_id}-right.webm")
         if self._in_ipython():
             self._display_videos_in_notebook(frag1_video_path, frag2_video_path)
 
@@ -1306,13 +1308,12 @@ class PrefCollectGatherer(PreferenceGatherer):
             rng: random number generator, if applicable.
             custom_logger: Where to log to; if None (default), creates a new logger.
         """
-        super().__init__(custom_logger)
-        self.rng = rng
+        super().__init__(rng, custom_logger)
         self.query_endpoint = pref_collect_address + "/preferences/query/"
         self.pending_queries = {}
         self.wait_for_user = wait_for_user
 
-    def __call__(self) -> Tuple[Sequence[TrajectoryPair], np.ndarray]:
+    def __call__(self) -> Tuple[Sequence[TrajectoryWithRewPair], np.ndarray]:
 
         # TODO: create user-independent (automated) waiting policy
         if self.wait_for_user:
@@ -1343,15 +1344,13 @@ class PrefCollectGatherer(PreferenceGatherer):
 def remove_rendered_images(trajectories: Sequence[TrajectoryWithRew]) -> None:
     """Removes rendered images of the provided trajectories list."""
     for traj in trajectories:
-        for info in traj.infos:
-            try:
+        if traj.infos is not None and "rendered_img" in traj.infos[0]:
+            for info in traj.infos:
                 rendered_img_info = info["rendered_img"]
                 if isinstance(rendered_img_info, (str, bytes, os.PathLike)):
                     os.remove(rendered_img_info)
                 elif isinstance(rendered_img_info, np.ndarray):
                     del info["rendered_img"]
-            except KeyError:
-                pass
 
 
 class PreferenceDataset(data_th.Dataset):
@@ -2087,7 +2086,6 @@ class PreferenceComparisons(base.BaseImitationAlgorithm):
             assert self.rng is not None
             self.preference_querent = PreferenceQuerent(
                 custom_logger=self.logger,
-                rng=self.rng,
             )
         if preference_gatherer:
             self.preference_gatherer = preference_gatherer
