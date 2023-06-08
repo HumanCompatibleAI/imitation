@@ -1,5 +1,6 @@
 """Tests for the preference comparisons reward learning implementation."""
 
+import abc
 import math
 import pathlib
 import re
@@ -28,7 +29,7 @@ from imitation.algorithms.preference_comparisons import (
     SyntheticGatherer,
 )
 from imitation.data import types
-from imitation.data.types import TrajectoryWithRew
+from imitation.data.types import TrajectoryWithRew, TrajectoryWithRewPair
 from imitation.regularization import regularizers, updaters
 from imitation.rewards import reward_nets
 from imitation.testing import reward_improvement
@@ -1238,7 +1239,8 @@ def test_sends_put_request_for_each_query(requests_mock):
 class ConcretePreferenceGatherer(PreferenceGatherer):
     """A concrete preference gatherer for unit testing purposes only."""
 
-    def __call__(self) -> Tuple[np.ndarray, np.ndarray]:
+    @abc.abstractmethod
+    def __call__(self) -> Tuple[Sequence[TrajectoryWithRewPair], np.ndarray]:
         pass
 
 

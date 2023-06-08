@@ -961,7 +961,7 @@ class PreferenceGatherer(abc.ABC):
         self.pending_queries = {}
 
     @abc.abstractmethod
-    def __call__(self) -> Tuple[np.ndarray, np.ndarray]:
+    def __call__(self) -> Tuple[Sequence[TrajectoryWithRewPair], np.ndarray]:
         """Gathers the probabilities that fragment 1 is preferred in `queries`.
 
         Returns:
@@ -1349,7 +1349,7 @@ def remove_rendered_images(trajectories: Sequence[TrajectoryWithRew]) -> None:
         for info in traj.infos:
             try:
                 rendered_img_info = info["rendered_img"]
-                if isinstance(rendered_img_info, AnyPath.__args__):
+                if isinstance(rendered_img_info, (str, bytes, os.PathLike)):
                     os.remove(rendered_img_info)
                 elif isinstance(rendered_img_info, np.ndarray):
                     del info["rendered_img"]
