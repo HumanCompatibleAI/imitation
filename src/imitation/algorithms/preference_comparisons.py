@@ -788,22 +788,19 @@ class PreferenceQuerent:
 
     def __init__(
         self,
-        rng: Optional[np.random.Generator] = None,
         custom_logger: Optional[imit_logger.HierarchicalLogger] = None,
     ) -> None:
         """Initializes the preference querent.
 
         Args:
-            rng: random number generator, if applicable.
             custom_logger: Where to log to; if None (default), creates a new logger.
         """
-        del rng
         self.logger = custom_logger or imit_logger.configure()
 
     def __call__(
         self,
         queries: Sequence[TrajectoryWithRewPair],
-    ) -> Dict[str, Sequence[TrajectoryWithRewPair]]:
+    ) -> Dict[str, TrajectoryWithRewPair]:
         """Queries the user for their preferences.
 
         This dummy implementation does nothing because by default the queries are
@@ -825,7 +822,7 @@ class PrefCollectQuerent(PreferenceQuerent):
         self,
         pref_collect_address: str,
         video_output_dir: AnyPath,
-        video_fps: str = 20,
+        video_fps: int = 20,
         rng: Optional[np.random.Generator] = None,
         custom_logger: Optional[imit_logger.HierarchicalLogger] = None,
     ):

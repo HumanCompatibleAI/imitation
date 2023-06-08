@@ -59,6 +59,7 @@ TESTS_REQUIRE = (
         "wandb==0.12.21",
         "setuptools_scm~=7.0.5",
         "pre-commit>=2.20.0",
+        "types-requests~=2.31.0.1" # here or in general requirements?
     ]
     + PARALLEL_REQUIRE
     + ATARI_REQUIRE
