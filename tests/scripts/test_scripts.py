@@ -272,7 +272,7 @@ def test_train_dagger_main(tmpdir):
             named_configs=["seals_cartpole"] + ALGO_FAST_CONFIGS["imitation"],
             config_updates=dict(
                 logging=dict(log_root=tmpdir),
-                demonstrations=dict(rollout_path=CARTPOLE_TEST_ROLLOUT_PATH),
+                demonstrations=dict(path=CARTPOLE_TEST_ROLLOUT_PATH),
             ),
         )
     for warning in record:
@@ -292,7 +292,7 @@ def test_train_dagger_warmstart(tmpdir):
         named_configs=["seals_cartpole"] + ALGO_FAST_CONFIGS["imitation"],
         config_updates=dict(
             logging=dict(log_root=tmpdir),
-            demonstrations=dict(rollout_path=CARTPOLE_TEST_ROLLOUT_PATH),
+            demonstrations=dict(path=CARTPOLE_TEST_ROLLOUT_PATH),
         ),
     )
     assert run.status == "COMPLETED"
@@ -304,7 +304,7 @@ def test_train_dagger_warmstart(tmpdir):
         named_configs=["seals_cartpole"] + ALGO_FAST_CONFIGS["imitation"],
         config_updates=dict(
             logging=dict(log_root=tmpdir),
-            demonstrations=dict(rollout_path=CARTPOLE_TEST_ROLLOUT_PATH),
+            demonstrations=dict(path=CARTPOLE_TEST_ROLLOUT_PATH),
             bc=dict(agent_path=policy_path),
         ),
     )
@@ -313,7 +313,7 @@ def test_train_dagger_warmstart(tmpdir):
 
 
 def test_train_bc_main_with_none_demonstrations_raises_value_error(tmpdir):
-    with pytest.raises(ValueError, match=".*n_expert_demos.*rollout_path.*"):
+    with pytest.raises(ValueError, match="When type is 'local', path must be set."):
         train_imitation.train_imitation_ex.run(
             command_name="bc",
             named_configs=["seals_cartpole"] + ALGO_FAST_CONFIGS["imitation"],
@@ -331,7 +331,7 @@ def test_train_bc_main_with_demonstrations_from_huggingface(tmpdir):
         config_updates=dict(
             logging=dict(log_root=tmpdir),
             demonstrations=dict(
-                rollout_type="huggingface",
+                type="huggingface",
                 algo_name="ppo",
             ),
         ),
@@ -362,7 +362,7 @@ def bc_config(tmpdir, request):
         config_updates=dict(
             logging=dict(log_root=tmpdir),
             expert=expert_config,
-            demonstrations=dict(rollout_path=CARTPOLE_TEST_ROLLOUT_PATH),
+            demonstrations=dict(path=CARTPOLE_TEST_ROLLOUT_PATH),
         ),
     )
 
@@ -379,7 +379,7 @@ def test_train_bc_warmstart(tmpdir):
         named_configs=["seals_cartpole"] + ALGO_FAST_CONFIGS["imitation"],
         config_updates=dict(
             logging=dict(log_root=tmpdir),
-            demonstrations=dict(rollout_path=CARTPOLE_TEST_ROLLOUT_PATH),
+            demonstrations=dict(path=CARTPOLE_TEST_ROLLOUT_PATH),
             expert=dict(policy_type="ppo-huggingface"),
         ),
     )
@@ -392,7 +392,7 @@ def test_train_bc_warmstart(tmpdir):
         named_configs=["seals_cartpole"] + ALGO_FAST_CONFIGS["imitation"],
         config_updates=dict(
             logging=dict(log_root=tmpdir),
-            demonstrations=dict(rollout_path=CARTPOLE_TEST_ROLLOUT_PATH),
+            demonstrations=dict(path=CARTPOLE_TEST_ROLLOUT_PATH),
             bc=dict(agent_path=policy_path),
         ),
     )
@@ -523,7 +523,7 @@ def test_train_adversarial(tmpdir, named_configs, command):
     )
     config_updates = {
         "logging": dict(log_root=tmpdir),
-        "demonstrations": dict(rollout_path=CARTPOLE_TEST_ROLLOUT_PATH),
+        "demonstrations": dict(path=CARTPOLE_TEST_ROLLOUT_PATH),
         # TensorBoard logs to get extra coverage
         "algorithm_kwargs": dict(init_tensorboard=True),
     }
@@ -541,7 +541,7 @@ def test_train_adversarial_warmstart(tmpdir, command):
     named_configs = ["cartpole"] + ALGO_FAST_CONFIGS["adversarial"]
     config_updates = {
         "logging": dict(log_root=tmpdir),
-        "demonstrations": dict(rollout_path=CARTPOLE_TEST_ROLLOUT_PATH),
+        "demonstrations": dict(path=CARTPOLE_TEST_ROLLOUT_PATH),
     }
     run = train_adversarial.train_adversarial_ex.run(
         command_name=command,
@@ -575,7 +575,7 @@ def test_train_adversarial_sac(tmpdir, command):
     )
     config_updates = {
         "logging": dict(log_root=tmpdir),
-        "demonstrations": dict(rollout_path=PENDULUM_TEST_ROLLOUT_PATH),
+        "demonstrations": dict(path=PENDULUM_TEST_ROLLOUT_PATH),
     }
     run = train_adversarial.train_adversarial_ex.run(
         command_name=command,
@@ -593,7 +593,7 @@ def test_train_adversarial_algorithm_value_error(tmpdir):
     base_config_updates = collections.ChainMap(
         {
             "logging": dict(log_root=tmpdir),
-            "demonstrations": dict(rollout_path=CARTPOLE_TEST_ROLLOUT_PATH),
+            "demonstrations": dict(path=CARTPOLE_TEST_ROLLOUT_PATH),
         },
     )
 
@@ -611,7 +611,7 @@ def test_train_adversarial_algorithm_value_error(tmpdir):
             command_name="gail",
             named_configs=base_named_configs,
             config_updates=base_config_updates.new_child(
-                {"demonstrations.rollout_path": "path/BAD_VALUE"},
+                {"demonstrations.path": "path/BAD_VALUE"},
             ),
         )
 
@@ -641,7 +641,7 @@ def test_transfer_learning(tmpdir: str) -> None:
         named_configs=["seals_cartpole"] + ALGO_FAST_CONFIGS["adversarial"],
         config_updates=dict(
             logging=dict(log_dir=log_dir_train),
-            demonstrations=dict(rollout_path=CARTPOLE_TEST_ROLLOUT_PATH),
+            demonstrations=dict(path=CARTPOLE_TEST_ROLLOUT_PATH),
         ),
     )
     assert run.status == "COMPLETED"
@@ -792,7 +792,7 @@ PARALLEL_CONFIG_UPDATES = [
         base_named_configs=["seals_cartpole"] + ALGO_FAST_CONFIGS["adversarial"],
         base_config_updates={
             # Need absolute path because raylet runs in different working directory.
-            "demonstrations.rollout_path": CARTPOLE_TEST_ROLLOUT_PATH.absolute(),
+            "demonstrations.path": CARTPOLE_TEST_ROLLOUT_PATH.absolute(),
         },
         search_space={
             "command_name": tune.grid_search(["gail", "airl"]),
@@ -858,8 +858,8 @@ def _generate_test_rollouts(tmpdir: str, env_named_config: str) -> pathlib.Path:
             logging=dict(log_dir=tmpdir),
         ),
     )
-    rollout_path = tmpdir_path / "rollouts/final.npz"
-    return rollout_path.absolute()
+    path = tmpdir_path / "rollouts/final.npz"
+    return path.absolute()
 
 
 def test_parallel_train_adversarial_custom_env(tmpdir):
@@ -870,7 +870,7 @@ def test_parallel_train_adversarial_custom_env(tmpdir):
         )
 
     env_named_config = "pendulum"
-    rollout_path = _generate_test_rollouts(tmpdir, env_named_config)
+    path = _generate_test_rollouts(tmpdir, env_named_config)
 
     config_updates = dict(
         sacred_ex_name="train_adversarial",
@@ -878,7 +878,7 @@ def test_parallel_train_adversarial_custom_env(tmpdir):
         base_named_configs=[env_named_config] + ALGO_FAST_CONFIGS["adversarial"],
         base_config_updates=dict(
             logging=dict(log_root=tmpdir),
-            demonstrations=dict(rollout_path=rollout_path),
+            demonstrations=dict(path=path),
         ),
         search_space=dict(command_name="gail"),
     )
@@ -893,7 +893,7 @@ def _run_train_adv_for_test_analyze_imit(run_name, sacred_logs_dir, log_dir):
         named_configs=["seals_cartpole"] + ALGO_FAST_CONFIGS["adversarial"],
         config_updates=dict(
             logging=dict(log_root=log_dir),
-            demonstrations=dict(rollout_path=CARTPOLE_TEST_ROLLOUT_PATH),
+            demonstrations=dict(path=CARTPOLE_TEST_ROLLOUT_PATH),
             checkpoint_interval=-1,
         ),
         options={"--name": run_name, "--file_storage": sacred_logs_dir},
@@ -907,7 +907,7 @@ def _run_train_bc_for_test_analyze_imit(run_name, sacred_logs_dir, log_dir):
         named_configs=["seals_cartpole"] + ALGO_FAST_CONFIGS["imitation"],
         config_updates=dict(
             logging=dict(log_dir=log_dir),
-            demonstrations=dict(rollout_path=CARTPOLE_TEST_ROLLOUT_PATH),
+            demonstrations=dict(path=CARTPOLE_TEST_ROLLOUT_PATH),
         ),
         options={"--name": run_name, "--file_storage": sacred_logs_dir},
     )

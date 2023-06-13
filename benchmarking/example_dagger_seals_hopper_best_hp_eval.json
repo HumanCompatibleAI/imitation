@@ -24,7 +24,7 @@
     "use_offline_rollouts": false
   },
   "demonstrations": {
-    "rollout_type": "huggingface",
+    "type": "huggingface",
     "algo_name": "ppo",
     "n_expert_demos": null
   },

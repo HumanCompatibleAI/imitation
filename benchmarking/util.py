@@ -71,7 +71,7 @@ def clean_config_file(file: pathlib.Path, write_path: pathlib.Path, /) -> None:
     # remove key 'agent_path'
     config.pop("agent_path")
     config.pop("seed")
-    config.get("demonstrations", {}).pop("rollout_path")
+    config.get("demonstrations", {}).pop("path")
     config.get("expert", {}).get("loader_kwargs", {}).pop("path", None)
     env_name = config.pop("environment").pop("gym_id")
     config["environment"] = {"gym_id": env_name}

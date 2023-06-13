@@ -26,21 +26,20 @@ logger = logging.getLogger(__name__)
 @demonstrations_ingredient.config
 def config():
     # Either "local" or "huggingface" or "generated".
-    rollout_type = "local"
+    type = "generated"
 
     # local path or huggingface repo id to load rollouts from.
-    rollout_path = None
+    path = None
 
-    # passed to `datasets.load_dataset` if `rollout_type` is "huggingface"
+    # passed to `datasets.load_dataset` if `type` is "huggingface"
     loader_kwargs: Dict[str, Any] = dict(
-        organization="HumanCompatibleAI",
         split="train",
     )
 
-    # Used to deduce HuggingFace repo id if rollout_path is None
+    # Used to deduce HuggingFace repo id if `path` is None
     organization = "HumanCompatibleAI"
 
-    # Used to deduce HuggingFace repo id if rollout_path is None
+    # Used to deduce HuggingFace repo id if `path` is None
     algo_name = "ppo"
 
     # Num demos used or sampled. None loads every demo possible.
@@ -57,42 +56,41 @@ def fast():
 
 @demonstrations_ingredient.capture
 def get_expert_trajectories(
-    rollout_type: str,
-    rollout_path: str,
+    type: str,
+    path: str,
 ) -> Sequence[types.Trajectory]:
     """Loads expert demonstrations.
 
     Args:
-        rollout_type: Can be either `local` to load rollouts from the disk or to
+        type: Can be either `local` to load rollouts from the disk or to
             generate them locally or of the format `{algo}-huggingface` to load
             from the huggingface hub of expert trained using `{algo}`.
-        rollout_path: A path containing a pickled sequence of `types.Trajectory`.
+        path: A path containing a pickled sequence of `types.Trajectory`.
 
     Returns:
         The expert trajectories.
 
     Raises:
-        ValueError: if `rollout_type` is not "local" or of the form {algo}-huggingface.
+        ValueError: if `type` is not "local" or of the form {algo}-huggingface.
     """
-    if rollout_type not in ["local", "huggingface", "generated"]:
-        raise ValueError(
-            "`rollout_type` can either be `local` or `huggingface` or `generated`.",
-        )
-
-    if rollout_type == "local":
-        if rollout_path is None:
+    if type == "local":
+        if path is None:
             raise ValueError(
-                "When rollout_type is 'local', rollout_path must be set.",
+                "When type is 'local', path must be set.",
             )
-        return _constrain_number_of_demos(serialize.load(rollout_path))
+        return _constrain_number_of_demos(serialize.load(path))
 
-    if rollout_type == "huggingface":
+    if type == "huggingface":
         return _constrain_number_of_demos(_download_expert_rollouts())
 
-    if rollout_type == "generated":
-        if rollout_path is not None:
-            logger.warning("Ignoring rollout_path when rollout_type is 'generated'")
+    if type == "generated":
+        if path is not None:
+            logger.warning("Ignoring path when type is 'generated'")
         return _generate_expert_trajs()
+
+    raise ValueError(
+        "`type` can either be `local` or `huggingface` or `generated`.",
+    )
 
 
 @demonstrations_ingredient.capture
@@ -138,7 +136,7 @@ def _generate_expert_trajs(
         ValueError: If n_expert_demos is None.
     """
     if n_expert_demos is None:
-        raise ValueError("n_expert_demos must be specified when rollout_path is None")
+        raise ValueError("n_expert_demos must be specified when path is None")
 
     logger.info(f"Generating {n_expert_demos} expert trajectories")
     with environment.make_rollout_venv() as rollout_env:
@@ -153,12 +151,12 @@ def _generate_expert_trajs(
 @demonstrations_ingredient.capture
 def _download_expert_rollouts(
         environment: Dict[str, Any],
-        rollout_path: Optional[str],
+        path: Optional[str],
         organization: Optional[str],
         algo_name: Optional[str],
         loader_kwargs: Dict[str, Any]):
-    if rollout_path is not None:
-        repo_id = rollout_path
+    if path is not None:
+        repo_id = path
     else:
         model_name = hfsb3.ModelName(
             algo_name,
