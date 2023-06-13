@@ -338,26 +338,6 @@ def test_train_bc_main_with_demonstrations_from_huggingface(tmpdir):
     )
 
 
-def test_train_bc_main_with_demonstrations_warns_setting_rollout_type(
-    tmpdir,
-):
-    with pytest.warns(
-        RuntimeWarning,
-        match="Ignoring `rollout_path` .*",
-    ):
-        train_imitation.train_imitation_ex.run(
-            command_name="bc",
-            named_configs=["seals_cartpole"] + ALGO_FAST_CONFIGS["imitation"],
-            config_updates=dict(
-                logging=dict(log_root=tmpdir),
-                demonstrations=dict(
-                    rollout_type="ppo-huggingface",
-                    rollout_path="path",
-                ),
-            ),
-        )
-
-
 @pytest.fixture(
     params=[
         "expert_from_path",
