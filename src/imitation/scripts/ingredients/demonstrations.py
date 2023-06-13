@@ -61,7 +61,7 @@ def get_expert_trajectories(
         ValueError: if `rollout_type` is not "local" or of the form {algo}-huggingface.
     """
     is_local_rollouts = rollout_type == "local"
-    is_huggingface_rollouts = rollout_type.endswith("-huggingface")
+    is_huggingface_rollouts = rollout_type.endswith("huggingface")
     is_rollout_path_set = rollout_path is not None
 
     if not (is_local_rollouts or is_huggingface_rollouts):
@@ -143,13 +143,31 @@ def _generate_expert_trajs(
 
 @demonstrations_ingredient.capture(prefix="expert")
 def _download_expert_rollouts(rollout_type: str, loader_kwargs: Dict[str, Any]):
-    assert rollout_type.endswith("-huggingface")
-    algo_name = rollout_type.split("-")[0]
-    model_name = hfsb3.ModelName(
-        algo_name,
-        hfsb3.EnvironmentName(loader_kwargs["env_name"]),
-    )
-    repo_id = hfsb3.ModelRepoId(loader_kwargs["organization"], model_name)
+    if "repo_id" in loader_kwargs:
+        repo_id = loader_kwargs.pop("repo_id")
+    else:
+        if "env_name" not in loader_kwargs:
+            raise ValueError(
+                "env_name must be specified when repo_id is not specified",
+            )
+        if "organization" not in loader_kwargs:
+            raise ValueError(
+                "organization must be specified when repo_id is not specified",
+            )
+        if len(rollout_type.split("-")) != 2:
+            raise ValueError(
+                "rollout_type must be of the form {algo}-huggingface",
+            )
+        algo_name = rollout_type.split("-")[0]
+        model_name = hfsb3.ModelName(
+            algo_name,
+            hfsb3.EnvironmentName(loader_kwargs.pop("env_name")),
+        )
+        repo_id = hfsb3.ModelRepoId(loader_kwargs.pop("organization"), model_name)
+
+    if "split" not in loader_kwargs:
+        loader_kwargs["split"] = "train"
+
     logger.info(f"Loading expert trajectories from {repo_id}")
-    dataset = datasets.load_dataset(repo_id)["train"]
+    dataset = datasets.load_dataset(repo_id, **loader_kwargs)
     return huggingface_utils.TrajectoryDatasetSequence(dataset)
