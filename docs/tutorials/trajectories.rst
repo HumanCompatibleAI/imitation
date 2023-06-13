@@ -103,7 +103,7 @@ To use a public dataset from the HuggingFace Dataset Hub, you can use the follow
     from imitation.data.huggingface_utils import TrajectoryDatasetSequence
 
     your_dataset = datasets.load_dataset("your_hf_name/your_dataset_name")
-    your_trajectories = TrajectoryDatasetSequence(your_dataset)
+    your_trajectories = TrajectoryDatasetSequence(your_dataset["train"])
 
 The :class:`TrajectoryDatasetSequence <imitation.data.huggingface_utils.TrajectoryDatasetSequence>`
 wraps a HuggingFace dataset so it can be used in the same way as a list of trajectories.
