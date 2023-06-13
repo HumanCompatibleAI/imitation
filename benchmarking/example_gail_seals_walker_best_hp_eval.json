@@ -6,7 +6,8 @@
   },
   "checkpoint_interval": 0,
   "demonstrations": {
-    "rollout_type": "ppo-huggingface",
+    "rollout_type": "huggingface",
+    "algo_name": "ppo",
     "n_expert_demos": null
   },
   "expert": {

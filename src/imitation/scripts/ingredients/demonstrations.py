@@ -1,7 +1,6 @@
 """Ingredient for scripts learning from demonstrations."""
 
 import logging
-import warnings
 from typing import Any, Dict, Optional, Sequence
 
 import datasets
@@ -26,11 +25,26 @@ logger = logging.getLogger(__name__)
 
 @demonstrations_ingredient.config
 def config():
+    # Either "local" or "huggingface" or "generated".
     rollout_type = "local"
-    # path to file containing rollouts. If rollout_path is None
-    # and rollout_type is local, they are sampled from the expert.
+
+    # local path or huggingface repo id to load rollouts from.
     rollout_path = None
-    n_expert_demos = None  # Num demos used or sampled. None loads every demo possible.
+
+    # passed to `datasets.load_dataset` if `rollout_type` is "huggingface"
+    loader_kwargs: Dict[str, Any] = dict(
+        organization="HumanCompatibleAI",
+        split="train",
+    )
+
+    # Used to deduce HuggingFace repo id if rollout_path is None
+    organization = "HumanCompatibleAI"
+
+    # Used to deduce HuggingFace repo id if rollout_path is None
+    algo_name = "ppo"
+
+    # Num demos used or sampled. None loads every demo possible.
+    n_expert_demos = None
     locals()  # quieten flake8
 
 
@@ -60,29 +74,24 @@ def get_expert_trajectories(
     Raises:
         ValueError: if `rollout_type` is not "local" or of the form {algo}-huggingface.
     """
-    is_local_rollouts = rollout_type == "local"
-    is_huggingface_rollouts = rollout_type.endswith("huggingface")
-    is_rollout_path_set = rollout_path is not None
-
-    if not (is_local_rollouts or is_huggingface_rollouts):
+    if rollout_type not in ["local", "huggingface", "generated"]:
         raise ValueError(
-            "`rollout_type` can either be `local` or of the form `{algo}-huggingface`.",
+            "`rollout_type` can either be `local` or `huggingface` or `generated`.",
         )
 
-    if is_huggingface_rollouts and is_rollout_path_set:
-        warnings.warn(
-            "Ignoring `rollout_path` since `rollout_type` is set to download the "
-            "rollouts from the huggingface-hub. If you want to load the rollouts "
-            'from disk, set `rollout_type`="local" and the path in `rollout_path`.',
-            RuntimeWarning,
-        )
-
-    if is_huggingface_rollouts:
-        return _constrain_number_of_demos(_download_expert_rollouts(rollout_type))
-    if is_local_rollouts and is_rollout_path_set:
-        logger.info(f"Loading expert trajectories from '{rollout_path}'")
+    if rollout_type == "local":
+        if rollout_path is None:
+            raise ValueError(
+                "When rollout_type is 'local', rollout_path must be set.",
+            )
         return _constrain_number_of_demos(serialize.load(rollout_path))
-    else:
+
+    if rollout_type == "huggingface":
+        return _constrain_number_of_demos(_download_expert_rollouts())
+
+    if rollout_type == "generated":
+        if rollout_path is not None:
+            logger.warning("Ignoring rollout_path when rollout_type is 'generated'")
         return _generate_expert_trajs()
 
 
@@ -141,32 +150,21 @@ def _generate_expert_trajs(
         )
 
 
-@demonstrations_ingredient.capture(prefix="expert")
-def _download_expert_rollouts(rollout_type: str, loader_kwargs: Dict[str, Any]):
-    if "repo_id" in loader_kwargs:
-        repo_id = loader_kwargs.pop("repo_id")
+@demonstrations_ingredient.capture
+def _download_expert_rollouts(
+        environment: Dict[str, Any],
+        rollout_path: Optional[str],
+        organization: Optional[str],
+        algo_name: Optional[str],
+        loader_kwargs: Dict[str, Any]):
+    if rollout_path is not None:
+        repo_id = rollout_path
     else:
-        if "env_name" not in loader_kwargs:
-            raise ValueError(
-                "env_name must be specified when repo_id is not specified",
-            )
-        if "organization" not in loader_kwargs:
-            raise ValueError(
-                "organization must be specified when repo_id is not specified",
-            )
-        if len(rollout_type.split("-")) != 2:
-            raise ValueError(
-                "rollout_type must be of the form {algo}-huggingface",
-            )
-        algo_name = rollout_type.split("-")[0]
         model_name = hfsb3.ModelName(
             algo_name,
-            hfsb3.EnvironmentName(loader_kwargs.pop("env_name")),
+            hfsb3.EnvironmentName(environment["gym_id"]),
         )
-        repo_id = hfsb3.ModelRepoId(loader_kwargs.pop("organization"), model_name)
-
-    if "split" not in loader_kwargs:
-        loader_kwargs["split"] = "train"
+        repo_id = hfsb3.ModelRepoId(organization, model_name)
 
     logger.info(f"Loading expert trajectories from {repo_id}")
     dataset = datasets.load_dataset(repo_id, **loader_kwargs)

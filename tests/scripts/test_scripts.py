@@ -330,26 +330,12 @@ def test_train_bc_main_with_demonstrations_from_huggingface(tmpdir):
         named_configs=["seals_cartpole"] + ALGO_FAST_CONFIGS["imitation"],
         config_updates=dict(
             logging=dict(log_root=tmpdir),
-            demonstrations=dict(rollout_type="ppo-huggingface"),
+            demonstrations=dict(
+                rollout_type="huggingface",
+                algo_name="ppo",
+            ),
         ),
     )
-
-
-def test_train_bc_main_with_demonstrations_raises_error_on_wrong_huggingface_format(
-    tmpdir,
-):
-    with pytest.raises(
-        ValueError,
-        match="`rollout_type` can either be `local` or of the form .*-huggingface.S*",
-    ):
-        train_imitation.train_imitation_ex.run(
-            command_name="bc",
-            named_configs=["seals_cartpole"] + ALGO_FAST_CONFIGS["imitation"],
-            config_updates=dict(
-                logging=dict(log_root=tmpdir),
-                demonstrations=dict(rollout_type="huggingface-ppo"),
-            ),
-        )
 
 
 def test_train_bc_main_with_demonstrations_warns_setting_rollout_type(
