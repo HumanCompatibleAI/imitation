@@ -26,11 +26,12 @@ corresponding policy loader.
 
 .. code-block:: python
 
+    import numpy as np
     from imitation.policies.serialize import load_policy
     from imitation.util import util
 
-    venv = util.make_vec_env("your-env", n_envs=4)
-    local_policy = load_policy("ppo", venv, loader_kwargs={"path": "path/to/model.zip"})
+    venv = util.make_vec_env("your-env", n_envs=4, rng=np.random.default_rng())
+    local_policy = load_policy("ppo", venv, path="path/to/model.zip")
 
 To load a policy from disk, use either `ppo` or `sac` as the policy type.
 The path is specified by `path` in the `loader_kwargs` and it should either point
@@ -61,15 +62,15 @@ When using the Python API, you also have to specify the environment name as `env
 
 .. code-block:: python
 
+    import numpy as np
     from imitation.policies.serialize import load_policy
     from imitation.util import util
 
-    venv = util.make_vec_env("your-env", n_envs=4)
+    venv = util.make_vec_env("your-env", n_envs=4, rng=np.random.default_rng())
     remote_policy = load_policy(
         "ppo-huggingface",
-        loader_kwargs=dict(
-            organization="your-org",
-            env_name="your-env"
+        organization="your-org",
+        env_name="your-env"
         )
     )
 

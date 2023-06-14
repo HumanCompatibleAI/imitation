@@ -1,6 +1,5 @@
 """Helpers to convert between Trajectories and HuggingFace's datasets library."""
-import functools
-from typing import Any, Dict, Iterable, Sequence, cast
+from typing import Any, Dict, Iterable, Optional, Sequence, cast
 
 import datasets
 import jsonpickle
@@ -10,7 +9,7 @@ from imitation.data import types
 
 
 class TrajectoryDatasetSequence(Sequence[types.Trajectory]):
-    """A wrapper to present a HF dataset as a sequence of trajectories.
+    """A wrapper to present an HF dataset as a sequence of trajectories.
 
     Converts the dataset to a sequence of trajectories on the fly.
     """
@@ -34,19 +33,12 @@ class TrajectoryDatasetSequence(Sequence[types.Trajectory]):
     def __getitem__(self, idx):
 
         if isinstance(idx, slice):
-            dataslice = self._dataset[idx]
-
-            # Extract the trajectory kwargs from the dataset slice
-            trajectory_kwargs = [
-                {key: dataslice[key][i] for key in dataslice}
-                for i in range(len(dataslice["obs"]))
-            ]
-
-            # Ensure that the infos are decoded lazily using jsonpickle
-            for kwargs in trajectory_kwargs:
-                kwargs["infos"] = _LazyDecodedList(kwargs["infos"])
-
-            return [self._trajectory_class(**kwargs) for kwargs in trajectory_kwargs]
+            # Note: we could use self._dataset[idx] here and then convert the result of
+            #   that to a series of trajectories, but if we do that, we run into trouble
+            #   with the custom numpy transform that we apply in the constructor.
+            #   The transform is applied to the whole slice, which might contain
+            #   trajectories of different lengths which is not supported by numpy.
+            return [self[i] for i in range(*idx.indices(len(self)))]
         else:
             # Extract the trajectory kwargs from the dataset
             kwargs = self._dataset[idx]
@@ -55,6 +47,15 @@ class TrajectoryDatasetSequence(Sequence[types.Trajectory]):
             kwargs["infos"] = _LazyDecodedList(kwargs["infos"])
 
             return self._trajectory_class(**kwargs)
+
+    @property
+    def dataset(self):
+        """Return the underlying HF dataset."""
+        # Note: since we apply the custom numpy transform in the constructor, we remove
+        #   it again before returning the dataset. This ensures that the dataset is
+        #   returned in the original format and can be saved to disk
+        #   (the custom transform can not be saved to disk since it is not pickleable).
+        return self._dataset.with_transform(None)
 
 
 class _LazyDecodedList(Sequence[Any]):
@@ -67,56 +68,18 @@ class _LazyDecodedList(Sequence[Any]):
 
     def __init__(self, encoded_list: Sequence[str]):
         self._encoded_list = encoded_list
+        self._decoded_cache: Dict[int, Any] = {}
 
     def __len__(self):
         return len(self._encoded_list)
 
-    # arbitrary cache size just to put a limit on memory usage
-    @functools.lru_cache(maxsize=100000)
     def __getitem__(self, idx):
         if isinstance(idx, slice):
-            return [jsonpickle.decode(info) for info in self._encoded_list[idx]]
+            return [self[i] for i in range(*idx.indices(len(self)))]
         else:
-            return jsonpickle.decode(self._encoded_list[idx])
-
-
-def make_dict_from_trajectory(trajectory: types.Trajectory):
-    """Convert a Trajectory to a dict.
-
-    The dict has the following fields:
-    * obs: The observations. Shape: (num_timesteps, obs_dim). dtype: float.
-    * acts: The actions. Shape: (num_timesteps, act_dim). dtype: float.
-    * infos: The infos. Shape: (num_timesteps, ). dtype: (jsonpickled) str.
-    * terminal: The terminal flags. Shape: (num_timesteps, ). dtype: bool.
-    * rews: The rewards. Shape: (num_timesteps, ). dtype: float. if applicable.
-
-    Args:
-        trajectory: The trajectory to convert.
-
-    Returns:
-        A dict representing the trajectory.
-    """
-    # Replace 'None' values for `infos`` with array of empty dicts
-    infos = cast(
-        Sequence[Dict[str, Any]],
-        trajectory.infos if trajectory.infos is not None else [{}] * len(trajectory),
-    )
-
-    # Encode infos as jsonpickled strings
-    encoded_infos = [jsonpickle.encode(info) for info in infos]
-
-    trajectory_dict = dict(
-        obs=trajectory.obs,
-        acts=trajectory.acts,
-        infos=encoded_infos,
-        terminal=trajectory.terminal,
-    )
-
-    # Add rewards if applicable
-    if isinstance(trajectory, types.TrajectoryWithRew):
-        trajectory_dict["rews"] = trajectory.rews
-
-    return trajectory_dict
+            if idx not in self._decoded_cache:
+                self._decoded_cache[idx] = jsonpickle.decode(self._encoded_list[idx])
+            return self._decoded_cache[idx]
 
 
 def trajectories_to_dict(
@@ -174,3 +137,14 @@ def trajectories_to_dict(
             cast(types.TrajectoryWithRew, traj).rews for traj in trajectories
         ]
     return trajectory_dict
+
+
+def trajectories_to_dataset(
+    trajectories: Sequence[types.Trajectory],
+    info: Optional[datasets.DatasetInfo] = None,
+) -> datasets.Dataset:
+    """Convert a sequence of trajectories to a HuggingFace dataset."""
+    if isinstance(trajectories, TrajectoryDatasetSequence):
+        return trajectories.dataset
+    else:
+        return datasets.Dataset.from_dict(trajectories_to_dict(trajectories), info=info)
