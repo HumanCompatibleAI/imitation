@@ -71,7 +71,7 @@ def get_expert_trajectories(
         The expert trajectories.
 
     Raises:
-        ValueError: if `type` is not "local" or of the form {algo}-huggingface.
+        ValueError: if `type` is not in ["local", "huggingface", "generated"].
     """
     if type == "local":
         if path is None:
@@ -136,7 +136,7 @@ def _generate_expert_trajs(
         ValueError: If n_expert_demos is None.
     """
     if n_expert_demos is None:
-        raise ValueError("n_expert_demos must be specified when path is None")
+        raise ValueError("n_expert_demos must be specified when generating demos.")
 
     logger.info(f"Generating {n_expert_demos} expert trajectories")
     with environment.make_rollout_venv() as rollout_env:
