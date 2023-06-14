@@ -313,7 +313,7 @@ def test_train_dagger_warmstart(tmpdir):
 
 
 def test_train_bc_main_with_none_demonstrations_raises_value_error(tmpdir):
-    with pytest.raises(ValueError, match="When type is 'local', path must be set."):
+    with pytest.raises(ValueError, match="n_expert_demos must be specified"):
         train_imitation.train_imitation_ex.run(
             command_name="bc",
             named_configs=["seals_cartpole"] + ALGO_FAST_CONFIGS["imitation"],
