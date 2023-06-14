@@ -199,7 +199,7 @@ def test_train_preference_comparisons_sac(tmpdir):
 
     # Make sure rl.sac named_config is called after rl.fast to overwrite
     # rl_kwargs.batch_size to None
-    with pytest.raises(Exception, match=".*set 'batch_size' at top-level.*"):
+    with pytest.raises(Exception, match="set 'batch_size' at top-level"):
         train_preference_comparisons.train_preference_comparisons_ex.run(
             named_configs=["pendulum"]
             + RL_SAC_NAMED_CONFIGS
@@ -233,9 +233,9 @@ def test_train_preference_comparisons_sac_reward_relabel(tmpdir):
     assert run.status == "COMPLETED"
     del run
 
-    with pytest.raises(AssertionError, match=".*only ReplayBuffer is supported.*"):
+    with pytest.raises(AssertionError, match="only ReplayBuffer is supported"):
         _run_reward_relabel_sac_preference_comparisons(buffers.DictReplayBuffer)
-    with pytest.raises(AssertionError, match=".*only ReplayBuffer is supported.*"):
+    with pytest.raises(AssertionError, match="only ReplayBuffer is supported"):
         _run_reward_relabel_sac_preference_comparisons(HerReplayBuffer)
 
 
@@ -427,7 +427,7 @@ def test_train_rl_main(tmpdir, rl_train_ppo_config):
 
 def test_train_rl_wb_logging(tmpdir):
     """Smoke test for imitation.scripts.ingredients.logging.wandb_logging."""
-    with pytest.raises(Exception, match=".*api_key not configured.*"):
+    with pytest.raises(Exception, match="api_key not configured"):
         train_rl.train_rl_ex.run(
             named_configs=["cartpole"]
             + ALGO_FAST_CONFIGS["rl"]
@@ -597,7 +597,7 @@ def test_train_adversarial_algorithm_value_error(tmpdir):
         },
     )
 
-    with pytest.raises(TypeError, match=".*BAD_VALUE.*"):
+    with pytest.raises(TypeError, match="BAD_VALUE"):
         train_adversarial.train_adversarial_ex.run(
             command_name="gail",
             named_configs=base_named_configs,
@@ -606,7 +606,7 @@ def test_train_adversarial_algorithm_value_error(tmpdir):
             ),
         )
 
-    with pytest.raises(FileNotFoundError, match=".*BAD_VALUE.*"):
+    with pytest.raises(FileNotFoundError, match="BAD_VALUE"):
         train_adversarial.train_adversarial_ex.run(
             command_name="gail",
             named_configs=base_named_configs,
@@ -616,7 +616,7 @@ def test_train_adversarial_algorithm_value_error(tmpdir):
         )
 
     n_traj = 1234567
-    with pytest.raises(ValueError, match=f".*{n_traj}.*"):
+    with pytest.raises(ValueError, match=f"{n_traj}"):
         train_adversarial.train_adversarial_ex.run(
             command_name="gail",
             named_configs=base_named_configs,
@@ -738,7 +738,7 @@ def test_train_rl_double_normalization(tmpdir: str, rng):
     log_dir_data = os.path.join(tmpdir, "train_rl")
     with pytest.warns(
         RuntimeWarning,
-        match=r"Applying normalization to already normalized reward function.*",
+        match=r"Applying normalization to already normalized reward function",
     ):
         train_rl.train_rl_ex.run(
             named_configs=["cartpole"] + ALGO_FAST_CONFIGS["rl"],
@@ -825,24 +825,24 @@ def test_parallel_arg_errors(tmpdir):
     config_updates.setdefault("base_config_updates", {})["logging.log_root"] = tmpdir
     config_updates = collections.ChainMap(config_updates)
 
-    with pytest.raises(TypeError, match=".*Sequence.*"):
+    with pytest.raises(TypeError, match="Sequence"):
         parallel.parallel_ex.run(
             config_updates=config_updates.new_child(dict(base_named_configs={})),
         )
 
-    with pytest.raises(TypeError, match=".*Mapping.*"):
+    with pytest.raises(TypeError, match="Mapping"):
         parallel.parallel_ex.run(
             config_updates=config_updates.new_child(dict(base_config_updates=())),
         )
 
-    with pytest.raises(TypeError, match=".*Sequence.*"):
+    with pytest.raises(TypeError, match="Sequence"):
         parallel.parallel_ex.run(
             config_updates=config_updates.new_child(
                 dict(search_space={"named_configs": {}}),
             ),
         )
 
-    with pytest.raises(TypeError, match=".*Mapping.*"):
+    with pytest.raises(TypeError, match="Mapping"):
         parallel.parallel_ex.run(
             config_updates=config_updates.new_child(
                 dict(search_space={"config_updates": ()}),
