@@ -144,7 +144,7 @@ def parallel(
                         upload_dir=upload_dir,
                         syncer=syncer,
                     ),
-                    metric="mean_return",
+                    metric=return_key,
                     resume=True,
                 )
                 print(
