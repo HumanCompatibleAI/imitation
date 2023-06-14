@@ -26,12 +26,12 @@ logger = logging.getLogger(__name__)
 @demonstrations_ingredient.config
 def config():
     # Either "local" or "huggingface" or "generated".
-    type = "generated"
+    source = "generated"
 
     # local path or huggingface repo id to load rollouts from.
     path = None
 
-    # passed to `datasets.load_dataset` if `type` is "huggingface"
+    # passed to `datasets.load_dataset` if `source` is "huggingface"
     loader_kwargs: Dict[str, Any] = dict(
         split="train",
     )
@@ -56,40 +56,40 @@ def fast():
 
 @demonstrations_ingredient.capture
 def get_expert_trajectories(
-    type: str,
+    source: str,
     path: str,
 ) -> Sequence[types.Trajectory]:
     """Loads expert demonstrations.
 
     Args:
-        type: Can be either `local` to load rollouts from the disk or to
-            generate them locally or of the format `{algo}-huggingface` to load
-            from the huggingface hub of expert trained using `{algo}`.
-        path: A path containing a pickled sequence of `types.Trajectory`.
+        source: Can be either `local` to load rollouts from the disk,
+            `huggingface` to load from the HuggingFace hub or
+            `generated` to generate the expert trajectories.
+        path: A path containing a pickled sequence of `sources.Trajectory`.
 
     Returns:
         The expert trajectories.
 
     Raises:
-        ValueError: if `type` is not in ["local", "huggingface", "generated"].
+        ValueError: if `source` is not in ["local", "huggingface", "generated"].
     """
-    if type == "local":
+    if source == "local":
         if path is None:
             raise ValueError(
-                "When type is 'local', path must be set.",
+                "When source is 'local', path must be set.",
             )
         return _constrain_number_of_demos(serialize.load(path))
 
-    if type == "huggingface":
+    if source == "huggingface":
         return _constrain_number_of_demos(_download_expert_rollouts())
 
-    if type == "generated":
+    if source == "generated":
         if path is not None:
-            logger.warning("Ignoring path when type is 'generated'")
+            logger.warning("Ignoring path when source is 'generated'")
         return _generate_expert_trajs()
 
     raise ValueError(
-        "`type` can either be `local` or `huggingface` or `generated`.",
+        "`source` can either be `local` or `huggingface` or `generated`.",
     )
 
 

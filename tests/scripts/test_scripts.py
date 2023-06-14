@@ -331,7 +331,7 @@ def test_train_bc_main_with_demonstrations_from_huggingface(tmpdir):
         config_updates=dict(
             logging=dict(log_root=tmpdir),
             demonstrations=dict(
-                type="huggingface",
+                source="huggingface",
                 algo_name="ppo",
             ),
         ),
@@ -549,7 +549,7 @@ def test_train_adversarial_warmstart(tmpdir, command):
     named_configs = ["cartpole"] + ALGO_FAST_CONFIGS["adversarial"]
     config_updates = {
         "logging": dict(log_root=tmpdir),
-        "demonstrations": dict(path=CARTPOLE_TEST_ROLLOUT_PATH, type="local"),
+        "demonstrations": dict(path=CARTPOLE_TEST_ROLLOUT_PATH, source="local"),
     }
     run = train_adversarial.train_adversarial_ex.run(
         command_name=command,
@@ -601,7 +601,7 @@ def test_train_adversarial_algorithm_value_error(tmpdir):
     base_config_updates = collections.ChainMap(
         {
             "logging": dict(log_root=tmpdir),
-            "demonstrations": dict(path=CARTPOLE_TEST_ROLLOUT_PATH, type="local"),
+            "demonstrations": dict(path=CARTPOLE_TEST_ROLLOUT_PATH, source="local"),
         },
     )
 
