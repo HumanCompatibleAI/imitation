@@ -150,11 +150,12 @@ def _generate_expert_trajs(
 
 @demonstrations_ingredient.capture
 def _download_expert_rollouts(
-        environment: Dict[str, Any],
-        path: Optional[str],
-        organization: Optional[str],
-        algo_name: Optional[str],
-        loader_kwargs: Dict[str, Any]):
+    environment: Dict[str, Any],
+    path: Optional[str],
+    organization: Optional[str],
+    algo_name: Optional[str],
+    loader_kwargs: Dict[str, Any],
+):
     if path is not None:
         repo_id = path
     else:
