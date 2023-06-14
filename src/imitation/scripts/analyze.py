@@ -272,40 +272,43 @@ def analyze_imitation(
         The DataFrame generated from the Sacred logs.
     """
     if table_verbosity == 3:
+        # Get column names for which we have get value using make_entry_fn
+        # These are same across Level 2 & 3. In Level 3, we additionally add remaining
+        #  config columns.
         table_entry_fns_subset = _get_table_entry_fns_subset(2)
     else:
         table_entry_fns_subset = _get_table_entry_fns_subset(table_verbosity)
 
-    df = pd.DataFrame()
+    output_table = pd.DataFrame()
     for sd in _gather_sacred_dicts():
-        new_df = pd.DataFrame()
-        if table_verbosity == -1:
+        if table_verbosity == 3:
             # gets all config columns
-            new_df = pd.json_normalize(sd.config)
+            row = pd.json_normalize(sd.config)
         else:
-            new_df = new_df.append({}, ignore_index=True)
+            # create an empty dataframe with a single row
+            row = pd.DataFrame(index=[0])
 
         for col_name, make_entry_fn in table_entry_fns_subset.items():
-            new_df[col_name] = make_entry_fn(sd)
+            row[col_name] = make_entry_fn(sd)
 
-        df = pd.concat([df, new_df])
+        output_table = pd.concat([output_table, row])
 
-    if len(df) > 0:
-        df.sort_values(by=["algo", "env_name"], inplace=True)
+    if len(output_table) > 0:
+        output_table.sort_values(by=["algo", "env_name"], inplace=True)
 
     display_options: Mapping[str, Any] = dict(index=False)
     if csv_output_path is not None:
-        df.to_csv(csv_output_path, **display_options)
+        output_table.to_csv(csv_output_path, **display_options)
         print(f"Wrote CSV file to {csv_output_path}")
     if tex_output_path is not None:
-        s: str = df.to_latex(**display_options)
+        s: str = output_table.to_latex(**display_options)
         with open(tex_output_path, "w") as f:
             f.write(s)
         print(f"Wrote TeX file to {tex_output_path}")
 
     if print_table:
-        print(df.to_string(**display_options))
-    return df
+        print(output_table.to_string(**display_options))
+    return output_table
 
 
 def _make_return_summary(stats: dict, prefix="") -> str:

@@ -76,7 +76,6 @@ def bc(
     expert_stats = _try_computing_expert_stats(expert_trajs)
     if expert_stats is not None:
         stats["expert_stats"] = expert_stats
-    stats["mean_return"] = imit_stats["monitor_return_mean"]
     return stats
 
 

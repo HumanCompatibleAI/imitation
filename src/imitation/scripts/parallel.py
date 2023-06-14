@@ -127,6 +127,12 @@ def parallel(
 
     ray.init(**init_kwargs)
     search_alg = search.Repeater(optuna.OptunaSearch(), repeat=repeat)
+
+    if sacred_ex_name == "train_rl":
+        return_key = "monitor_return_mean"
+    else:
+        return_key = "imit_stats/monitor_return_mean"
+
     try:
         if experiment_checkpoint_path:
             if resume:
@@ -173,10 +179,9 @@ def parallel(
                     syncer=syncer,
                 ),
                 search_alg=search_alg,
-                metric="mean_return",
+                metric=return_key,
                 mode="max",
             )
-        key = "mean_return"
         if eval_best_trial:
             df = result.results_df
             df = df[df["config/named_configs"].notna()]
@@ -190,7 +195,7 @@ def parallel(
             ]
             grps = df.groupby(grp_keys)
             # store mean return of runs across all seeds in a group
-            df["mean_return"] = grps[key].transform(lambda x: x.mean())
+            df["mean_return"] = grps[return_key].transform(lambda x: x.mean())
             best_config_df = df[df["mean_return"] == df["mean_return"].max()]
             row = best_config_df.iloc[0]
             best_config_tag = row["experiment_tag"]
@@ -200,20 +205,25 @@ def parallel(
                 ][0]
                 best_config = trial.config
                 print("Mean return:", row["mean_return"])
-                print("All returns:", df[df["mean_return"] == row["mean_return"]][key])
+                print(
+                    "All returns:",
+                    df[df["mean_return"] == row["mean_return"]][return_key],
+                )
                 print("Total seeds:", (df["mean_return"] == row["mean_return"]).sum())
                 best_config["config_updates"].update(
                     seed=ray.tune.grid_search(list(range(100, 100 + eval_trial_seeds))),
                 )
+
+                resources_per_trial_eval = copy.deepcopy(resources_per_trial)
                 # update cpus per trial only if it is provided in `resources_per_trial`
                 # Uses the default values (cpu=1) if it is not provided
                 if "cpu" in resources_per_trial:
-                    resources_per_trial_eval = copy.deepcopy(resources_per_trial)
+
                     resources_per_trial_eval[
                         "cpu"
                     ] *= eval_best_trial_resource_multiplier
                     best_config["config_updates"].update(
-                        environment=dict(num_vec=resources_per_trial["cpu"]),
+                        environment=dict(num_vec=resources_per_trial_eval["cpu"]),
                     )
 
                 eval_result = ray.tune.run(
@@ -224,9 +234,9 @@ def parallel(
                         "command_name": best_config.get("command_name", None),
                     },
                     name=run_name + "_best_hp_eval",
-                    resources_per_trial=resources_per_trial,
+                    resources_per_trial=resources_per_trial_eval,
                 )
-                returns = eval_result.results_df["mean_return"].to_numpy()
+                returns = eval_result.results_df[return_key].to_numpy()
                 print("All returns:", returns)
                 print("Mean:", np.mean(returns))
                 print("Std:", np.std(returns))

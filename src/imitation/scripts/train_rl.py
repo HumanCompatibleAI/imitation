@@ -159,7 +159,6 @@ def train_rl(
 
         # Final evaluation of expert policy.
         eval_stats = policy_evaluation.eval_policy(rl_algo, venv)
-        eval_stats["mean_return"] = eval_stats["monitor_return_mean"]
         return eval_stats
 
 

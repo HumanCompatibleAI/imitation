@@ -167,7 +167,6 @@ def train_adversarial(
     return {
         "imit_stats": imit_stats,
         "expert_stats": rollout.rollout_stats(expert_trajs),
-        "mean_return": imit_stats["monitor_return_mean"],
     }
 
 
