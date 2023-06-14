@@ -356,9 +356,12 @@ def bc_config(tmpdir, request):
         random_expert=dict(policy_type="random"),
         zero_expert=dict(policy_type="zero"),
     )[request.param]
+    # Note: The stored expert, that we have is for the normal cartpole environment while the expert from huggingface is
+    # for the seals cartpole environment.
+    environment_named_config = "cartpole" if request.param == "expert_from_path" else "seals_cartpole"
     return dict(
         command_name="bc",
-        named_configs=["seals_cartpole"] + ALGO_FAST_CONFIGS["imitation"],
+        named_configs=[environment_named_config] + ALGO_FAST_CONFIGS["imitation"],
         config_updates=dict(
             logging=dict(log_root=tmpdir),
             expert=expert_config,
