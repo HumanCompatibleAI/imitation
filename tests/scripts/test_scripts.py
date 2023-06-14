@@ -347,18 +347,23 @@ def test_train_bc_main_with_demonstrations_from_huggingface(tmpdir):
     ],
 )
 def bc_config(tmpdir, request):
-    expert_config = dict(
-        expert_from_path=dict(
+    environment_named_config = "seals_cartpole"
+
+    if request.param == "expert_from_path":
+        expert_config = dict(
             policy_type="ppo",
             loader_kwargs=dict(path=CARTPOLE_TEST_POLICY_PATH / "model.zip"),
-        ),
-        expert_from_huggingface=dict(policy_type="ppo-huggingface"),
-        random_expert=dict(policy_type="random"),
-        zero_expert=dict(policy_type="zero"),
-    )[request.param]
-    # Note: The stored expert, that we have is for the normal cartpole environment while the expert from huggingface is
-    # for the seals cartpole environment.
-    environment_named_config = "cartpole" if request.param == "expert_from_path" else "seals_cartpole"
+        )
+        # Note: we don't have a seals_cartpole expert in our testdata folder,
+        # so we use the cartpole environment in this case.
+        environment_named_config = "cartpole"
+    elif request.param == "expert_from_huggingface":
+        expert_config = dict(policy_type="ppo-huggingface")
+    elif request.param == "random_expert":
+        expert_config = dict(policy_type="random")
+    elif request.param == "zero_expert":
+        expert_config = dict(policy_type="zero")
+
     return dict(
         command_name="bc",
         named_configs=[environment_named_config] + ALGO_FAST_CONFIGS["imitation"],
