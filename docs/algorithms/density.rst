@@ -4,6 +4,13 @@
 Density-based reward modeling
 =============================
 
+Density-based reward modeling is an inverse reinforcement learning (IRL) technique
+that eliminates the need for explicit rewards by assigning higher rewards to states or state-action pairs
+that occur more frequently in the expert's behavior.
+This variant leverages kernel density estimation to model the underlying distribution of expert demonstrations,
+enabling the generation of a reward model that captures the expert's preferences solely based on their observed
+behavior.
+
 Example
 =======
 
