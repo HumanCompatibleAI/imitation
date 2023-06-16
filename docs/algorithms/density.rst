@@ -11,6 +11,13 @@ This variant leverages kernel density estimation to model the underlying distrib
 enabling the generation of a reward model that captures the expert's preferences solely based on their observed
 behavior.
 
+The key intuition is that the expert prefers state-action pairs that occur more frequently,
+so a reward function based on density will incentivize the agent to take similar actions as the expert.
+The pros of this method are that it is simple and model-free.
+The cons are that it assumes the density is an indicator of reward, which may not always be true.
+It also does not provide a interpretable reward function.
+Also, the kernel density estimation is not suited for high-dimensional state-action spaces.
+
 Example
 =======
 
