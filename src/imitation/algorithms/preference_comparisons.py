@@ -788,21 +788,19 @@ class PreferenceQuerent:
 
     def __init__(
         self,
-        rng: Optional[np.random.Generator] = None,
         custom_logger: Optional[imit_logger.HierarchicalLogger] = None,
     ) -> None:
         """Initializes the preference querent.
 
         Args:
-            rng: random number generator, if applicable.
             custom_logger: Where to log to; if None (default), creates a new logger.
         """
-        del rng
         self.logger = custom_logger or imit_logger.configure()
 
     def __call__(
-        self, queries: Sequence[TrajectoryWithRewPair],
-    ) -> Dict[str, Sequence[TrajectoryWithRewPair]]:
+        self,
+        queries: Sequence[TrajectoryWithRewPair],
+    ) -> Dict[str, TrajectoryWithRewPair]:
         """Queries the user for their preferences.
 
         This dummy implementation does nothing because by default the queries are
@@ -823,8 +821,8 @@ class PrefCollectQuerent(PreferenceQuerent):
     def __init__(
         self,
         pref_collect_address: str,
-        video_output_dir: AnyPath,
-        video_fps: str = 20,
+        video_output_dir: str,
+        video_fps: int = 20,
         rng: Optional[np.random.Generator] = None,
         custom_logger: Optional[imit_logger.HierarchicalLogger] = None,
     ):
@@ -847,14 +845,16 @@ class PrefCollectQuerent(PreferenceQuerent):
         os.makedirs(self.video_output_dir, exist_ok=True)
 
     def __call__(
-        self, queries: Sequence[TrajectoryWithRewPair],
-    ) -> Dict[str, Sequence[TrajectoryWithRewPair]]:
+        self,
+        queries: Sequence[TrajectoryWithRewPair],
+    ) -> Dict[str, TrajectoryWithRewPair]:
         identified_queries = super().__call__(queries)
 
         # Save fragment videos and submit queries
         for query_id, query in identified_queries.items():
             output_file_name = os.path.join(
-                self.video_output_dir, f"{query_id}" + "{}.webm"
+                self.video_output_dir,
+                f"{query_id}" + "{}.webm",
             )
             write_fragment_video(
                 query[0],
@@ -872,11 +872,12 @@ class PrefCollectQuerent(PreferenceQuerent):
 
     def _query(self, query_id):
         requests.put(
-            self.query_endpoint + query_id, json={"uuid": "{}".format(query_id)},
+            self.query_endpoint + query_id,
+            json={"uuid": "{}".format(query_id)},
         )
 
 
-def write_fragment_video(fragment, frames_per_second: int, output_path: str) -> None:
+def write_fragment_video(fragment: TrajectoryWithRew, frames_per_second: int, output_path: AnyPath) -> None:
     """Write fragment video clip."""
     frame_shape = get_frame_shape(fragment)
     video_writer = cv2.VideoWriter(
@@ -887,16 +888,18 @@ def write_fragment_video(fragment, frames_per_second: int, output_path: str) -> 
     )
 
     # Make videos from rendered observations if available
-    if "rendered_img" in fragment.infos[0]:
-        frames = []
+    frames: np.ndarray
+    if fragment.infos is not None and "rendered_img" in fragment.infos[0]:
+        frames_list = []
         for i in range(len(fragment.infos)):
             frame_info = fragment.infos[i]["rendered_img"]
             # If path is provided load cached image
-            if isinstance(frame_info, AnyPath.__args__):
+            if isinstance(frame_info, (str, bytes, os.PathLike)):
                 frame = np.load(frame_info)
             elif isinstance(frame_info, np.ndarray):
                 frame = frame_info
-            frames.append(frame)
+            frames_list.append(frame)
+        frames = np.array(frames_list)
     else:
         frames = fragment.obs
 
@@ -905,7 +908,8 @@ def write_fragment_video(fragment, frames_per_second: int, output_path: str) -> 
         if frame.shape[-1] < 3:
             missing_channels = 3 - frame.shape[-1]
             frame = np.concatenate(
-                [frame] + missing_channels * [frame[..., -1][..., None]], axis=-1
+                [frame] + missing_channels * [frame[..., -1][..., None]],
+                axis=-1,
             )
         video_writer.write(cv2.cvtColor(frame, cv2.COLOR_RGB2BGR))
 
@@ -914,20 +918,20 @@ def write_fragment_video(fragment, frames_per_second: int, output_path: str) -> 
 
 def get_frame_shape(fragment: TrajectoryWithRew) -> Tuple[int, int]:
     """Calculate frame shape."""
-    if "rendered_img" in fragment.infos[0]:
+    if fragment.infos is not None and "rendered_img" in fragment.infos[0]:
         rendered_img_info = fragment.infos[0]["rendered_img"]
         # If path is provided load cached image
-        if isinstance(rendered_img_info, AnyPath.__args__):
+        if isinstance(rendered_img_info, (str, bytes, os.PathLike)):
             single_frame = np.load(rendered_img_info)
         else:
             single_frame = rendered_img_info
     else:
         single_frame = np.array(fragment.obs[0])
-        # Check whether obervations are image-like
+        # Check whether observations are image-like
         if len(single_frame.shape) < 2:
             raise ValueError(
                 "Observation must be an image, "
-                f"but shape {single_frame.shape} has too few dimensions!"
+                f"but shape {single_frame.shape} has too few dimensions!",
             )
     # Swap dimensions, because matrix and image dims are swapped
     return single_frame.shape[1], single_frame.shape[0]
@@ -953,10 +957,10 @@ class PreferenceGatherer(abc.ABC):
         # the PreferenceGatherer we use needs one).
         del rng
         self.logger = custom_logger or imit_logger.configure()
-        self.pending_queries = {}
+        self.pending_queries: Dict = {}
 
     @abc.abstractmethod
-    def __call__(self) -> Tuple[np.ndarray, np.ndarray]:
+    def __call__(self) -> Tuple[Sequence[TrajectoryWithRewPair], np.ndarray]:
         """Gathers the probabilities that fragment 1 is preferred in `queries`.
 
         Returns:
@@ -1091,11 +1095,9 @@ class SynchronousHumanGatherer(PreferenceGatherer):
             video_dir: directory where videos of the trajectories are saved.
             video_width: width of the video in pixels.
             video_height: height of the video in pixels.
+            frames_per_second: frames per second of the video.
             custom_logger: Where to log to; if None (default), creates a new logger.
             rng: random number generator
-
-        Raises:
-            ValueError: if `video_dir` is not a directory.
         """
         super().__init__(custom_logger=custom_logger, rng=rng)
         self.video_dir = video_dir
@@ -1111,9 +1113,6 @@ class SynchronousHumanGatherer(PreferenceGatherer):
         command line, it will pop out a video player for each fragment. If in a
         notebook, it will display the videos. Either way, it will request 1 or 2 to
         indicate which is preferred.
-
-        Args:
-            fragment_pairs: sequence of pairs of trajectory fragments
 
         Returns:
             A numpy array of 1 if fragment 1 is preferred and 0 otherwise, with shape
@@ -1139,23 +1138,20 @@ class SynchronousHumanGatherer(PreferenceGatherer):
         self.pending_queries.clear()
         return queries, preferences
 
-    def _display_videos_and_gather_preference(self, query_id) -> bool:
+    def _display_videos_and_gather_preference(self, query_id: uuid.UUID) -> bool:
         """Displays the videos of the two fragments.
 
         Args:
-            frag1: first fragment
-            frag2: second fragment
+            query_id: the id of the fragment pair to be displayed.
 
         Returns:
             True if the first fragment is preferred, False if not.
 
         Raises:
             KeyboardInterrupt: if the user presses q to quit.
-            RuntimeError: if the video files cannot be opened.
-            ValueError: if the trajectory infos are not set.
         """
-        frag1_video_path = os.path.join(self.video_dir, f"{query_id}-left.webm")
-        frag2_video_path = os.path.join(self.video_dir, f"{query_id}-right.webm")
+        frag1_video_path = pathlib.Path(self.video_dir, f"{query_id}-left.webm")
+        frag2_video_path = pathlib.Path(self.video_dir, f"{query_id}-right.webm")
         if self._in_ipython():
             self._display_videos_in_notebook(frag1_video_path, frag2_video_path)
 
@@ -1312,13 +1308,12 @@ class PrefCollectGatherer(PreferenceGatherer):
             rng: random number generator, if applicable.
             custom_logger: Where to log to; if None (default), creates a new logger.
         """
-        super().__init__(custom_logger)
-        self.rng = rng
+        super().__init__(rng, custom_logger)
         self.query_endpoint = pref_collect_address + "/preferences/query/"
         self.pending_queries = {}
         self.wait_for_user = wait_for_user
 
-    def __call__(self) -> Tuple[Sequence[TrajectoryPair], np.ndarray]:
+    def __call__(self) -> Tuple[Sequence[TrajectoryWithRewPair], np.ndarray]:
 
         # TODO: create user-independent (automated) waiting policy
         if self.wait_for_user:
@@ -1349,15 +1344,13 @@ class PrefCollectGatherer(PreferenceGatherer):
 def remove_rendered_images(trajectories: Sequence[TrajectoryWithRew]) -> None:
     """Removes rendered images of the provided trajectories list."""
     for traj in trajectories:
-        for info in traj.infos:
-            try:
+        if traj.infos is not None and "rendered_img" in traj.infos[0]:
+            for info in traj.infos:
                 rendered_img_info = info["rendered_img"]
-                if isinstance(rendered_img_info, AnyPath.__args__):
+                if isinstance(rendered_img_info, (str, bytes, os.PathLike)):
                     os.remove(rendered_img_info)
                 elif isinstance(rendered_img_info, np.ndarray):
                     del info["rendered_img"]
-            except KeyError:
-                pass
 
 
 class PreferenceDataset(data_th.Dataset):
@@ -2049,13 +2042,15 @@ class PreferenceComparisons(base.BaseImitationAlgorithm):
         if self.rng is None and has_any_rng_args_none:
             raise ValueError(
                 "If you don't provide a random state, you must provide your own "
-                "seeded fragmenter, preference gatherer, preference querent, and reward_trainer. "
+                "seeded fragmenter, preference gatherer, preference querent, "
+                "and reward_trainer. "
                 "You can initialize a random state with `np.random.default_rng(seed)`.",
             )
         elif self.rng is not None and not has_any_rng_args_none:
             raise ValueError(
-                "If you provide your own fragmenter, preference gatherer, preference querent,"
-                "and reward trainer, you don't need to provide a random state.",
+                "If you provide your own fragmenter, preference gatherer, "
+                "preference querent, and reward trainer, "
+                "you don't need to provide a random state.",
             )
 
         if reward_trainer is None:
@@ -2091,7 +2086,6 @@ class PreferenceComparisons(base.BaseImitationAlgorithm):
             assert self.rng is not None
             self.preference_querent = PreferenceQuerent(
                 custom_logger=self.logger,
-                rng=self.rng,
             )
         if preference_gatherer:
             self.preference_gatherer = preference_gatherer

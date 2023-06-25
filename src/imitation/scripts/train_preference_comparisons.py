@@ -245,7 +245,6 @@ def train_preference_comparisons(
         )
         querent = querent_cls(
             **querent_kwargs,
-            rng=_rnd,
             custom_logger=custom_logger,
         )
 
