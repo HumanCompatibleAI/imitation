@@ -877,7 +877,9 @@ class PrefCollectQuerent(PreferenceQuerent):
         )
 
 
-def write_fragment_video(fragment: TrajectoryWithRew, frames_per_second: int, output_path: AnyPath) -> None:
+def write_fragment_video(
+    fragment: TrajectoryWithRew, frames_per_second: int, output_path: AnyPath
+) -> None:
     """Write fragment video clip."""
     frame_shape = get_frame_shape(fragment)
     video_writer = cv2.VideoWriter(
@@ -2033,6 +2035,7 @@ class PreferenceComparisons(base.BaseImitationAlgorithm):
 
         # are any of the optional args that require a rng None?
         has_any_rng_args_none = None in (
+            preference_querent,
             preference_gatherer,
             fragmenter,
             reward_trainer,
