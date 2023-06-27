@@ -47,28 +47,27 @@ class RenderImageInfoWrapper(gym.Wrapper):
     def step(self, action):
         obs, rew, done, info = self.env.step(action)
 
-        if self._active:
-            rendered_image = self.render(mode="rgb_array")
-            # Scale the render image
-            scaled_size = (
-                int(self.scale_factor * rendered_image.shape[0]),
-                int(self.scale_factor * rendered_image.shape[1]),
+        rendered_image = self.render(mode="rgb_array")
+        # Scale the render image
+        scaled_size = (
+            int(self.scale_factor * rendered_image.shape[0]),
+            int(self.scale_factor * rendered_image.shape[1]),
+        )
+        scaled_rendered_image = cv2.resize(
+            rendered_image,
+            scaled_size,
+            interpolation=cv2.INTER_AREA,
+        )
+        # Store the render image
+        if not self.use_file_cache:
+            info["rendered_img"] = scaled_rendered_image
+        else:
+            unique_file_path = os.path.join(
+                self.file_cache,
+                str(uuid.uuid4()) + ".npy",
             )
-            scaled_rendered_image = cv2.resize(
-                rendered_image,
-                scaled_size,
-                interpolation=cv2.INTER_AREA,
-            )
-            # Store the render image
-            if not self.use_file_cache:
-                info["rendered_img"] = scaled_rendered_image
-            else:
-                unique_file_path = os.path.join(
-                    self.file_cache,
-                    str(uuid.uuid4()) + ".npy",
-                )
-                np.save(unique_file_path, scaled_rendered_image)
-                info["rendered_img"] = unique_file_path
+            np.save(unique_file_path, scaled_rendered_image)
+            info["rendered_img"] = unique_file_path
 
         # Do not show window of classic control envs
         if self.env.viewer is not None and self.env.viewer.window.visible:
