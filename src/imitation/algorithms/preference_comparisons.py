@@ -854,7 +854,7 @@ class PrefCollectQuerent(PreferenceQuerent):
         for query_id, query in identified_queries.items():
             output_file_name = os.path.join(
                 self.video_output_dir,
-                f"{query_id}" + "{}.webm",
+                f"{query_id}" + "-{}.webm",
             )
             write_fragment_video(
                 query[0],
