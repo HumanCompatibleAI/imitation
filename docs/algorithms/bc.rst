@@ -21,7 +21,7 @@ Detailed example notebook: :doc:`../tutorials/1_train_bc`
     :skipif: skip_doctests
 
     import numpy as np
-    import gym
+    import gymnasium as gym
     from stable_baselines3 import PPO
     from stable_baselines3.common.evaluation import evaluate_policy
     from stable_baselines3.common.vec_env import DummyVecEnv

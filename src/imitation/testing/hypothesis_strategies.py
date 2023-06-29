@@ -1,7 +1,7 @@
 """Hypothesis strategies for generating sequences of trajectories for testing."""
 from typing import Dict, List, Union
 
-import gym
+import gymnasium as gym
 import numpy as np
 from hypothesis import strategies as st
 

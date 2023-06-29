@@ -2,7 +2,7 @@
 
 from typing import List, Sequence
 
-import gym
+import gymnasium as gym
 import numpy as np
 import pytest
 from stable_baselines3.common.vec_env import DummyVecEnv

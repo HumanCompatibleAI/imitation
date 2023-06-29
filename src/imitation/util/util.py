@@ -22,10 +22,10 @@ from typing import (
     overload,
 )
 
-import gym
+import gymnasium as gym
 import numpy as np
 import torch as th
-from gym.wrappers import TimeLimit
+from gymnasium.wrappers import TimeLimit
 from stable_baselines3.common import monitor
 from stable_baselines3.common.vec_env import DummyVecEnv, SubprocVecEnv, VecEnv
 
