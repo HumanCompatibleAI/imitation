@@ -8,7 +8,7 @@ import pathlib
 import pickle
 from typing import Any, Callable, Sequence
 
-import gym
+import gymnasium as gym
 import numpy as np
 import pytest
 

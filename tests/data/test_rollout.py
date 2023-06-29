@@ -3,7 +3,7 @@
 import functools
 from typing import Mapping, Sequence
 
-import gym
+import gymnasium as gym
 import numpy as np
 import pytest
 from stable_baselines3 import A2C

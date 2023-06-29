@@ -3,7 +3,7 @@
 import abc
 from typing import Type
 
-import gym
+import gymnasium as gym
 import numpy as np
 import torch as th
 from stable_baselines3.common import policies, torch_layers

@@ -21,10 +21,7 @@ ATARI_REQUIRE = [
     "autorom[accept-rom-license]~=0.6.0",
 ]
 PYTYPE = ["pytype==2022.7.26"] if IS_NOT_WINDOWS else []
-STABLE_BASELINES3 = "stable-baselines3>=1.7.0,<2.0.0"
-# pinned to 0.21 until https://github.com/DLR-RM/stable-baselines3/pull/780 goes
-# upstream.
-GYM_VERSION_SPECIFIER = "==0.21.0"
+STABLE_BASELINES3 = "stable-baselines3~=2.0.0"
 
 # Note: the versions of the test and doc requirements should be tightly pinned to known
 #   working versions to make our CI/CD pipeline as stable as possible.
@@ -193,21 +190,17 @@ setup(
     #   encode only known incompatibilities here. This prevents nasty dependency issues
     #   for our users.
     install_requires=[
-        "gym[classic_control]" + GYM_VERSION_SPECIFIER,
-        # TODO(adam): remove pyglet dependency once Gym upgraded to >0.21
-        # Workaround for https://github.com/openai/gym/issues/2986
-        # Discussed in https://github.com/HumanCompatibleAI/imitation/pull/603
-        "pyglet==1.5.27",
+        "gymnasium[classic-control]",
         "matplotlib",
         "numpy>=1.15",
         "torch>=1.4.0",
         "tqdm",
         "scikit-learn>=0.21.2",
-        "seals~=0.1.5",
+        "seals>=0.1.5",
         STABLE_BASELINES3,
         "sacred>=0.8.4",
         "tensorboard>=1.14",
-        "huggingface_sb3~=2.3",
+        "huggingface_sb3>=2.2.5",
         "datasets>=2.8.0",
     ],
     tests_require=TESTS_REQUIRE,
@@ -228,7 +221,7 @@ setup(
         "docs": DOCS_REQUIRE,
         "parallel": PARALLEL_REQUIRE,
         "mujoco": [
-            "gym[classic_control,mujoco]" + GYM_VERSION_SPECIFIER,
+            "gymnasium[classic-control,mujoco]",
         ],
         "atari": ATARI_REQUIRE,
     },

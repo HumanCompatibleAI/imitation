@@ -5,7 +5,7 @@ import pathlib
 import time
 from typing import Any, Mapping, Optional
 
-import gym
+import gymnasium as gym
 import numpy as np
 from sacred.observers import FileStorageObserver
 from stable_baselines3.common.vec_env import VecEnvWrapper
