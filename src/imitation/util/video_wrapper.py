@@ -3,7 +3,7 @@
 import pathlib
 from typing import Optional
 
-import gym
+import gymnasium as gym
 from gym.wrappers.monitoring import video_recorder
 
 

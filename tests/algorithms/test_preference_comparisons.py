@@ -4,7 +4,7 @@ import math
 import re
 from typing import Any, Sequence
 
-import gym
+import gymnasium as gym
 import numpy as np
 import pytest
 import seals  # noqa: F401

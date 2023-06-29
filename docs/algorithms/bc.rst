@@ -21,7 +21,7 @@ Detailed example notebook: :doc:`../tutorials/1_train_bc`
     :skipif: skip_doctests
 
     import numpy as np
-    import seals  # noqa: F401  # needed to load "seals/" environments
+    import gymnasium as gym
     from stable_baselines3.common.evaluation import evaluate_policy
 
     from imitation.algorithms import bc
@@ -32,7 +32,7 @@ Detailed example notebook: :doc:`../tutorials/1_train_bc`
 
     rng = np.random.default_rng(0)
     env = make_vec_env(
-        "seals/CartPole-v0",
+        "seals:seals/CartPole-v0",
         rng=rng,
         n_envs=1,
         post_wrappers=[lambda env, _: RolloutInfoWrapper(env)],  # for computing rollouts

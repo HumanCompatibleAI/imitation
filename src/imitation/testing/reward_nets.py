@@ -1,6 +1,6 @@
 """Utility functions for testing reward nets."""
 
-import gym
+import gymnasium as gym
 import torch as th
 
 from imitation.rewards import reward_nets
