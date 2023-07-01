@@ -66,10 +66,10 @@ DOCS_REQUIRE = [
     "sphinx-autodoc-typehints~=1.19.1",
     "sphinx-rtd-theme~=1.0.0",
     "sphinxcontrib-napoleon==0.7",
-    "furo==2022.6.21",
+    "furo==2023.05.20",
     "sphinx-copybutton==0.5.0",
     "sphinx-github-changelog~=1.2.0",
-    "myst-nb==0.16.0",
+    "myst-nb==0.17.2",
     "ipykernel~=6.15.2",
 ] + ATARI_REQUIRE
 
@@ -196,7 +196,7 @@ setup(
         "torch>=1.4.0",
         "tqdm",
         "scikit-learn>=0.21.2",
-        "seals>=0.1.5",
+        "seals @ git+https://github.com/HumanCompatibleAI/seals.git@440d5a79a3ba4c8a7afc0a1bc7cd7d853d4ddea6",
         STABLE_BASELINES3,
         "sacred>=0.8.4",
         "tensorboard>=1.14",
