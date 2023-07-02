@@ -48,6 +48,7 @@ Detailed example notebook: :doc:`../tutorials/5_train_preference_comparisons`
 
     fragmenter = preference_comparisons.RandomFragmenter(warning_threshold=0, rng=rng)
     gatherer = preference_comparisons.SyntheticGatherer(rng=rng)
+    querent = preference_comparisons.PreferenceQuerent()
     preference_model = preference_comparisons.PreferenceModel(reward_net)
     reward_trainer = preference_comparisons.BasicRewardTrainer(
         preference_model=preference_model,
@@ -79,6 +80,7 @@ Detailed example notebook: :doc:`../tutorials/5_train_preference_comparisons`
         reward_net,
         num_iterations=5,
         fragmenter=fragmenter,
+        preference_querent=querent,
         preference_gatherer=gatherer,
         reward_trainer=reward_trainer,
         initial_epoch_multiplier=1,
