@@ -2033,6 +2033,7 @@ class PreferenceComparisons(base.BaseImitationAlgorithm):
 
         # are any of the optional args that require a rng None?
         has_any_rng_args_none = None in (
+            preference_querent,
             preference_gatherer,
             fragmenter,
             reward_trainer,
