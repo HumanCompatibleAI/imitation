@@ -74,6 +74,7 @@ If you use ``imitation`` in your research project, please cite our paper to help
    tutorials/5a_train_preference_comparisons_with_cnn
    tutorials/6_train_mce
    tutorials/7_train_density
+   tutorials/9_compare_baselines
    tutorials/trajectories
 
 .. toctree::
