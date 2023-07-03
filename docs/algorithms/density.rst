@@ -4,6 +4,22 @@
 Density-based reward modeling
 =============================
 
+Density-based reward modeling is an inverse reinforcement learning (IRL) technique that assigns higher rewards
+to states or state-action pairs that occur more frequently in an expert's demonstrations.
+This variant utilizes `kernel density estimation <https://en.wikipedia.org/wiki/Kernel_density_estimation>`_
+to model the underlying distribution of expert demonstrations.
+It assigns rewards to states or state-action pairs based on their estimated log-likelihood
+under the distribution of expert demonstrations.
+
+The key intuition behind this method is to incentivize the agent to take actions
+that resemble the expert's actions in similar states.
+
+While this approach is relatively simple, it does have several drawbacks:
+
+- It assumes that the expert demonstrations are representative of the expert's behavior, which may not always be true.
+- It does not provide an interpretable reward function.
+- The kernel density estimation is not well-suited for high-dimensional state-action spaces.
+
 Example
 =======
 
