@@ -47,6 +47,7 @@ If you use ``imitation`` in your research project, please cite our paper to help
    getting-started/what-is-imitation
    getting-started/variable-horizon
    getting-started/first-steps
+   getting-started/cli
 
 .. toctree::
    :maxdepth: 2
