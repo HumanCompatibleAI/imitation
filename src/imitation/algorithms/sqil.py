@@ -199,7 +199,7 @@ class SQIL(algo_base.DemonstrationAlgorithm):
         losses = []
         for _ in range(gradient_steps):
             # Sample replay buffer
-            new_data = self.dqn.replay_buffer.sample(
+            new_data = self.dqn.replay_buffer.sample(  # type: ignore[union-attr]
                 batch_size // 2,
                 env=self.dqn._vec_normalize_env,
             )
