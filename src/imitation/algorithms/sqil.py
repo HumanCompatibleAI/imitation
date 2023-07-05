@@ -119,8 +119,6 @@ class SQIL(algo_base.DemonstrationAlgorithm):
 
         super().__init__(demonstrations=demonstrations, custom_logger=custom_logger)
 
-        self.orig_train_freq = train_freq
-
         self.dqn = dqn.DQN(
             policy=policy,
             env=venv,
@@ -209,6 +207,8 @@ class SQIL(algo_base.DemonstrationAlgorithm):
                 batch_size // 2,
                 env=self.dqn._vec_normalize_env,
             )
+
+            expert_data.rewards.fill_(1)  # Fill the rewards with 1
 
             # Concatenate the two batches of data
             replay_data = ReplayBufferSamples(
