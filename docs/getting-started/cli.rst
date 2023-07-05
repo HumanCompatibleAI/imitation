@@ -139,4 +139,20 @@ Utility Scripts
 Output Directories
 ==================
 
-Where do all the files go and what is their purpose?
+The results of the script runs are stored in the following directory structure:
+
+.. code-block::
+
+    output
+    ├── <algo>
+    │   └── <environment>
+    │       └── <timestamp>
+    │           ├── log
+    │           ├── monitor
+    │           └── sacred -> ../../../sacred/<script_name>/1
+    └── sacred
+        └── <script_name>
+            ├── 1
+            └── _sources
+
+It contains the final model, tensorboard logs, sacred logs and the sacred source files.
