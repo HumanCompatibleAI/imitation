@@ -35,10 +35,12 @@ You can always find out all the configurable values by running:
 Run BC on the `CartPole-v1` environment with a pre-trained PPO policy as expert:
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+Note: the cartpole environment is specified via a named configuration
+
 .. code-block:: bash
 
     python -m imitation.scripts.train_imitation bc with \
-        cartpole \  # This is a named configuration
+        cartpole \
         demonstrations.n_expert_demos=50 \
         bc.train_kwargs.n_batches=2000 \
         expert.policy_type=ppo \
