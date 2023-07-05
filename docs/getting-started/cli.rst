@@ -5,7 +5,7 @@ Command Line Interface
 Many features of the core library are accessible via the command line interface built
 using the `Sacred <https://github.com/idsia/sacred>`_ package.
 
-Sacred is used to configure and run the algorithms of the core library.
+Sacred is used to configure and run the algorithms.
 It is centered around the concept of `experiments <https://sacred.readthedocs.io/en/stable/experiment.html>`_
 which are composed of reusable `ingredients <https://sacred.readthedocs.io/en/stable/ingredients.html>`_.
 Each experiment and each ingredient has its own configuration namespace.
@@ -38,7 +38,7 @@ Run BC on the `CartPole-v1` environment with a pre-trained PPO policy as expert:
 .. code-block:: bash
 
     python -m imitation.scripts.train_imitation bc with \
-        cartpole \
+        cartpole \  # This is a named configuration
         demonstrations.n_expert_demos=50 \
         bc.train_kwargs.n_batches=2000 \
         expert.policy_type=ppo \
@@ -68,43 +68,55 @@ Run AIRL on the `MountainCar-v0` environment with a expert from the HuggingFace 
 
     python -m imitation.scripts.train_adversarial airl with \
         seals_mountain_car \
-        total_timesteps=50000 \
+        total_timesteps=5000 \
         expert.policy_type=ppo-huggingface \
         demonstrations.n_expert_demos=500
 
-TODO: tweak above parameters to get good results
+Note: the small number of total timesteps is only for demonstration purposes and will not produce a good policy.
 
 
-Run GAIL on the `seals/Swimmer-v0` (named config) environment with an ensemble of reward networks:
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Run GAIL on the `seals/Swimmer-v0` environment
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Here we do not use the named configuration for the seals environment, but instead specify the gym_id directly.
+The :code:`seals:` prefix ensures that the seals package is imported and the environment is registered.
+
+Note that the Swimmer environment needs `mujoco_py` to be installed.
 
 .. code-block:: bash
 
-    xxx
+    python -m imitation.scripts.train_adversarial gail with \
+            environment.gym_id="seals:seals/Swimmer-v0" \
+            total_timesteps=5000 \
+            demonstrations.n_expert_demos=50
+
 
 Algorithm Scripts
 =================
 
-What script to call for which algorithm?
+Call the algorithm scripts like this:
 
-+---------------------------------+----------+--------------------------+
-|  Algorithm                      | Script   |  command line arguments  |
-+=================================+==========+==========================+
-|  BC                             |  xxx     |  xxx                     |
-+---------------------------------+----------+--------------------------+
-| DAgger                          |  xxx     |  xxx                     |
-+---------------------------------+----------+--------------------------+
-| AIRL                            |  xxx     |  xxx                     |
-+---------------------------------+----------+--------------------------+
-| GAIL                            |  xxx     |  xxx                     |
-+---------------------------------+----------+--------------------------+
-| Preference Comparison           |  xxx     |  xxx                     |
-+---------------------------------+----------+--------------------------+
-| MCE IRL                         |  none    |  xxx                     |
-+---------------------------------+----------+--------------------------+
-| Density Based Reward Estimation |  none    |  xxx                     |
-+---------------------------------+----------+--------------------------+
+.. code-block:: bash
 
+    python -m imitation.scripts.<script> [command] with <named_config> <config_values>
+
++---------------------------------+------------------------------+----------+
+|  algorithm                      | script                       |  command |
++=================================+==============================+==========+
+| BC                              | train_imitation              |  bc      |
++---------------------------------+------------------------------+----------+
+| DAgger                          | train_imitation              |  dagger  |
++---------------------------------+------------------------------+----------+
+| AIRL                            | train_adversarial            |  airl    |
++---------------------------------+------------------------------+----------+
+| GAIL                            | train_adversarial            |  gail    |
++---------------------------------+------------------------------+----------+
+| Preference Comparison           | train_preference_comparisons |  -       |
++---------------------------------+------------------------------+----------+
+| MCE IRL                         | none                         |  -       |
++---------------------------------+------------------------------+----------+
+| Density Based Reward Estimation | none                         |  -       |
++---------------------------------+------------------------------+----------+
 
 Utility Scripts
 ===============
