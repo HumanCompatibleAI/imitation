@@ -77,6 +77,7 @@ If you use ``imitation`` in your research project, please cite our paper to help
    tutorials/8_train_custom_env
    tutorials/9_compare_baselines
    tutorials/trajectories
+   tutorials/reward_networks
 
 .. toctree::
    :maxdepth: 2
