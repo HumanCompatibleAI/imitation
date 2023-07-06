@@ -96,5 +96,6 @@ def test_sqil_cartpole_no_crash(rng):
         venv=venv,
         demonstrations=demonstrations,
         policy=policy,
+        learning_starts=1000,
     )
-    model.train(total_timesteps=100)
+    model.train(total_timesteps=10_000)
