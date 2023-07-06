@@ -1,4 +1,4 @@
-"""Soft Q Imitation Learning (SQIL).
+"""Soft Q Imitation Learning (SQIL) (https://arxiv.org/abs/1905.11108).
 
 Trains a policy via DQN-style Q-learning,
 replacing half the buffer with expert demonstrations and adjusting the rewards.
