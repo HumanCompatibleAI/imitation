@@ -1,7 +1,9 @@
+"""Tests `imitation.algorithms.sqil`."""
+
 import gym
 import numpy as np
-import stable_baselines3.common.vec_env as vec_env
 import stable_baselines3.common.buffers as buffers
+import stable_baselines3.common.vec_env as vec_env
 
 from imitation.algorithms import sqil
 from imitation.data import rollout, wrappers
@@ -44,6 +46,7 @@ def test_sqil_demonstration_buffer(rng):
         np.testing.assert_array_equal(next_obs[0], demonstrations.next_obs[i])
         np.testing.assert_array_equal(done, demonstrations.dones[i])
 
+
 def test_sqil_demonstration_without_flatten(rng):
     env = gym.make("CartPole-v1")
     venv = vec_env.DummyVecEnv([lambda: wrappers.RolloutInfoWrapper(env)])
@@ -69,6 +72,7 @@ def test_sqil_demonstration_without_flatten(rng):
     )
 
     assert isinstance(model.expert_buffer, buffers.ReplayBuffer)
+
 
 def test_sqil_cartpole_no_crash(rng):
     env = gym.make("CartPole-v1")

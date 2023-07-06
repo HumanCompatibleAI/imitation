@@ -13,7 +13,7 @@ from stable_baselines3.common import buffers, policies, type_aliases, vec_env
 from stable_baselines3.dqn.policies import DQNPolicy
 
 from imitation.algorithms import base as algo_base
-from imitation.data import types, rollout
+from imitation.data import rollout, types
 from imitation.util import logger, util
 
 
@@ -140,7 +140,10 @@ class SQIL(algo_base.DemonstrationAlgorithm):
         # If demonstrations is a list of trajectories,
         # flatten it into a list of transitions
         if isinstance(demonstrations, Iterable):
-            item, demonstrations = util.get_first_iter_element(  # type: ignore[assignment]
+            (
+                item,
+                demonstrations,
+            ) = util.get_first_iter_element(  # type: ignore[assignment]
                 demonstrations,  # type: ignore[assignment]
             )
             if isinstance(item, types.Trajectory):
