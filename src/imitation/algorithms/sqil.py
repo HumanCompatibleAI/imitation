@@ -9,21 +9,12 @@ import numpy as np
 import torch as th
 import torch.nn.functional as F
 from stable_baselines3 import dqn
-from stable_baselines3.common import policies, vec_env
-from stable_baselines3.common.buffers import ReplayBuffer
-from stable_baselines3.common.type_aliases import (
-    MaybeCallback,
-    ReplayBufferSamples,
-    Schedule,
-)
+from stable_baselines3.common import buffers, policies, type_aliases, vec_env
 from stable_baselines3.dqn.policies import DQNPolicy
 
 from imitation.algorithms import base as algo_base
-from imitation.algorithms.base import AnyTransitions
-from imitation.data import types
-from imitation.data.rollout import flatten_trajectories
-from imitation.util import logger as imit_logger
-from imitation.util.util import get_first_iter_element
+from imitation.data import types, rollout
+from imitation.util import logger, util
 
 
 class SQIL(algo_base.DemonstrationAlgorithm):
@@ -33,16 +24,16 @@ class SQIL(algo_base.DemonstrationAlgorithm):
     replacing half the buffer with expert demonstrations and adjusting the rewards.
     """
 
-    expert_buffer: ReplayBuffer
+    expert_buffer: buffers.ReplayBuffer
 
     def __init__(
         self,
         *,
         venv: vec_env.VecEnv,
-        demonstrations: Optional[AnyTransitions],
+        demonstrations: Optional[algo_base.AnyTransitions],
         policy: Union[str, Type[DQNPolicy]],
-        custom_logger: Optional[imit_logger.HierarchicalLogger] = None,
-        learning_rate: Union[float, Schedule] = 1e-4,
+        custom_logger: Optional[logger.HierarchicalLogger] = None,
+        learning_rate: Union[float, type_aliases.Schedule] = 1e-4,
         buffer_size: int = 1_000_000,  # 1e6
         learning_starts: int = 50000,
         batch_size: int = 32,
@@ -50,7 +41,7 @@ class SQIL(algo_base.DemonstrationAlgorithm):
         gamma: float = 0.99,
         train_freq: Union[int, Tuple[int, str]] = 4,
         gradient_steps: int = 1,
-        replay_buffer_class: Optional[Type[ReplayBuffer]] = None,
+        replay_buffer_class: Optional[Type[buffers.ReplayBuffer]] = None,
         replay_buffer_kwargs: Optional[Dict[str, Any]] = None,
         optimize_memory_usage: bool = False,
         target_update_interval: int = 10000,
@@ -145,20 +136,20 @@ class SQIL(algo_base.DemonstrationAlgorithm):
             _init_setup_model=_init_setup_model,
         )
 
-    def set_demonstrations(self, demonstrations: AnyTransitions) -> None:
+    def set_demonstrations(self, demonstrations: algo_base.AnyTransitions) -> None:
         # If demonstrations is a list of trajectories,
         # flatten it into a list of transitions
         if isinstance(demonstrations, Iterable):
-            item, demonstrations = get_first_iter_element(  # type: ignore[assignment]
+            item, demonstrations = util.get_first_iter_element(  # type: ignore[assignment]
                 demonstrations,  # type: ignore[assignment]
             )
             if isinstance(item, types.Trajectory):
-                demonstrations = flatten_trajectories(
+                demonstrations = rollout.flatten_trajectories(
                     demonstrations,  # type: ignore[arg-type]
                 )
 
         n_samples = len(demonstrations)  # type: ignore[arg-type]
-        self.expert_buffer = ReplayBuffer(
+        self.expert_buffer = buffers.ReplayBuffer(
             n_samples,
             self.venv.observation_space,
             self.venv.action_space,
@@ -190,7 +181,7 @@ class SQIL(algo_base.DemonstrationAlgorithm):
 
         # Switch to train mode (this affects batch norm / dropout)
         self.dqn.policy.set_training_mode(True)
-        # Update learning rate according to schedule
+        # Update learning rate according to type_aliases.Schedule
         self.dqn._update_learning_rate(self.dqn.policy.optimizer)
 
         losses = []
@@ -210,7 +201,7 @@ class SQIL(algo_base.DemonstrationAlgorithm):
             expert_data.rewards.fill_(1)  # Fill the rewards with 1
 
             # Concatenate the two batches of data
-            replay_data = ReplayBufferSamples(
+            replay_data = type_aliases.ReplayBufferSamples(
                 *(
                     th.cat((getattr(new_data, name), getattr(expert_data, name)))
                     for name in new_data._fields
@@ -268,7 +259,7 @@ class SQIL(algo_base.DemonstrationAlgorithm):
     def learn_dqn(
         self,
         total_timesteps: int,
-        callback: MaybeCallback = None,
+        callback: type_aliases.MaybeCallback = None,
         log_interval: int = 4,
         tb_log_name: str = "run",
         reset_num_timesteps: bool = True,
