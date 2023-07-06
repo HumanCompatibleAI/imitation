@@ -49,7 +49,7 @@ Detailed example notebook: :doc:`../tutorials/10_train_sqil`
         demonstrations=transitions,
         policy="MlpPolicy",
     )
-    sqil_trainer.train(n_epochs=1)
+    sqil_trainer.train(total_timesteps=1000)
     reward, _ = evaluate_policy(sqil_trainer.policy, env, 10)
     print("Reward:", reward)
 
