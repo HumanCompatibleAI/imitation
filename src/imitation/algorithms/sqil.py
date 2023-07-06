@@ -22,7 +22,6 @@ from imitation.algorithms import base as algo_base
 from imitation.algorithms.base import AnyTransitions
 from imitation.data import types
 from imitation.data.rollout import flatten_trajectories
-from imitation.data.types import Transitions
 from imitation.util import logger as imit_logger
 from imitation.util.util import get_first_iter_element
 
@@ -40,7 +39,7 @@ class SQIL(algo_base.DemonstrationAlgorithm):
         self,
         *,
         venv: vec_env.VecEnv,
-        demonstrations: Transitions,
+        demonstrations: Optional[AnyTransitions],
         policy: Union[str, Type[DQNPolicy]],
         custom_logger: Optional[imit_logger.HierarchicalLogger] = None,
         learning_rate: Union[float, Schedule] = 1e-4,
