@@ -1,10 +1,16 @@
 .. _soft q imitation learning docs:
 
-=======================
+================================
 Soft Q Imitation Learning (SQIL)
-=======================
+================================
 
-<add description of SQIL>
+Soft Q Imitation learning learns to imitate a policy from demonstrations by
+using the DQN algorithm with modified rewards. During each policy update, half
+of the batch is sampled from the demonstrations and half is sampled from the
+environment. Expert demonstrations are assigned a reward of 1, and the
+environment is assigned a reward of 0. This encourages the policy to imitate
+the demonstrations, and to simultaneously avoid states not seen in the
+demonstrations.
 
 Example
 =======
