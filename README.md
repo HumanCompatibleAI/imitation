@@ -17,6 +17,7 @@ Currently, we have implementations of the algorithms below. 'Discrete' and 'Cont
 | [Adversarial Inverse Reinforcement Learning](https://arxiv.org/abs/1710.11248)                                                    | [`algoritms.airl`](https://imitation.readthedocs.io/en/latest/algorithms/airl.html)                                      | ✅        | ✅          |
 | [Generative Adversarial Imitation Learning](https://arxiv.org/abs/1606.03476)                                                     | [`algorithms.gail`](https://imitation.readthedocs.io/en/latest/algorithms/gail.html)                                     | ✅        | ✅          |
 | [Deep RL from Human Preferences](https://arxiv.org/abs/1706.03741)                                                                | [`algorithms.preference_comparisons`](https://imitation.readthedocs.io/en/latest/algorithms/preference_comparisons.html) | ✅        | ✅          |
+| [Soft Q Imitation Learning](https://arxiv.org/abs/1905.11108)                                                                     | [`algorithms.sqil`](https://imitation.readthedocs.io/en/latest/algorithms/sqil.html)                                     | ✅        | ❌          |
 
 
 You can find [the documentation here](https://imitation.readthedocs.io/en/latest/).
