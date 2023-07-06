@@ -123,19 +123,25 @@ Call the algorithm scripts like this:
 Utility Scripts
 ===============
 
-+--------------------------------+----------+--------------------------+
-| Functionality                  | Script   |  command line arguments  |
-+================================+==========+==========================+
-|Reinforcement Learning          |  xxx     |  xxx                     |
-+--------------------------------+----------+--------------------------+
-| Evaluating a Policy            |  xxx     |  xxx                     |
-+--------------------------------+----------+--------------------------+
-| Parallel Execution             |  xxx     |  xxx                     |
-+--------------------------------+----------+--------------------------+
-| Converting Trajectory Formats  |  xxx     |  xxx                     |
-+--------------------------------+----------+--------------------------+
-| Analyzing Experimental Results |  xxx     |  xxx                     |
-+--------------------------------+----------+--------------------------+
+Call the utility scripts like this:
+
+.. code-block:: bash
+
+    python -m imitation.scripts.<script>
+
++-----------------------------------------+-----------------------------------------------------------+
+| Functionality                           | Script                                                    |
++=========================================+===========================================================+
+| Reinforcement Learning                  | :py:mod:`train_rl <imitation.scripts.train_rl>`           |
++-----------------------------------------+-----------------------------------------------------------+
+| Evaluating a Policy                     | :py:mod:`eval_policy <imitation.scripts.eval_policy>`     |
++-----------------------------------------+-----------------------------------------------------------+
+| Parallel Execution of Algorithm Scripts | :py:mod:`parallel <imitation.scripts.parallel>`           |
++-----------------------------------------+-----------------------------------------------------------+
+| Converting Trajectory Formats           | :py:mod:`convert_trajs <imitation.scripts.convert_trajs>` |
++-----------------------------------------+-----------------------------------------------------------+
+| Analyzing Experimental Results          | :py:mod:`analyze <imitation.scripts.analyze>`             |
++-----------------------------------------+-----------------------------------------------------------+
 
 
 Output Directories
