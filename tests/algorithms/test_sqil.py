@@ -1,18 +1,17 @@
 import gym
 import numpy as np
-from stable_baselines3.common.buffers import ReplayBuffer
-from stable_baselines3.common.vec_env import DummyVecEnv
+import stable_baselines3.common.vec_env as vec_env
 
-from imitation.algorithms.sqil import SQIL
-from imitation.data import rollout, types, wrappers
+from imitation.algorithms import sqil
+from imitation.data import rollout, wrappers
 
 
 def test_sqil_demonstration_buffer(rng):
     env = gym.make("CartPole-v1")
-    venv = DummyVecEnv([lambda: env])
+    venv = vec_env.DummyVecEnv([lambda: wrappers.RolloutInfoWrapper(env)])
     policy = "MlpPolicy"
 
-    sampling_agent = SQIL(
+    sampling_agent = sqil.SQIL(
         venv=venv,
         demonstrations=None,
         policy=policy,
@@ -20,13 +19,13 @@ def test_sqil_demonstration_buffer(rng):
 
     rollouts = rollout.rollout(
         sampling_agent.policy,
-        DummyVecEnv([lambda: wrappers.RolloutInfoWrapper(env)]),
+        venv,
         rollout.make_sample_until(min_timesteps=None, min_episodes=50),
         rng=rng,
     )
     demonstrations = rollout.flatten_trajectories(rollouts)
 
-    model = SQIL(
+    model = sqil.SQIL(
         venv=venv,
         demonstrations=demonstrations,
         policy=policy,
@@ -47,10 +46,10 @@ def test_sqil_demonstration_buffer(rng):
 
 def test_sqil_cartpole_no_crash(rng):
     env = gym.make("CartPole-v1")
-    venv = DummyVecEnv([lambda: env])
+    venv = vec_env.DummyVecEnv([lambda: wrappers.RolloutInfoWrapper(env)])
 
     policy = "MlpPolicy"
-    sampling_agent = SQIL(
+    sampling_agent = sqil.SQIL(
         venv=venv,
         demonstrations=None,
         policy=policy,
@@ -58,12 +57,12 @@ def test_sqil_cartpole_no_crash(rng):
 
     rollouts = rollout.rollout(
         sampling_agent.policy,
-        DummyVecEnv([lambda: wrappers.RolloutInfoWrapper(env)]),
+        venv,
         rollout.make_sample_until(min_timesteps=None, min_episodes=50),
         rng=rng,
     )
     demonstrations = rollout.flatten_trajectories(rollouts)
-    model = SQIL(
+    model = sqil.SQIL(
         venv=venv,
         demonstrations=demonstrations,
         policy=policy,
