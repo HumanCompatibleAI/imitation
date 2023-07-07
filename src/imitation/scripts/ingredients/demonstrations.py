@@ -1,4 +1,8 @@
-"""Ingredient for scripts learning from demonstrations."""
+"""This ingredient provides (expert) demonstrations to learn from.
+
+The demonstrations are either loaded from disk, from the HuggingFace Dataset Hub, or
+sampled from the expert policy provided by the expert ingredient.
+"""
 
 import logging
 import pathlib
@@ -25,11 +29,15 @@ logger = logging.getLogger(__name__)
 
 @demonstrations_ingredient.config
 def config():
+    # Either "local" or "{algo}-huggingface" to load them from the HuggingFace Dataset Hub.
     rollout_type = "local"
-    # path to file containing rollouts. If rollout_path is None
-    # and rollout_type is local, they are sampled from the expert.
+
+    # If none, they are sampled from the expert policy.
     rollout_path = None
-    n_expert_demos = None  # Num demos used or sampled. None loads every demo possible.
+
+    # Num demos used or sampled. None loads every demo possible.
+    n_expert_demos = None
+
     locals()  # quieten flake8
 
 

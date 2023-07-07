@@ -1,1 +1,1 @@
-"""Ingredients for scripts."""
+"""Ingredients for Sacred experiments."""

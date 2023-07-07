@@ -1,4 +1,4 @@
-"""Ingredients for training a BC policy."""
+"""This ingredient provides BC algorithm instance by either loading it from disk or constructing it from scratch."""
 import warnings
 from typing import Optional, Sequence
 

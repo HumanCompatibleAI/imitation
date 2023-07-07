@@ -1,4 +1,7 @@
-"""Sacred ingredient for evaluating a policy on a VecEnv."""
+"""This ingredient performs evaluation of learned policy.
+
+It takes care of the right wrappers, does some rollouts and computes statistics of the rollouts.
+"""
 
 from typing import Mapping, Union
 
