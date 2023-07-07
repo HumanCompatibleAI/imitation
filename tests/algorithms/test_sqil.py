@@ -6,6 +6,7 @@ import stable_baselines3.common.buffers as buffers
 import stable_baselines3.common.vec_env as vec_env
 import stable_baselines3.dqn as dqn
 from stable_baselines3 import ppo
+from stable_baselines3.common import policies
 from stable_baselines3.common.evaluation import evaluate_policy
 
 from imitation.algorithms import base as algo_base
@@ -37,6 +38,8 @@ def test_sqil_demonstration_buffer(rng):
         demonstrations=demonstrations,
         policy=policy,
     )
+
+    assert isinstance(model.policy, policies.BasePolicy)
 
     assert isinstance(model.dqn.replay_buffer, sqil.SQILReplayBuffer)
     expert_buffer = model.dqn.replay_buffer.expert_buffer
