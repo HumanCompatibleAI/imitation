@@ -4,12 +4,15 @@ The expert policy is either loaded from disk or from the HuggingFace Model Hub o
 a test policy (e.g., random or zero).
 The supported policy types are:
 
-- `ppo` and `sac`: A policy trained with SB3. Needs a `path` in the `loader_kwargs`.
-- `<algo>-huggingface` (algo can be `ppo` or `sac`): A policy trained with SB3 and uploaded to the HuggingFace Model
-    Hub. Will load the model from the repo `<organization>/<algo>-<env_name>`.
-    You can set the organization with the `organization` key in `loader_kwargs`. The default is `HumanCompatibleAI`.
-- `random`: A policy that takes random actions.
-- `zero`: A policy that takes zero actions.
+- :code:`ppo` and :code:`sac`: A policy trained with SB3.
+    Needs a `path` in the `loader_kwargs`.
+- :code:`<algo>-huggingface` (algo can be `ppo` or `sac`):
+    A policy trained with SB3 and uploaded to the HuggingFace Model Hub.
+    Will load the model from the repo :code:`<organization>/<algo>-<env_name>`.
+    You can set the organization with the `organization` key in :code:`loader_kwargs`.
+    The default is `HumanCompatibleAI`.
+- :code:`random`: A policy that takes random actions.
+- :code:`zero`: A policy that takes zero actions.
 """
 import sacred
 

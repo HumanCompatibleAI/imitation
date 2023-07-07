@@ -29,7 +29,7 @@ logger = logging.getLogger(__name__)
 
 @demonstrations_ingredient.config
 def config():
-    # Either "local" or "{algo}-huggingface" to load them from the HuggingFace Dataset Hub.
+    # Either "local" or "{algo}-huggingface" to load them from the HF Dataset Hub.
     rollout_type = "local"
 
     # If none, they are sampled from the expert policy.

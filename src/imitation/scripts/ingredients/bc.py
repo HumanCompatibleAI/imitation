@@ -1,4 +1,7 @@
-"""This ingredient provides BC algorithm instance by either loading it from disk or constructing it from scratch."""
+"""This ingredient provides BC algorithm instance.
+
+It is either loaded from disk or constructed from scratch.
+"""
 import warnings
 from typing import Optional, Sequence
 
