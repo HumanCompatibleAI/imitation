@@ -4,19 +4,18 @@
 Reward Networks
 ===============
 
-The goal of both inverse reinforcement learning (IRL) algorithms (e.g. :ref:`AIRL <airl docs>`, :ref:`GAIL <gail docs>`) and :ref:`preference comparison <preference comparisons docs>` is to discover a reward function. In imitation these learned rewards are parameterized by reward networks.
+The goal of both inverse reinforcement learning (IRL) algorithms (e.g. :ref:`AIRL <airl docs>`, :ref:`GAIL <gail docs>`) and :ref:`preference comparison <preference comparisons docs>` is to discover a reward function. In imitation learning, these discovered rewards are parameterized by reward networks.
+
 
 Reward Network API
 ------------------
 
-Reward networks need to support two separate but equally important modes of operation. First, these networks need to produce a reward that can be differentiated through and used for training the reward net. These rewards are provided by the :meth:`forward <imitation.rewards.reward_nets.RewardNet.forward>` method. Second, these networks need to produce a reward that can be used for training policies. These rewards are provided by the :meth:`predict_processed <imitation.rewards.reward_nets.RewardNet.predict_processed>` method which applies additional post processing that is unhelpful during reward net training.
-
+Reward networks need to support two separate but equally important modes of operation. First, these networks need to produce a reward that can be differentiated and used for training the reward network. These rewards are provided by the :meth:`forward <imitation.rewards.reward_nets.RewardNet.forward>` method. Second, these networks need to produce a reward that can be used for training policies. These rewards are provided by the :meth:`predict_processed <imitation.rewards.reward_nets.RewardNet.predict_processed>` method, which applies additional post-processing that is unhelpful during reward network training.
 
 Reward Network Architecture
 ---------------------------
 
-In imitation reward networks are `torch.nn.Module <https://pytorch.org/docs/stable/generated/torch.nn.Module.html>`_. Out of the box imitation provides a few reward network architectures:
-an multi-layer perceptron :class:`BasicRewardNet <imitation.rewards.reward_nets.BasicRewardNet>` and a convolutional neural net :class:`CNNRewardNet <imitation.rewards.reward_net.CNNRewardNet>`. To implement your own custom reward network you can subclass :class:`RewardNet <imitation.rewards.reward_nets.RewardNet>`.
+In imitation learning, reward networks are `torch.nn.Module <https://pytorch.org/docs/stable/generated/torch.nn.Module.html>`_. Out of the box, imitation provides a few reward network architectures such as multi-layer perceptron :class:`BasicRewardNet <imitation.rewards.reward_nets.BasicRewardNet>` and a convolutional neural net :class:`CNNRewardNet <imitation.rewards.reward_net.CNNRewardNet>`. To implement your own custom reward network, you can subclass :class:`RewardNet <imitation.rewards.reward_nets.RewardNet>`.
 
 .. testcode::
     :skipif: skip_doctests
@@ -38,10 +37,10 @@ an multi-layer perceptron :class:`BasicRewardNet <imitation.rewards.reward_nets.
             # implement your custom reward network here
             return th.zeros_like(done) # (batch_size,)
 
-Replace an Environments Reward with a Reward Network
-----------------------------------------------------
+Replace an Environment's Reward with a Reward Network
+-----------------------------------------------------
 
-In oder to use a reward network to train a policy, we need to integrate it into an environment. This is done by wrapping the environment in a :class:`RewardVecEnvWrapper <imitation.rewards.reward_wrapper.RewardVecEnvWrapper>`. This wrapper will replace the reward network to the environment's reward function.
+In order to use a reward network to train a policy, we need to integrate it into an environment. This is done by wrapping the environment in a :class:`RewardVecEnvWrapper <imitation.rewards.reward_wrapper.RewardVecEnvWrapper>`. This wrapper replaces the environment's reward function with the reward network's function.
 
 .. testsetup::
     :skipif: skip_doctests
@@ -63,19 +62,16 @@ In oder to use a reward network to train a policy, we need to integrate it into 
     venv = util.make_vec_env("Pendulum-v1", n_envs=3, rng=rng)
     venv = RewardVecEnvWrapper(venv, reward_net.predict_processed)
 
-
 Reward Network Wrappers
 -----------------------
 
-Imitation learning algorithms should converge to a reward function that will theoretically induce the optimal/soft optimal policy. However, these reward functions may not be well suited for training RL agents or we may want to modify them to, say, encourage exploration.
-
-Reward network wrappers are used to transform the reward function to be more suitable for training policies. Out of the box imitation provides a few reward network wrappers. The most commonly used is the :class:`NormalizedRewardNet <imitating.rewards.reward_nets.NormalizedRewardNet>`. This class makes use of a normalization layer to standardize the *output* of the reward function using its running mean an variance. This is useful for stabilizing training and ensuring that the reward function is not drastically changed by the reward network. Note that when a reward network is saved its wrappers are saved along with it so that the normalization fit during reward learning will be used during policy learning or evaluation.
+Imitation learning algorithms should converge to a reward function that will theoretically induce the optimal/soft optimal policy. However, these reward functions may not always be well suited for training RL agents, or we may want to modify them to encourage exploration, for instance.
 
 There are two types of wrapper:
-* :class:`ForwardWrapper <imitation.rewards.reward_nets.ForwardWrapper>` allow directly modify the results of reward networks ``forward`` method. It is used during the learning of the reward network and thus must be differentiable. These wrappers are always applied first and are always active. These wrappers are used for applying transformations like potential shaping (see :class:`ShapedRewardNet <imitating.rewards.reward_nets.ShapedRewardNet>`).
-* :class:`PredictProcessedWrapper <imitation.rewards.reward_nets.PredictProcessedWrapper>`. 
+* :class:`ForwardWrapper <imitation.rewards.reward_nets.ForwardWrapper>` allows for direct modification of the results of the reward network's ``forward`` method. It is used during the learning of the reward network and thus must be differentiable. These wrappers are always applied first and are always active. They are used for applying transformations like potential shaping (see :class:`ShapedRewardNet <imitating.rewards.reward_nets.ShapedRewardNet>`).
+* :class:`PredictProcessedWrapper <imitation.rewards.reward_nets.PredictProcessedWrapper>` modifies the predict_processed call to the reward network. Thus this type of reward network wrapper is designed to only modify the reward when it is being used to train/evaluate a policy but *not* when we are taking gradients on it. Thus it does not have to be differentiable.
 
-
+The most commonly used is the :class:`NormalizedRewardNet <imitating.rewards.reward_nets.NormalizedRewardNet>` which is a predict procssed wrapper. This class uses a normalization layer to standardize the *output* of the reward function using its running mean and variance, which is useful for stabilizing training. When a reward network is saved, its wrappers are saved along with it, so that the normalization fit during reward learning can be used during future policy learning or evaluation.
 
 .. testcode::
     :skipif: skip_doctests
@@ -90,9 +86,7 @@ There are two types of wrapper:
 .. note::
     The reward normalization wrapper does _not_ function identically to stable baselines3's `VecNormalize <https://stable-baselines3.readthedocs.io/en/master/guide/vec_envs.html#stable_baselines3.common.vec_env.VecNormalize>`_ environment wrapper. First, it does not normalize the observations. Second it normalizes the reward based on the reward networks's mean and variance on and *not* a running estimate of the return.
 
-
-
-By default the normalization wrapper updates the normalization on each call to ``predict_processed`` this can be.
+By default, the normalization wrapper updates the normalization on each call to ``predict_processed``. This behavior can be altered as shown below.
 
 .. testcode::
 
@@ -102,9 +96,9 @@ By default the normalization wrapper updates the normalization on each call to `
 Serializing and Deserializing Reward Networks
 ---------------------------------------------
 
-Reward networks are serialized simply by calling ``th.save(reward_net, path)``. When evaluating reward networks we may or may not want to include the wrappers it was trained with. To load the raw reward network we can simply call ``th.load(path)``.
+Reward networks are serialized simply by calling ``th.save(reward_net, path)``. When evaluating reward networks, we may or may not want to include the wrappers it was trained with. To load the raw reward network, we can simply call ``th.load(path)``.
 
-When using a learned reward network to train or evaluate a policy we can select whether or not to include the reward network wrappers. This is controlled by the ``reward_type`` parameter passed to :func:`load_reward <imitation.rewards.serialize.load_reward>`. For example, we might want to remove the keep or remove the reward normalization fit during training in the evaluation phase.
+When using a learned reward network to train or evaluate a policy, we can select whether or not to include the reward network wrappers and convert it into a function. This is taken care of by the :func:`load_reward <imitation.rewards.serialize.load_reward>` utility. For example, we might want to remove or keep the reward normalization fit during training in the evaluation phase.
 
 .. testsetup::
     :skipif: skip_doctests
@@ -128,7 +122,7 @@ When using a learned reward network to train or evaluate a policy we can select 
     # We can also load the reward network as a reward function for use in evaluation
     eval_rew_fn_normalized = load_reward(reward_type="RewardNet_normalized", reward_path=path, venv=venv)
     eval_rew_fn_unnormalized = load_reward(reward_type="RewardNet_unnormalized", reward_path=path, venv=venv)
-    # If we want to continue to update the reward networks normalization
+    # If we want to continue to update the reward networks normalization by default it is frozen for evaluation and retraining
     rew_fn_normalized = load_reward(reward_type="RewardNet_normalized", reward_path=path, venv=venv, update_stats=True)
 
 .. testcleanup::
