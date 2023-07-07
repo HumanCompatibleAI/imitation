@@ -4,7 +4,7 @@ Trains a policy via DQN-style Q-learning,
 replacing half the buffer with expert demonstrations and adjusting the rewards.
 """
 
-from typing import Any, Dict, Iterable, Optional, Type, Union
+from typing import Any, Dict, Optional, Type, Union
 
 import numpy as np
 import torch as th
@@ -126,7 +126,7 @@ class SQILReplayBuffer(buffers.ReplayBuffer):
         """
         # If demonstrations is a list of trajectories,
         # flatten it into a list of transitions
-        if isinstance(demonstrations, Iterable):
+        if not isinstance(demonstrations, types.TransitionsMinimal):
             (
                 item,
                 demonstrations,
@@ -137,8 +137,14 @@ class SQILReplayBuffer(buffers.ReplayBuffer):
                 demonstrations = rollout.flatten_trajectories(
                     demonstrations,  # type: ignore[arg-type]
                 )
+            else:  # item is a TransitionMapping
+                demonstrations = rollout.flatten_transition_mappings(
+                    demonstrations,  # type: ignore[arg-type]
+                )
 
-        n_samples = len(demonstrations)  # type: ignore[arg-type]
+        assert isinstance(demonstrations, types.Transitions)
+
+        n_samples = len(demonstrations)
         expert_buffer = buffers.ReplayBuffer(
             n_samples,
             self.observation_space,
@@ -148,10 +154,10 @@ class SQILReplayBuffer(buffers.ReplayBuffer):
 
         for transition in demonstrations:
             expert_buffer.add(
-                obs=np.array(transition["obs"]),  # type: ignore[index]
-                next_obs=np.array(transition["next_obs"]),  # type: ignore[index]
-                action=np.array(transition["acts"]),  # type: ignore[index]
-                done=np.array(transition["dones"]),  # type: ignore[index]
+                obs=np.array(transition["obs"]),
+                next_obs=np.array(transition["next_obs"]),
+                action=np.array(transition["acts"]),
+                done=np.array(transition["dones"]),
                 reward=np.array(1),
                 infos=[{}],
             )

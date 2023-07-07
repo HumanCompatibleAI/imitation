@@ -23,6 +23,7 @@ from stable_baselines3.common.policies import BasePolicy
 from stable_baselines3.common.utils import check_for_correct_spaces
 from stable_baselines3.common.vec_env import VecEnv
 
+from imitation.algorithms import base as algo_base
 from imitation.data import types
 
 
@@ -560,6 +561,34 @@ def flatten_trajectories(
     cat_parts = {
         key: np.concatenate(part_list, axis=0) for key, part_list in parts.items()
     }
+    lengths = set(map(len, cat_parts.values()))
+    assert len(lengths) == 1, f"expected one length, got {lengths}"
+    return types.Transitions(**cat_parts)
+
+
+def flatten_transition_mappings(
+    trajectories: Iterable[algo_base.TransitionMapping],
+) -> types.Transitions:
+    """Flatten a series of transition mappings (e.g. a dataloader) into arrays.
+
+    Args:
+        trajectories: list of trajectories.
+
+    Returns:
+        The trajectories flattened into a single batch of Transitions.
+    """
+    keys = ["obs", "next_obs", "acts", "dones", "infos"]
+    parts: Mapping[str, List[np.ndarray]] = {key: [] for key in keys}
+    for data in trajectories:
+        num_steps = len(data["obs"])
+        for i in range(num_steps):
+            parts["obs"].append(data["obs"][i].detach().cpu().numpy())
+            parts["next_obs"].append(data["next_obs"][i].detach().cpu().numpy())
+            parts["acts"].append(data["acts"][i].detach().cpu().numpy())
+            parts["dones"].append(data["dones"][i].detach().cpu().numpy())
+            parts["infos"].append(data["infos"][i])  # type: ignore[arg-type]
+
+    cat_parts = {key: np.stack(part_list, axis=0) for key, part_list in parts.items()}
     lengths = set(map(len, cat_parts.values()))
     assert len(lengths) == 1, f"expected one length, got {lengths}"
     return types.Transitions(**cat_parts)

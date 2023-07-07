@@ -6,6 +6,7 @@ import stable_baselines3.common.buffers as buffers
 import stable_baselines3.common.vec_env as vec_env
 import stable_baselines3.dqn as dqn
 
+from imitation.algorithms import base as algo_base
 from imitation.algorithms import sqil
 from imitation.data import rollout, wrappers
 
@@ -67,6 +68,9 @@ def test_sqil_demonstration_without_flatten(rng):
         rng=rng,
     )
 
+    flat_rollouts = rollout.flatten_trajectories(rollouts)
+    n_samples = len(flat_rollouts)
+
     model = sqil.SQIL(
         venv=venv,
         demonstrations=rollouts,
@@ -75,6 +79,41 @@ def test_sqil_demonstration_without_flatten(rng):
 
     assert isinstance(model.dqn.replay_buffer, sqil.SQILReplayBuffer)
     assert isinstance(model.dqn.replay_buffer.expert_buffer, buffers.ReplayBuffer)
+
+    assert len(model.dqn.replay_buffer.expert_buffer.observations) == n_samples
+
+
+def test_sqil_demonstration_data_loader(rng):
+    env = gym.make("CartPole-v1")
+    venv = vec_env.DummyVecEnv([lambda: wrappers.RolloutInfoWrapper(env)])
+    policy = "MlpPolicy"
+
+    sampling_agent = dqn.DQN(
+        env=env,
+        policy=policy,
+    )
+
+    rollouts = rollout.rollout(
+        sampling_agent.policy,
+        venv,
+        rollout.make_sample_until(min_timesteps=None, min_episodes=50),
+        rng=rng,
+    )
+
+    transition_mappings = algo_base.make_data_loader(rollouts, batch_size=4)
+
+    model = sqil.SQIL(
+        venv=venv,
+        demonstrations=transition_mappings,
+        policy=policy,
+    )
+
+    assert isinstance(model.dqn.replay_buffer, sqil.SQILReplayBuffer)
+    assert isinstance(model.dqn.replay_buffer.expert_buffer, buffers.ReplayBuffer)
+
+    assert len(model.dqn.replay_buffer.expert_buffer.observations) == sum(
+        len(traj["obs"]) for traj in transition_mappings
+    )
 
 
 def test_sqil_cartpole_no_crash(rng):
