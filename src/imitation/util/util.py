@@ -445,3 +445,18 @@ def parse_optional_path(
         return None
     else:
         return parse_path(path, allow_relative, base_directory)
+
+
+def split_in_half(x: int) -> Tuple[int, int]:
+    """Split an integer in half, rounding up.
+
+    This is to ensure that the two halves sum to the original integer.
+
+    Args:
+        x: The integer to split.
+
+    Returns:
+        A tuple containing the two halves of `x`.
+    """
+    half = x // 2
+    return half, x - half
