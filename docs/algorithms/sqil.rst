@@ -15,7 +15,7 @@ demonstrations.
 Example
 =======
 
-Detailed example notebook: :doc:`../tutorials/10_train_sqil`
+Detailed example notebook: :doc:`../tutorials/8_train_sqil`
 
 .. testcode::
     :skipif: skip_doctests
