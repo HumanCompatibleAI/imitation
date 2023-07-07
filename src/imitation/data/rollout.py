@@ -18,12 +18,12 @@ from typing import (
 )
 
 import numpy as np
+import torch as th
 from stable_baselines3.common.base_class import BaseAlgorithm
 from stable_baselines3.common.policies import BasePolicy
 from stable_baselines3.common.utils import check_for_correct_spaces
 from stable_baselines3.common.vec_env import VecEnv
 
-from imitation.algorithms import base as algo_base
 from imitation.data import types
 
 
@@ -567,7 +567,7 @@ def flatten_trajectories(
 
 
 def flatten_transition_mappings(
-    trajectories: Iterable[algo_base.TransitionMapping],
+    trajectories: Iterable[Mapping[str, Union[np.ndarray, th.Tensor]]],
 ) -> types.Transitions:
     """Flatten a series of transition mappings (e.g. a dataloader) into arrays.
 
