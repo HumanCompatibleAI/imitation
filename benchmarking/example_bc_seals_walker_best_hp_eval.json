@@ -20,7 +20,8 @@
     "use_offline_rollouts": false
   },
   "demonstrations": {
-    "rollout_type": "ppo-huggingface",
+    "source": "huggingface",
+    "algo_name": "ppo",
     "n_expert_demos": null
   },
   "policy": {

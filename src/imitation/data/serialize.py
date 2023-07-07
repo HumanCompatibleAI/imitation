@@ -5,7 +5,6 @@ import warnings
 from typing import Mapping, Sequence, cast
 
 import datasets
-import huggingface_sb3 as hfsb3
 import numpy as np
 
 from imitation.data import huggingface_utils
@@ -87,14 +86,3 @@ def load_with_rewards(path: AnyPath) -> Sequence[TrajectoryWithRew]:
         )
 
     return cast(Sequence[TrajectoryWithRew], data)
-
-
-def load_rollouts_from_huggingface(
-    algo_name: str,
-    env_name: str,
-    organization: str = "HumanCompatibleAI",
-) -> str:
-    model_name = hfsb3.ModelName(algo_name, hfsb3.EnvironmentName(env_name))
-    repo_id = hfsb3.ModelRepoId(organization, model_name)
-    filename = hfsb3.load_from_hub(repo_id, "rollouts.npz")
-    return filename

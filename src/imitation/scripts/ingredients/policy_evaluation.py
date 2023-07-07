@@ -46,7 +46,7 @@ def eval_policy(
         `rollout_stats()` on rollouts test-reward-wrapped environment, using the final
         policy (remember that the ground-truth reward can be recovered from the
         "monitor_return" key). "expert_stats" gives the return value of
-        `rollout_stats()` on the expert demonstrations loaded from `rollout_path`.
+        `rollout_stats()` on the expert demonstrations loaded from `path`.
     """
     sample_until_eval = rollout.make_min_episodes(n_episodes_eval)
     if isinstance(rl_algo, base_class.BaseAlgorithm):
