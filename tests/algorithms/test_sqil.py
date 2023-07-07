@@ -5,10 +5,13 @@ import numpy as np
 import stable_baselines3.common.buffers as buffers
 import stable_baselines3.common.vec_env as vec_env
 import stable_baselines3.dqn as dqn
+from stable_baselines3 import ppo
+from stable_baselines3.common.evaluation import evaluate_policy
 
 from imitation.algorithms import base as algo_base
 from imitation.algorithms import sqil
 from imitation.data import rollout, wrappers
+from imitation.testing import reward_improvement
 
 
 def test_sqil_demonstration_buffer(rng):
@@ -169,3 +172,61 @@ def test_sqil_cartpole_few_demonstrations(rng):
         dqn_kwargs=dict(learning_starts=10),
     )
     model.train(total_timesteps=1_000)
+
+
+def test_sqil_performance(rng):
+    env = gym.make("CartPole-v1")
+    venv = vec_env.DummyVecEnv([lambda: wrappers.RolloutInfoWrapper(env)])
+
+    expert = ppo.PPO(
+        policy=ppo.MlpPolicy,
+        env=env,
+        seed=0,
+        batch_size=64,
+        ent_coef=0.0,
+        learning_rate=0.0003,
+        n_epochs=10,
+        n_steps=64,
+    )
+    expert.learn(10_000)
+
+    expert_reward, _ = evaluate_policy(expert, env, 10)
+    print(expert_reward)
+
+    rollouts = rollout.rollout(
+        expert.policy,
+        venv,
+        rollout.make_sample_until(min_timesteps=None, min_episodes=50),
+        rng=rng,
+    )
+
+    demonstrations = rollout.flatten_trajectories(rollouts)
+    demonstrations = demonstrations[:5]
+
+    model = sqil.SQIL(
+        venv=venv,
+        demonstrations=demonstrations,
+        policy="MlpPolicy",
+        dqn_kwargs=dict(learning_starts=1000),
+    )
+
+    rewards_before, _ = evaluate_policy(
+        model.policy,
+        env,
+        10,
+        return_episode_rewards=True,
+    )
+
+    model.train(total_timesteps=10_000)
+
+    rewards_after, _ = evaluate_policy(
+        model.policy,
+        env,
+        10,
+        return_episode_rewards=True,
+    )
+
+    assert reward_improvement.is_significant_reward_improvement(
+        rewards_before,
+        rewards_after,
+    )
