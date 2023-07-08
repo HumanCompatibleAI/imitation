@@ -198,7 +198,7 @@ class DensityAlgorithm(base.DemonstrationAlgorithm):
                         transitions.setdefault(i, []).append(flat_trans)
             elif isinstance(first_item, Mapping):
                 # analogous to cast above.
-                demonstrations = cast(Iterable[base.TransitionMapping], demonstrations)
+                demonstrations = cast(Iterable[types.TransitionMapping], demonstrations)
 
                 for batch in demonstrations:
                     transitions.update(

@@ -98,8 +98,8 @@ class AdversarialTrainer(base.DemonstrationAlgorithm[types.Transitions]):
     If `debug_use_ground_truth=True` was passed into the initializer then
     `self.venv_train` is the same as `self.venv`."""
 
-    _demo_data_loader: Optional[Iterable[base.TransitionMapping]]
-    _endless_expert_iterator: Optional[Iterator[base.TransitionMapping]]
+    _demo_data_loader: Optional[Iterable[types.TransitionMapping]]
+    _endless_expert_iterator: Optional[Iterator[types.TransitionMapping]]
 
     venv_wrapped: vec_env.VecEnvWrapper
 

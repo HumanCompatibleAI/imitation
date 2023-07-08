@@ -123,11 +123,10 @@ class BaseImitationAlgorithm(abc.ABC):
         self.logger = state.get("_logger") or imit_logger.configure()
 
 
-TransitionMapping = Mapping[str, Union[np.ndarray, th.Tensor]]
 TransitionKind = TypeVar("TransitionKind", bound=types.TransitionsMinimal)
 AnyTransitions = Union[
     Iterable[types.Trajectory],
-    Iterable[TransitionMapping],
+    Iterable[types.TransitionMapping],
     types.TransitionsMinimal,
 ]
 
@@ -190,7 +189,7 @@ class _WrappedDataLoader:
 
     def __init__(
         self,
-        data_loader: Iterable[TransitionMapping],
+        data_loader: Iterable[types.TransitionMapping],
         expected_batch_size: int,
     ):
         """Builds _WrappedDataLoader.
@@ -202,7 +201,7 @@ class _WrappedDataLoader:
         self.data_loader = data_loader
         self.expected_batch_size = expected_batch_size
 
-    def __iter__(self) -> Iterator[TransitionMapping]:
+    def __iter__(self) -> Iterator[types.TransitionMapping]:
         """Yields data from `self.data_loader`, checking `self.expected_batch_size`.
 
         Yields:
@@ -230,7 +229,7 @@ def make_data_loader(
     transitions: AnyTransitions,
     batch_size: int,
     data_loader_kwargs: Optional[Mapping[str, Any]] = None,
-) -> Iterable[TransitionMapping]:
+) -> Iterable[types.TransitionMapping]:
     """Converts demonstration data to Torch data loader.
 
     Args:

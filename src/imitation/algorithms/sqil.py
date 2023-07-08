@@ -195,7 +195,6 @@ class SQILReplayBuffer(buffers.ReplayBuffer):
 
         Returns:
             A batch of samples for DQN
-
         """
         new_sample_size, expert_sample_size = util.split_in_half(batch_size)
 

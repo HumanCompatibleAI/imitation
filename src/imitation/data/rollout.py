@@ -567,7 +567,7 @@ def flatten_trajectories(
 
 
 def flatten_transition_mappings(
-    trajectories: Iterable[Mapping[str, Union[np.ndarray, th.Tensor]]],
+    trajectories: Iterable[types.TransitionMapping],
 ) -> types.Transitions:
     """Flatten a series of transition mappings (e.g. a dataloader) into arrays.
 
