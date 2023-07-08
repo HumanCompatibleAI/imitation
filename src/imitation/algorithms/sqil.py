@@ -126,12 +126,12 @@ class SQILReplayBuffer(buffers.ReplayBuffer):
             handle_timeout_termination=False,
         )
 
-        self.expert_buffer = self.set_demonstrations(demonstrations)
+        self.set_demonstrations(demonstrations)
 
     def set_demonstrations(
         self,
         demonstrations: algo_base.AnyTransitions,
-    ) -> buffers.ReplayBuffer:
+    ) -> None:
         """Set the demonstrations to be used in the buffer.
 
         Args:
@@ -161,7 +161,7 @@ class SQILReplayBuffer(buffers.ReplayBuffer):
         assert isinstance(demonstrations, types.Transitions)
 
         n_samples = len(demonstrations)
-        expert_buffer = buffers.ReplayBuffer(
+        self.expert_buffer = buffers.ReplayBuffer(
             n_samples,
             self.observation_space,
             self.action_space,
@@ -177,8 +177,6 @@ class SQILReplayBuffer(buffers.ReplayBuffer):
                 reward=np.array(1),
                 infos=[{}],
             )
-
-        return expert_buffer
 
     def sample(
         self,
