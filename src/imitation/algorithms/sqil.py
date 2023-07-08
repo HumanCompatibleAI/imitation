@@ -47,12 +47,28 @@ class SQIL(algo_base.DemonstrationAlgorithm):
         """
         self.venv = venv
 
+        if dqn_kwargs is None:
+            dqn_kwargs = {}
+        # SOMEDAY(adam): we could support users specifying their own replay buffer
+        # if we made SQILReplayBuffer a more flexible wrapper. Does not seem worth
+        # the added complexity until we have a concrete use case, however.
+        if "replay_buffer_class" in dqn_kwargs:
+            raise ValueError(
+                "SQIL uses a custom replay buffer: "
+                "'replay_buffer_class' not allowed."
+            )
+        if "replay_buffer_kwargs" in dqn_kwargs:
+            raise ValueError(
+                "SQIL uses a custom replay buffer: "
+                "'replay_buffer_kwargs' not allowed."
+            )
+
         self.dqn = dqn.DQN(
             policy=policy,
             env=venv,
             replay_buffer_class=SQILReplayBuffer,
             replay_buffer_kwargs={"demonstrations": demonstrations},
-            **(dqn_kwargs or {}),
+            **dqn_kwargs,
         )
 
         super().__init__(demonstrations=demonstrations, custom_logger=custom_logger)
