@@ -169,7 +169,7 @@ class SQILReplayBuffer(buffers.ReplayBuffer):
         )
 
         for transition in demonstrations:
-            expert_buffer.add(
+            self.expert_buffer.add(
                 obs=np.array(transition["obs"]),
                 next_obs=np.array(transition["next_obs"]),
                 action=np.array(transition["acts"]),
