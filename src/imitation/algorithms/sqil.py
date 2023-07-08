@@ -18,7 +18,7 @@ from imitation.data import rollout, types
 from imitation.util import logger, util
 
 
-class SQIL(algo_base.DemonstrationAlgorithm):
+class SQIL(algo_base.DemonstrationAlgorithm[types.Transitions]):
     """Soft Q Imitation Learning (SQIL).
 
     Trains a policy via DQN-style Q-learning,
