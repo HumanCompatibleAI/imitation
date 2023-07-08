@@ -44,6 +44,10 @@ class SQIL(algo_base.DemonstrationAlgorithm):
             policy: The policy model to use (SB3).
             custom_logger: Where to log to; if None (default), creates a new logger.
             dqn_kwargs: Keyword arguments to pass to the DQN constructor.
+
+        Raises:
+            ValueError: if `dqn_kwargs` includes a key
+                `replay_buffer_class` or `replay_buffer_kwargs`.
         """
         self.venv = venv
 
@@ -55,12 +59,12 @@ class SQIL(algo_base.DemonstrationAlgorithm):
         if "replay_buffer_class" in dqn_kwargs:
             raise ValueError(
                 "SQIL uses a custom replay buffer: "
-                "'replay_buffer_class' not allowed."
+                "'replay_buffer_class' not allowed.",
             )
         if "replay_buffer_kwargs" in dqn_kwargs:
             raise ValueError(
                 "SQIL uses a custom replay buffer: "
-                "'replay_buffer_kwargs' not allowed."
+                "'replay_buffer_kwargs' not allowed.",
             )
 
         self.dqn = dqn.DQN(
@@ -136,9 +140,6 @@ class SQILReplayBuffer(buffers.ReplayBuffer):
 
         Args:
             demonstrations (algo_base.AnyTransitions): Expert demonstrations.
-
-        Returns:
-            buffers.ReplayBuffer: The buffer with demonstrations added
         """
         # If demonstrations is a list of trajectories,
         # flatten it into a list of transitions
