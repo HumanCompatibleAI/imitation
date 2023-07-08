@@ -25,6 +25,7 @@ from stable_baselines3.common.utils import check_for_correct_spaces
 from stable_baselines3.common.vec_env import VecEnv
 
 from imitation.data import types
+from imitation.util import util
 
 
 def unwrap_traj(traj: types.TrajectoryWithRew) -> types.TrajectoryWithRew:
@@ -582,10 +583,10 @@ def flatten_transition_mappings(
     for data in trajectories:
         num_steps = len(data["obs"])
         for i in range(num_steps):
-            parts["obs"].append(data["obs"][i].detach().cpu().numpy())
-            parts["next_obs"].append(data["next_obs"][i].detach().cpu().numpy())
-            parts["acts"].append(data["acts"][i].detach().cpu().numpy())
-            parts["dones"].append(data["dones"][i].detach().cpu().numpy())
+            parts["obs"].append(util.safe_to_numpy(data["obs"][i]))
+            parts["next_obs"].append(util.safe_to_numpy(data["next_obs"][i]))
+            parts["acts"].append(util.safe_to_numpy(data["acts"][i]))
+            parts["dones"].append(util.safe_to_numpy(data["dones"][i]))
             parts["infos"].append(data["infos"][i])  # type: ignore[arg-type]
 
     cat_parts = {key: np.stack(part_list, axis=0) for key, part_list in parts.items()}
