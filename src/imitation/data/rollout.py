@@ -18,7 +18,6 @@ from typing import (
 )
 
 import numpy as np
-import torch as th
 from stable_baselines3.common.base_class import BaseAlgorithm
 from stable_baselines3.common.policies import BasePolicy
 from stable_baselines3.common.utils import check_for_correct_spaces
