@@ -111,7 +111,7 @@ def test_sqil_performance(
     rewards_before, _ = evaluate_policy(
         model.policy,
         cartpole_venv,
-        10,
+        20,
         return_episode_rewards=True,
     )
 
@@ -120,7 +120,7 @@ def test_sqil_performance(
     rewards_after, _ = evaluate_policy(
         model.policy,
         cartpole_venv,
-        10,
+        20,
         return_episode_rewards=True,
     )
 
