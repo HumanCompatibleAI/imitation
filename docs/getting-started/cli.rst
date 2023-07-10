@@ -35,7 +35,7 @@ You can always find out all the configurable values by running:
 Run BC on the `CartPole-v1` environment with a pre-trained PPO policy as expert:
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Note: the cartpole environment is specified via a named configuration
+.. note:: Here the cartpole environment is specified via a named configuration.
 
 .. code-block:: bash
 
@@ -74,7 +74,7 @@ Run AIRL on the `MountainCar-v0` environment with a expert from the HuggingFace 
         expert.policy_type=ppo-huggingface \
         demonstrations.n_expert_demos=500
 
-Note: the small number of total timesteps is only for demonstration purposes and will not produce a good policy.
+.. note:: The small number of total timesteps is only for demonstration purposes and will not produce a good policy.
 
 
 Run GAIL on the `seals/Swimmer-v0` environment
@@ -83,7 +83,7 @@ Run GAIL on the `seals/Swimmer-v0` environment
 Here we do not use the named configuration for the seals environment, but instead specify the gym_id directly.
 The :code:`seals:` prefix ensures that the seals package is imported and the environment is registered.
 
-Note that the Swimmer environment needs `mujoco_py` to be installed.
+.. note:: The Swimmer environment needs `mujoco_py` to be installed.
 
 .. code-block:: bash
 
