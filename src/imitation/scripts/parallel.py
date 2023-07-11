@@ -6,11 +6,9 @@ import glob
 import pathlib
 from typing import Any, Callable, Dict, Mapping, Optional, Sequence, Union
 
-import numpy as np
 import ray
 import ray.tune
 import sacred
-from pandas.api.types import is_object_dtype
 from ray.tune import search
 from ray.tune.registry import register_trainable
 from ray.tune.search import optuna
@@ -31,14 +29,12 @@ def parallel(
     init_kwargs: Mapping[str, Any],
     local_dir: Optional[str],
     upload_dir: Optional[str],
-    repeat: int = 1,
-    eval_best_trial: bool = False,
-    eval_best_trial_resource_multiplier: int = 1,
-    eval_trial_seeds: int = 5,
-    experiment_checkpoint_path: str = "",
-    syncer=None,
-    resume: Union[str, bool] = False,
-) -> None:
+    repeat: int,
+    search_alg: Optional[str],
+    experiment_checkpoint_path: str,
+    syncer,
+    resume: Union[str, bool],
+) -> ray.tune.ExperimentAnalysis:
     """Parallelize multiple runs of another Sacred Experiment using Ray Tune.
 
     A Sacred FileObserver is attached to the inner experiment and writes Sacred
@@ -47,7 +43,7 @@ def parallel(
 
     Args:
         sacred_ex_name: The Sacred experiment to tune. Either "train_rl" or
-            "train_adversarial".
+            "train_imitation" or "train_adversarial" or "train_preference_comparisons".
         run_name: A name describing this parallelizing experiment.
             This argument is also passed to `ray.tune.run` as the `name` argument.
             It is also saved in 'sacred/run.json' of each inner Sacred experiment
@@ -78,24 +74,19 @@ def parallel(
         init_kwargs: Arguments to pass to `ray.init`.
         local_dir: `local_dir` argument to `ray.tune.run()`.
         upload_dir: `upload_dir` argument to `ray.tune.run()`.
+        search_alg: can be either "optuna" or None.
         repeat: Number of runs to repeat each trial for.
-        eval_best_trial: Whether to evaluate the trial with the best mean return
-            at the end of tuning on a separate set of seeds.
-        eval_best_trial_resource_multiplier: factor by which to multiply the
-            number of cpus per trial in `resources_per_trial`.
-        eval_trial_seeds: Number of distinct seeds to evaluate the best trial on.
-        experiment_checkpoint_path: Path containing the checkpoints of a previous
-            experiment ran using this script. Useful for resuming cancelled trials
-            of the experiments (using `resume`) or evaluating the best trial of the
-            experiment (using `eval_best_trial`).
+            Not used if `search_alg` is None.
         resume: If true and `experiment_checkpoint_path` is given, then resumes the
             experiment by restarting the trials that did not finish in the experiment
             checkpoint path.
         syncer: `syncer` argument to `ray.tune.syncer.SyncConfig`.
 
-
     Raises:
         TypeError: Named configs not string sequences or config updates not mappings.
+
+    Returns:
+        The result of `ray.tune.run()`.
     """
     # Basic validation for config options before we enter parallel jobs.
     if not isinstance(base_named_configs, collections.abc.Sequence):
@@ -126,7 +117,11 @@ def parallel(
     )
 
     ray.init(**init_kwargs)
-    search_alg = search.Repeater(optuna.OptunaSearch(), repeat=repeat)
+    if search_alg == "optuna":
+        algo = search.Repeater(optuna.OptunaSearch(), repeat=repeat)
+    else:
+        assert repeat == 1  # repeat should not be used if search_alg is None
+        algo = None
 
     if sacred_ex_name == "train_rl":
         return_key = "monitor_return_mean"
@@ -166,7 +161,6 @@ def parallel(
             result.trials = None
             result.fetch_trial_dataframes()
         else:
-            # run hyperparameter tuning
             result = ray.tune.run(
                 trainable,
                 config=search_space,
@@ -178,68 +172,11 @@ def parallel(
                     upload_dir=upload_dir,
                     syncer=syncer,
                 ),
-                search_alg=search_alg,
+                search_alg=algo,
                 metric=return_key,
                 mode="max",
             )
-        if eval_best_trial:
-            df = result.results_df
-            df = df[df["config/named_configs"].notna()]
-            # convert object dtype to str required by df.groupby
-            for col in df.columns:
-                if is_object_dtype(df[col]):
-                    df[col] = df[col].astype("str")
-            # group into separate HP configs
-            grp_keys = [
-                c for c in df.columns if c.startswith("config") and "seed" not in c
-            ]
-            grps = df.groupby(grp_keys)
-            # store mean return of runs across all seeds in a group
-            df["mean_return"] = grps[return_key].transform(lambda x: x.mean())
-            best_config_df = df[df["mean_return"] == df["mean_return"].max()]
-            row = best_config_df.iloc[0]
-            best_config_tag = row["experiment_tag"]
-            if result.trials is not None:
-                trial = [
-                    t for t in result.trials if best_config_tag in t.experiment_tag
-                ][0]
-                best_config = trial.config
-                print("Mean return:", row["mean_return"])
-                print(
-                    "All returns:",
-                    df[df["mean_return"] == row["mean_return"]][return_key],
-                )
-                print("Total seeds:", (df["mean_return"] == row["mean_return"]).sum())
-                best_config["config_updates"].update(
-                    seed=ray.tune.grid_search(list(range(100, 100 + eval_trial_seeds))),
-                )
-
-                resources_per_trial_eval = copy.deepcopy(resources_per_trial)
-                # update cpus per trial only if it is provided in `resources_per_trial`
-                # Uses the default values (cpu=1) if it is not provided
-                if "cpu" in resources_per_trial:
-
-                    resources_per_trial_eval[
-                        "cpu"
-                    ] *= eval_best_trial_resource_multiplier
-                    best_config["config_updates"].update(
-                        environment=dict(num_vec=resources_per_trial_eval["cpu"]),
-                    )
-
-                eval_result = ray.tune.run(
-                    trainable,
-                    config={
-                        "named_configs": best_config["named_configs"],
-                        "config_updates": best_config["config_updates"],
-                        "command_name": best_config.get("command_name", None),
-                    },
-                    name=run_name + "_best_hp_eval",
-                    resources_per_trial=resources_per_trial_eval,
-                )
-                returns = eval_result.results_df[return_key].to_numpy()
-                print("All returns:", returns)
-                print("Mean:", np.mean(returns))
-                print("Std:", np.std(returns))
+        return result
     finally:
         ray.shutdown()
 
