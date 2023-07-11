@@ -39,14 +39,11 @@ def config():
     local_dir = None  # `local_dir` arg for `ray.tune.run`
     upload_dir = None  # `upload_dir` arg for `ray.tune.run`
     experiment_checkpoint_path = ""
-    eval_best_trial = False
-    eval_trial_seeds = 5  # Number of seeds to search over by default
     num_samples = 1  # Number of samples per grid search configuration
     repeat = 1
     search_alg = "optuna"  # search algorithm to use
-    experiment_checkpoint_path = ""  # Path to checkpoint of experiment to resume
+    experiment_checkpoint_path = ""  # Path to checkpoint of experiment 
     syncer = None  # Sacred syncer to use
-    resume = False  # Whether to resume experiment from checkpoint
 
 
 # Debug named configs

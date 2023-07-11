@@ -33,7 +33,6 @@ def parallel(
     search_alg: Optional[str],
     experiment_checkpoint_path: str,
     syncer,
-    resume: Union[str, bool],
 ) -> ray.tune.ExperimentAnalysis:
     """Parallelize multiple runs of another Sacred Experiment using Ray Tune.
 
@@ -78,12 +77,8 @@ def parallel(
         repeat: Number of runs to repeat each trial for.
             Not used if `search_alg` is None.
         experiment_checkpoint_path: Path containing the checkpoints of a previous
-            experiment ran using this script. Useful for resuming cancelled trials
-            of the experiments (using `resume`) or evaluating the best trial of the
-            experiment (using `eval_best_trial`).
-        resume: If true and `experiment_checkpoint_path` is given, then resumes the
-            experiment by restarting the trials that did not finish in the experiment
-            checkpoint path.
+            experiment ran using this script. Useful for  evaluating the best trial
+             of the experiment.
         syncer: `syncer` argument to `ray.tune.syncer.SyncConfig`.
 
     Raises:
@@ -134,28 +129,6 @@ def parallel(
 
     try:
         if experiment_checkpoint_path:
-            if resume:
-                # restart failed runs from experiment_checkpoint_path
-                register_trainable("inner", trainable)
-                runner = ray.tune.execution.trial_runner.TrialRunner(
-                    local_checkpoint_dir=experiment_checkpoint_path,
-                    sync_config=ray.tune.syncer.SyncConfig(
-                        upload_dir=upload_dir,
-                        syncer=syncer,
-                    ),
-                    metric=return_key,
-                    resume=True,
-                )
-                print(
-                    "Live trials:",
-                    len(runner._live_trials),
-                    "/",
-                    len(runner._trials),
-                )
-                while not runner.is_finished():
-                    runner.step()
-                    print("Debug:", runner.debug_string())
-
             # load experiment analysis results
             result = ray.tune.ExperimentAnalysis(experiment_checkpoint_path)
             result._load_checkpoints_from_latest(
