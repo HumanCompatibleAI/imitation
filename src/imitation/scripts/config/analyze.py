@@ -18,7 +18,7 @@ def config():
     tex_output_path = None  # Write LaTex output to this path
     print_table = True  # Set to True to print analysis to stdout
     split_str = ","  # str used to split source_dir_str into multiple source dirs
-    table_verbosity = 1  # Choose from 0, 1, or 2
+    table_verbosity = 1  # Choose from 0, 1, 2 or 3
     source_dirs = None
 
 

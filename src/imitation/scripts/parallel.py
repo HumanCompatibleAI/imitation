@@ -4,13 +4,12 @@ import collections.abc
 import copy
 import glob
 import pathlib
-from typing import Any, Callable, Dict, Mapping, Optional, Sequence, Union
+from typing import Any, Callable, Dict, Mapping, Optional, Sequence
 
 import ray
 import ray.tune
 import sacred
 from ray.tune import search
-from ray.tune.registry import register_trainable
 from ray.tune.search import optuna
 from sacred.observers import FileStorageObserver
 
@@ -78,7 +77,7 @@ def parallel(
             Not used if `search_alg` is None.
         experiment_checkpoint_path: Path containing the checkpoints of a previous
             experiment ran using this script. Useful for  evaluating the best trial
-             of the experiment.
+            of the experiment.
         syncer: `syncer` argument to `ray.tune.syncer.SyncConfig`.
 
     Raises:

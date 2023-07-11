@@ -802,7 +802,7 @@ PARALLEL_CONFIG_UPDATES = [
             # Need absolute path because raylet runs in different working directory.
             "demonstrations.path": CARTPOLE_TEST_ROLLOUT_PATH.absolute(),
         },
-        search_alg=None, # Use default search algorithm of ray.
+        search_alg=None,  # Use default search algorithm of ray.
         search_space={
             "command_name": "airl",
             "config_updates": {"total_timesteps": tune.choice([5, 10])},
@@ -942,7 +942,7 @@ def test_analyze_imitation(tmpdir: str, run_names: List[str], run_sacred_fn):
             assert run.status == "COMPLETED"
 
     # Check that analyze script finds the correct number of logs.
-    def check(run_name: Optional[str], count: int) -> None:
+    def check(run_name: Optional[str], count: int, table_verbosity=1) -> None:
         run = analyze.analysis_ex.run(
             command_name="analyze_imitation",
             config_updates=dict(
@@ -952,6 +952,7 @@ def test_analyze_imitation(tmpdir: str, run_names: List[str], run_sacred_fn):
                 csv_output_path=tmpdir_path / "analysis.csv",
                 tex_output_path=tmpdir_path / "analysis.tex",
                 print_table=True,
+                table_verbosity=table_verbosity,
             ),
         )
         assert run.status == "COMPLETED"
@@ -961,7 +962,7 @@ def test_analyze_imitation(tmpdir: str, run_names: List[str], run_sacred_fn):
     for run_name, count in Counter(run_names).items():
         check(run_name, count)
 
-    check(None, len(run_names))  # Check total number of logs.
+    check(None, len(run_names), table_verbosity=3)  # Check total number of logs.
 
 
 def test_analyze_gather_tb(tmpdir: str):
