@@ -77,6 +77,10 @@ def parallel(
         search_alg: can be either "optuna" or None.
         repeat: Number of runs to repeat each trial for.
             Not used if `search_alg` is None.
+        experiment_checkpoint_path: Path containing the checkpoints of a previous
+            experiment ran using this script. Useful for resuming cancelled trials
+            of the experiments (using `resume`) or evaluating the best trial of the
+            experiment (using `eval_best_trial`).
         resume: If true and `experiment_checkpoint_path` is given, then resumes the
             experiment by restarting the trials that did not finish in the experiment
             checkpoint path.
