@@ -65,10 +65,12 @@ In order to use a reward network to train a policy, we need to integrate it into
 Reward Network Wrappers
 -----------------------
 
-Imitation learning algorithms should converge to a reward function that will theoretically induce the optimal/soft optimal policy. However, these reward functions may not always be well suited for training RL agents, or we may want to modify them to encourage exploration, for instance.
+Imitation learning algorithms should converge to a reward function that will theoretically induce the optimal or `soft-optimal <https://arxiv.org/pdf/2203.11409.pdf>`_ policy. However, these reward functions may not always be well suited for training RL agents, or we may want to modify them to encourage exploration, for instance.
 
 There are two types of wrapper:
-* :class:`ForwardWrapper <imitation.rewards.reward_nets.ForwardWrapper>` allows for direct modification of the results of the reward network's ``forward`` method. It is used during the learning of the reward network and thus must be differentiable. These wrappers are always applied first and are always active. They are used for applying transformations like potential shaping (see :class:`ShapedRewardNet <imitating.rewards.reward_nets.ShapedRewardNet>`).
+
+* :class:`ForwardWrapper <imitation.rewards.reward_nets.ForwardWrapper>` allows for direct modification of the results of the reward network's ``forward`` method. It is used during the learning of the reward network and thus must be differentiable. These wrappers are always applied first and are thus take effect regardless of weather you call `forward`, `predict` or `predict_processed`. They are used for applying transformations like potential shaping (see :class:`ShapedRewardNet <imitating.rewards.reward_nets.ShapedRewardNet>`).
+
 * :class:`PredictProcessedWrapper <imitation.rewards.reward_nets.PredictProcessedWrapper>` modifies the predict_processed call to the reward network. Thus this type of reward network wrapper is designed to only modify the reward when it is being used to train/evaluate a policy but *not* when we are taking gradients on it. Thus it does not have to be differentiable.
 
 The most commonly used is the :class:`NormalizedRewardNet <imitating.rewards.reward_nets.NormalizedRewardNet>` which is a predict procssed wrapper. This class uses a normalization layer to standardize the *output* of the reward function using its running mean and variance, which is useful for stabilizing training. When a reward network is saved, its wrappers are saved along with it, so that the normalization fit during reward learning can be used during future policy learning or evaluation.
@@ -84,7 +86,7 @@ The most commonly used is the :class:`NormalizedRewardNet <imitating.rewards.rew
     )
 
 .. note::
-    The reward normalization wrapper does _not_ function identically to stable baselines3's `VecNormalize <https://stable-baselines3.readthedocs.io/en/master/guide/vec_envs.html#stable_baselines3.common.vec_env.VecNormalize>`_ environment wrapper. First, it does not normalize the observations. Second it normalizes the reward based on the reward networks's mean and variance on and *not* a running estimate of the return.
+    The reward normalization wrapper does _not_ function identically to stable baselines3's `VecNormalize <https://stable-baselines3.readthedocs.io/en/master/guide/vec_envs.html#stable_baselines3.common.vec_env.VecNormalize>`_ environment wrapper. First, it does not normalize the observations. Second, unlike ``VecNormalize``, it scales and centers the reward using the base rewards's mean and variance. The ``VecNormalizes`` scales the reward down using a running estimate of the _return_.
 
 By default, the normalization wrapper updates the normalization on each call to ``predict_processed``. This behavior can be altered as shown below.
 
@@ -96,9 +98,9 @@ By default, the normalization wrapper updates the normalization on each call to 
 Serializing and Deserializing Reward Networks
 ---------------------------------------------
 
-Reward networks are serialized simply by calling ``th.save(reward_net, path)``. When evaluating reward networks, we may or may not want to include the wrappers it was trained with. To load the raw reward network, we can simply call ``th.load(path)``.
+Reward networks, wrappers included, are serialized simply by calling ``th.save(reward_net, path)``.
 
-When using a learned reward network to train or evaluate a policy, we can select whether or not to include the reward network wrappers and convert it into a function. This is taken care of by the :func:`load_reward <imitation.rewards.serialize.load_reward>` utility. For example, we might want to remove or keep the reward normalization fit during training in the evaluation phase.
+However, when evaluating reward networks, we may or may not want to include the wrappers it was trained with. To load the reward network just as it was saved, wrappers included, we can simply call ``th.load(path)``. When using a learned reward network to train or evaluate a policy, we can select whether or not to include the reward network wrappers and convert it into a function using the :func:`load_reward <imitation.rewards.serialize.load_reward>` utility. For example, we might want to remove or keep the reward normalization fit during training in the evaluation phase.
 
 .. testsetup::
     :skipif: skip_doctests

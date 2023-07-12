@@ -101,6 +101,8 @@ Some of the classes include:
 
 The ``imitation.rewards.serialize`` module contains functions to load serialized reward functions.
 
+For more see the :ref:`Reward Networks Tutorial <reward-net docs>`.
+
 Scripts
 -------
 
