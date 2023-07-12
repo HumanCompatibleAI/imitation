@@ -149,7 +149,7 @@ class RewardNet(nn.Module, abc.ABC):
             with th.no_grad():
                 rew_th = self(state_th, action_th, next_state_th, done_th)
 
-            assert rew_th.shape == state.shape[:1] # TODO do we or don't we support 
+            assert rew_th.shape == state.shape[:1]  # TODO do we or don't we support
             # state spaces with more than one axis?
             return rew_th
 
