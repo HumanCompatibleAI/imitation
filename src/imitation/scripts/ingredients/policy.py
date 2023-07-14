@@ -1,4 +1,4 @@
-"""Ingredient implementation for a SB3 policy."""
+"""This ingredient provides a newly constructed stable-baselines3 policy."""
 
 import logging
 from typing import Any, Mapping, Type

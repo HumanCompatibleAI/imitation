@@ -1,4 +1,8 @@
-"""Ingredient for scripts learning from demonstrations."""
+"""This ingredient provides (expert) demonstrations to learn from.
+
+The demonstrations are either loaded from disk, from the HuggingFace Dataset Hub, or
+sampled from the expert policy provided by the expert ingredient.
+"""
 
 import logging
 from typing import Any, Dict, Optional, Sequence
