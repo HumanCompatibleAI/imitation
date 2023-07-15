@@ -3,8 +3,8 @@
 Limitations on Horizon Length
 ================================================
 
-Variable Horizon Environments Considered Harmful
-================================================
+.. warning:: Variable Horizon Environments Considered Harmful
+
 
 Reinforcement learning (RL) algorithms are commonly trained and evaluated in *variable horizon* environments.
 In these environments, the episode ends when some termination condition is reached (rather than after a fixed number of steps).
