@@ -72,11 +72,13 @@ def parallel(
         init_kwargs: Arguments to pass to `ray.init`.
         local_dir: `local_dir` argument to `ray.tune.run()`.
         upload_dir: `upload_dir` argument to `ray.tune.run()`.
-        search_alg: can be either "optuna" or None.
+        search_alg: can be either "optuna" or None. Setting `None` allows for
+            adding grid_search to the `search_space` hyperparameters but doesn't allow
+            for trials to be repeated.
         repeat: Number of runs to repeat each trial for.
             Not used if `search_alg` is None.
         experiment_checkpoint_path: Path containing the checkpoints of a previous
-            experiment ran using this script. Useful for  evaluating the best trial
+            experiment ran using this script. Useful for evaluating the best trial
             of the experiment.
         syncer: `syncer` argument to `ray.tune.syncer.SyncConfig`.
 
@@ -84,7 +86,8 @@ def parallel(
         TypeError: Named configs not string sequences or config updates not mappings.
 
     Returns:
-        The result of `ray.tune.run()`.
+        The result of running the parallel experiment with `ray.tune.run()`.
+        Useful for fetching the configs and results dataframe of all the trials.
     """
     # Basic validation for config options before we enter parallel jobs.
     if not isinstance(base_named_configs, collections.abc.Sequence):

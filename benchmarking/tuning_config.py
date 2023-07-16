@@ -12,7 +12,7 @@ tuning_ex = sacred.Experiment("tuning", ingredients=[parallel_ex])
 
 @tuning_ex.named_config
 def example_rl():
-    parallel = dict(
+    parallel_run_config = dict(
         sacred_ex_name="train_rl",
         run_name="rl_tuning",
         base_named_configs=["logging.wandb_logging"],
@@ -33,13 +33,12 @@ def example_rl():
         repeat=1,
         resources_per_trial=dict(cpu=1),
     )
-    eval_best_trial = True
-    eval_trial_seeds = 5
+    num_eval_seeds = 5
 
 
 @tuning_ex.named_config
 def example_bc():
-    parallel = dict(
+    parallel_run_config = dict(
         sacred_ex_name="train_imitation",
         run_name="bc_tuning",
         base_named_configs=["logging.wandb_logging"],
@@ -62,19 +61,18 @@ def example_bc():
             },
             "command_name": "bc",
         },
-        num_samples=2,
-        repeat=1,
+        num_samples=64,
+        repeat=3,
         resources_per_trial=dict(cpu=1),
     )
 
-    eval_best_trial = True
-    eval_trial_seeds = 5
+    num_eval_seeds = 5
     eval_best_trial_resource_multiplier = 1
 
 
 @tuning_ex.named_config
 def example_dagger():
-    parallel = dict(
+    parallel_run_config = dict(
         sacred_ex_name="train_imitation",
         run_name="dagger_tuning",
         base_named_configs=["logging.wandb_logging"],
@@ -109,13 +107,12 @@ def example_dagger():
         repeat=3,
         resources_per_trial=dict(cpu=1),
     )
-    eval_best_trial = True
-    eval_trial_seeds = 5
+    num_eval_seeds = 5
 
 
 @tuning_ex.named_config
 def example_gail():
-    parallel = dict(
+    parallel_run_config = dict(
         sacred_ex_name="train_adversarial",
         run_name="gail_tuning_hc",
         base_named_configs=["logging.wandb_logging"],
@@ -145,13 +142,12 @@ def example_gail():
         repeat=3,
         resources_per_trial=dict(cpu=1),
     )
-    eval_best_trial = True
-    eval_trial_seeds = 5
+    num_eval_seeds = 5
 
 
 @tuning_ex.named_config
 def example_airl():
-    parallel = dict(
+    parallel_run_config = dict(
         sacred_ex_name="train_adversarial",
         run_name="airl_tuning",
         base_named_configs=["logging.wandb_logging"],
@@ -181,14 +177,12 @@ def example_airl():
         repeat=3,
         resources_per_trial=dict(cpu=1),
     )
-
-    eval_best_trial = True
-    eval_trial_seeds = 5
+    num_eval_seeds = 5
 
 
 @tuning_ex.named_config
 def example_pc():
-    parallel = dict(
+    parallel_run_config = dict(
         sacred_ex_name="train_preference_comparisons",
         run_name="pc_tuning",
         base_named_configs=["logging.wandb_logging"],
@@ -232,6 +226,4 @@ def example_pc():
         repeat=3,
         resources_per_trial=dict(cpu=1),
     )
-
-    eval_best_trial = True
-    eval_trial_seeds = 5
+    num_eval_seeds = 5
