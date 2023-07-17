@@ -1,7 +1,7 @@
 .. _density docs:
 
 =============================
-Density-based reward modeling
+Density-Based Reward Modeling
 =============================
 
 Density-based reward modeling is an inverse reinforcement learning (IRL) technique that assigns higher rewards
