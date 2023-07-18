@@ -135,6 +135,7 @@ class SQILReplayBuffer(buffers.ReplayBuffer):
             handle_timeout_termination=False,
         )
 
+        self.expert_buffer = buffers.ReplayBuffer(0, observation_space, action_space)
         self.set_demonstrations(demonstrations)
 
     def set_demonstrations(
