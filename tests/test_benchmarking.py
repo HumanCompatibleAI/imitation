@@ -37,7 +37,7 @@ def test_benchmarks_print_config_succeeds(algorithm: str, environment: str):
 
     config_name = f"{algorithm}_{environment}"
     config_file = str(
-        BENCHMARKING_DIR / f"example_{algorithm}_{environment}_best_hp_eval.json",
+        BENCHMARKING_DIR / f"{algorithm}_{environment}_best_hp_eval.json",
     )
 
     # WHEN
@@ -66,7 +66,7 @@ def test_tuning_print_config_succeeds(algorithm: str):
             tuning_path,
             "print_config",
             "with",
-            f"example_{algorithm}",
+            f"{algorithm}",
             env,
         ],
     )

@@ -7,10 +7,8 @@ via CLI. For example, a user should add a new
 Adding custom named configs is necessary because the CLI interface can't add
 search spaces to the config like `"seed": tune.choice([0, 1, 2, 3])`.
 
-For tuning hyperparameters of an algorithm on a given environment, override
-the `base_named_configs` argument with the named config of the environment.
-Ex: python -m imitation.scripts.parallel with example_gail \
-    'base_named_configs=["logging.wandb_logging", "seals_half_cheetah"]'
+For tuning hyperparameters of an algorithm on a given environment,
+check out the benchmarking/tuning.py script.
 """
 
 import numpy as np

@@ -79,7 +79,7 @@ def clean_config_file(file: pathlib.Path, write_path: pathlib.Path, /) -> None:
 
     remove_empty_dicts(config)
     # files are of the format
-    # /path/to/file/example_<algo>_<env>_best_hp_eval/<other_info>/sacred/1/config.json
+    # /path/to/file/<algo>_<env>_best_hp_eval/<other_info>/sacred/1/config.json
     # we want to write to /<write_path>/<algo>_<env>.json
     with open(write_path / f"{file.parents[3].name}.json", "w") as f:
         json.dump(config, f, indent=4)

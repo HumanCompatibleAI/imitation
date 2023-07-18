@@ -245,13 +245,13 @@ def test_commands_hofvarpnir_config_with_special_characters_in_flags(tmpdir):
 def test_commands_bc_config():
     if os.name == "nt":  # pragma: no cover
         pytest.skip("commands.py not ported to Windows.")
-    cfg_pattern = _get_benchmarking_path("example_bc_seals_ant_best_hp_eval.json")
+    cfg_pattern = _get_benchmarking_path("bc_seals_ant_best_hp_eval.json")
     commands = _run_commands_from_flags(cfg_pattern=cfg_pattern)
     assert len(commands) == 1
     expected = """python -m imitation.scripts.train_imitation bc \
 --capture=sys --name=run0 --file_storage=output/sacred/\
 $USER-cmd-run0-bc-0-138a1475 \
-with benchmarking/example_bc_seals_ant_best_hp_eval.json \
+with benchmarking/bc_seals_ant_best_hp_eval.json \
 seed=0 logging.log_root=output"""
     assert commands[0] == expected
 
@@ -259,13 +259,13 @@ seed=0 logging.log_root=output"""
 def test_commands_dagger_config():
     if os.name == "nt":  # pragma: no cover
         pytest.skip("commands.py not ported to Windows.")
-    cfg_pattern = _get_benchmarking_path("example_dagger_seals_ant_best_hp_eval.json")
+    cfg_pattern = _get_benchmarking_path("dagger_seals_ant_best_hp_eval.json")
     commands = _run_commands_from_flags(cfg_pattern=cfg_pattern)
     assert len(commands) == 1
     expected = """python -m imitation.scripts.train_imitation dagger \
 --capture=sys --name=run0 --file_storage=output/sacred/\
 $USER-cmd-run0-dagger-0-6a49161a \
-with benchmarking/example_dagger_seals_ant_best_hp_eval.json \
+with benchmarking/dagger_seals_ant_best_hp_eval.json \
 seed=0 logging.log_root=output"""
     assert commands[0] == expected
 
@@ -273,13 +273,13 @@ seed=0 logging.log_root=output"""
 def test_commands_gail_config():
     if os.name == "nt":  # pragma: no cover
         pytest.skip("commands.py not ported to Windows.")
-    cfg_pattern = _get_benchmarking_path("example_gail_seals_ant_best_hp_eval.json")
+    cfg_pattern = _get_benchmarking_path("gail_seals_ant_best_hp_eval.json")
     commands = _run_commands_from_flags(cfg_pattern=cfg_pattern)
     assert len(commands) == 1
     expected = """python -m imitation.scripts.train_adversarial gail \
 --capture=sys --name=run0 --file_storage=output/sacred/\
 $USER-cmd-run0-gail-0-3ec8154d \
-with benchmarking/example_gail_seals_ant_best_hp_eval.json \
+with benchmarking/gail_seals_ant_best_hp_eval.json \
 seed=0 logging.log_root=output"""
     assert commands[0] == expected
 
@@ -287,13 +287,13 @@ seed=0 logging.log_root=output"""
 def test_commands_airl_config():
     if os.name == "nt":  # pragma: no cover
         pytest.skip("commands.py not ported to Windows.")
-    cfg_pattern = _get_benchmarking_path("example_airl_seals_ant_best_hp_eval.json")
+    cfg_pattern = _get_benchmarking_path("airl_seals_ant_best_hp_eval.json")
     commands = _run_commands_from_flags(cfg_pattern=cfg_pattern)
     assert len(commands) == 1
     expected = """python -m imitation.scripts.train_adversarial airl \
 --capture=sys --name=run0 \
 --file_storage=output/sacred/$USER-cmd-run0-airl-0-400e1558 \
-with benchmarking/example_airl_seals_ant_best_hp_eval.json \
+with benchmarking/airl_seals_ant_best_hp_eval.json \
 seed=0 logging.log_root=output"""
     assert commands[0] == expected
 

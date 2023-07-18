@@ -30,10 +30,10 @@ are reported.
 
 To tune the hyperparameters of an algorithm using the default search space provided:
 ```bash
-python tuning.py with example_{algo} 'parallel_run_config.base_named_configs=["{env}"]'
+python tuning.py with {algo} 'parallel_run_config.base_named_configs=["{env}"]'
 ```
 
-In this command, `example_{algo}` provides the default search space and settings to be used for
+In this command, `{algo}` provides the default search space and settings to be used for
 the specific algorithm, which is defined in the `tuning_config.py` script and
 `'parallel_run_config.base_named_configs=["{env}"]'` sets the environment to tune the algorithm in.
 See the documentation of `tuning.py` and `parallel.py` scripts for many other arguments that can be

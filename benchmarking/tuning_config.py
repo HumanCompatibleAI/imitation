@@ -4,14 +4,14 @@ import ray.tune as tune
 import sacred
 from torch import nn
 
-from imitation.algorithms import dagger
+from imitation.algorithms import dagger as dagger_alg
 from imitation.scripts.parallel import parallel_ex
 
 tuning_ex = sacred.Experiment("tuning", ingredients=[parallel_ex])
 
 
 @tuning_ex.named_config
-def example_rl():
+def rl():
     parallel_run_config = dict(
         sacred_ex_name="train_rl",
         run_name="rl_tuning",
@@ -37,7 +37,7 @@ def example_rl():
 
 
 @tuning_ex.named_config
-def example_bc():
+def bc():
     parallel_run_config = dict(
         sacred_ex_name="train_imitation",
         run_name="bc_tuning",
@@ -71,7 +71,7 @@ def example_bc():
 
 
 @tuning_ex.named_config
-def example_dagger():
+def dagger():
     parallel_run_config = dict(
         sacred_ex_name="train_imitation",
         run_name="dagger_tuning",
@@ -95,8 +95,11 @@ def example_dagger():
                 ),
                 "dagger": dict(
                     beta_schedule=tune.choice(
-                        [dagger.LinearBetaSchedule(i) for i in [1, 5, 15]]
-                        + [dagger.ExponentialBetaSchedule(i) for i in [0.3, 0.5, 0.7]],
+                        [dagger_alg.LinearBetaSchedule(i) for i in [1, 5, 15]]
+                        + [
+                            dagger_alg.ExponentialBetaSchedule(i)
+                            for i in [0.3, 0.5, 0.7]
+                        ],
                     ),
                     rollout_round_min_episodes=tune.choice([3, 5, 10]),
                 ),
@@ -111,7 +114,7 @@ def example_dagger():
 
 
 @tuning_ex.named_config
-def example_gail():
+def gail():
     parallel_run_config = dict(
         sacred_ex_name="train_adversarial",
         run_name="gail_tuning_hc",
@@ -146,7 +149,7 @@ def example_gail():
 
 
 @tuning_ex.named_config
-def example_airl():
+def airl():
     parallel_run_config = dict(
         sacred_ex_name="train_adversarial",
         run_name="airl_tuning",
@@ -181,7 +184,7 @@ def example_airl():
 
 
 @tuning_ex.named_config
-def example_pc():
+def pc():
     parallel_run_config = dict(
         sacred_ex_name="train_preference_comparisons",
         run_name="pc_tuning",

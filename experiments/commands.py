@@ -22,13 +22,13 @@ And get the following commands printed out:
 python -m imitation.scripts.train_adversarial airl \
     --capture=sys --name=run0 \
     --file_storage=output/sacred/$USER-cmd-run0-airl-0-a3531726 \
-    with ../benchmarking/example_airl_seals_walker_best_hp_eval.json \
+    with ../benchmarking/airl_seals_walker_best_hp_eval.json \
     seed=0 logging.log_root=output
 
 python -m imitation.scripts.train_adversarial gail \
     --capture=sys --name=run0 \
     --file_storage=output/sacred/$USER-cmd-run0-gail-0-a1ec171b \
-    with ../benchmarking/example_gail_seals_walker_best_hp_eval.json \
+    with ../benchmarking/gail_seals_walker_best_hp_eval.json \
     seed=0 logging.log_root=output
 
 We can execute commands in parallel by piping them to GNU parallel:
@@ -42,7 +42,7 @@ For example, we can run:
 
 python commands.py \
     --name=run0 \
-    --cfg_pattern=../benchmarking/example_bc_seals_half_cheetah_best_hp_eval.json \
+    --cfg_pattern=../benchmarking/bc_seals_half_cheetah_best_hp_eval.json \
     --output_dir=/data/output \
     --remote
 
@@ -52,7 +52,7 @@ ctl job run --name $USER-cmd-run0-bc-0-72cb1df3 \
     --command "python -m imitation.scripts.train_imitation bc \
     --capture=sys --name=run0 \
     --file_storage=/data/output/sacred/$USER-cmd-run0-bc-0-72cb1df3 \
-    with /data/imitation/benchmarking/example_bc_seals_half_cheetah_best_hp_eval.json \
+    with /data/imitation/benchmarking/bc_seals_half_cheetah_best_hp_eval.json \
     seed=0 logging.log_root=/data/output" \
     --container hacobe/devbox:imitation \
     --login --force-pull --never-restart --gpu 0 --shared-host-dir-mount /data
@@ -177,19 +177,19 @@ cluster job name.""",
     parser.add_argument(
         "--cfg_pattern",
         type=str,
-        default="example_bc_seals_half_cheetah_best_hp_eval.json",
+        default="bc_seals_half_cheetah_best_hp_eval.json",
         help="""Generate a command for every file that matches this glob pattern. \
 Each matching file should be a config file that has its algorithm name \
 (bc, dagger, airl or gail) bookended by underscores in the filename. \
 If the --remote flag is enabled, then generate a command for every file in the \
 --remote_cfg_dir directory that has the same filename as a file that matches this \
 glob pattern. E.g., suppose the current, local working directory is 'foo' and \
-the subdirectory 'foo/bar' contains the config files 'example_bc_best.json' and \
-'example_dagger_best.json'. If the pattern 'bar/*.json' is supplied, then globbing \
-will return ['bar/example_bc_best.json', 'bar/example_dagger_best.json']. \
+the subdirectory 'foo/bar' contains the config files 'bc_best.json' and \
+'dagger_best.json'. If the pattern 'bar/*.json' is supplied, then globbing \
+will return ['bar/bc_best.json', 'bar/dagger_best.json']. \
 If the --remote flag is enabled, 'bar' will be replaced with `remote_cfg_dir` and \
 commands will be created for the following configs: \
-[`remote_cfg_dir`/example_bc_best.json, `remote_cfg_dir`/example_dagger_best.json] \
+[`remote_cfg_dir`/bc_best.json, `remote_cfg_dir`/dagger_best.json] \
 Why not just supply the pattern '`remote_cfg_dir`/*.json' directly? \
 Because the `remote_cfg_dir` directory may not exist on the local machine.""",
     )

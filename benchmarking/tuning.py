@@ -30,7 +30,7 @@ def tune(
             Set to 0 to disable evaluation.
 
     Raises:
-        ValueError: If no trials are returned by.
+        ValueError: If no trials are returned by the parallel run of tuning.
     """
     run = parallel_ex.run(config_updates=parallel_run_config)
     experiment_analysis = run.result
@@ -54,9 +54,10 @@ def tune(
         # Uses the default values (cpu=1) if it is not provided
         if "cpu" in parallel_run_config["resources_per_trial"]:
             resources_per_trial_eval["cpu"] *= eval_best_trial_resource_multiplier
-        evaluate_best_trial(
+        evaluate_trial(
             best_trial,
             num_eval_seeds,
+            parallel_run_config["run_name"] + "_best_hp_eval",
             parallel_run_config,
             resources_per_trial_eval,
             return_key,
@@ -107,19 +108,21 @@ def find_best_trial(
     return best_trial
 
 
-def evaluate_best_trial(
-    best_trial: ray.tune.experiment.Trial,
+def evaluate_trial(
+    trial: ray.tune.experiment.Trial,
     num_eval_seeds: int,
+    run_name: str,
     parallel_run_config: Dict[str, Any],
     resources_per_trial: Dict[str, int],
     return_key: str,
     print_return: bool = False,
 ):
-    """Evaluate the best trial of a parallel run on a separate set of seeds.
+    """Evaluate a given trial of a parallel run on a separate set of seeds.
 
     Args:
-        best_trial: The trial with the best mean return across all seeds.
+        trial: The trial to evaluate.
         num_eval_seeds: Number of distinct seeds to evaluate the best trial on.
+        run_name: The name of the evaluation run.
         parallel_run_config: Dictionary of arguments passed to the parallel
             script to get best_trial.
         resources_per_trial: Resources to be used for each evaluation trial.
@@ -129,15 +132,15 @@ def evaluate_best_trial(
     Returns:
         eval_run: The result of the evaluation run.
     """
-    best_config = best_trial.config
-    best_config["config_updates"].update(
+    config = trial.config
+    config["config_updates"].update(
         seed=ray.tune.grid_search(list(range(100, 100 + num_eval_seeds))),
     )
     eval_config_updates = parallel_run_config.copy()
     eval_config_updates.update(
-        run_name=parallel_run_config["run_name"] + "_best_hp_eval",
+        run_name=run_name,
         num_samples=1,
-        search_space=best_config,
+        search_space=config,
         resources_per_trial=resources_per_trial,
         search_alg=None,
         repeat=1,
