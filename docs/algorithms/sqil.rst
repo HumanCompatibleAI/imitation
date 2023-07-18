@@ -29,11 +29,11 @@ Detailed example notebook: :doc:`../tutorials/8_train_sqil`
     from imitation.data import huggingface_utils
 
     # Download some expert trajectories from the HuggingFace Datasets Hub.
-    dataset = datasets.load_dataset("HumanCompatibleAI/ppo-seals-CartPole-v0")
+    dataset = datasets.load_dataset("HumanCompatibleAI/ppo-CartPole-v1")
     rollouts = huggingface_utils.TrajectoryDatasetSequence(dataset["train"])
 
     sqil_trainer = sqil.SQIL(
-        venv=DummyVecEnv([lambda: gym.make("seals:seals/CartPole-v0")]),
+        venv=DummyVecEnv([lambda: gym.make("CartPole-v1")]),
         demonstrations=rollouts,
         policy="MlpPolicy",
     )
