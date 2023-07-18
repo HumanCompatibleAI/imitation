@@ -4,7 +4,7 @@ Trains a policy via DQN-style Q-learning,
 replacing half the buffer with expert demonstrations and adjusting the rewards.
 """
 
-from typing import Any, Dict, Optional, Type, Union, List
+from typing import Any, Dict, List, Optional, Type, Union
 
 import numpy as np
 import torch as th
