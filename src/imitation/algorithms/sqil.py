@@ -91,7 +91,16 @@ class SQIL(algo_base.DemonstrationAlgorithm[types.Transitions]):
 
 
 class SQILReplayBuffer(buffers.ReplayBuffer):
-    """Replay buffer used in off-policy algorithms like SAC/TD3, modified for SQIL."""
+    """A replay buffer that injects 50% expert demonstrations when sampling.
+
+    This buffer is fundamentally the same as ReplayBuffer,
+    but it includes an expert demonstration internal buffer.
+    When sampling a batch of data, it will be 50/50 expert and collected data.
+
+    It can be used in off-policy algorithms like DQN/SAC/TD3.
+
+    Here it is used as part of SQIL, where it is used to train a DQN.
+    """
 
     def __init__(
         self,
@@ -103,14 +112,10 @@ class SQILReplayBuffer(buffers.ReplayBuffer):
         n_envs: int = 1,
         optimize_memory_usage: bool = False,
     ):
-        """A modification of the SB3 ReplayBuffer.
-
-        This buffer is fundamentally the same as ReplayBuffer,
-        but it includes an expert demonstration internal buffer.
-        When sampling a batch of data, it will be 50/50 expert and collected data.
+        """Create a SQILReplayBuffer instance.
 
         Args:
-            buffer_size: Max number of element in the buffer
+            buffer_size: Max number of elements in the buffer
             observation_space: Observation space
             action_space: Action space
             demonstrations: Expert demonstrations.
@@ -136,7 +141,7 @@ class SQILReplayBuffer(buffers.ReplayBuffer):
         self,
         demonstrations: algo_base.AnyTransitions,
     ) -> None:
-        """Set the demonstrations to be used in the buffer.
+        """Set the expert demonstrations to be injected when sampling from the buffer.
 
         Args:
             demonstrations (algo_base.AnyTransitions): Expert demonstrations.
