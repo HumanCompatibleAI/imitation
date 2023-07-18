@@ -37,7 +37,8 @@ Detailed example notebook: :doc:`../tutorials/8_train_sqil`
         demonstrations=rollouts,
         policy="MlpPolicy",
     )
-    sqil_trainer.train(total_timesteps=500000)
+    # Hint: set to 1_000_000 to match the expert performance.
+    sqil_trainer.train(total_timesteps=1_000)
     reward, _ = evaluate_policy(sqil_trainer.policy, sqil_trainer.venv, 10)
     print("Reward:", reward)
 
