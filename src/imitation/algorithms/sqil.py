@@ -181,7 +181,7 @@ class SQILReplayBuffer(buffers.ReplayBuffer):
                 next_obs=transition["next_obs"],
                 action=transition["acts"],
                 done=transition["dones"],
-                reward=1,
+                reward=np.array(1.0),
                 infos=[{}],
             )
 
@@ -194,7 +194,7 @@ class SQILReplayBuffer(buffers.ReplayBuffer):
         done: np.ndarray,
         infos: List[Dict[str, Any]],
     ) -> None:
-        super().add(obs, next_obs, action, 0, done, infos)
+        super().add(obs, next_obs, action, np.array(0.0), done, infos)
 
     def sample(
         self,
