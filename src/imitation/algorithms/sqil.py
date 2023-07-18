@@ -203,16 +203,16 @@ class SQILReplayBuffer(buffers.ReplayBuffer):
     ) -> buffers.ReplayBufferSamples:
         """Sample a batch of data.
 
-        Half of the batch will be from the expert buffer,
-        and the other half will be from the collected data.
+        Half of the batch will be from expert transitions,
+        and the other half will be from the learner transitions.
 
         Args:
-            batch_size: Number of element to sample in total
+            batch_size: Number of elements to sample in total
             env: associated gym VecEnv to normalize the observations/rewards
                 when sampling
 
         Returns:
-            A batch of samples for DQN
+            A mix of transitions from the expert and from the learner.
         """
         new_sample_size, expert_sample_size = util.split_in_half(batch_size)
         new_sample = super().sample(new_sample_size, env)
