@@ -1,6 +1,6 @@
-===============
-Loading Experts
-===============
+=======
+Experts
+=======
 
 The algorithms in the imitation library are all about learning from some kind of
 expert.

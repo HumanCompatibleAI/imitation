@@ -1,7 +1,7 @@
 .. _preference comparisons docs:
 
 ======================
-Preference comparisons
+Preference Comparisons
 ======================
 
 The preference comparison algorithm learns a reward function from preferences between pairs of trajectories.
