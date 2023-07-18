@@ -4,7 +4,7 @@ Trains a policy via DQN-style Q-learning,
 replacing half the buffer with expert demonstrations and adjusting the rewards.
 """
 
-from typing import Any, Dict, Optional, Type, Union
+from typing import Any, Dict, Optional, Type, Union, List
 
 import numpy as np
 import torch as th
@@ -177,13 +177,24 @@ class SQILReplayBuffer(buffers.ReplayBuffer):
 
         for transition in demonstrations:
             self.expert_buffer.add(
-                obs=np.array(transition["obs"]),
-                next_obs=np.array(transition["next_obs"]),
-                action=np.array(transition["acts"]),
-                done=np.array(transition["dones"]),
-                reward=np.array(1),
+                obs=transition["obs"],
+                next_obs=transition["next_obs"],
+                action=transition["acts"],
+                done=transition["dones"],
+                reward=1,
                 infos=[{}],
             )
+
+    def add(
+        self,
+        obs: np.ndarray,
+        next_obs: np.ndarray,
+        action: np.ndarray,
+        reward: np.ndarray,
+        done: np.ndarray,
+        infos: List[Dict[str, Any]],
+    ) -> None:
+        super().add(obs, next_obs, action, 0, done, infos)
 
     def sample(
         self,
@@ -204,18 +215,12 @@ class SQILReplayBuffer(buffers.ReplayBuffer):
             A batch of samples for DQN
         """
         new_sample_size, expert_sample_size = util.split_in_half(batch_size)
-
         new_sample = super().sample(new_sample_size, env)
-        new_sample.rewards.fill_(0)
-
         expert_sample = self.expert_buffer.sample(expert_sample_size, env)
-        expert_sample.rewards.fill_(1)
 
-        replay_data = type_aliases.ReplayBufferSamples(
+        return type_aliases.ReplayBufferSamples(
             *(
                 th.cat((getattr(new_sample, name), getattr(expert_sample, name)))
                 for name in new_sample._fields
             ),
         )
-
-        return replay_data
