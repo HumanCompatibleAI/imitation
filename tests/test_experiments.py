@@ -250,7 +250,7 @@ def test_commands_bc_config():
     assert len(commands) == 1
     expected = """python -m imitation.scripts.train_imitation bc \
 --capture=sys --name=run0 --file_storage=output/sacred/\
-$USER-cmd-run0-bc-0-138a1475 \
+$USER-cmd-run0-bc-0-78e5112a \
 with benchmarking/bc_seals_ant_best_hp_eval.json \
 seed=0 logging.log_root=output"""
     assert commands[0] == expected
@@ -264,7 +264,7 @@ def test_commands_dagger_config():
     assert len(commands) == 1
     expected = """python -m imitation.scripts.train_imitation dagger \
 --capture=sys --name=run0 --file_storage=output/sacred/\
-$USER-cmd-run0-dagger-0-6a49161a \
+$USER-cmd-run0-dagger-0-c27812cf \
 with benchmarking/dagger_seals_ant_best_hp_eval.json \
 seed=0 logging.log_root=output"""
     assert commands[0] == expected
@@ -278,7 +278,7 @@ def test_commands_gail_config():
     assert len(commands) == 1
     expected = """python -m imitation.scripts.train_adversarial gail \
 --capture=sys --name=run0 --file_storage=output/sacred/\
-$USER-cmd-run0-gail-0-3ec8154d \
+$USER-cmd-run0-gail-0-9d8d1202 \
 with benchmarking/gail_seals_ant_best_hp_eval.json \
 seed=0 logging.log_root=output"""
     assert commands[0] == expected
@@ -292,7 +292,7 @@ def test_commands_airl_config():
     assert len(commands) == 1
     expected = """python -m imitation.scripts.train_adversarial airl \
 --capture=sys --name=run0 \
---file_storage=output/sacred/$USER-cmd-run0-airl-0-400e1558 \
+--file_storage=output/sacred/$USER-cmd-run0-airl-0-9ed3120d \
 with benchmarking/airl_seals_ant_best_hp_eval.json \
 seed=0 logging.log_root=output"""
     assert commands[0] == expected

@@ -85,7 +85,7 @@ def _get_algo_name(cfg_file: str) -> str:
     """Get the algorithm name from the given config filename."""
     algo_names = set()
     for key in _ALGO_NAME_TO_SCRIPT_NAME:
-        if cfg_file.find("_" + key + "_") != -1:
+        if cfg_file.find(key + "_") != -1:
             algo_names.add(key)
 
     if len(algo_names) == 0:
