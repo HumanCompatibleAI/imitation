@@ -38,6 +38,7 @@ def config():
     repeat = 1  # Number of times to repeat a sampled configuration
     search_alg = "optuna"  # search algorithm to use
     experiment_checkpoint_path = ""  # Path to checkpoint of experiment
+    tune_run_kwargs = {}  # Additional kwargs to pass to `tune.run`
 
 
 # Debug named configs

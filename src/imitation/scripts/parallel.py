@@ -111,13 +111,14 @@ def parallel(
     )
 
     ray.init(**init_kwargs)
+    updated_tune_run_kwargs = copy.deepcopy(tune_run_kwargs)
     if repeat > 1:
-        if "search_alg" not in tune_run_kwargs:
-            tune_run_kwargs["search_alg"] = optuna.OptunaSearch()
+        if "search_alg" not in updated_tune_run_kwargs:
+            updated_tune_run_kwargs["search_alg"] = optuna.OptunaSearch()
         try:
-            algo = tune_run_kwargs["search_alg"]
+            algo = updated_tune_run_kwargs["search_alg"]
             algo = search.Repeater(algo, repeat)
-            tune_run_kwargs["search_alg"] = algo
+            updated_tune_run_kwargs["search_alg"] = algo
         except AttributeError:
             raise ValueError(
                 "repeat > 1 but search_alg is not an instance of "
@@ -148,7 +149,7 @@ def parallel(
                 resources_per_trial=resources_per_trial,
                 metric=return_key,
                 mode="max",
-                **tune_run_kwargs,
+                **updated_tune_run_kwargs,
             )
         return result
     finally:
