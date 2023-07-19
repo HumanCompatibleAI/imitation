@@ -12,6 +12,13 @@ environment is assigned a reward of 0. This encourages the policy to imitate
 the demonstrations, and to simultaneously avoid states not seen in the
 demonstrations.
 
+.. note::
+
+    This implementation is based on the DQN implementation in Stable Baselines 3,
+    which does not implement the soft Q-learning and therefore does not support
+    continuous actions. Therefore, this implementation only supports discrete actions
+    and the name "soft" Q-learning could be misleading.
+
 Example
 =======
 
