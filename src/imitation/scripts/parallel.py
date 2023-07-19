@@ -4,7 +4,7 @@ import collections.abc
 import copy
 import glob
 import pathlib
-from typing import Any, Callable, Dict, Mapping, Optional, Sequence
+from typing import Any, Callable, Dict, Mapping, Sequence
 
 import ray
 import ray.tune
@@ -77,6 +77,8 @@ def parallel(
 
     Raises:
         TypeError: Named configs not string sequences or config updates not mappings.
+        ValueError: `repeat` > 1 but `search_alg` is not an instance of
+            `ray.tune.search.SearchAlgorithm`.
 
     Returns:
         The result of running the parallel experiment with `ray.tune.run()`.
