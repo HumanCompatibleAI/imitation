@@ -34,7 +34,7 @@ def parallel(
 
     A Sacred FileObserver is attached to the inner experiment and writes Sacred
     logs to "{RAY_LOCAL_DIR}/sacred/". These files are automatically copied over
-    to `upload_dir` if that argument is provided.
+    to `upload_dir` if that argument is provided in `tune_run_kwargs`.
 
     Args:
         sacred_ex_name: The Sacred experiment to tune. Either "train_rl" or

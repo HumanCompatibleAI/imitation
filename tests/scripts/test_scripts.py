@@ -802,7 +802,6 @@ PARALLEL_CONFIG_UPDATES = [
             # Need absolute path because raylet runs in different working directory.
             "demonstrations.path": CARTPOLE_TEST_ROLLOUT_PATH.absolute(),
         },
-        search_alg=None,  # Use default search algorithm of ray.
         search_space={
             "command_name": "airl",
             "config_updates": {"total_timesteps": tune.choice([5, 10])},

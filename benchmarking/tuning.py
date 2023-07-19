@@ -7,6 +7,7 @@ from typing import Any, Dict
 import numpy as np
 import ray
 from pandas.api import types as pd_types
+from ray.tune.search import optuna
 from sacred.observers import FileStorageObserver
 from tuning_config import parallel_ex, tuning_ex
 
@@ -32,7 +33,15 @@ def tune(
     Raises:
         ValueError: If no trials are returned by the parallel run of tuning.
     """
-    run = parallel_ex.run(config_updates=parallel_run_config)
+    search_alg = optuna.OptunaSearch()
+    updated_parallel_run_config = copy.deepcopy(parallel_run_config)
+    if "tune_run_kwargs" not in updated_parallel_run_config:
+        tune_run_kwargs = {}
+    else:
+        tune_run_kwargs = updated_parallel_run_config["tune_run_kwargs"]
+    tune_run_kwargs.update(search_alg=search_alg)
+    updated_parallel_run_config.update(tune_run_kwargs=tune_run_kwargs)
+    run = parallel_ex.run(config_updates=updated_parallel_run_config)
     experiment_analysis = run.result
     if not experiment_analysis.trials:
         raise ValueError(
@@ -42,23 +51,23 @@ def tune(
         )
 
     return_key = "imit_stats/monitor_return_mean"
-    if parallel_run_config["sacred_ex_name"] == "train_rl":
+    if updated_parallel_run_config["sacred_ex_name"] == "train_rl":
         return_key = "monitor_return_mean"
     best_trial = find_best_trial(experiment_analysis, return_key, print_return=True)
 
     if num_eval_seeds > 0:  # evaluate the best trial
         resources_per_trial_eval = copy.deepcopy(
-            parallel_run_config["resources_per_trial"],
+            updated_parallel_run_config["resources_per_trial"],
         )
         # update cpus per trial only if it is provided in `resources_per_trial`
         # Uses the default values (cpu=1) if it is not provided
-        if "cpu" in parallel_run_config["resources_per_trial"]:
+        if "cpu" in updated_parallel_run_config["resources_per_trial"]:
             resources_per_trial_eval["cpu"] *= eval_best_trial_resource_multiplier
         evaluate_trial(
             best_trial,
             num_eval_seeds,
-            parallel_run_config["run_name"] + "_best_hp_eval",
-            parallel_run_config,
+            updated_parallel_run_config["run_name"] + "_best_hp_eval",
+            updated_parallel_run_config,
             resources_per_trial_eval,
             return_key,
         )
