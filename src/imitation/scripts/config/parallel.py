@@ -34,13 +34,10 @@ def config():
         "config_updates": {},
     }  # `config` argument to `ray.tune.run(trainable, config)`
 
-    local_dir = None  # `local_dir` arg for `ray.tune.run`
-    upload_dir = None  # `upload_dir` arg for `ray.tune.run`
     num_samples = 1  # Number of samples per grid search configuration
     repeat = 1  # Number of times to repeat a sampled configuration
     search_alg = "optuna"  # search algorithm to use
     experiment_checkpoint_path = ""  # Path to checkpoint of experiment
-    syncer = None  # Sacred syncer to use
 
 
 # Debug named configs

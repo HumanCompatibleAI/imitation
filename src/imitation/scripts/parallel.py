@@ -26,12 +26,9 @@ def parallel(
     base_config_updates: Mapping[str, Any],
     resources_per_trial: Dict[str, Any],
     init_kwargs: Mapping[str, Any],
-    local_dir: Optional[str],
-    upload_dir: Optional[str],
     repeat: int,
-    search_alg: Optional[str],
     experiment_checkpoint_path: str,
-    syncer,
+    tune_run_kwargs: Dict[str, Any],
 ) -> ray.tune.ExperimentAnalysis:
     """Parallelize multiple runs of another Sacred Experiment using Ray Tune.
 
@@ -70,17 +67,13 @@ def parallel(
             generated Ray directory name, unlike config updates from `search_space`.
         resources_per_trial: Argument to `ray.tune.run()`.
         init_kwargs: Arguments to pass to `ray.init`.
-        local_dir: `local_dir` argument to `ray.tune.run()`.
-        upload_dir: `upload_dir` argument to `ray.tune.run()`.
-        search_alg: can be either "optuna" or None. Setting `None` allows for
-            adding grid_search to the `search_space` hyperparameters but doesn't allow
-            for trials to be repeated.
         repeat: Number of runs to repeat each trial for.
-            Not used if `search_alg` is None.
+            If `repeat` > 1, then optuna is used as the default search algorithm
+            unless specified otherwise in `tune_run_kwargs`.
         experiment_checkpoint_path: Path containing the checkpoints of a previous
             experiment ran using this script. Useful for evaluating the best trial
             of the experiment.
-        syncer: `syncer` argument to `ray.tune.syncer.SyncConfig`.
+        tune_run_kwargs: Other arguments to pass to `ray.tune.run()`.
 
     Raises:
         TypeError: Named configs not string sequences or config updates not mappings.
@@ -118,11 +111,18 @@ def parallel(
     )
 
     ray.init(**init_kwargs)
-    if search_alg == "optuna":
-        algo = search.Repeater(optuna.OptunaSearch(), repeat=repeat)
-    else:
-        assert repeat == 1  # repeat should not be used if search_alg is None
-        algo = None
+    if repeat > 1:
+        if "search_alg" not in tune_run_kwargs:
+            tune_run_kwargs["search_alg"] = optuna.OptunaSearch()
+        try:
+            algo = tune_run_kwargs["search_alg"]
+            algo = search.Repeater(algo, repeat)
+            tune_run_kwargs["search_alg"] = algo
+        except AttributeError:
+            raise ValueError(
+                "repeat > 1 but search_alg is not an instance of "
+                "ray.tune.search.SearchAlgorithm",
+            )
 
     if sacred_ex_name == "train_rl":
         return_key = "monitor_return_mean"
@@ -145,15 +145,10 @@ def parallel(
                 config=search_space,
                 num_samples=num_samples * repeat,
                 name=run_name,
-                local_dir=local_dir,
                 resources_per_trial=resources_per_trial,
-                sync_config=ray.tune.syncer.SyncConfig(
-                    upload_dir=upload_dir,
-                    syncer=syncer,
-                ),
-                search_alg=algo,
                 metric=return_key,
                 mode="max",
+                **tune_run_kwargs,
             )
         return result
     finally:
