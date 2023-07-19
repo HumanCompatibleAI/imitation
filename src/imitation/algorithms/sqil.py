@@ -146,10 +146,14 @@ class SQILReplayBuffer(buffers.ReplayBuffer):
 
         Args:
             demonstrations (algo_base.AnyTransitions): Expert demonstrations.
+
+        Raises:
+            NotImplementedError: If `demonstrations` is not a transitions object
+                or a list of trajectories.
         """
         # If demonstrations is a list of trajectories,
         # flatten it into a list of transitions
-        if not isinstance(demonstrations, types.TransitionsMinimal):
+        if not isinstance(demonstrations, types.Transitions):
             (
                 item,
                 demonstrations,
@@ -160,12 +164,11 @@ class SQILReplayBuffer(buffers.ReplayBuffer):
                 demonstrations = rollout.flatten_trajectories(
                     demonstrations,  # type: ignore[arg-type]
                 )
-            else:  # item is a TransitionMapping
-                demonstrations = rollout.flatten_transition_mappings(
-                    demonstrations,  # type: ignore[arg-type]
-                )
 
-        assert isinstance(demonstrations, types.Transitions)
+        if not isinstance(demonstrations, types.Transitions):
+            raise NotImplementedError(
+                f"Unsupported demonstrations type: {demonstrations}",
+            )
 
         n_samples = len(demonstrations)
         self.expert_buffer = buffers.ReplayBuffer(
