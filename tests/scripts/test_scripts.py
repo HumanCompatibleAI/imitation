@@ -969,7 +969,10 @@ def test_analyze_gather_tb(tmpdir: str):
     if os.name == "nt":  # pragma: no cover
         pytest.skip("gather_tb uses symlinks: not supported by Windows")
     num_runs = 2
-    config_updates: Dict[str, Any] = dict(local_dir=tmpdir, run_name="test")
+    config_updates: Dict[str, Any] = dict(
+        tune_run_kwargs=dict(local_dir=tmpdir),
+        run_name="test",
+    )
     config_updates.update(PARALLEL_CONFIG_LOW_RESOURCE)
     config_updates.update(num_samples=num_runs)
     parallel_run = parallel.parallel_ex.run(
