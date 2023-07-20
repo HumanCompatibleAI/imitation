@@ -33,14 +33,12 @@ def tune(
     Raises:
         ValueError: If no trials are returned by the parallel run of tuning.
     """
-    search_alg = optuna.OptunaSearch()
     updated_parallel_run_config = copy.deepcopy(parallel_run_config)
-    if "tune_run_kwargs" not in updated_parallel_run_config:
-        tune_run_kwargs = {}
+    search_alg = optuna.OptunaSearch()
+    if "tune_run_kwargs" in updated_parallel_run_config:
+        updated_parallel_run_config["tune_run_kwargs"]["search_alg"] = search_alg
     else:
-        tune_run_kwargs = updated_parallel_run_config["tune_run_kwargs"]
-    tune_run_kwargs.update(search_alg=search_alg)
-    updated_parallel_run_config.update(tune_run_kwargs=tune_run_kwargs)
+        updated_parallel_run_config["tune_run_kwargs"] = dict(search_alg=search_alg)
     run = parallel_ex.run(config_updates=updated_parallel_run_config)
     experiment_analysis = run.result
     if not experiment_analysis.trials:
