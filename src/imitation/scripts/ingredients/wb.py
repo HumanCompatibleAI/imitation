@@ -1,4 +1,4 @@
-"""Weights & Biases configuration elements for scripts."""
+"""This ingredient provides Weights & Biases logging."""
 
 import logging
 from typing import Any, Mapping, Optional

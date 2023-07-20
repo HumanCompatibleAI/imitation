@@ -1,7 +1,7 @@
 .. _preference comparisons docs:
 
 ======================
-Preference comparisons
+Preference Comparisons
 ======================
 
 The preference comparison algorithm learns a reward function from preferences between pairs of trajectories.
@@ -11,11 +11,9 @@ difference between the return of trajectory A minus B. In other words, the diffe
 for a binary classification problem, and accordingly the reward function is trained using a cross-entropy loss
 to predict the preference comparison.
 
-Notes
------
-- Our implementation is based on the  `Deep Reinforcement Learning from Human Preferences <https://arxiv.org/pdf/1706.03741.pdf>`_ algorithm.
-
-- An ensemble of reward networks can also be trained instead of a single network. The uncertainty in the preference between the member networks can be used to actively select preference queries.
+.. note::
+    - Our implementation is based on the  `Deep Reinforcement Learning from Human Preferences <https://arxiv.org/pdf/1706.03741.pdf>`_ algorithm.
+    - An ensemble of reward networks can also be trained instead of a single network. The uncertainty in the preference between the member networks can be used to actively select preference queries.
 
 Example
 =======
