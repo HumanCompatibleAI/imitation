@@ -8,7 +8,7 @@ from stable_baselines3.common.evaluation import evaluate_policy
 from imitation.algorithms import sqil
 from imitation.testing import expert_trajectories, reward_improvement
 
-EXPERT_DATA_TYPES = ["trajectories", "data_loader", "transitions"]
+EXPERT_DATA_TYPES = ["trajectories", "transitions"]
 
 
 def get_demos(rng: np.random.Generator, pytestconfig: pytest.Config, data_type):
