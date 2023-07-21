@@ -1,6 +1,7 @@
 """Register optimizer classes with Hydra."""
 import dataclasses
 from enum import Enum
+from typing import Type
 
 import torch
 from hydra.core.config_store import ConfigStore
@@ -21,7 +22,7 @@ class Config:
     _target_: str = "imitation_cli.utils.optimizer_class.Config.make"
 
     @staticmethod
-    def make(optimizer_class: OptimizerClass) -> type:
+    def make(optimizer_class: OptimizerClass) -> Type[torch.optim.Optimizer]:
         return optimizer_class.value
 
 
