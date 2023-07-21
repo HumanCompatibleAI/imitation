@@ -99,7 +99,7 @@ def test_sqil_performance(
     cartpole_venv: vec_env.VecEnv,
 ):
     demonstrations = get_demos(rng, pytestconfig, "transitions")
-    demonstrations = demonstrations[:5]
+    demonstrations = demonstrations[:20]
 
     model = sqil.SQIL(
         venv=cartpole_venv,
