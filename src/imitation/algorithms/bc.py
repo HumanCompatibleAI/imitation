@@ -308,6 +308,7 @@ class BC(algo_base.DemonstrationAlgorithm):
                 parameter `l2_weight` instead), or if the batch size is not a multiple
                 of the minibatch size.
         """
+        self._demonstrations = demonstrations
         self._demo_data_loader: Optional[Iterable[algo_base.TransitionMapping]] = None
         self.batch_size = batch_size
         self.minibatch_size = minibatch_size or batch_size
@@ -353,10 +354,14 @@ class BC(algo_base.DemonstrationAlgorithm):
         return self._policy
 
     def set_demonstrations(self, demonstrations: algo_base.AnyTransitions) -> None:
+        self._demonstrations = demonstrations
         self._demo_data_loader = algo_base.make_data_loader(
             demonstrations,
             self.minibatch_size,
         )
+
+    def get_demonstrations(self):
+        return self._demonstrations
 
     def train(
         self,

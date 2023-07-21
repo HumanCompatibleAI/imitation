@@ -1,0 +1,14 @@
+defaults:
+  - bc_run_base
+  - environment: cartpole
+  - evaluation: default_evaluation
+  - bc/demonstrations: generated
+  - bc/demonstrations/expert_policy: random
+  - bc/policy: actor_critic
+  - _self_
+
+
+bc:
+  demonstrations:
+    total_timesteps: 100000  # TODO: find good default
+
