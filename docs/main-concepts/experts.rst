@@ -12,7 +12,7 @@ learning library.
 For example, BC and DAgger can learn from an expert policy and the command line
 interface of AIRL/GAIL allows one to specify an expert to sample demonstrations from.
 
-In the :doc:`../getting-started/first-steps` tutorial, we first train an expert policy
+In the :doc:`../getting-started/first_steps` tutorial, we first train an expert policy
 using the stable-baselines3 library and then imitate it's behavior using
 :doc:`../algorithms/bc`.
 In practice, you may want to load a pre-trained policy for performance reasons.
