@@ -93,6 +93,164 @@ The ``seals:`` prefix ensures that the seals package is imported and the environ
             demonstrations.n_expert_demos=50
 
 
+Train an expert and save the rollouts explicitly, then train a policy on the saved rollouts:
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+First, train an expert and save the demonstrations. 
+Note that by default these are saved in ``<log_dir>/rollouts/final.npz``.
+Where for this script by default ``<log_dir>`` is ``output/train_rl/<environment>/<timestamp>`` .  
+However, we can pass an explicit path as logging directory. 
+By default, this will use ``ppo``. 
+
+.. code-block:: bash
+
+        python -m imitation.scripts.train_rl with pendulum \
+                logging.log_dir=output/train_rl/Pendulum-v1/my_run  \
+
+Now we can run the imitation sript (in this case DAgger) and pass the path to the demonstrations we just generated
+
+.. code-block:: bash
+
+        python -m imitation.scripts.train_imitation dagger with \
+                pendulum \
+                dagger.total_timesteps=2000 \
+                demonstrations.source=local \
+                demonstrations.path=output/train_rl/Pendulum-v1/my_run/rollouts/final.npz   
+
+
+Visualise saved policies
+^^^^^^^^^^^^^^^^^^^^^^^^ 
+We can use the ``eval_policy`` script to visualise and render a saved policy. 
+Here we are looking at the policy saved by the previous example. 
+
+.. code-block:: bash
+
+    python -m imitation.scripts.eval_policy with \
+            expert.policy_type=ppo \
+            expert.loader_kwargs.path=output/train_rl/Pendulum-v1/my_run/policies/final/model.zip \
+            environment.num_vec=1 \
+            render=True \
+            environment.gym_id='Pendulum-v1' 
+
+
+
+Comparing algorithm performances 
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^    
+Let's use the cli to compare the performances of different algorithms. 
+
+First, let's train an expert on the ``CartPole-v1`` environment.
+
+.. code-block:: bash
+
+    python -m imitation.scripts.train_rl with \
+            cartpole \
+            logging.log_dir=output/train_rl/CartPole-v1/expert \
+            total_timesteps=10000
+
+Now let's train a weaker agent. 
+
+.. code-block:: bash
+
+    python -m imitation.scripts.train_rl with \
+        cartpole \
+        logging.log_dir=output/train_rl/CartPole-v1/non_expert \
+        total_timesteps=1000     # simply training less
+
+
+We can evaluate each policy using the ``eval_policy`` script.
+For the expert: 
+
+.. code-block:: bash
+
+    python -m imitation.scripts.eval_policy with \
+            expert.policy_type=ppo \
+            expert.loader_kwargs.path=output/train_rl/CartPole-v1/expert/policies/final/model.zip \
+            environment.gym_id='CartPole-v1' \
+            environment.num_vec=1 \
+            logging.log_dir=output/eval_policy/CartPole-v1/expert
+
+which will return something like 
+
+.. code-block:: bash
+
+    INFO - eval_policy - Result: {
+            'n_traj': 74, 
+            'monitor_return_len': 74, 
+            'return_min': 26.0, 
+            'return_mean': 154.21621621621622, 
+            'return_std': 79.94377589657559, 
+            'return_max': 500.0, 
+            'len_min': 26, 
+            'len_mean': 154.21621621621622, 
+            'len_std': 79.94377589657559, 
+            'len_max': 500, 
+            'monitor_return_min': 26.0, 
+            'monitor_return_mean': 154.21621621621622, 
+            'monitor_return_std': 79.94377589657559, 
+            'monitor_return_max': 500.0
+        }
+    INFO - eval_policy - Completed after 0:00:12
+
+
+For the non-expert:
+
+.. code-block:: bash
+
+    python -m imitation.scripts.eval_policy with \
+            expert.policy_type=ppo \
+            expert.loader_kwargs.path=output/train_rl/CartPole-v1/non_expert/policies/final/model.zip \
+            environment.gym_id='CartPole-v1' \
+            environment.num_vec=1 \
+            logging.log_dir=output/eval_policy/CartPole-v1/non_expert
+
+
+.. code-block:: bash
+
+    INFO - eval_policy - Result: {
+            'n_traj': 355, 
+            'monitor_return_len': 355, 
+            'return_min': 8.0, 
+            'return_mean': 28.92676056338028, 
+            'return_std': 15.686012049373561, 
+            'return_max': 104.0, 
+            'len_min': 8, 
+            'len_mean': 28.92676056338028, 
+            'len_std': 15.686012049373561, 
+            'len_max': 104, 
+            'monitor_return_min': 8.0, 
+            'monitor_return_mean': 28.92676056338028, 
+            'monitor_return_std': 15.686012049373561, 
+            'monitor_return_max': 104.0
+    }
+    INFO - eval_policy - Completed after 0:00:17
+
+This will save the monitor csvs (one for each vectorised env, controlled by environment.num_vec). 
+We can load these with ``pandas`` and use the ``imitation.test.reward_improvement``
+module to compare the performances of the two policies.
+
+.. code-block:: python
+
+    from imitation.testing.reward_improvement import is_significant_reward_improvement
+
+    expert_monitor = pd.read_csv(
+        './output/train_rl/CartPole-v1/expert/monitor/mon000.monitor.csv', 
+        skiprows=1
+    )
+    non_expert_monitor = pd.read_csv(
+        './output/train_rl/CartPole-v1/non_expert/monitor/mon000.monitor.csv', 
+        skiprows=1
+    )
+    is_significant_reward_improvement(
+        non_expert_monitor['r'], 
+        expert_monitor['r'], 
+        0.05
+    )
+
+.. code-block:: bash
+
+    True    
+
+
 Algorithm Scripts
 =================
 
