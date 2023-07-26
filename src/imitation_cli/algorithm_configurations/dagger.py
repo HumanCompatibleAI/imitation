@@ -5,12 +5,12 @@ from typing import Optional
 from omegaconf import MISSING
 
 import imitation_cli.utils.environment as environment_cfg
-from imitation_cli.algorithm_configurations import bc
+from imitation_cli.algorithm_configurations import bc, base
 from imitation_cli.utils import randomness, trajectories, schedule, policy
 
 
 @dataclasses.dataclass
-class Config:
+class Config(base.BaseImitationAlgorithmConfig):
     """Config for DAgger."""
     _target_: str = "imitation.algorithms.dagger.SimpleDAggerTrainer"
     venv: environment_cfg.Config = MISSING
@@ -20,4 +20,3 @@ class Config:
     expert_trajs: Optional[trajectories.Config] = None
     beta_schedule: Optional[schedule.Config] = None
     bc_trainer: bc.Config = MISSING
-    # TODO: add custom logger

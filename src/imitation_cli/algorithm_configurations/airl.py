@@ -4,6 +4,7 @@ from typing import Optional
 
 from omegaconf import MISSING
 
+from imitation_cli.algorithm_configurations import base
 from imitation_cli.utils import environment as environment_cfg
 from imitation_cli.utils import (
     optimizer_class,
@@ -14,12 +15,11 @@ from imitation_cli.utils import (
 
 
 @dataclasses.dataclass
-class Config:
+class Config(base.DemonstrationAlgorithmConfig):
     """Config for AIRL."""
 
     _target_: str = "imitation.algorithms.adversarial.airl.AIRL"
     venv: environment_cfg.Config = MISSING
-    demonstrations: trajectories.Config = MISSING
     gen_algo: rl_algorithm.Config = MISSING
     reward_net: reward_network.Config = MISSING
     demo_batch_size: int = 64
@@ -30,4 +30,3 @@ class Config:
     init_tensorboard: bool = False
     init_tensorboard_graph: bool = False
     debug_use_ground_truth: bool = False
-    allow_variable_horizon: bool = False

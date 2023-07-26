@@ -4,6 +4,8 @@ import dataclasses
 import typing
 from typing import Optional
 
+from imitation_cli.algorithm_configurations import base
+
 if typing.TYPE_CHECKING:
     from stable_baselines3.common.vec_env import VecEnv
 
@@ -14,13 +16,12 @@ from imitation_cli.utils import policy as policy_cfg
 
 
 @dataclasses.dataclass
-class Config:
+class Config(base.DemonstrationAlgorithmConfig):
     """Config for BC."""
     _target_: str = "imitation_cli.algorithm_configurations.bc.Config.make"
     venv: environment_cfg.Config = MISSING
     rng: randomness.Config = MISSING
     policy: Optional[policy_cfg.ActorCriticPolicy] = MISSING
-    demonstrations: trajectories.Config = MISSING
     batch_size: int = 32
     minibatch_size: Optional[int] = None
     optimizer_cls: optimizer_class.Config = optimizer_class.Adam
@@ -28,7 +29,6 @@ class Config:
     ent_weight: float = 1e-3
     l2_weight: float = 0.0
     device: str = "auto"
-    # TODO: custom_logger: Optional[imit_logger.HierarchicalLogger] = None
 
     @staticmethod
     def make(venv: VecEnv, **kwargs):
