@@ -273,6 +273,7 @@ class BC(algo_base.DemonstrationAlgorithm):
         l2_weight: float = 0.0,
         device: Union[str, th.device] = "auto",
         custom_logger: Optional[imit_logger.HierarchicalLogger] = None,
+        **kwargs,
     ):
         """Builds BC.
 
@@ -317,6 +318,7 @@ class BC(algo_base.DemonstrationAlgorithm):
         super().__init__(
             demonstrations=demonstrations,
             custom_logger=custom_logger,
+            **kwargs,
         )
         self._bc_logger = BCLogger(self.logger)
 

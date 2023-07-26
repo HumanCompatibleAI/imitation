@@ -335,6 +335,7 @@ class DAggerTrainer(base.BaseImitationAlgorithm):
         beta_schedule: Optional[Callable[[int], float]] = None,
         bc_trainer: bc.BC,
         custom_logger: Optional[imit_logger.HierarchicalLogger] = None,
+        **kwargs: Any,
     ):
         """Builds DAggerTrainer.
 
@@ -349,7 +350,7 @@ class DAggerTrainer(base.BaseImitationAlgorithm):
             bc_trainer: A `BC` instance used to train the underlying policy.
             custom_logger: Where to log to; if None (default), creates a new logger.
         """
-        super().__init__(custom_logger=custom_logger)
+        super().__init__(custom_logger=custom_logger, **kwargs)
 
         if beta_schedule is None:
             beta_schedule = LinearBetaSchedule(15)
