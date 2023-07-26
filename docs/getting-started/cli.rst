@@ -107,7 +107,7 @@ By default, this will use ``ppo``.
         python -m imitation.scripts.train_rl with pendulum \
                 logging.log_dir=output/train_rl/Pendulum-v1/my_run  \
 
-Now we can run the imitation sript (in this case DAgger) and pass the path to the demonstrations we just generated
+Now we can run the imitation script (in this case DAgger) and pass the path to the demonstrations we just generated
 
 .. code-block:: bash
 
