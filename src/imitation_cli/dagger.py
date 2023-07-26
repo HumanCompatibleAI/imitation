@@ -57,11 +57,6 @@ cs.store(
 )
 
 
-@hydra.main(
-    version_base=None,
-    config_path="config",
-    config_name="dagger_run",
-)
 def run_dagger(cfg: RunConfig):
     dagger_trainer: dagger.DAggerTrainer = instantiate(cfg.dagger)
 
@@ -73,5 +68,14 @@ def run_dagger(cfg: RunConfig):
     dagger_trainer.save_trainer()
 
 
+@hydra.main(
+    version_base=None,
+    config_path="config",
+    config_name="dagger_run",
+)
+def main(cfg: RunConfig):
+    run_dagger(cfg)
+
+
 if __name__ == "__main__":
-    run_dagger()
+    main()
