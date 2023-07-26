@@ -14,7 +14,7 @@ class Config(base.BaseImitationAlgorithmConfig):
     """Config for DAgger."""
     _target_: str = "imitation.algorithms.dagger.SimpleDAggerTrainer"
     venv: environment_cfg.Config = MISSING
-    scratch_dir: pathlib.Path = MISSING
+    scratch_dir: pathlib.Path = "${hydra.run.dir}/scratch"
     expert_policy: policy.Config = MISSING
     rng: randomness.Config = MISSING
     expert_trajs: Optional[trajectories.Config] = None

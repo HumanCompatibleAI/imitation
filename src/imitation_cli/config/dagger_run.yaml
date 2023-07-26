@@ -8,7 +8,6 @@ defaults:
   - _self_
 
 dagger:
-  scratch_dir: /tmp/imitation_dagger
   expert_trajs:  # Generate 1k timesteps using the same expert that dagger uses (pointless since dagger would do this anyways).
     total_timesteps: 1000
     expert_policy: ${dagger.expert_policy}
