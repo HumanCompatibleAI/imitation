@@ -121,7 +121,9 @@ def make_vec_env(
         # Seed each environment with a different, non-sequential seed for diversity
         # (even if caller is passing us sequentially-assigned base seeds). int() is
         # necessary to work around gym bug where it chokes on numpy int64s.
-        env.seed(int(this_seed))
+        env.reset(seed=int(this_seed))    
+        # NOTE: we do it here rather than on the final VecEnv, becuase 
+        # that would set the same seed for all the environments.
 
         if max_episode_steps is not None:
             env = TimeLimit(env, max_episode_steps)
