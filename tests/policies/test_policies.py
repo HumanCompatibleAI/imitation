@@ -93,7 +93,7 @@ def _test_serialize_identity(env_name, model_cfg, tmpdir, rng):
     model = model_cls("MlpPolicy", venv)
     model.learn(1000)
 
-    venv.env_method("seed", 0)
+    venv.seed(0)
     venv.reset()
     orig_rollout = rollout.generate_transitions(
         model,
@@ -105,7 +105,7 @@ def _test_serialize_identity(env_name, model_cfg, tmpdir, rng):
 
     serialize.save_stable_model(util.parse_path(tmpdir), model)
     loaded = serialize.load_policy(model_name, venv, path=tmpdir)
-    venv.env_method("seed", 0)
+    venv.seed(0)
     venv.reset()
     new_rollout = rollout.generate_transitions(
         loaded,

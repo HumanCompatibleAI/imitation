@@ -26,16 +26,17 @@ def rollouts(env, n=10, seed=None):
     rv = []
     for i in range(n):
         done = False
+        # if a seed is given, then we use the same seed each time (should
+        # give same trajectory each time)
+        obs = env.reset(seed=seed)
         if seed is not None:
-            # if a seed is given, then we use the same seed each time (should
-            # give same trajectory each time)
-            env.seed(seed)
             env.action_space.seed(seed)
-        obs = env.reset()
+
         traj = [obs]
         while not done:
             act = env.action_space.sample()
-            obs, rew, done, info = env.step(act)
+            obs, rew, terminated, truncated, info = env.step(act)
+            done = terminated or truncated
             traj.append((obs, rew))
         rv.append(traj)
     return rv
@@ -439,7 +440,8 @@ def test_mce_irl_reasonable_mdp(
 
         # test MCE IRL on the MDP
         mdp = ReasonablePOMDP()
-        mdp.seed(715298)
+        mdp.reset(seed=715298)
+        # mdp.seed(715298)    # NOTE: not sure this is the correct approach in this case 
 
         # demo occupancy measure
         V, Q, pi = mce_partition_fh(mdp, discount=discount)

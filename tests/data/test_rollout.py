@@ -27,16 +27,16 @@ class TerminalSentinelEnv(gym.Env):
         self.action_space = gym.spaces.Discrete(1)
         self.observation_space = gym.spaces.Box(np.array([0]), np.array([1]))
 
-    def reset(self):
+    def reset(self, seed=None):
         self.current_step = 0
-        return np.array([0])
+        return np.array([0]), {}  
 
     def step(self, action):
         self.current_step += 1
         done = self.current_step >= self.max_acts
         observation = np.array([1 if done else 0])
         rew = 0.0
-        return observation, rew, done, {}
+        return observation, rew, done, False, {}
 
 
 def _sample_fixed_length_trajectories(
@@ -182,12 +182,14 @@ class ObsRewHalveWrapper(gym.Wrapper):
     """Simple wrapper that scales every reward and observation feature by 0.5."""
 
     def reset(self, **kwargs):
-        obs = self.env.reset(**kwargs) / 2
-        return obs
+        obs, info = self.env.reset(**kwargs)
+        obs /= 2
+        return obs, info
 
     def step(self, action):
-        obs, rew, done, info = self.env.step(action)
-        return obs / 2, rew / 2, done, info
+        obs, rew, terminated, truncated, info = self.env.step(action)
+        done = terminated or truncated
+        return obs / 2, rew / 2, done, truncated, info
 
 
 def test_rollout_stats(rng):
