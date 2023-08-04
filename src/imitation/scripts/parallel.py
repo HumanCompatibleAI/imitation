@@ -24,7 +24,7 @@ def parallel(
     search_space: Mapping[str, Any],
     base_named_configs: Sequence[str],
     base_config_updates: Mapping[str, Any],
-    resources_per_trial: Dict[str, Any],
+    resources_per_trial: Mapping[str, Any],
     init_kwargs: Mapping[str, Any],
     repeat: int,
     experiment_checkpoint_path: str,
@@ -115,17 +115,15 @@ def parallel(
     ray.init(**init_kwargs)
     updated_tune_run_kwargs = copy.deepcopy(tune_run_kwargs)
     if repeat > 1:
-        if "search_alg" not in updated_tune_run_kwargs:
-            updated_tune_run_kwargs["search_alg"] = optuna.OptunaSearch()
         try:
-            algo = updated_tune_run_kwargs["search_alg"]
-            algo = search.Repeater(algo, repeat)
-            updated_tune_run_kwargs["search_alg"] = algo
-        except AttributeError:
+            # Use optuna as the default search algorithm for repeat runs.
+            algo = tune_run_kwargs.get("search_alg", optuna.OptunaSearch())
+            updated_tune_run_kwargs["search_alg"] = search.Repeater(algo, repeat)
+        except AttributeError as e:
             raise ValueError(
                 "repeat > 1 but search_alg is not an instance of "
                 "ray.tune.search.SearchAlgorithm",
-            )
+            ) from e
 
     if sacred_ex_name == "train_rl":
         return_key = "monitor_return_mean"
@@ -198,7 +196,7 @@ def _ray_tune_sacred_wrapper(
         `ex.run`) and `reporter`. The function returns the run result.
     """
 
-    def inner(config: Dict[str, Any], reporter) -> Mapping[str, Any]:
+    def inner(config: dict[str, Any], reporter) -> Mapping[str, Any]:
         """Trainable function with the correct signature for `ray.tune`.
 
         Args:

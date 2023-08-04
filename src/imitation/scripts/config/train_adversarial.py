@@ -8,6 +8,10 @@ from imitation.scripts.ingredients import demonstrations, environment, expert
 from imitation.scripts.ingredients import logging as logging_ingredient
 from imitation.scripts.ingredients import policy_evaluation, reward, rl
 
+# Note: All the hyperparameter configs in the file are of the tuned
+# hyperparameters of the RL algorithm of the respective environment.
+# Taken from imitation/scripts/config/train_rl.py
+
 train_adversarial_ex = sacred.Experiment(
     "train_adversarial",
     ingredients=[

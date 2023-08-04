@@ -889,6 +889,9 @@ def test_parallel_train_adversarial_custom_env(tmpdir):
             logging=dict(log_root=tmpdir),
             demonstrations=dict(path=path),
         ),
+        # specifying repeat=2 uses the optuna search algorithm which
+        # requires the search space to be non-empty. So we provide
+        # the command name using tune.choice.
         search_space=dict(command_name=tune.choice(["gail"])),
     )
     config_updates.update(PARALLEL_CONFIG_LOW_RESOURCE)

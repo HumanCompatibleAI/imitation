@@ -8,6 +8,11 @@ from imitation.scripts.ingredients import environment
 from imitation.scripts.ingredients import logging as logging_ingredient
 from imitation.scripts.ingredients import policy_evaluation, rl
 
+# Note: All the hyperparameter configs in the file are tuned
+# for the PPO algorithm on the respective environment using the
+# RL Baselines Zoo library:
+# https://github.com/HumanCompatibleAI/rl-baselines3-zoo/
+
 train_rl_ex = sacred.Experiment(
     "train_rl",
     ingredients=[

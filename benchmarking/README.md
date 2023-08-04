@@ -15,7 +15,8 @@ python -m imitation.scripts.<train_script> <algo> with benchmarking/<config_name
 
 ```python
 ...
-ex.add_config('benchmarking/<config_name>.json')
+from imitation.scripts.<train_script> import <train_ex>
+<train_ex>.run(command_name="<algo>", named_configs=["benchmarking/<config_name>.json"])
 ```
 
 # Tuning Hyperparameters
