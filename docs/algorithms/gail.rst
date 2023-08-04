@@ -19,16 +19,17 @@ Detailed example notebook: :doc:`../tutorials/3_train_gail`
 .. testcode::
     :skipif: skip_doctests
 
-    import numpy as np
     import gym
+    import seals  # needed to load "seals/" environments
+    import numpy as np
     from stable_baselines3 import PPO
     from stable_baselines3.common.evaluation import evaluate_policy
-    from stable_baselines3.common.vec_env import DummyVecEnv
     from stable_baselines3.ppo import MlpPolicy
 
     from imitation.algorithms.adversarial.gail import GAIL
     from imitation.data import rollout
     from imitation.data.wrappers import RolloutInfoWrapper
+    from imitation.policies.serialize import load_policy
     from imitation.rewards.reward_nets import BasicRewardNet
     from imitation.util.networks import RunningNorm
     from imitation.util.util import make_vec_env
@@ -36,8 +37,12 @@ Detailed example notebook: :doc:`../tutorials/3_train_gail`
     rng = np.random.default_rng(0)
 
     env = gym.make("seals/CartPole-v0")
-    expert = PPO(policy=MlpPolicy, env=env, n_steps=64)
-    expert.learn(1000)
+    expert = load_policy(
+        "ppo-huggingface",
+        organization="HumanCompatibleAI",
+        env_name="seals-CartPole-v0",
+        venv=env,
+    )
 
     rollouts = rollout.rollout(
         expert,

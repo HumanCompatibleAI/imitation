@@ -26,19 +26,24 @@ Detailed example notebook: :doc:`../tutorials/2_train_dagger`
     import tempfile
     import numpy as np
     import gym
-    from stable_baselines3 import PPO
+    import seals  # needed to load "seals/" environments
+    import numpy as np
     from stable_baselines3.common.evaluation import evaluate_policy
     from stable_baselines3.common.vec_env import DummyVecEnv
-    from stable_baselines3.ppo import MlpPolicy
 
     from imitation.algorithms import bc
     from imitation.algorithms.dagger import SimpleDAggerTrainer
+    from imitation.policies.serialize import load_policy
 
     rng = np.random.default_rng(0)
-    env = gym.make("CartPole-v1")
-    expert = PPO(policy=MlpPolicy, env=env)
-    expert.learn(1000)
-    venv = DummyVecEnv([lambda: gym.make("CartPole-v1")])
+    env = gym.make("seals/CartPole-v0")
+    expert = load_policy(
+        "ppo-huggingface",
+        organization="HumanCompatibleAI",
+        env_name="seals-CartPole-v0",
+        venv=env,
+    )
+    venv = DummyVecEnv([lambda: gym.make("seals/CartPole-v0")])
 
     bc_trainer = bc.BC(
         observation_space=env.observation_space,
