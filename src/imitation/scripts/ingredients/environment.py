@@ -1,4 +1,4 @@
-"""Environment Ingredient for sacred experiments."""
+"""This ingredient provides a vectorized gym environment."""
 import contextlib
 import functools
 from typing import Any, Callable, Generator, Mapping

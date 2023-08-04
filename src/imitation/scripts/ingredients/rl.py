@@ -1,4 +1,7 @@
-"""Common configuration elements for reinforcement learning."""
+"""This ingredient provides a reinforcement learning algorithm from stable-baselines3.
+
+The algorithm instance is either freshly constructed or loaded from a file.
+"""
 
 import logging
 import warnings

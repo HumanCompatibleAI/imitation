@@ -1,4 +1,8 @@
-"""Logging ingredient for scripts."""
+"""This ingredient provides a number of logging utilities.
+
+It is responsible for logging to WandB, TensorBoard, and stdout.
+It will also create a symlink to the sacred logging directory in the log directory.
+"""
 
 import logging
 import pathlib

@@ -10,9 +10,9 @@ that is more generalizable to changes in environment dynamics.
 
 The expert policy must be stochastic.
 
-Notes
------
-- AIRL paper: `Learning Robust Rewards with Adversarial Inverse Reinforcement Learning <https://arxiv.org/abs/1710.11248>`_
+
+.. note::
+    AIRL paper: `Learning Robust Rewards with Adversarial Inverse Reinforcement Learning <https://arxiv.org/abs/1710.11248>`_
 
 Example
 =======

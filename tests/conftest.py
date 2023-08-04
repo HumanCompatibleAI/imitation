@@ -45,4 +45,4 @@ def custom_logger(tmpdir: str) -> logger.HierarchicalLogger:
 
 @pytest.fixture()
 def rng() -> np.random.Generator:
-    return np.random.default_rng()
+    return np.random.default_rng(seed=0)

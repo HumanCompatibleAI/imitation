@@ -12,9 +12,8 @@ newly labeled observations to the dataset. DAgger improves on behavioral cloning
 training on a dataset that better resembles the observations the trained policy is
 likely to encounter, but it requires querying the expert online.
 
-Notes
------
-- DAgger paper: `A Reduction of Imitation Learning and Structured Prediction to No-Regret Online Learning <https://arxiv.org/abs/1011.0686>`_
+.. note::
+    DAgger paper: `A Reduction of Imitation Learning and Structured Prediction to No-Regret Online Learning <https://arxiv.org/abs/1011.0686>`_
 
 Example
 =======
