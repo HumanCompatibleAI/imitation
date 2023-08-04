@@ -70,7 +70,8 @@ When using the Python API, you also have to specify the environment name as `env
     remote_policy = load_policy(
         "ppo-huggingface",
         organization="your-org",
-        env_name="your-env"
+        env_name="your-env",
+        venv=venv,
         )
     )
 
