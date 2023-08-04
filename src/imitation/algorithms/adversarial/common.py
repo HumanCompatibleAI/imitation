@@ -2,13 +2,13 @@
 import abc
 import dataclasses
 import logging
-from typing import Callable, Iterable, Iterator, Mapping, Optional, Type, overload, List
+from typing import Callable, Iterable, Iterator, Mapping, Optional, Type, overload
 
 import numpy as np
 import torch as th
 import torch.utils.tensorboard as thboard
 import tqdm
-from stable_baselines3.common import base_class, on_policy_algorithm, policies, vec_env, callbacks
+from stable_baselines3.common import base_class, on_policy_algorithm, policies, vec_env
 from stable_baselines3.sac import policies as sac_policies
 from torch.nn import functional as F
 
@@ -84,30 +84,6 @@ def compute_train_stats(
         "n_expert": float(n_expert),
         "n_generated": float(n_generated),
     }
-
-
-class TrainDiscriminatorCallback(callbacks.BaseCallback):
-    """Callback for training discriminator after collecting rollouts."""
-
-    def __init__(self, adversarial_trainer, *args, **kwargs):
-        """Builds TrainDiscriminatorCallback.
-
-        Args:
-            *args: Passed through to `callbacks.BaseCallback`.
-            **kwargs: Passed through to `callbacks.BaseCallback`.
-        """
-        self.adversarial_trainer = adversarial_trainer
-        super().__init__(*args, **kwargs)
-
-    def _on_step(self) -> bool:
-        return True
-
-    def _on_rollout_end(self) -> None:
-        self.adversarial_trainer.model.train_disc()
-        for _ in range(self.adversarial_trainer.n_disc_updates_per_round):
-            with networks.training(self.adversarial_trainer.reward_train):
-                # switch to training mode (affects dropout, normalization)
-                self.adversarial_trainer.train_disc()
 
 
 class AdversarialTrainer(base.DemonstrationAlgorithm[types.Transitions]):
@@ -246,17 +222,16 @@ class AdversarialTrainer(base.DemonstrationAlgorithm[types.Transitions]):
 
         self.venv_buffering = wrappers.BufferingWrapper(self.venv)
 
-        self.disc_trainer_callback = TrainDiscriminatorCallback(self)
         if debug_use_ground_truth:
             # Would use an identity reward fn here, but RewardFns can't see rewards.
             self.venv_wrapped = self.venv_buffering
-            self.gen_callback: List[callbacks.BaseCallback] = [self.disc_trainer_callback]
+            self.gen_callback = None
         else:
             self.venv_wrapped = reward_wrapper.RewardVecEnvWrapper(
                 self.venv_buffering,
                 reward_fn=self.reward_train.predict_processed,
             )
-            self.gen_callback = [self.venv_wrapped.make_log_callback(), self.disc_trainer_callback]
+            self.gen_callback = self.venv_wrapped.make_log_callback()
         self.venv_train = self.venv_wrapped
 
         self.gen_algo.set_env(self.venv_train)
@@ -471,6 +446,10 @@ class AdversarialTrainer(base.DemonstrationAlgorithm[types.Transitions]):
         )
         for r in tqdm.tqdm(range(0, n_rounds), desc="round"):
             self.train_gen(self.gen_train_timesteps)
+            for _ in range(self.n_disc_updates_per_round):
+                with networks.training(self.reward_train):
+                    # switch to training mode (affects dropout, normalization)
+                    self.train_disc()
             if callback:
                 callback(r)
             self.logger.dump(self._global_step)
