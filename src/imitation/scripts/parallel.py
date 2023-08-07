@@ -196,7 +196,7 @@ def _ray_tune_sacred_wrapper(
         `ex.run`) and `reporter`. The function returns the run result.
     """
 
-    def inner(config: Dict[str, Any], reporter) -> Mapping[str, Any]:
+    def inner(config: Mapping[str, Any], reporter) -> Mapping[str, Any]:
         """Trainable function with the correct signature for `ray.tune`.
 
         Args:
@@ -212,7 +212,7 @@ def _ray_tune_sacred_wrapper(
         # TODO(shwang): Stop modifying CAPTURE_MODE once the issue is fixed.
         sacred.SETTINGS.CAPTURE_MODE = "sys"
 
-        run_kwargs = config
+        run_kwargs = dict(**config)
         updated_run_kwargs: Dict[str, Any] = {}
         # Import inside function rather than in module because Sacred experiments
         # are not picklable, and Ray requires this function to be picklable.
