@@ -24,7 +24,15 @@ Detailed example notebook: :doc:`../tutorials/4_train_airl`
 
     import numpy as np
     import seals  # noqa: F401  # needed to load "seals/" environments
+    from stable_baselines3 import PPO
+    from stable_baselines3.common.evaluation import evaluate_policy
+    from stable_baselines3.ppo import MlpPolicy
+
+    from imitation.algorithms.adversarial.airl import AIRL
+    from imitation.data import rollout
     from imitation.policies.serialize import load_policy
+    from imitation.rewards.reward_nets import BasicShapedRewardNet
+    from imitation.util.networks import RunningNorm
     from imitation.util.util import make_vec_env
     from imitation.data.wrappers import RolloutInfoWrapper
 

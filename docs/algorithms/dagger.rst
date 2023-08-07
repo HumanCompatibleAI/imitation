@@ -24,14 +24,15 @@ Detailed example notebook: :doc:`../tutorials/2_train_dagger`
     :skipif: skip_doctests
 
     import tempfile
+
     import numpy as np
     import seals  # noqa: F401  # needed to load "seals/" environments
-    import numpy as np
     from stable_baselines3.common.evaluation import evaluate_policy
 
     from imitation.algorithms import bc
     from imitation.algorithms.dagger import SimpleDAggerTrainer
     from imitation.policies.serialize import load_policy
+    from imitation.util.util import make_vec_env
 
     rng = np.random.default_rng(0)
     env = make_vec_env(

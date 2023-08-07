@@ -22,9 +22,13 @@ Detailed example notebook: :doc:`../tutorials/1_train_bc`
 
     import numpy as np
     import seals  # noqa: F401  # needed to load "seals/" environments
+    from stable_baselines3.common.evaluation import evaluate_policy
+
+    from imitation.algorithms import bc
+    from imitation.data import rollout
+    from imitation.data.wrappers import RolloutInfoWrapper
     from imitation.policies.serialize import load_policy
     from imitation.util.util import make_vec_env
-    from imitation.data.wrappers import RolloutInfoWrapper
 
     rng = np.random.default_rng(0)
     env = make_vec_env(
