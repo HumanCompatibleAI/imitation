@@ -136,7 +136,7 @@ Here we are looking at the policy saved by the previous example.
 
 Comparing algorithms' performance
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^    
-Let's use the cli to compare the performances of different algorithms. 
+Let's use the CLI to compare the performance of different algorithms. 
 
 First, let's train an expert on the ``CartPole-v1`` environment.
 
