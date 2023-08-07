@@ -134,7 +134,7 @@ Here we are looking at the policy saved by the previous example.
 
 
 
-Comparing algorithm performances 
+Comparing algorithms' performance
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^    
 Let's use the cli to compare the performances of different algorithms. 
 
