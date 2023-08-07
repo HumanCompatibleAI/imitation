@@ -50,6 +50,7 @@ TESTS_REQUIRE = (
         #  https://github.com/jupyter/jupyter_client/issues/637 is fixed
         "jupyter-client~=6.1.12",
         "mypy~=0.990",
+        "nbqa~=1.7.0",
         "pandas~=1.4.3",
         "pytest~=7.1.2",
         "pytest-cov~=3.0.0",
