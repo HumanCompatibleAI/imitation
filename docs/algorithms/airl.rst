@@ -23,47 +23,35 @@ Detailed example notebook: :doc:`../tutorials/4_train_airl`
     :skipif: skip_doctests
 
     import numpy as np
-    import gym
-    import seals  # needed to load "seals/" environments
-    from stable_baselines3 import PPO
-    from stable_baselines3.common.evaluation import evaluate_policy
-    from stable_baselines3.ppo import MlpPolicy
-
-    from imitation.algorithms.adversarial.airl import AIRL
-    from imitation.data import rollout
-    from imitation.data.wrappers import RolloutInfoWrapper
+    import seals  # noqa: F401  # needed to load "seals/" environments
     from imitation.policies.serialize import load_policy
-    from imitation.rewards.reward_nets import BasicShapedRewardNet
-    from imitation.util.networks import RunningNorm
     from imitation.util.util import make_vec_env
+    from imitation.data.wrappers import RolloutInfoWrapper
 
     rng = np.random.default_rng(0)
-
-    env = gym.make("seals/CartPole-v0")
+    env = make_vec_env(
+        "seals/CartPole-v0",
+        rng=rng,
+        n_envs=8,
+        post_wrappers=[lambda env, _: RolloutInfoWrapper(env)],  # for computing rollouts
+    )
     expert = load_policy(
         "ppo-huggingface",
         organization="HumanCompatibleAI",
         env_name="seals-CartPole-v0",
         venv=env,
     )
-
     rollouts = rollout.rollout(
         expert,
-        make_vec_env(
-            "seals/CartPole-v0",
-            rng=rng,
-            n_envs=5,
-            post_wrappers=[lambda env, _: RolloutInfoWrapper(env)],
-        ),
+        env,
         rollout.make_sample_until(min_timesteps=None, min_episodes=60),
         rng=rng,
     )
 
-    venv = make_vec_env("seals/CartPole-v0", rng=rng, n_envs=8)
-    learner = PPO(env=venv, policy=MlpPolicy)
+    learner = PPO(env=env, policy=MlpPolicy)
     reward_net = BasicShapedRewardNet(
-        venv.observation_space,
-        venv.action_space,
+        env.observation_space,
+        env.action_space,
         normalize_input_layer=RunningNorm,
     )
     airl_trainer = AIRL(
@@ -71,12 +59,12 @@ Detailed example notebook: :doc:`../tutorials/4_train_airl`
         demo_batch_size=1024,
         gen_replay_buffer_capacity=2048,
         n_disc_updates_per_round=4,
-        venv=venv,
+        venv=env,
         gen_algo=learner,
         reward_net=reward_net,
     )
     airl_trainer.train(20000)
-    rewards, _ = evaluate_policy(learner, venv, 100, return_episode_rewards=True)
+    rewards, _ = evaluate_policy(learner, env, 100, return_episode_rewards=True)
     print("Rewards:", rewards)
 
 .. testoutput::

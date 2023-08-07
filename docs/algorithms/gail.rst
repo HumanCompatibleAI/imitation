@@ -19,9 +19,8 @@ Detailed example notebook: :doc:`../tutorials/3_train_gail`
 .. testcode::
     :skipif: skip_doctests
 
-    import gym
-    import seals  # needed to load "seals/" environments
     import numpy as np
+    import seals  # noqa: F401  # needed to load "seals/" environments
     from stable_baselines3 import PPO
     from stable_baselines3.common.evaluation import evaluate_policy
     from stable_baselines3.ppo import MlpPolicy
@@ -36,31 +35,29 @@ Detailed example notebook: :doc:`../tutorials/3_train_gail`
 
     rng = np.random.default_rng(0)
 
-    env = gym.make("seals/CartPole-v0")
+    env = make_vec_env(
+        "seals/CartPole-v0",
+        rng=rng,
+        n_envs=8,
+        post_wrappers=[lambda env, _: RolloutInfoWrapper(env)],  # for computing rollouts
+    )
     expert = load_policy(
         "ppo-huggingface",
         organization="HumanCompatibleAI",
         env_name="seals-CartPole-v0",
         venv=env,
     )
-
     rollouts = rollout.rollout(
         expert,
-        make_vec_env(
-            "seals/CartPole-v0",
-            n_envs=5,
-            post_wrappers=[lambda env, _: RolloutInfoWrapper(env)],
-            rng=rng,
-        ),
+        env,
         rollout.make_sample_until(min_timesteps=None, min_episodes=60),
         rng=rng,
     )
 
-    venv = make_vec_env("seals/CartPole-v0", n_envs=8, rng=rng)
-    learner = PPO(env=venv, policy=MlpPolicy)
+    learner = PPO(env=env, policy=MlpPolicy)
     reward_net = BasicRewardNet(
-        venv.observation_space,
-        venv.action_space,
+        env.observation_space,
+        env.action_space,
         normalize_input_layer=RunningNorm,
     )
     gail_trainer = GAIL(
@@ -68,13 +65,13 @@ Detailed example notebook: :doc:`../tutorials/3_train_gail`
         demo_batch_size=1024,
         gen_replay_buffer_capacity=2048,
         n_disc_updates_per_round=4,
-        venv=venv,
+        venv=env,
         gen_algo=learner,
         reward_net=reward_net,
     )
 
     gail_trainer.train(20000)
-    rewards, _ = evaluate_policy(learner, venv, 100, return_episode_rewards=True)
+    rewards, _ = evaluate_policy(learner, env, 100, return_episode_rewards=True)
     print("Rewards:", rewards)
 
 .. testoutput::

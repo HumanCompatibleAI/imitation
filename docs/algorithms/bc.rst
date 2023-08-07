@@ -20,19 +20,19 @@ Detailed example notebook: :doc:`../tutorials/1_train_bc`
 .. testcode::
     :skipif: skip_doctests
 
-    import gym
-    import seals  # needed to load "seals/" environments
     import numpy as np
-    from stable_baselines3.common.evaluation import evaluate_policy
-    from stable_baselines3.common.vec_env import DummyVecEnv
-
-    from imitation.algorithms import bc
-    from imitation.data import rollout
-    from imitation.data.wrappers import RolloutInfoWrapper
+    import seals  # noqa: F401  # needed to load "seals/" environments
     from imitation.policies.serialize import load_policy
+    from imitation.util.util import make_vec_env
+    from imitation.data.wrappers import RolloutInfoWrapper
 
     rng = np.random.default_rng(0)
-    env = gym.make("seals/CartPole-v0")
+    env = make_vec_env(
+        "seals/CartPole-v0",
+        rng=rng,
+        n_envs=1,
+        post_wrappers=[lambda env, _: RolloutInfoWrapper(env)],  # for computing rollouts
+    )
     expert = load_policy(
         "ppo-huggingface",
         organization="HumanCompatibleAI",
@@ -41,7 +41,7 @@ Detailed example notebook: :doc:`../tutorials/1_train_bc`
     )
     rollouts = rollout.rollout(
         expert,
-        DummyVecEnv([lambda: RolloutInfoWrapper(env)]),
+        env,
         rollout.make_sample_until(min_timesteps=None, min_episodes=50),
         rng=rng,
     )
