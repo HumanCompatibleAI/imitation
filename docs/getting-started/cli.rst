@@ -32,8 +32,8 @@ You can always find out all the configurable values by running:
 
     python -m imitation.scripts.<script> print_config
 
-Run BC on the ``CartPole-v1`` environment with a pre-trained PPO policy as expert:
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Run BC on the ``CartPole-v1`` environment with a pre-trained PPO policy as expert
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 .. note:: Here the cartpole environment is specified via a named configuration.
 
@@ -49,8 +49,8 @@ Run BC on the ``CartPole-v1`` environment with a pre-trained PPO policy as exper
 50 expert demonstrations are sampled from the PPO policy that is included in the testdata folder.
 2000 batches are enough to train a good policy.
 
-Run DAgger on the ``CartPole-v0`` environment with a random policy as expert:
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Run DAgger on the ``CartPole-v0`` environment with a random policy as expert
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 .. code-block:: bash
 
@@ -63,8 +63,8 @@ Run DAgger on the ``CartPole-v0`` environment with a random policy as expert:
 This will not produce any meaningful results, since a random policy is not a good expert.
 
 
-Run AIRL on the ``MountainCar-v0`` environment with a expert from the HuggingFace model hub:
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Run AIRL on the ``MountainCar-v0`` environment with a expert from the HuggingFace model hub
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 .. code-block:: bash
 
@@ -93,8 +93,8 @@ The ``seals:`` prefix ensures that the seals package is imported and the environ
             demonstrations.n_expert_demos=50
 
 
-Train an expert and save the rollouts explicitly, then train a policy on the saved rollouts:
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Train an expert and save the rollouts explicitly, then train a policy on the saved rollouts
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 First, train an expert and save the demonstrations.
 Note that by default these are saved in ``<log_dir>/rollouts/final.npz``.
