@@ -224,7 +224,7 @@ For the non-expert:
     }
     INFO - eval_policy - Completed after 0:00:17
 
-This will save the monitor csvs (one for each vectorised env, controlled by environment.num_vec). 
+This will save the monitor CSVs (one for each vectorised env, controlled by environment.num_vec). 
 We can load these with ``pandas`` and use the ``imitation.test.reward_improvement``
 module to compare the performances of the two policies.
 
