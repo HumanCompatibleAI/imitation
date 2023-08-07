@@ -2,22 +2,24 @@
 
 Refer to the jupyter notebooks for more detailed examples of how to use the algorithms.
 """
-
-import gym
 import numpy as np
 import seals  # needed to load "seals/" environments    # noqa: F401
 from stable_baselines3 import PPO
 from stable_baselines3.common.evaluation import evaluate_policy
-from stable_baselines3.common.vec_env import DummyVecEnv
 from stable_baselines3.ppo import MlpPolicy
 
 from imitation.algorithms import bc
 from imitation.data import rollout
 from imitation.data.wrappers import RolloutInfoWrapper
 from imitation.policies.serialize import load_policy
+from imitation.util.util import make_vec_env
 
-env = gym.make("seals/CartPole-v0")
 rng = np.random.default_rng(0)
+env = make_vec_env(
+    "seals/CartPole-v0",
+    rng=rng,
+    post_wrappers=[lambda env, _: RolloutInfoWrapper(env)],  # for computing rollouts
+)
 
 
 def train_expert():
@@ -55,7 +57,7 @@ def sample_expert_transitions():
     print("Sampling expert transitions.")
     rollouts = rollout.rollout(
         expert,
-        DummyVecEnv([lambda: RolloutInfoWrapper(env)]),
+        env,
         rollout.make_sample_until(min_timesteps=None, min_episodes=50),
         rng=rng,
     )
