@@ -130,7 +130,7 @@ policy_registry.register(
 )
 policy_registry.register(
     "interactive",
-    value=registry.build_loader_fn_require_space(interactive.InteractivePolicy),
+    value=registry.build_loader_fn_require_env(interactive.InteractivePolicy),
 )
 
 

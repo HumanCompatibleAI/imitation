@@ -1,10 +1,9 @@
 """Interactive policy classes to query humans for actions and associated utilities."""
-from typing import Any, Callable, Optional
 
-import gym
 import numpy as np
 import torch as th
 from stable_baselines3.common.policies import BasePolicy
+from stable_baselines3.common.vec_env import VecEnv
 
 
 def query_human() -> np.ndarray:
@@ -44,18 +43,14 @@ class InteractivePolicy(BasePolicy):
     Initialized with a query function that takes an observation and returns an action.
     """
 
-    def __init__(
-        self,
-        observation_space: gym.Space,
-        action_space: gym.Space,
-        query_fn: Optional[Callable[[th.Tensor], Any]] = None,
-    ):
-        """Builds InteractivePolicy with specified observation and action space."""
+    def __init__(self, venv: VecEnv, render_mode: str = "human"):
+        """Builds InteractivePolicy with specified environment."""
         super().__init__(
-            observation_space=observation_space,
-            action_space=action_space,
+            observation_space=venv.observation_space,
+            action_space=venv.action_space,
         )
-        self.query_fn = query_fn or (lambda _: query_human())
+        self.venv = venv
+        self.render_mode = render_mode  # todo: infer from venv and make configurable
 
     def _predict(
         self,
@@ -63,7 +58,8 @@ class InteractivePolicy(BasePolicy):
         deterministic: bool = False,
     ) -> th.Tensor:
         """Get the action from a human user."""
-        action = self.query_fn(observation)
+        self.venv.render(mode=self.render_mode)
+        action = query_human()
         return th.tensor(action)
 
 
