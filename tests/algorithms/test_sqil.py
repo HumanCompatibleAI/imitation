@@ -1,5 +1,4 @@
 """Tests `imitation.algorithms.sqil`."""
-
 import numpy as np
 import pytest
 from stable_baselines3.common import policies, vec_env
@@ -99,13 +98,15 @@ def test_sqil_performance(
     cartpole_venv: vec_env.VecEnv,
 ):
     demonstrations = get_demos(rng, pytestconfig, "transitions")
-    demonstrations = demonstrations[:20]
-
     model = sqil.SQIL(
         venv=cartpole_venv,
         demonstrations=demonstrations,
         policy="MlpPolicy",
-        dqn_kwargs=dict(learning_starts=1000),
+        dqn_kwargs=dict(
+            learning_starts=500,
+            learning_rate=0.002,
+            batch_size=220,
+        ),
     )
 
     rewards_before, _ = evaluate_policy(
