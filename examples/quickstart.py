@@ -35,7 +35,7 @@ def train_expert():
         n_epochs=10,
         n_steps=64,
     )
-    expert.learn(100)  # Note: change this to 100000 to train a decent expert.
+    expert.learn(1_000)  # Note: change this to 100_000 to train a decent expert.
     return expert
 
 
