@@ -115,6 +115,8 @@ class TrainDiscriminatorCallback(callbacks.BaseCallback):
         return True
 
     def _on_rollout_end(self) -> None:
+        if self.gen_ctx_manager is not None:
+            self.exit_gen_ctx_manager()
         gen_trajs, ep_lens = self.adversarial_trainer.venv_buffering.pop_trajectories()
         self.adversarial_trainer._check_fixed_horizon(ep_lens)
         gen_samples = rollout.flatten_trajectories_with_rew(gen_trajs)
@@ -133,9 +135,13 @@ class TrainDiscriminatorCallback(callbacks.BaseCallback):
         self.gen_ctx_manager = self.adversarial_trainer.logger.accumulate_means("gen")
         self.gen_ctx_manager.__enter__()
 
-    def _on_training_end(self) -> None:
+    def exit_gen_ctx_manager(self) -> None:
         assert self.gen_ctx_manager is not None
         self.gen_ctx_manager.__exit__(None, None, None)
+        self.gen_ctx_manager = None
+
+    def _on_training_end(self) -> None:
+        self.exit_gen_ctx_manager()
 
 
 class AdversarialTrainer(base.DemonstrationAlgorithm[types.Transitions]):
@@ -514,8 +520,8 @@ class AdversarialTrainer(base.DemonstrationAlgorithm[types.Transitions]):
     ) -> None:
         """Alternates between training the generator and discriminator.
 
-        Every "round" consists of a call to `train_gen_with_disc(self.gen_train_timesteps)`,
-        a call to `train_disc`, and finally a call to `callback(round)`.
+        Every "round" consists of a call to
+        `train_gen_with_disc(self.gen_train_timesteps)` and a call to `callback(round)`.
 
         Training ends once an additional "round" would cause the number of transitions
         sampled from the environment to exceed `total_timesteps`.
