@@ -231,8 +231,9 @@ def test_train_gen_train_disc_no_crash(
     trainer_parametrized: common.AdversarialTrainer,
     n_updates: int = 2,
 ) -> None:
-    trainer_parametrized.train_gen(n_updates * trainer_parametrized.gen_train_timesteps)
-    trainer_parametrized.train_disc()
+    trainer_parametrized.train_gen_with_disc(
+        n_updates * trainer_parametrized.gen_train_timesteps
+    )
 
 
 @pytest.fixture
