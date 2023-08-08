@@ -1,4 +1,6 @@
 """Tests `imitation.algorithms.sqil`."""
+from unittest.mock import MagicMock
+
 import numpy as np
 import pytest
 from stable_baselines3.common import policies, vec_env
@@ -133,3 +135,14 @@ def test_sqil_performance(
         rewards_before,  # type:ignore[arg-type]
         rewards_after,  # type:ignore[arg-type]
     )
+
+
+@pytest.mark.parametrize("illegal_kw", ["replay_buffer_class", "replay_buffer_kwargs"])
+def test_sqil_constructor_raises(illegal_kw: str):
+    with pytest.raises(ValueError):
+        sqil.SQIL(
+            venv=MagicMock(spec=vec_env.VecEnv),
+            demonstrations=None,
+            policy="MlpPolicy",
+            dqn_kwargs={illegal_kw: None},
+        )
