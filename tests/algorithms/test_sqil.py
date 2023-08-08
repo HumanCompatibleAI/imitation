@@ -97,6 +97,7 @@ def test_sqil_performance(
     pytestconfig: pytest.Config,
     cartpole_venv: vec_env.VecEnv,
 ):
+    SEED = 42
     demonstrations = get_demos(rng, pytestconfig, "transitions")
     model = sqil.SQIL(
         venv=cartpole_venv,
@@ -106,9 +107,11 @@ def test_sqil_performance(
             learning_starts=500,
             learning_rate=0.002,
             batch_size=220,
+            seed=SEED,
         ),
     )
 
+    cartpole_venv.seed(SEED)
     rewards_before, _ = evaluate_policy(
         model.policy,
         cartpole_venv,
@@ -118,6 +121,7 @@ def test_sqil_performance(
 
     model.train(total_timesteps=10_000)
 
+    cartpole_venv.seed(SEED)
     rewards_after, _ = evaluate_policy(
         model.policy,
         cartpole_venv,
