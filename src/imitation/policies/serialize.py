@@ -10,7 +10,7 @@ from typing import Callable, Type, TypeVar
 import huggingface_sb3 as hfsb3
 from stable_baselines3.common import base_class, callbacks, policies, vec_env
 
-from imitation.policies import base
+from imitation.policies import base, interactive
 from imitation.util import registry, util
 
 Algorithm = TypeVar("Algorithm", bound=base_class.BaseAlgorithm)
@@ -127,6 +127,10 @@ policy_registry.register(
 policy_registry.register(
     "zero",
     value=registry.build_loader_fn_require_space(base.ZeroPolicy),
+)
+policy_registry.register(
+    "interactive",
+    value=registry.build_loader_fn_require_space(interactive.InteractivePolicy),
 )
 
 

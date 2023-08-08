@@ -1,5 +1,5 @@
 """Interactive policy classes to query humans for actions and associated utilities."""
-from typing import Any, Callable
+from typing import Any, Callable, Optional
 
 import gym
 import numpy as np
@@ -46,16 +46,16 @@ class InteractivePolicy(BasePolicy):
 
     def __init__(
         self,
-        query_fn: Callable[[th.Tensor], Any],
         observation_space: gym.Space,
         action_space: gym.Space,
+        query_fn: Optional[Callable[[th.Tensor], Any]] = None,
     ):
         """Builds InteractivePolicy with specified observation and action space."""
         super().__init__(
             observation_space=observation_space,
             action_space=action_space,
         )
-        self.query_fn = query_fn
+        self.query_fn = query_fn or (lambda _: query_human())
 
     def _predict(
         self,
