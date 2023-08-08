@@ -30,17 +30,18 @@ Detailed example notebook: :doc:`../tutorials/4_train_airl`
 
     from imitation.algorithms.adversarial.airl import AIRL
     from imitation.data import rollout
+    from imitation.data.wrappers import RolloutInfoWrapper
     from imitation.policies.serialize import load_policy
     from imitation.rewards.reward_nets import BasicShapedRewardNet
     from imitation.util.networks import RunningNorm
     from imitation.util.util import make_vec_env
-    from imitation.data.wrappers import RolloutInfoWrapper
 
-    rng = np.random.default_rng(0)
+    SEED = 42
+
     env = make_vec_env(
         "seals/CartPole-v0",
-        rng=rng,
-        n_envs=8,
+        rng=np.random.default_rng(SEED),
+        n_envs=5,
         post_wrappers=[lambda env, _: RolloutInfoWrapper(env)],  # for computing rollouts
     )
     expert = load_policy(
@@ -52,14 +53,22 @@ Detailed example notebook: :doc:`../tutorials/4_train_airl`
     rollouts = rollout.rollout(
         expert,
         env,
-        rollout.make_sample_until(min_timesteps=None, min_episodes=60),
-        rng=rng,
+        rollout.make_sample_until(min_episodes=60),
+        rng=np.random.default_rng(SEED),
     )
 
-    learner = PPO(env=env, policy=MlpPolicy)
+    env = make_vec_env("seals/CartPole-v0", rng=np.random.default_rng(SEED))
+    learner = PPO(
+        env=env,
+        policy=MlpPolicy,
+        batch_size=16,
+        learning_rate=0.0001,
+        n_epochs=2,
+        seed=SEED,
+    )
     reward_net = BasicShapedRewardNet(
-        env.observation_space,
-        env.action_space,
+        observation_space=env.observation_space,
+        action_space=env.action_space,
         normalize_input_layer=RunningNorm,
     )
     airl_trainer = AIRL(
@@ -71,9 +80,19 @@ Detailed example notebook: :doc:`../tutorials/4_train_airl`
         gen_algo=learner,
         reward_net=reward_net,
     )
+
+    env.seed(SEED)
+    learner_rewards_before_training, _ = evaluate_policy(
+        learner, env, 100, return_episode_rewards=True,
+    )
     airl_trainer.train(20000)
-    rewards, _ = evaluate_policy(learner, env, 100, return_episode_rewards=True)
-    print("Rewards:", rewards)
+    env.seed(SEED)
+    learner_rewards_after_training, _ = evaluate_policy(
+        learner, env, 100, return_episode_rewards=True,
+    )
+
+    print("mean reward after training:", np.mean(learner_rewards_after_training))
+    print("mean reward before training:", np.mean(learner_rewards_before_training))
 
 .. testoutput::
     :hide:

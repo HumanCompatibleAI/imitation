@@ -38,7 +38,6 @@ Detailed example notebook: :doc:`../tutorials/2_train_dagger`
     env = make_vec_env(
         "seals/CartPole-v0",
         rng=rng,
-        n_envs=1,
     )
     expert = load_policy(
         "ppo-huggingface",
@@ -61,7 +60,7 @@ Detailed example notebook: :doc:`../tutorials/2_train_dagger`
             bc_trainer=bc_trainer,
             rng=rng,
         )
-        dagger_trainer.train(2000)
+        dagger_trainer.train(8_000)
 
     reward, _ = evaluate_policy(dagger_trainer.policy, env, 10)
     print("Reward:", reward)

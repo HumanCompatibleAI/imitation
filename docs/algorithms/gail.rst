@@ -29,17 +29,19 @@ Detailed example notebook: :doc:`../tutorials/3_train_gail`
     from imitation.data import rollout
     from imitation.data.wrappers import RolloutInfoWrapper
     from imitation.policies.serialize import load_policy
-    from imitation.rewards.reward_nets import BasicRewardNet
+    from imitation.rewards.reward_nets import BasicShapedRewardNet
     from imitation.util.networks import RunningNorm
     from imitation.util.util import make_vec_env
 
-    rng = np.random.default_rng(0)
+    SEED = 42
 
     env = make_vec_env(
         "seals/CartPole-v0",
-        rng=rng,
-        n_envs=8,
-        post_wrappers=[lambda env, _: RolloutInfoWrapper(env)],  # for computing rollouts
+        rng=np.random.default_rng(SEED),
+        n_envs=5,
+        post_wrappers=[
+            lambda env, _: RolloutInfoWrapper(env)
+        ],  # needed for computing rollouts later
     )
     expert = load_policy(
         "ppo-huggingface",
@@ -47,17 +49,27 @@ Detailed example notebook: :doc:`../tutorials/3_train_gail`
         env_name="seals-CartPole-v0",
         venv=env,
     )
+
     rollouts = rollout.rollout(
         expert,
         env,
         rollout.make_sample_until(min_timesteps=None, min_episodes=60),
-        rng=rng,
+        rng=np.random.default_rng(SEED),
     )
 
-    learner = PPO(env=env, policy=MlpPolicy)
-    reward_net = BasicRewardNet(
-        env.observation_space,
-        env.action_space,
+    env = make_vec_env("seals/CartPole-v0", n_envs=8, rng=np.random.default_rng(SEED))
+    learner = PPO(
+        env=env,
+        policy=MlpPolicy,
+        batch_size=64,
+        ent_coef=0.0,
+        learning_rate=0.00001,
+        n_epochs=1,
+        seed=SEED,
+    )
+    reward_net = BasicShapedRewardNet(
+        observation_space=env.observation_space,
+        action_space=env.action_space,
         normalize_input_layer=RunningNorm,
     )
     gail_trainer = GAIL(
@@ -70,9 +82,21 @@ Detailed example notebook: :doc:`../tutorials/3_train_gail`
         reward_net=reward_net,
     )
 
+    # evaluate the learner before training
+    env.seed(SEED)
+    learner_rewards_before_training, _ = evaluate_policy(
+        learner, env, 100, return_episode_rewards=True,
+    )
+
+    # train the learner and evaluate again
     gail_trainer.train(20000)
-    rewards, _ = evaluate_policy(learner, env, 100, return_episode_rewards=True)
-    print("Rewards:", rewards)
+    env.seed(SEED)
+    learner_rewards_after_training, _ = evaluate_policy(
+        learner, env, 100, return_episode_rewards=True,
+    )
+
+    print("mean reward after training:", np.mean(learner_rewards_after_training))
+    print("mean reward before training:", np.mean(learner_rewards_before_training))
 
 .. testoutput::
     :hide:
