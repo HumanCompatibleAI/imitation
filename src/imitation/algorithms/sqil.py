@@ -130,16 +130,20 @@ class SQILReplayBuffer(buffers.ReplayBuffer):
                 the memory used, at a cost of more complexity.
         """
         super().__init__(
-            buffer_size,
-            observation_space,
-            action_space,
-            device,
-            n_envs,
-            optimize_memory_usage,
+            buffer_size=buffer_size,
+            observation_space=observation_space,
+            action_space=action_space,
+            device=device,
+            n_envs=n_envs,
+            optimize_memory_usage=optimize_memory_usage,
             handle_timeout_termination=False,
         )
 
-        self.expert_buffer = buffers.ReplayBuffer(0, observation_space, action_space)
+        self.expert_buffer = buffers.ReplayBuffer(
+            buffer_size=0,
+            observation_space=observation_space,
+            action_space=action_space,
+        )
         self.set_demonstrations(demonstrations)
 
     def set_demonstrations(
@@ -176,9 +180,9 @@ class SQILReplayBuffer(buffers.ReplayBuffer):
 
         n_samples = len(demonstrations)
         self.expert_buffer = buffers.ReplayBuffer(
-            n_samples,
-            self.observation_space,
-            self.action_space,
+            buffer_size=n_samples,
+            observation_space=self.observation_space,
+            action_space=self.action_space,
             handle_timeout_termination=False,
         )
 
@@ -201,7 +205,14 @@ class SQILReplayBuffer(buffers.ReplayBuffer):
         done: np.ndarray,
         infos: List[Dict[str, Any]],
     ) -> None:
-        super().add(obs, next_obs, action, np.array(0.0), done, infos)
+        super().add(
+            obs=obs,
+            next_obs=next_obs,
+            action=action,
+            reward=np.array(0.0),
+            done=done,
+            infos=infos,
+        )
 
     def sample(
         self,
