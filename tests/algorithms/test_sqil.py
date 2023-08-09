@@ -1,5 +1,5 @@
 """Tests `imitation.algorithms.sqil`."""
-from unittest.mock import MagicMock
+from unittest import mock
 
 import numpy as np
 import pytest
@@ -139,9 +139,9 @@ def test_sqil_performance(
 
 @pytest.mark.parametrize("illegal_kw", ["replay_buffer_class", "replay_buffer_kwargs"])
 def test_sqil_constructor_raises(illegal_kw: str):
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match=".*SQIL uses a custom replay buffer.*"):
         sqil.SQIL(
-            venv=MagicMock(spec=vec_env.VecEnv),
+            venv=mock.MagicMock(spec=vec_env.VecEnv),
             demonstrations=None,
             policy="MlpPolicy",
             dqn_kwargs={illegal_kw: None},
