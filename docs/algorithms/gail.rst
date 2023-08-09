@@ -38,10 +38,8 @@ Detailed example notebook: :doc:`../tutorials/3_train_gail`
     env = make_vec_env(
         "seals/CartPole-v0",
         rng=np.random.default_rng(SEED),
-        n_envs=5,
-        post_wrappers=[
-            lambda env, _: RolloutInfoWrapper(env)
-        ],  # needed for computing rollouts later
+        n_envs=8,
+        post_wrappers=[lambda env, _: RolloutInfoWrapper(env)],  # to compute rollouts
     )
     expert = load_policy(
         "ppo-huggingface",
@@ -57,7 +55,6 @@ Detailed example notebook: :doc:`../tutorials/3_train_gail`
         rng=np.random.default_rng(SEED),
     )
 
-    env = make_vec_env("seals/CartPole-v0", n_envs=8, rng=np.random.default_rng(SEED))
     learner = PPO(
         env=env,
         policy=MlpPolicy,
