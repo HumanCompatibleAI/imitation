@@ -81,8 +81,12 @@ class SQIL(algo_base.DemonstrationAlgorithm[types.Transitions]):
         assert isinstance(self.dqn.replay_buffer, SQILReplayBuffer)
         self.dqn.replay_buffer.set_demonstrations(demonstrations)
 
-    def train(self, *, total_timesteps: int):
-        self.dqn.learn(total_timesteps=total_timesteps)
+    def train(self, *, total_timesteps: int, tb_log_name: str = "SQIL", **kwargs: Any):
+        self.dqn.learn(
+            total_timesteps=total_timesteps,
+            tb_log_name=tb_log_name,
+            **kwargs,
+        )
 
     @property
     def policy(self) -> policies.BasePolicy:
