@@ -1,21 +1,40 @@
+from typing import Optional
+
 import numpy as np
+from stable_baselines3.common.vec_env import VecEnv
 
 from imitation.data.rollout import generate_trajectories, make_min_episodes
 from imitation.policies.base import InteractivePolicy
 
+_WASD_ACTION_MAP = {
+    "w": 3,  # up
+    "a": 0,  # left
+    "s": 1,  # down
+    "d": 2,  # right
+}
+
 
 class TextInteractivePolicy(InteractivePolicy):
-    """Text-based interactive policy.
+    """Text-based interactive policy."""
 
-    This policy is intended to be used with a text-based environment,
-    such as the Toy Text environments in OpenAI Gym."""
-
-    ACTION_MAP = {
-        "w": 3,  # up
-        "a": 0,  # left
-        "s": 1,  # down
-        "d": 2,  # right
+    DEFAULT_ACTION_MAPS = {
+        "FrozenLake-v1": _WASD_ACTION_MAP,
+        # todo: add other default mappings for other environments
     }
+
+    def __init__(self, venv: VecEnv, action_map: Optional[dict] = None):
+        """
+        Initialize InteractivePolicy with specified environment and optional action map config.
+        The action_map_config argument allows for customization of action input keys.
+        """
+        super().__init__(venv)
+        if not action_map:
+            env_id = "FrozenLake-v1"  # todo: attempt to infer from venv
+            try:
+                action_map = self.DEFAULT_ACTION_MAPS[env_id]
+            except KeyError:
+                raise ValueError(f"No default action map for the environment {env_id}.")
+        self.action_map = action_map
 
     def _render(self, obs: np.ndarray) -> None:
         """Print the current state of the environment to the console."""
@@ -26,8 +45,8 @@ class TextInteractivePolicy(InteractivePolicy):
         while True:
             print("Enter an action (w: up, a: left, s: down, d: right):")
             user_input = input().strip().lower()
-            if user_input in self.ACTION_MAP:
-                return np.array([self.ACTION_MAP[user_input]])
+            if user_input in self.action_map:
+                return np.array([self.action_map[user_input]])
             else:
                 print("Invalid input. Try again.")
 
