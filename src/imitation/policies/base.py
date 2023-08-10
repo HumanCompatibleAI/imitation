@@ -6,7 +6,7 @@ from typing import Type
 import gym
 import numpy as np
 import torch as th
-from stable_baselines3.common import policies, torch_layers
+from stable_baselines3.common import policies, torch_layers, type_aliases
 from stable_baselines3.common.vec_env import VecEnv
 from stable_baselines3.sac import policies as sac_policies
 from torch import nn
@@ -61,9 +61,9 @@ class ZeroPolicy(HardCodedPolicy):
 class InteractivePolicy(policies.BasePolicy, abc.ABC):
     """Abstract class for interactive policies (relying on human input)."""
 
-    def __init__(self, venv: VecEnv):  # todo: should we support gym.Env as well?
+    def __init__(self, venv: type_aliases.GymEnv):
         """Builds InteractivePolicy with specified environment."""
-        if venv.num_envs != 1:
+        if isinstance(venv, VecEnv) and venv.num_envs != 1:
             raise ValueError("InteractivePolicy only supports a single env.")
 
         super().__init__(
@@ -73,6 +73,7 @@ class InteractivePolicy(policies.BasePolicy, abc.ABC):
         self.venv = venv
 
     def _predict(self, obs: th.Tensor, deterministic: bool = False):
+        # todo: adapt to work with non-VecEnvs as well
         np_obs = obs.detach().cpu().numpy()
         np_actions = []
 

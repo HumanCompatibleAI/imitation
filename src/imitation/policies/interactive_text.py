@@ -17,7 +17,7 @@ _WASD_ACTION_MAP: Dict[str, Tuple[int, str]] = {
 
 
 def _parse_action_map(
-    action_map: Dict[str, Tuple[int, str]]
+    action_map: Dict[str, Tuple[int, str]],
 ) -> Tuple[Dict[str, int], Dict[str, str]]:
     """Parse action map config into separate action index and action name dicts."""
     action_index = {}
@@ -42,10 +42,7 @@ class TextInteractivePolicy(base.InteractivePolicy):
         action_map: Optional[dict] = None,
         refresh_console: bool = True,  # todo: choose default based on detected env
     ):
-        """
-        Initialize InteractivePolicy with specified environment and optional action map config.
-        The action_map_config argument allows for customization of action input keys.
-        """
+        """Initialize TextInteractivePolicy with environment and optional action map."""
         super().__init__(venv)
         if not action_map:
             env_id = "FrozenLake-v1"  # todo: attempt to infer from venv

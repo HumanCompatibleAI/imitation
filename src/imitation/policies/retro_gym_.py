@@ -17,7 +17,7 @@ import time
 
 import numpy as np
 import pyglet
-import retro
+import retro  # todo: make retro dependency optional
 from pyglet import gl
 from pyglet.window import key as keycodes
 
