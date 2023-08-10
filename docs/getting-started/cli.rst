@@ -103,7 +103,7 @@ We can set a minimum number of episodes or time steps to be saved by setting one
 ``rollout_save_n_timesteps``. Note that the number of episodes or time steps saved may be slightly larger than the
 specified number.
 
-By default the demonstrations are saved in ``<log_dir>/rollouts/final.npz``
+By default the demonstrations are saved in ``<log_dir>/rollouts/final``
 (where for this script by default ``<log_dir>`` is ``output/train_rl/<environment>/<timestamp>``).
 However, we can pass an explicit path as logging directory.
 
@@ -125,7 +125,7 @@ Note that the rollout_save_path is relative to the ``log_dir`` of the imitation 
                 expert.policy_type=ppo-huggingface \
                 eval_n_episodes=50 \
                 logging.log_dir=output/ppo/seals_cartpole/loaded \
-                rollout_save_path=rollouts/final.npz
+                rollout_save_path=rollouts/final
 
 Now we can run the imitation script (in this case DAgger) and pass the path to the demonstrations we just generated
 
@@ -135,7 +135,7 @@ Now we can run the imitation script (in this case DAgger) and pass the path to t
                 seals_cartpole \
                 dagger.total_timesteps=2000 \
                 demonstrations.source=local \
-                demonstrations.path=output/ppo/seals_cartpole/loaded/rollouts/final.npz
+                demonstrations.path=output/ppo/seals_cartpole/loaded/rollouts/final
 
 
 Visualise saved policies
@@ -272,11 +272,10 @@ module to compare the performances of the two policies.
             )
         ]
     )
-    print(
-        is_significant_reward_improvement(
-            non_expert_monitor["r"], expert_monitor["r"], 0.05,
-        )
-    )
+    if is_significant_reward_improvement(non_expert_monitor["r"], expert_monitor["r"], 0.05):
+        print("The expert improved over the non-expert with >95% probability")
+    else:
+        print("No significant (p=0.05) reward improvement of expert over non-expert")
 
 .. code-block:: bash
 
