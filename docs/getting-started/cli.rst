@@ -245,25 +245,37 @@ For the non-expert:
     INFO - eval_policy - Completed after 0:00:17
 
 This will save the monitor CSVs (one for each vectorised env, controlled by environment.num_vec).
-We can load these with ``pandas`` and use the ``imitation.test.reward_improvement``
+The monitor CSVs follow the naming convention ``mon*.monitor.csv``.
+We can load these CSV files with ``pandas`` and use the ``imitation.test.reward_improvement``
 module to compare the performances of the two policies.
 
+.. TODO: replace the python block below once a CLI tool for handling significance testing becomes available.
 .. code-block:: python
 
+    from pathlib import Path
+    import pandas as pd
     from imitation.testing.reward_improvement import is_significant_reward_improvement
 
-    expert_monitor = pd.read_csv(
-        './output/train_rl/CartPole-v1/expert/monitor/mon000.monitor.csv',
-        skiprows=1
+    expert_monitor = pd.concat(
+        [
+            pd.read_csv(f, skiprows=1)
+            for f in Path("./output/train_rl/CartPole-v1/expert/monitor").glob(
+                "mon*.monitor.csv"
+            )
+        ]
     )
-    non_expert_monitor = pd.read_csv(
-        './output/train_rl/CartPole-v1/non_expert/monitor/mon000.monitor.csv',
-        skiprows=1
+    non_expert_monitor = pd.concat(
+        [
+            pd.read_csv(f, skiprows=1)
+            for f in Path("./output/train_rl/CartPole-v1/non_expert/monitor").glob(
+                "mon*.monitor.csv"
+            )
+        ]
     )
-    is_significant_reward_improvement(
-        non_expert_monitor['r'],
-        expert_monitor['r'],
-        0.05
+    print(
+        is_significant_reward_improvement(
+            non_expert_monitor["r"], expert_monitor["r"], 0.05,
+        )
     )
 
 .. code-block:: bash
