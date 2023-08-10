@@ -6,7 +6,7 @@ import numpy as np
 from stable_baselines3.common.vec_env import VecEnv
 
 from imitation.data.rollout import generate_trajectories, make_min_episodes
-from imitation.policies.base import InteractivePolicy
+from imitation.policies import base
 
 _WASD_ACTION_MAP: Dict[str, Tuple[int, str]] = {
     "w": (3, "up"),  # first entry is action index, second is action name
@@ -28,7 +28,7 @@ def _parse_action_map(
     return action_index, action_name
 
 
-class TextInteractivePolicy(InteractivePolicy):
+class TextInteractivePolicy(base.InteractivePolicy):
     """Text-based interactive policy."""
 
     DEFAULT_ACTION_MAPS = {
