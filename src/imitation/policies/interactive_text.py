@@ -90,6 +90,7 @@ class TextInteractivePolicy(base.InteractivePolicy):
 
 
 if __name__ == "__main__":
+    # simple demo of TextInteractivePolicy using FrozenLake-v1
     import numpy as np
     from gym.envs.toy_text.frozen_lake import generate_random_map
 
@@ -108,9 +109,10 @@ if __name__ == "__main__":
     expert = TextInteractivePolicy(env)
 
     # rollout our interactive expert policy
-    generate_trajectories(
+    trajectories = generate_trajectories(
         expert,
         env,
         sample_until=make_min_episodes(1),
         rng=np.random.default_rng(),
     )
+    print(trajectories)
