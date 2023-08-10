@@ -97,6 +97,7 @@ Train an expert and save the rollouts explicitly, then train a policy on the sav
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 First, train an expert and save the demonstrations. By default, this will use ``PPO`` and train for 1M time steps.
+We can set the number of time steps to train for by setting ``total_timesteps``.
 After training the expert, we generate rollouts using the expert policy and save them to disk.
 We can set a minimum number of episodes or time steps to be saved by setting one of ``rollout_save_n_episodes`` or
 ``rollout_save_n_timesteps``. Note that the number of episodes or time steps saved may be slightly larger than the
@@ -108,19 +109,33 @@ However, we can pass an explicit path as logging directory.
 
 .. code-block:: bash
 
-        python -m imitation.scripts.train_rl with pendulum \
-                logging.log_dir=output/train_rl/Pendulum-v1/my_run \
+        python -m imitation.scripts.train_rl with seals_cartpole \
+                total_timesteps=40000 \
+                logging.log_dir=output/ppo/seals_cartpole/trained \
                 rollout_save_n_episodes=50
+
+Instead of training a new expert, we can also load a pre-trained expert policy and generate rollouts from it.
+This can be achieved using the ``eval_policy`` script.
+
+Note that the rollout_save_path is relative to the ``log_dir`` of the imitation script.
+
+.. code-block:: bash
+
+        python -m imitation.scripts.eval_policy with seals_cartpole \
+                expert.policy_type=ppo-huggingface \
+                eval_n_episodes=50 \
+                logging.log_dir=output/ppo/seals_cartpole/loaded \
+                rollout_save_path=rollouts/final.npz
 
 Now we can run the imitation script (in this case DAgger) and pass the path to the demonstrations we just generated
 
 .. code-block:: bash
 
         python -m imitation.scripts.train_imitation dagger with \
-                pendulum \
+                seals_cartpole \
                 dagger.total_timesteps=2000 \
                 demonstrations.source=local \
-                demonstrations.path=output/train_rl/Pendulum-v1/my_run/rollouts/final.npz
+                demonstrations.path=output/ppo/seals_cartpole/loaded/rollouts/final.npz
 
 
 Visualise saved policies
