@@ -12,7 +12,7 @@ from stable_baselines3.common.evaluation import evaluate_policy
 
 from imitation.algorithms import bc
 from imitation.algorithms.dagger import SimpleDAggerTrainer
-from imitation.policies.interactive import InteractivePolicy
+from imitation.policies import interactive_text
 from imitation.util.util import make_vec_env
 
 # todo: also test with gym.env
@@ -25,7 +25,7 @@ env = make_vec_env(
         is_slippery=True,
     ),
 )
-expert = InteractivePolicy(env)
+expert = interactive_text.TextInteractivePolicy(env)
 
 
 bc_trainer = bc.BC(

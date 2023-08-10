@@ -1,5 +1,6 @@
 """Tests InteractivePolicy."""
 import random
+import threading
 from functools import partial
 from unittest.mock import patch
 
@@ -7,7 +8,7 @@ import numpy as np
 import pytest
 from stable_baselines3.common.vec_env import VecEnv
 
-from imitation.policies.interactive import InteractivePolicy, query_human
+from imitation.policies import interactive_text
 from imitation.util.util import make_vec_env
 
 _make_vec_env = partial(make_vec_env, n_envs=1, rng=np.random.default_rng(42))
@@ -18,21 +19,9 @@ ENVS = [
 ]
 
 
-def get_interactive_policy(env: VecEnv):
-    def query_fn(obs):
-        env.render()
-        return query_human()
-
-    return InteractivePolicy(
-        observation_space=env.observation_space,
-        action_space=env.action_space,
-        query_fn=query_fn,
-    )
-
-
 @pytest.mark.parametrize("env", ENVS)
 def test_interactive_policy_valid(env: VecEnv):
-    interactive_policy = get_interactive_policy(env)
+    interactive_policy = interactive_text.TextInteractivePolicy(env)
     obs = env.reset()
     done = np.array([False])
 
@@ -54,12 +43,15 @@ def test_interactive_policy_valid(env: VecEnv):
 
 @pytest.mark.parametrize("env", ENVS)
 def test_interactive_policy_invalid(capsys, env: VecEnv):
-    interactive_policy = get_interactive_policy(env)
+    interactive_policy = interactive_text.TextInteractivePolicy(env)
     obs = env.reset()
 
     def mock_input_invalid(_):
         return random.choice(["x", "y", "z"])
 
     with patch("builtins.input", mock_input_invalid):
-        with pytest.raises(ValueError):
-            action, _ = interactive_policy.predict(obs)
+        test_thread = threading.Thread(target=interactive_policy.predict, args=(obs,))
+        test_thread.start()
+        test_thread.join(timeout=0.1)
+    captured = capsys.readouterr()
+    assert "Invalid input." in captured.out
