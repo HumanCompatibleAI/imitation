@@ -1,3 +1,4 @@
+import os
 from typing import Optional
 
 import numpy as np
@@ -22,7 +23,12 @@ class TextInteractivePolicy(InteractivePolicy):
         # todo: add other default mappings for other environments
     }
 
-    def __init__(self, venv: VecEnv, action_map: Optional[dict] = None):
+    def __init__(
+        self,
+        venv: VecEnv,
+        action_map: Optional[dict] = None,
+        refresh_console: bool = True,  # todo: choose default based on detected env
+    ):
         """
         Initialize InteractivePolicy with specified environment and optional action map config.
         The action_map_config argument allows for customization of action input keys.
@@ -35,9 +41,18 @@ class TextInteractivePolicy(InteractivePolicy):
             except KeyError:
                 raise ValueError(f"No default action map for the environment {env_id}.")
         self.action_map = action_map
+        self.refresh_console = refresh_console
+
+    def _refresh_console(self) -> None:
+        if os.name == "nt":  # windows
+            os.system("cls")
+        else:  # unix (including mac)
+            os.system("clear")
 
     def _render(self, obs: np.ndarray) -> None:
         """Print the current state of the environment to the console."""
+        if self.refresh_console:
+            self._refresh_console()
         self.venv.render(mode="human")
 
     def _query_action(self, obs: np.ndarray) -> np.ndarray:
