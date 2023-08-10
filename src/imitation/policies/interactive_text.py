@@ -1,5 +1,6 @@
+"""Interactive policy classes to query humans for actions in simple text-based games."""
 import os
-from typing import Optional
+from typing import Dict, Optional, Tuple
 
 import numpy as np
 from stable_baselines3.common.vec_env import VecEnv
@@ -7,12 +8,24 @@ from stable_baselines3.common.vec_env import VecEnv
 from imitation.data.rollout import generate_trajectories, make_min_episodes
 from imitation.policies.base import InteractivePolicy
 
-_WASD_ACTION_MAP = {
-    "w": 3,  # up
-    "a": 0,  # left
-    "s": 1,  # down
-    "d": 2,  # right
+_WASD_ACTION_MAP: Dict[str, Tuple[int, str]] = {
+    "w": (3, "up"),  # first entry is action index, second is action name
+    "a": (0, "left"),
+    "s": (1, "down"),
+    "d": (2, "right"),
 }
+
+
+def _parse_action_map(
+    action_map: Dict[str, Tuple[int, str]]
+) -> Tuple[Dict[str, int], Dict[str, str]]:
+    """Parse action map config into separate action index and action name dicts."""
+    action_index = {}
+    action_name = {}
+    for key, (index, name) in action_map.items():
+        action_index[key] = index
+        action_name[key] = name
+    return action_index, action_name
 
 
 class TextInteractivePolicy(InteractivePolicy):
@@ -40,8 +53,20 @@ class TextInteractivePolicy(InteractivePolicy):
                 action_map = self.DEFAULT_ACTION_MAPS[env_id]
             except KeyError:
                 raise ValueError(f"No default action map for the environment {env_id}.")
+        try:
+            action_map, action_names = _parse_action_map(action_map)
+        except TypeError:
+            action_names = None  # todo: infer from venv
+
         self.action_map = action_map
         self.refresh_console = refresh_console
+
+        action_guide = (
+            f" ({', '.join(str(k)+': '+str(v) for k, v in action_names.items())})"
+            if action_names
+            else ""
+        )
+        self.action_prompt = f"Enter an action{action_guide}: "
 
     def _refresh_console(self) -> None:
         if os.name == "nt":  # windows
@@ -58,12 +83,10 @@ class TextInteractivePolicy(InteractivePolicy):
     def _query_action(self, obs: np.ndarray) -> np.ndarray:
         """Query human for an action."""
         while True:
-            print("Enter an action (w: up, a: left, s: down, d: right):")
-            user_input = input().strip().lower()
+            user_input = input(self.action_prompt).strip().lower()
             if user_input in self.action_map:
                 return np.array([self.action_map[user_input]])
-            else:
-                print("Invalid input. Try again.")
+            print("Invalid input. Try again.")
 
 
 if __name__ == "__main__":
@@ -91,41 +114,3 @@ if __name__ == "__main__":
         sample_until=make_min_episodes(1),
         rng=np.random.default_rng(),
     )
-
-    # import tempfile
-    #
-    # import numpy as np
-    # from gym.envs.toy_text.frozen_lake import generate_random_map
-    # from stable_baselines3.common.evaluation import evaluate_policy
-    #
-    # from imitation.algorithms import bc
-    # from imitation.algorithms.dagger import SimpleDAggerTrainer
-    # from imitation.util.util import make_vec_env
-
-    # bc_trainer = bc.BC(
-    #     observation_space=env.observation_space,
-    #     action_space=env.action_space,
-    #     rng=np.random.default_rng(),
-    # )
-    #
-    # tmpdir = tempfile.mkdtemp(prefix="dagger_human_example_")
-    # print(tmpdir)
-    # dagger_trainer = SimpleDAggerTrainer(
-    #     venv=env,
-    #     scratch_dir=tmpdir,
-    #     expert_policy=expert,
-    #     bc_trainer=bc_trainer,
-    #     rng=np.random.default_rng(),
-    # )
-    #
-    # reward_before, _ = evaluate_policy(dagger_trainer.policy, env, 20)
-    # print(f"{reward_before=}")
-    #
-    #
-    # dagger_trainer.train(
-    #     total_timesteps=10,
-    #     rollout_round_min_timesteps=10,
-    # )
-    #
-    # reward_after, _ = evaluate_policy(dagger_trainer.policy, env, 20)
-    # print(f"{reward_after=}")
