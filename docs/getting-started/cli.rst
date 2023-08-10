@@ -96,16 +96,21 @@ The ``seals:`` prefix ensures that the seals package is imported and the environ
 Train an expert and save the rollouts explicitly, then train a policy on the saved rollouts
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-First, train an expert and save the demonstrations.
-Note that by default these are saved in ``<log_dir>/rollouts/final.npz``.
-Where for this script by default ``<log_dir>`` is ``output/train_rl/<environment>/<timestamp>`` .
+First, train an expert and save the demonstrations. By default, this will use ``PPO`` and train for 1M time steps.
+After training the expert, we generate rollouts using the expert policy and save them to disk.
+We can set a minimum number of episodes or time steps to be saved by setting one of ``rollout_save_n_episodes`` or
+``rollout_save_n_timesteps``. Note that the number of episodes or time steps saved may be slightly larger than the
+specified number.
+
+By default the demonstrations are saved in ``<log_dir>/rollouts/final.npz``
+(where for this script by default ``<log_dir>`` is ``output/train_rl/<environment>/<timestamp>``).
 However, we can pass an explicit path as logging directory.
-By default, this will use ``ppo``.
 
 .. code-block:: bash
 
         python -m imitation.scripts.train_rl with pendulum \
-                logging.log_dir=output/train_rl/Pendulum-v1/my_run  \
+                logging.log_dir=output/train_rl/Pendulum-v1/my_run \
+                rollout_save_n_episodes=50
 
 Now we can run the imitation script (in this case DAgger) and pass the path to the demonstrations we just generated
 
