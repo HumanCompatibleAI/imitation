@@ -48,7 +48,7 @@ def query_human() -> np.ndarray:
     return np.array([action])
 
 
-class InteractivePolicy(BasePolicy):
+class InteractivePolicyOLD(BasePolicy):
     """Interactive policy that queries a human for actions.
 
     Initialized with a query function that takes an observation and returns an action.

@@ -7,6 +7,7 @@ import gym
 import numpy as np
 import torch as th
 from stable_baselines3.common import policies, torch_layers
+from stable_baselines3.common.vec_env import VecEnv
 from stable_baselines3.sac import policies as sac_policies
 from torch import nn
 
@@ -55,6 +56,48 @@ class ZeroPolicy(HardCodedPolicy):
 
     def _choose_action(self, obs: np.ndarray) -> np.ndarray:
         return np.zeros(self.action_space.shape, dtype=self.action_space.dtype)
+
+
+class InteractivePolicy(policies.BasePolicy, abc.ABC):
+    """Abstract class for interactive policies (relying on human input)."""
+
+    def __init__(self, venv: VecEnv):  # todo: should we support gym.Env as well?
+        """Builds InteractivePolicy with specified environment."""
+        if venv.num_envs != 1:
+            raise ValueError("InteractivePolicy only supports a single env.")
+
+        super().__init__(
+            observation_space=venv.observation_space,
+            action_space=venv.action_space,
+        )
+        self.venv = venv
+
+    def _predict(self, obs: th.Tensor, deterministic: bool = False):
+        np_obs = obs.detach().cpu().numpy()
+        np_actions = []
+
+        for np_ob in np_obs:
+            assert self.observation_space.contains(np_ob)
+            self._render(np_ob)
+            np_actions.append(self._query_action(np_ob))
+
+        np_actions = np.stack(np_actions, axis=0)
+        th_actions = th.as_tensor(np_actions, device=self.device)
+        print(np_actions)  # todo: remove after debugging
+        return th_actions
+
+    @abc.abstractmethod
+    def _render(self, obs: np.ndarray) -> None:
+        """Render the environment, optionally based on observation obs."""
+
+    @abc.abstractmethod
+    def _query_action(self, obs: np.ndarray) -> np.ndarray:
+        """Query human for an action, optionally based on observation obs."""
+
+    def forward(self, *args):
+        # technically BasePolicy is a Torch module, so this needs a forward()
+        # method
+        raise NotImplementedError  # pragma: no cover
 
 
 class FeedForward32Policy(policies.ActorCriticPolicy):
