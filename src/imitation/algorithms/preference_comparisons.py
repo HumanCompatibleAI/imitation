@@ -788,14 +788,17 @@ class PreferenceQuerent:
 
     def __init__(
         self,
+        rng: Optional[np.random.Generator] = None,
         custom_logger: Optional[imit_logger.HierarchicalLogger] = None,
     ) -> None:
         """Initializes the preference querent.
 
         Args:
+            rng: random number generator
             custom_logger: Where to log to; if None (default), creates a new logger.
         """
         self.logger = custom_logger or imit_logger.configure()
+        self.rng = rng
 
     def __call__(
         self,
