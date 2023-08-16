@@ -50,6 +50,8 @@ def train_defaults():
     gatherer_cls = preference_comparisons.SyntheticGatherer
     # arguments passed on to the PreferenceGatherer specified by gatherer_cls
     gatherer_kwargs = {}
+    querent_cls = preference_comparisons.PreferenceQuerent
+    querent_kwargs = dict()
     active_selection = False
     active_selection_oversampling = 2
     uncertainty_on = "logit"
