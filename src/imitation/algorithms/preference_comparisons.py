@@ -880,7 +880,9 @@ class PrefCollectQuerent(PreferenceQuerent):
         )
 
 
-def write_fragment_video(fragment: TrajectoryWithRew, frames_per_second: int, output_path: AnyPath) -> None:
+def write_fragment_video(
+    fragment: TrajectoryWithRew, frames_per_second: int, output_path: AnyPath
+) -> None:
     """Write fragment video clip."""
     frame_shape = get_frame_shape(fragment)
     video_writer = cv2.VideoWriter(

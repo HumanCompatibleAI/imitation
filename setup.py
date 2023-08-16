@@ -60,6 +60,7 @@ TESTS_REQUIRE = (
         "setuptools_scm~=7.0.5",
         "pre-commit>=2.20.0",
         "types-requests~=2.31.0.1",
+        "requests-mock~=1.11.0",
     ]
     + PARALLEL_REQUIRE
     + ATARI_REQUIRE

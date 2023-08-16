@@ -342,6 +342,7 @@ def test_preference_comparisons_raises(
 @patch("IPython.display.display")
 def test_synchronous_human_gatherer(mock_display, mock_input):
     del mock_display  # unused
+    querent = PreferenceQuerent()
     gatherer = preference_comparisons.SynchronousHumanGatherer(
         video_dir=pathlib.Path("."),
     )
@@ -350,7 +351,7 @@ def test_synchronous_human_gatherer(mock_display, mock_input):
     trajectory_pairs = [
         (
             types.TrajectoryWithRew(
-                np.array([1, 2]),
+                np.zeros((2, 200, 200, 3,), np.uint8),
                 np.array([1]),
                 np.array(
                     [
@@ -365,9 +366,9 @@ def test_synchronous_human_gatherer(mock_display, mock_input):
                 np.array([1.0]),
             ),
             types.TrajectoryWithRew(
-                np.array([1, 2]),
-                np.array([1]),
-                np.array(
+                np.zeros((2, 200, 200, 3,), np.uint8),
+                np.array([1]), # act
+                np.array(  # info
                     [
                         {
                             "video_path": pathlib.Path(
@@ -376,17 +377,19 @@ def test_synchronous_human_gatherer(mock_display, mock_input):
                         },
                     ],
                 ),
-                True,
-                np.array([1.0]),
+                True,  # done
+                np.array([1.0]),  # reward
             ),
         ),
     ]
-
+    identified_queries = querent(trajectory_pairs)
+    gatherer.add(identified_queries)
     # this is the actual test
     mock_input.return_value = "1"
-    assert gatherer(trajectory_pairs) == np.array([1.0])
+    assert gatherer()[1] == np.array([1.0])
+    gatherer.add(identified_queries)
     mock_input.return_value = "2"
-    assert gatherer(trajectory_pairs) == np.array([0.0])
+    assert gatherer()[1] == np.array([0.0])
 
 
 @pytest.mark.parametrize(
@@ -1239,7 +1242,6 @@ def test_sends_put_request_for_each_query(requests_mock):
 class ConcretePreferenceGatherer(PreferenceGatherer):
     """A concrete preference gatherer for unit testing purposes only."""
 
-    @abc.abstractmethod
     def __call__(self) -> Tuple[Sequence[TrajectoryWithRewPair], np.ndarray]:
         pass
 
