@@ -18,7 +18,8 @@ to predict the preference comparison.
 Example
 =======
 
-Detailed example notebook: :doc:`../tutorials/5_train_preference_comparisons`
+You can copy this example to train `PPO <https://stable-baselines3.readthedocs.io/en/master/modules/ppo.html>`_ on `Pendulum <https://www.gymlibrary.dev/environments/classic_control/pendulum/>`_ using a reward model trained on 200 synthetic preference comparisons.
+For a more detailed example, refer to :doc:`../tutorials/5_train_preference_comparisons`.
 
 .. testcode::
     :skipif: skip_doctests
@@ -50,10 +51,17 @@ Detailed example notebook: :doc:`../tutorials/5_train_preference_comparisons`
     reward_trainer = preference_comparisons.BasicRewardTrainer(
         preference_model=preference_model,
         loss=preference_comparisons.CrossEntropyRewardLoss(),
-        epochs=3,
+        epochs=10,
         rng=rng,
     )
 
+    # Several hyperparameters (reward_epochs, ppo_clip_range, ppo_ent_coef,
+    # ppo_gae_lambda, ppo_n_epochs, discount_factor, use_sde, sde_sample_freq,
+    # ppo_lr, exploration_frac, num_iterations, initial_comparison_frac,
+    # initial_epoch_multiplier, query_schedule) used in this example have been
+    # approximately fine-tuned to reach a reasonable initial experience. It's
+    # worth noting that we did not optimize all parameters those we did optimize
+    # may not be optimal.
     agent = PPO(
         policy=FeedForward32Policy,
         policy_kwargs=dict(
@@ -62,26 +70,35 @@ Detailed example notebook: :doc:`../tutorials/5_train_preference_comparisons`
         ),
         env=venv,
         n_steps=2048 // venv.num_envs,
+        clip_range=0.1,
+        ent_coef=0.01,
+        gae_lambda=0.95,
+        n_epochs=10,
+        gamma=0.97,
+        learning_rate=2e-3,
     )
 
     trajectory_generator = preference_comparisons.AgentTrainer(
         algorithm=agent,
         reward_fn=reward_net,
         venv=venv,
-        exploration_frac=0.0,
+        exploration_frac=0.05,
         rng=rng,
     )
 
+    querent = preference_comparisons.PreferenceQuerent()
     pref_comparisons = preference_comparisons.PreferenceComparisons(
         trajectory_generator,
         reward_net,
-        num_iterations=5,
+        num_iterations=60,
         fragmenter=fragmenter,
         preference_gatherer=gatherer,
         reward_trainer=reward_trainer,
-        initial_epoch_multiplier=1,
+        initial_epoch_multiplier=4,
+        initial_comparison_frac=0.1,
+        query_schedule="hyperbolic",
     )
-    pref_comparisons.train(total_timesteps=5_000, total_comparisons=200)
+    pref_comparisons.train(total_timesteps=50_000, total_comparisons=200)
 
     reward, _ = evaluate_policy(agent.policy, venv, 10)
     print("Reward:", reward)
