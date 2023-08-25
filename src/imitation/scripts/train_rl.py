@@ -98,7 +98,7 @@ def train_rl(
     rollout_dir.mkdir(parents=True, exist_ok=True)
     policy_dir.mkdir(parents=True, exist_ok=True)
 
-    post_wrappers = [lambda env, idx: wrappers.RolloutInfoWrapper(env)]
+    post_wrappers = {"RolloutInfoWrapper": lambda env, idx: wrappers.RolloutInfoWrapper(env)}
     with environment.make_venv(post_wrappers=post_wrappers) as venv:
         callback_objs = []
         if reward_type is not None:
