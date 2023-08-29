@@ -21,7 +21,6 @@ ATARI_REQUIRE = [
     "autorom[accept-rom-license]~=0.6.0",
 ]
 PYTYPE = ["pytype==2022.7.26"] if IS_NOT_WINDOWS else []
-STABLE_BASELINES3 = "stable-baselines3~=2.0.0"
 
 # Note: the versions of the test and doc requirements should be tightly pinned to known
 #   working versions to make our CI/CD pipeline as stable as possible.
@@ -197,11 +196,11 @@ setup(
         "tqdm",
         "rich",
         "scikit-learn>=0.21.2",
-        "seals @ git+https://github.com/HumanCompatibleAI/seals.git@440d5a79a3ba4c8a7afc0a1bc7cd7d853d4ddea6",
-        STABLE_BASELINES3,
+        "seals @ git+https://github.com/HumanCompatibleAI/seals.git@1cd453092638f3dc3b05baa25a372e6d080a5dcc",  # TODO: change this after the seals release.
+        "stable-baselines3~=2.0.0",
         "sacred>=0.8.4",
         "tensorboard>=1.14",
-        "huggingface_sb3>=2.2.5",
+        "huggingface_sb3~=2.3.0",
         "datasets>=2.8.0",
     ],
     tests_require=TESTS_REQUIRE,
