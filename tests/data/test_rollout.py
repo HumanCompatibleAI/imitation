@@ -29,7 +29,7 @@ class TerminalSentinelEnv(gym.Env):
 
     def reset(self, seed=None):
         self.current_step = 0
-        return np.array([0]), {}  
+        return np.array([0]), {}
 
     def step(self, action):
         self.current_step += 1
