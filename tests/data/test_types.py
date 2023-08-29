@@ -17,7 +17,7 @@ from imitation.util import util
 
 SPACES = [
     gym.spaces.Discrete(3),
-    gym.spaces.MultiDiscrete((3, 4)),
+    gym.spaces.MultiDiscrete([3, 4]),
     gym.spaces.Box(-1, 1, shape=(1,)),
     gym.spaces.Box(-1, 1, shape=(2,)),
     gym.spaces.Box(-np.inf, np.inf, shape=(2,)),

@@ -133,8 +133,7 @@ DISCOUNT_RATES = FEW_DISCOUNT_RATES + [0.5, 0.9]
 def test_policy_om_random_mdp(discount: float):
     """Test that optimal policy occupancy measure ("om") for a random MDP is sane."""
     mdp = gym.make("seals/Random-v0")
-    mdp.seed(0)
-
+    assert isinstance(mdp, base_envs.TabularModelPOMDP)  # Note: hint for mypy
     V, Q, pi = mce_partition_fh(mdp, discount=discount)
     assert np.all(np.isfinite(V))
     assert np.all(np.isfinite(Q))
@@ -143,6 +142,7 @@ def test_policy_om_random_mdp(discount: float):
     assert np.all(pi >= 0)
     assert np.allclose(np.sum(pi, axis=-1), 1)
 
+    assert isinstance(mdp.horizon, int)  # Note: hint for mypy
     Dt, D = mce_occupancy_measures(mdp, pi=pi, discount=discount)
     assert len(Dt) == mdp.horizon + 1
     assert np.all(np.isfinite(D))
@@ -150,7 +150,7 @@ def test_policy_om_random_mdp(discount: float):
     # expected number of state visits (over all states) should be equal to the
     # horizon
     if discount == 1.0:
-        expected_sum = mdp.horizon + 1
+        expected_sum = mdp.horizon + 1.0
     else:
         expected_sum = (1 - discount ** (mdp.horizon + 1)) / (1 - discount)
     assert np.allclose(np.sum(D), expected_sum)
