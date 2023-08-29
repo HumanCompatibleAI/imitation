@@ -366,7 +366,7 @@ class WandbOutputFormat(sb_logger.KVWriter):
     def write(
         self,
         key_values: Dict[str, Any],
-        key_excluded: Dict[str, Union[str, Tuple[str, ...]]],
+        key_excluded: Dict[str, Tuple[str, ...]],
         step: int = 0,
     ) -> None:
         for (key, value), (key_ex, excluded) in zip(

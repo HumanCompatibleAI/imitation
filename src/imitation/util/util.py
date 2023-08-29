@@ -126,6 +126,7 @@ def make_vec_env(
         # registering the custom environment in the scope of `make_vec_env` didn't
         # work. For more discussion and hypotheses on this issue see PR #160:
         # https://github.com/HumanCompatibleAI/imitation/pull/160.
+        assert env_make_kwargs is not None  # Note: to satisfy mypy
         env = spec.make(**env_make_kwargs)
 
         # Seed each environment with a different, non-sequential seed for diversity

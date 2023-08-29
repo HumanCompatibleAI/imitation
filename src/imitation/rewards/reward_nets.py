@@ -509,10 +509,13 @@ class CnnRewardNet(RewardNet):
             raise ValueError(
                 "CnnRewardNet requires observations to be images.",
             )
+        assert isinstance(observation_space, spaces.Box)  # Note: hint to mypy
+
         if self.use_action and not isinstance(action_space, spaces.Discrete):
             raise ValueError(
                 "CnnRewardNet can only use Discrete action spaces.",
             )
+        assert isinstance(action_space, spaces.Discrete)  # Note: hint to mypy
 
         input_size = 0
         output_size = 1
@@ -521,7 +524,7 @@ class CnnRewardNet(RewardNet):
             input_size += self.get_num_channels_obs(observation_space)
 
         if self.use_action:
-            output_size = action_space.n
+            output_size = int(action_space.n)
 
         if self.use_next_state:
             input_size += self.get_num_channels_obs(observation_space)
@@ -862,6 +865,8 @@ class BasicPotentialCNN(nn.Module):
         self.hwc_format = hwc_format
         if not preprocessing.is_image_space(observation_space):
             raise ValueError("CNN potential must be given image inputs.")
+        assert isinstance(observation_space, spaces.Box)  # Note: hint to mypy
+
         obs_shape = observation_space.shape
         in_channels = obs_shape[-1] if self.hwc_format else obs_shape[0]
         self._potential_net = networks.build_cnn(
