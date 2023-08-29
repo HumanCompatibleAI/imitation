@@ -65,7 +65,7 @@ DOCS_REQUIRE = [
     "sphinx-autodoc-typehints~=1.19.1",
     "sphinx-rtd-theme~=1.0.0",
     "sphinxcontrib-napoleon==0.7",
-    "furo==2023.05.20",
+    "furo==2022.6.21",
     "sphinx-copybutton==0.5.0",
     "sphinx-github-changelog~=1.2.0",
     "myst-nb==0.17.2",
