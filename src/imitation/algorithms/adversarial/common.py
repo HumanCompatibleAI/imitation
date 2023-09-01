@@ -8,7 +8,13 @@ import numpy as np
 import torch as th
 import torch.utils.tensorboard as thboard
 import tqdm
-from stable_baselines3.common import base_class, on_policy_algorithm, policies, vec_env, distributions
+from stable_baselines3.common import (
+    base_class,
+    distributions,
+    on_policy_algorithm,
+    policies,
+    vec_env,
+)
 from stable_baselines3.sac import policies as sac_policies
 from torch.nn import functional as F
 
