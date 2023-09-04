@@ -261,9 +261,11 @@ class DensityAlgorithm(base.DemonstrationAlgorithm):
         if self.density_type == DensityType.STATE_DENSITY:
             flat_observations = space_utils.flatten(self.venv.observation_space, obs)
             if not isinstance(flat_observations, np.ndarray):
-                raise ValueError("The density estimator only supports spaces that "
-                                 "flatten to a numpy array but the observation space "
-                                    f"flattens to {type(flat_observations)}")
+                raise ValueError(
+                    "The density estimator only supports spaces that "
+                    "flatten to a numpy array but the observation space "
+                    f"flattens to {type(flat_observations)}"
+                )
 
             return flat_observations
         elif self.density_type == DensityType.STATE_ACTION_DENSITY:
@@ -271,24 +273,32 @@ class DensityAlgorithm(base.DemonstrationAlgorithm):
             flat_action = space_utils.flatten(self.venv.action_space, act)
 
             if not isinstance(flat_observation, np.ndarray):
-                raise ValueError("The density estimator only supports spaces that "
-                                 "flatten to a numpy array but the observation space "
-                                    f"flattens to {type(flat_observation)}")
+                raise ValueError(
+                    "The density estimator only supports spaces that "
+                    "flatten to a numpy array but the observation space "
+                    f"flattens to {type(flat_observation)}"
+                )
             if not isinstance(flat_action, np.ndarray):
-                raise ValueError("The density estimator only supports spaces that "
-                                 "flatten to a numpy array but the action space "
-                                    f"flattens to {type(flat_action)}")
+                raise ValueError(
+                    "The density estimator only supports spaces that "
+                    "flatten to a numpy array but the action space "
+                    f"flattens to {type(flat_action)}"
+                )
 
             return np.concatenate([flat_observation, flat_action])
         elif self.density_type == DensityType.STATE_STATE_DENSITY:
             assert next_obs is not None
             flat_observation = space_utils.flatten(self.venv.observation_space, obs)
-            flat_next_observation = space_utils.flatten(self.venv.observation_space, next_obs)
+            flat_next_observation = space_utils.flatten(
+                self.venv.observation_space, next_obs
+            )
 
             if not isinstance(flat_observation, np.ndarray):
-                raise ValueError("The density estimator only supports spaces that "
-                                 "flatten to a numpy array but the observation space "
-                                 f"flattens to {type(flat_observation)}")
+                raise ValueError(
+                    "The density estimator only supports spaces that "
+                    "flatten to a numpy array but the observation space "
+                    f"flattens to {type(flat_observation)}"
+                )
 
             assert type(flat_observation) == type(flat_next_observation)
 
