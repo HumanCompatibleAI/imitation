@@ -203,7 +203,7 @@ setup(
         "torch>=1.4.0",
         "tqdm",
         "scikit-learn>=0.21.2",
-        "seals>=0.1.5",
+        "seals~=0.1.5",
         STABLE_BASELINES3,
         "sacred>=0.8.4",
         "tensorboard>=1.14",
