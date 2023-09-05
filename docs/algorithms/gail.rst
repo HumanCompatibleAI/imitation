@@ -29,7 +29,7 @@ Detailed example notebook: :doc:`../tutorials/3_train_gail`
     from imitation.data import rollout
     from imitation.data.wrappers import RolloutInfoWrapper
     from imitation.policies.serialize import load_policy
-    from imitation.rewards.reward_nets import BasicShapedRewardNet
+    from imitation.rewards.reward_nets import BasicRewardNet
     from imitation.util.networks import RunningNorm
     from imitation.util.util import make_vec_env
 
@@ -60,11 +60,12 @@ Detailed example notebook: :doc:`../tutorials/3_train_gail`
         policy=MlpPolicy,
         batch_size=64,
         ent_coef=0.0,
-        learning_rate=0.00001,
-        n_epochs=1,
+        learning_rate=0.0004,
+        gamma=0.95,
+        n_epochs=5,
         seed=SEED,
     )
-    reward_net = BasicShapedRewardNet(
+    reward_net = BasicRewardNet(
         observation_space=env.observation_space,
         action_space=env.action_space,
         normalize_input_layer=RunningNorm,
@@ -72,8 +73,8 @@ Detailed example notebook: :doc:`../tutorials/3_train_gail`
     gail_trainer = GAIL(
         demonstrations=rollouts,
         demo_batch_size=1024,
-        gen_replay_buffer_capacity=2048,
-        n_disc_updates_per_round=4,
+        gen_replay_buffer_capacity=512,
+        n_disc_updates_per_round=8,
         venv=env,
         gen_algo=learner,
         reward_net=reward_net,
@@ -86,7 +87,7 @@ Detailed example notebook: :doc:`../tutorials/3_train_gail`
     )
 
     # train the learner and evaluate again
-    gail_trainer.train(20000)
+    gail_trainer.train(20000)  # Train for 800_000 steps to match expert.
     env.seed(SEED)
     learner_rewards_after_training, _ = evaluate_policy(
         learner, env, 100, return_episode_rewards=True,
