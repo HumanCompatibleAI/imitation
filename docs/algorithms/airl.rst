@@ -48,7 +48,7 @@ Detailed example notebook: :doc:`../tutorials/4_train_airl`
             "seals/CartPole-v0",
             rng=rng,
             n_envs=5,
-            post_wrappers=[lambda env, _: RolloutInfoWrapper(env)],
+            post_wrappers={"RolloutInfoWrapper": lambda env, _: RolloutInfoWrapper(env)},
         ),
         rollout.make_sample_until(min_timesteps=None, min_episodes=60),
         rng=rng,

@@ -123,7 +123,7 @@ def make_rollout_venv(
         max_episode_steps=max_episode_steps,
         log_dir=None,
         env_make_kwargs=env_make_kwargs,
-        post_wrappers=[lambda env, i: wrappers.RolloutInfoWrapper(env)],
+        post_wrappers={"RolloutInfoWrapper": lambda env, i: wrappers.RolloutInfoWrapper(env)},
     )
     try:
         yield venv

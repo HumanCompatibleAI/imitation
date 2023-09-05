@@ -38,7 +38,7 @@ def generate_expert_trajectories(
     """
     env = util.make_vec_env(
         env_id,
-        post_wrappers=[lambda e, _: wrappers.RolloutInfoWrapper(e)],
+        post_wrappers={"RolloutInfoWrapper": lambda e, _: wrappers.RolloutInfoWrapper(e)},
         rng=rng,
     )
     try:

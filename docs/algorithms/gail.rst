@@ -44,7 +44,7 @@ Detailed example notebook: :doc:`../tutorials/3_train_gail`
         make_vec_env(
             "seals/CartPole-v0",
             n_envs=5,
-            post_wrappers=[lambda env, _: RolloutInfoWrapper(env)],
+            post_wrappers={"RolloutInfoWrapper": lambda env, _: RolloutInfoWrapper(env)},
             rng=rng,
         ),
         rollout.make_sample_until(min_timesteps=None, min_episodes=60),
