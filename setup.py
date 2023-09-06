@@ -15,10 +15,7 @@ IS_NOT_WINDOWS = os.name != "nt"
 
 PARALLEL_REQUIRE = ["ray[debug,tune]~=2.0.0"]
 ATARI_REQUIRE = [
-    "opencv-python",
-    "ale-py==0.7.4",
-    "pillow",
-    "autorom[accept-rom-license]~=0.6.0",
+    "seals[atari]~=0.2.0",
 ]
 PYTYPE = ["pytype==2022.7.26"] if IS_NOT_WINDOWS else []
 
@@ -55,7 +52,6 @@ TESTS_REQUIRE = (
         "wandb==0.12.21",
         "setuptools_scm~=7.0.5",
         "pre-commit>=2.20.0",
-        "seals[atari]~=0.2.0",
     ]
     + PARALLEL_REQUIRE
     + ATARI_REQUIRE
