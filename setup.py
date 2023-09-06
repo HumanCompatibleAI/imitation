@@ -196,7 +196,7 @@ setup(
         "tqdm",
         "rich",
         "scikit-learn>=0.21.2",
-        "seals @ git+https://github.com/HumanCompatibleAI/seals.git@1cd453092638f3dc3b05baa25a372e6d080a5dcc",  # TODO: change this after the seals release.
+        "seals~=0.2.0",
         "stable-baselines3~=2.0.0",
         "sacred>=0.8.4",
         "tensorboard>=1.14",
