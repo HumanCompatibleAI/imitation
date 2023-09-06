@@ -21,6 +21,9 @@ virtualenv -p ${python_version} ${venv}
 # shellcheck disable=SC1090,SC1091
 source ${venv}/bin/activate
 
+# Update pip to the latest version.
+pip install --upgrade pip
+
 # If platform is linux, install pytorch CPU version.
 # This will prevent installing the CUDA version in the pip install ".[docs,parallel,test]" command.
 # The CUDA version is a couple of gigabytes larger than the CPU version.
