@@ -114,6 +114,7 @@ def make_vec_env(
     """
     # Resolve the spec outside of the subprocess first, so that it is available to
     # subprocesses running `make_env` via automatic pickling.
+    gym.make(env_name).close()  # Just to ensure packages are imported
     spec = gym.spec(env_name)
     env_make_kwargs = env_make_kwargs or {}
 
@@ -127,13 +128,13 @@ def make_vec_env(
         # work. For more discussion and hypotheses on this issue see PR #160:
         # https://github.com/HumanCompatibleAI/imitation/pull/160.
         assert env_make_kwargs is not None  # Note: to satisfy mypy
-        env = spec.make(**env_make_kwargs)
+        env = gym.make(spec, **env_make_kwargs)
 
         # Seed each environment with a different, non-sequential seed for diversity
         # (even if caller is passing us sequentially-assigned base seeds). int() is
         # necessary to work around gym bug where it chokes on numpy int64s.
         env.reset(seed=int(this_seed))
-        # NOTE: we do it here rather than on the final VecEnv, becuase
+        # NOTE: we do it here rather than on the final VecEnv, because
         # that would set the same seed for all the environments.
 
         if max_episode_steps is not None:
