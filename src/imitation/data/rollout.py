@@ -397,6 +397,10 @@ def generate_trajectories(
         Sequence of trajectories, satisfying `sample_until`. Additional trajectories
         may be collected to avoid biasing process towards short episodes; the user
         should truncate if required.
+
+    Raises:
+        ValueError: If the observation or action space has no shape or the observations
+            are not a numpy array.
     """
     if venv.observation_space.shape is None:
         raise ValueError("Observation space must have a shape.")
