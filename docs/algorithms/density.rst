@@ -44,12 +44,7 @@ Detailed example notebook: :doc:`../tutorials/7_train_density`
     rollouts = serialize.load("../tests/testdata/expert_models/pendulum_0/rollouts/final.npz")
 
     imitation_trainer = PPO(
-        ActorCriticPolicy,
-        env,
-        learning_rate=3e-4,
-        gamma=0.95,
-        ent_coef=1e-4,
-        n_steps=2048
+        ActorCriticPolicy, env, learning_rate=3e-4, gamma=0.95, ent_coef=1e-4, n_steps=2048
     )
     density_trainer = db.DensityAlgorithm(
         venv=env,
