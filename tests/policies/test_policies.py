@@ -17,13 +17,13 @@ from imitation.util import registry, util
 SIMPLE_DISCRETE_ENV = "CartPole-v0"  # Discrete(2) action space
 SIMPLE_CONTINUOUS_ENV = "MountainCarContinuous-v0"  # Box(1) action space
 SIMPLE_ENVS = [SIMPLE_DISCRETE_ENV, SIMPLE_CONTINUOUS_ENV]
-HARDCODED_TYPES = ["random", "zero"]
+NONTRAINABLE_TYPES = ["random", "zero"]
 
 assert_equal = functools.partial(th.testing.assert_close, rtol=0, atol=0)
 
 
 @pytest.mark.parametrize("env_name", SIMPLE_ENVS)
-@pytest.mark.parametrize("policy_type", HARDCODED_TYPES)
+@pytest.mark.parametrize("policy_type", NONTRAINABLE_TYPES)
 def test_actions_valid(env_name, policy_type, rng):
     """Test output actions of our custom policies always lie in action space."""
     venv = util.make_vec_env(
