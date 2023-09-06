@@ -75,7 +75,7 @@ Detailed example notebook: :doc:`../tutorials/7_train_density`
     print("Stats before training:")
     print_stats(density_trainer, 1)
 
-    density_trainer.train_policy(100)  # Train for 1_000_000 steps to approach the expert.
+    density_trainer.train_policy(100)  # Train for 1_000_000 steps to approach expert performance.
 
     print("Stats after training:")
     print_stats(density_trainer, 1)
