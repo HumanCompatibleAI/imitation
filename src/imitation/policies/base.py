@@ -57,11 +57,12 @@ class ZeroPolicy(NonTrainablePolicy):
         """Builds ZeroPolicy with specified observation and action space."""
         super().__init__(observation_space, action_space)
         self._zero_action = np.zeros_like(
-            action_space.sample(), dtype=action_space.dtype
+            action_space.sample(),
+            dtype=action_space.dtype,
         )
         if self._zero_action not in action_space:
             raise ValueError(
-                f"Zero action {self._zero_action} not in action space {action_space}"
+                f"Zero action {self._zero_action} not in action space {action_space}",
             )
 
     def _choose_action(self, obs: np.ndarray) -> np.ndarray:

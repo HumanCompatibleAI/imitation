@@ -264,7 +264,7 @@ class DensityAlgorithm(base.DemonstrationAlgorithm):
                 raise ValueError(
                     "The density estimator only supports spaces that "
                     "flatten to a numpy array but the observation space "
-                    f"flattens to {type(flat_observations)}"
+                    f"flattens to {type(flat_observations)}",
                 )
 
             return flat_observations
@@ -276,13 +276,13 @@ class DensityAlgorithm(base.DemonstrationAlgorithm):
                 raise ValueError(
                     "The density estimator only supports spaces that "
                     "flatten to a numpy array but the observation space "
-                    f"flattens to {type(flat_observation)}"
+                    f"flattens to {type(flat_observation)}",
                 )
             if not isinstance(flat_action, np.ndarray):
                 raise ValueError(
                     "The density estimator only supports spaces that "
                     "flatten to a numpy array but the action space "
-                    f"flattens to {type(flat_action)}"
+                    f"flattens to {type(flat_action)}",
                 )
 
             return np.concatenate([flat_observation, flat_action])
@@ -290,14 +290,15 @@ class DensityAlgorithm(base.DemonstrationAlgorithm):
             assert next_obs is not None
             flat_observation = space_utils.flatten(self.venv.observation_space, obs)
             flat_next_observation = space_utils.flatten(
-                self.venv.observation_space, next_obs
+                self.venv.observation_space,
+                next_obs,
             )
 
             if not isinstance(flat_observation, np.ndarray):
                 raise ValueError(
                     "The density estimator only supports spaces that "
                     "flatten to a numpy array but the observation space "
-                    f"flattens to {type(flat_observation)}"
+                    f"flattens to {type(flat_observation)}",
                 )
 
             assert type(flat_observation) == type(flat_next_observation)
