@@ -55,6 +55,7 @@ TESTS_REQUIRE = (
         "wandb==0.12.21",
         "setuptools_scm~=7.0.5",
         "pre-commit>=2.20.0",
+        "seals[atari]~=0.2.0",
     ]
     + PARALLEL_REQUIRE
     + ATARI_REQUIRE
