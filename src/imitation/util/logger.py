@@ -6,7 +6,7 @@ import os
 import pathlib
 import sys
 import tempfile
-from typing import Any, Dict, Generator, List, Optional, Sequence, Tuple, Union
+from typing import Any, Dict, Generator, List, Optional, Sequence, Tuple
 
 import stable_baselines3.common.logger as sb_logger
 
