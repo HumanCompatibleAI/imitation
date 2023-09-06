@@ -25,7 +25,6 @@ from typing import (
 import gymnasium as gym
 import numpy as np
 import torch as th
-from gymnasium.wrappers import TimeLimit
 from stable_baselines3.common import monitor
 from stable_baselines3.common.vec_env import DummyVecEnv, SubprocVecEnv, VecEnv
 
@@ -118,7 +117,7 @@ def make_vec_env(
         # work. For more discussion and hypotheses on this issue see PR #160:
         # https://github.com/HumanCompatibleAI/imitation/pull/160.
         assert env_make_kwargs is not None  # Note: to satisfy mypy
-        env = gym.make(spec, **env_make_kwargs)
+        env = gym.make(spec, max_episode_steps=max_episode_steps, **env_make_kwargs)
 
         # Seed each environment with a different, non-sequential seed for diversity
         # (even if caller is passing us sequentially-assigned base seeds). int() is
@@ -126,11 +125,6 @@ def make_vec_env(
         env.reset(seed=int(this_seed))
         # NOTE: we do it here rather than on the final VecEnv, because
         # that would set the same seed for all the environments.
-
-        if max_episode_steps is not None:
-            env = TimeLimit(env, max_episode_steps)
-        elif spec.max_episode_steps is not None:
-            env = TimeLimit(env, max_episode_steps=spec.max_episode_steps)
 
         # Use Monitor to record statistics needed for Baselines algorithms logging
         # Optionally, save to disk
