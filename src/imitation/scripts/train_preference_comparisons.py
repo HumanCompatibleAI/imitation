@@ -133,7 +133,7 @@ def train_preference_comparisons(
             training. If True, overrides this safety check. WARNING: variable
             horizon episodes leak information about the reward via termination
             condition, and can seriously confound evaluation. Read
-            https://imitation.readthedocs.io/en/latest/guide/variable_horizon.html
+            https://imitation.readthedocs.io/en/latest/main-concepts/variable_horizon.html
             before overriding this.
         checkpoint_interval: Save the reward model and policy models (if
             trajectory_generator contains a policy) every `checkpoint_interval`

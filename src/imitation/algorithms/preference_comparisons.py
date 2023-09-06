@@ -1550,7 +1550,7 @@ class PreferenceComparisons(base.BaseImitationAlgorithm):
                 training. If True, overrides this safety check. WARNING: variable
                 horizon episodes leak information about the reward via termination
                 condition, and can seriously confound evaluation. Read
-                https://imitation.readthedocs.io/en/latest/guide/variable_horizon.html
+                https://imitation.readthedocs.io/en/latest/main-concepts/variable_horizon.html
                 before overriding this.
             rng: random number generator to use for initializing subcomponents such as
                 fragmenter.

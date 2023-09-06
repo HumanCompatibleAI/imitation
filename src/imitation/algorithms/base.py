@@ -48,7 +48,7 @@ class BaseImitationAlgorithm(abc.ABC):
                 training. If True, overrides this safety check. WARNING: variable
                 horizon episodes leak information about the reward via termination
                 condition, and can seriously confound evaluation. Read
-                https://imitation.readthedocs.io/en/latest/getting-started/variable-horizon.html
+                https://imitation.readthedocs.io/en/latest/main-concepts/variable_horizon.html
                 before overriding this.
         """
         self._logger = custom_logger or imit_logger.configure()
@@ -61,8 +61,8 @@ class BaseImitationAlgorithm(abc.ABC):
                 "Additionally, even unbiased algorithms can exploit "
                 "the information leak from the termination condition, "
                 "producing spuriously high performance. See "
-                "https://imitation.readthedocs.io/en/latest/getting-started/"
-                "variable-horizon.html for more information.",
+                "https://imitation.readthedocs.io/en/latest/main-concepts/"
+                "variable_horizon.html for more information.",
             )
         self._horizon = None
 
@@ -100,8 +100,8 @@ class BaseImitationAlgorithm(abc.ABC):
                 f"Episodes of different length detected: {horizons}. "
                 "Variable horizon environments are discouraged -- "
                 "termination conditions leak information about reward. See "
-                "https://imitation.readthedocs.io/en/latest/getting-started/"
-                "variable-horizon.html for more information. "
+                "https://imitation.readthedocs.io/en/latest/main-concepts/"
+                "variable_horizon.html for more information. "
                 "If you are SURE you want to run imitation on a "
                 "variable horizon task, then please pass in the flag: "
                 "`allow_variable_horizon=True`.",
@@ -152,7 +152,7 @@ class DemonstrationAlgorithm(BaseImitationAlgorithm, Generic[TransitionKind]):
                 training. If True, overrides this safety check. WARNING: variable
                 horizon episodes leak information about the reward via termination
                 condition, and can seriously confound evaluation. Read
-                https://imitation.readthedocs.io/en/latest/getting-started/variable-horizon.html
+                https://imitation.readthedocs.io/en/latest/main-concepts/variable_horizon.html
                 before overriding this.
         """
         super().__init__(
