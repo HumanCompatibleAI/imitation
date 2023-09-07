@@ -30,9 +30,12 @@ THIS_DIR = pathlib.Path(__file__).absolute().parent
 EXAMPLES_DIR = THIS_DIR / ".." / "examples"
 TUTORIALS_DIR = THIS_DIR / ".." / "docs" / "tutorials"
 
-SH_PATHS = _paths_to_strs(EXAMPLES_DIR.glob("*.sh"))
+EXCLUDED_EXAMPLE_FILES = ["train_dagger_atari_interactive_policy.py"]
+EXCLUDED_EXAMPLE_PATHS = [THIS_DIR / ".." / "examples" / f for f in EXCLUDED_EXAMPLE_FILES]
+
+SH_PATHS = _paths_to_strs(set(EXAMPLES_DIR.glob("*.sh")) - set(EXCLUDED_EXAMPLE_PATHS))
 TUTORIAL_PATHS = _paths_to_strs(TUTORIALS_DIR.glob("*.ipynb"))
-PY_PATHS = _paths_to_strs(EXAMPLES_DIR.glob("*.py"))
+PY_PATHS = _paths_to_strs(set(EXAMPLES_DIR.glob("*.py")) - set(EXCLUDED_EXAMPLE_PATHS))
 
 
 # Note: This is excluded from coverage since is computed on linux. However, it is
