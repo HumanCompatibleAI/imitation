@@ -144,5 +144,9 @@ class AtariInteractivePolicy(ImageObsDiscreteInteractivePolicy):
             [(ATARI_ACTION_NAMES_TO_KEYS[name], name) for name in action_names],
         )
         super().__init__(
-            env.observation_space, env.action_space, action_keys_names, *args, **kwargs,
+            env.observation_space,
+            env.action_space,
+            action_keys_names,
+            *args,
+            **kwargs,
         )
