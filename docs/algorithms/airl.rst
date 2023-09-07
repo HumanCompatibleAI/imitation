@@ -60,9 +60,13 @@ Detailed example notebook: :doc:`../tutorials/4_train_airl`
     learner = PPO(
         env=env,
         policy=MlpPolicy,
-        batch_size=16,
-        learning_rate=0.0001,
-        n_epochs=2,
+        batch_size=64,
+        ent_coef=0.0,
+        learning_rate=0.0005,
+        gamma=0.95,
+        clip_range=0.1,
+        vf_coef=0.1,
+        n_epochs=5,
         seed=SEED,
     )
     reward_net = BasicShapedRewardNet(
@@ -72,9 +76,9 @@ Detailed example notebook: :doc:`../tutorials/4_train_airl`
     )
     airl_trainer = AIRL(
         demonstrations=rollouts,
-        demo_batch_size=1024,
-        gen_replay_buffer_capacity=2048,
-        n_disc_updates_per_round=4,
+        demo_batch_size=2048,
+        gen_replay_buffer_capacity=512,
+        n_disc_updates_per_round=16,
         venv=env,
         gen_algo=learner,
         reward_net=reward_net,
@@ -84,7 +88,7 @@ Detailed example notebook: :doc:`../tutorials/4_train_airl`
     learner_rewards_before_training, _ = evaluate_policy(
         learner, env, 100, return_episode_rewards=True,
     )
-    airl_trainer.train(20000)
+    airl_trainer.train(20000)  # Train for 2_000_000 steps to match expert.
     env.seed(SEED)
     learner_rewards_after_training, _ = evaluate_policy(
         learner, env, 100, return_episode_rewards=True,
