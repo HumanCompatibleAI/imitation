@@ -138,7 +138,7 @@ class AtariInteractivePolicy(ImageObsDiscreteInteractivePolicy):
         action_names = (
             env.get_action_meanings()
             if isinstance(env, gym.Env)
-            else env.envs[0].get_action_meanings()
+            else env.env_method("get_action_meanings", indices=[0])[0]
         )
         action_keys_names = collections.OrderedDict(
             [(ATARI_ACTION_NAMES_TO_KEYS[name], name) for name in action_names],

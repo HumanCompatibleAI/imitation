@@ -23,12 +23,14 @@ class NoRenderingDiscreteInteractivePolicy(interactive.DiscreteInteractivePolicy
 
 
 def _get_interactive_policy(env: vec_env.VecEnv):
-    num_actions = env.envs[0].action_space.n
+    num_actions = env.action_space.n
     action_keys_names = collections.OrderedDict(
         [(f"k{i}", f"n{i}") for i in range(num_actions)],
     )
     interactive_policy = NoRenderingDiscreteInteractivePolicy(
-        env.observation_space, env.action_space, action_keys_names,
+        env.observation_space,
+        env.action_space,
+        action_keys_names,
     )
     return interactive_policy
 
@@ -45,17 +47,19 @@ def test_interactive_policy(env_name: str):
     obs = env.reset()
     done = np.array([False])
 
-    def mock_input(_):
-        # Sometimes insert incorrect keys, which should get ignored by the policy.
-        if np.random.uniform() < 0.5:
-            return "invalid"
-        key = action_keys[mock_input.index]
-        mock_input.index = (mock_input.index + 1) % len(action_keys)
-        return key
+    class mock_input:
+        def __init__(self):
+            self.index = 0
 
-    mock_input.index = 0
+        def __call__(self, _):
+            # Sometimes insert incorrect keys, which should get ignored by the policy.
+            if np.random.uniform() < 0.5:
+                return "invalid"
+            key = action_keys[self.index]
+            self.index = (self.index + 1) % len(action_keys)
+            return key
 
-    with mock.patch("builtins.input", mock_input):
+    with mock.patch("builtins.input", mock_input()):
         requested_action = 0
         while not done.all():
             action, _ = interactive_policy.predict(obs)
@@ -96,16 +100,18 @@ def test_interactive_policy_input_validity(capsys, env_name: str):
     # First invalid input key, then valid
     obs = env.reset()
 
-    def mock_input_invalid_then_valid(prompt):
-        print(prompt)
-        if mock_input_invalid_then_valid.return_valid:
-            return action_keys[0]
-        mock_input_invalid_then_valid.return_valid = True
-        return "invalid"
+    class mock_input_invalid_then_valid:
+        def __init__(self):
+            self.return_valid = False
 
-    mock_input_invalid_then_valid.return_valid = False
+        def __call__(self, prompt):
+            print(prompt)
+            if self.return_valid:
+                return action_keys[0]
+            self.return_valid = True
+            return "invalid"
 
-    with mock.patch("builtins.input", mock_input_invalid_then_valid):
+    with mock.patch("builtins.input", mock_input_invalid_then_valid()):
         interactive_policy.predict(obs)
         stdout = capsys.readouterr().out
         assert "Your choice" in stdout and "Invalid" in stdout
