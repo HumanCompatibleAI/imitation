@@ -1,3 +1,7 @@
+"""Training DAgger with an interactive policy that queries the user for actions.
+
+Note that this is a toy example that does not lead to training a reasonable policy."""
+
 import tempfile
 
 import gym
@@ -13,20 +17,7 @@ if __name__ == "__main__":
     env = vec_env.DummyVecEnv([lambda: gym.wrappers.TimeLimit(gym.make("Pong-v4"), 10)])
     env.seed(0)
 
-    action_names = env.envs[0].get_action_meanings()
-    names_to_keys = {
-        "NOOP": "n",
-        "FIRE": "f",
-        "LEFT": "w",
-        "RIGHT": "e",
-        "LEFTFIRE": "q",
-        "RIGHTFIRE": "r",
-    }
-    action_keys = list(map(names_to_keys.get, action_names))
-
-    expert = interactive.ImageObsDiscreteInteractivePolicy(
-        env.observation_space, env.action_space, action_names, action_keys
-    )
+    expert = interactive.AtariInteractivePolicy(env)
 
     bc_trainer = bc.BC(
         observation_space=env.observation_space,

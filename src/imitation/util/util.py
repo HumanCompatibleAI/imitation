@@ -463,6 +463,7 @@ def split_in_half(x: int) -> Tuple[int, int]:
 
 
 def clear_screen() -> None:
+    """Clears the console screen."""
     if os.name == "nt":  # Windows
         os.system("cls")
     else:
