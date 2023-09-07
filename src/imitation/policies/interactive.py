@@ -24,7 +24,7 @@ class DiscreteInteractivePolicy(base_policies.NonTrainablePolicy, abc.ABC):
         self,
         observation_space: gym.Space,
         action_space: gym.Space,
-        action_keys_names: collections.OrderedDict[str, str],
+        action_keys_names: collections.OrderedDict,
         clear_screen_on_query: bool = True,
     ):
         """Builds DiscreteInteractivePolicy.
@@ -80,7 +80,7 @@ class DiscreteInteractivePolicy(base_policies.NonTrainablePolicy, abc.ABC):
 
     @abc.abstractmethod
     def _render(self, obs: np.ndarray) -> typing.Optional[object]:
-        """Renders an observation, optionally returns a context object for later cleanup."""
+        """Renders an observation, optionally returns a context for later cleanup."""
 
     def _clean_up(self, context: object) -> None:
         """Cleans up after the input has been captured, e.g. stops showing the image."""
@@ -134,14 +134,15 @@ class AtariInteractivePolicy(ImageObsDiscreteInteractivePolicy):
     """Interactive policy for Atari environments."""
 
     def __init__(self, env: typing.Union[gym.Env, vec_env.VecEnv], *args, **kwargs):
+        """Builds AtariInteractivePolicy."""
         action_names = (
             env.get_action_meanings()
             if isinstance(env, gym.Env)
             else env.envs[0].get_action_meanings()
         )
         action_keys_names = collections.OrderedDict(
-            [(ATARI_ACTION_NAMES_TO_KEYS[name], name) for name in action_names]
+            [(ATARI_ACTION_NAMES_TO_KEYS[name], name) for name in action_names],
         )
         super().__init__(
-            env.observation_space, env.action_space, action_keys_names, *args, **kwargs
+            env.observation_space, env.action_space, action_keys_names, *args, **kwargs,
         )

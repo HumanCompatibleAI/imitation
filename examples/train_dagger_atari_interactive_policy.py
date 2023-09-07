@@ -1,6 +1,7 @@
 """Training DAgger with an interactive policy that queries the user for actions.
 
-Note that this is a toy example that does not lead to training a reasonable policy."""
+Note that this is a toy example that does not lead to training a reasonable policy.
+"""
 
 import tempfile
 

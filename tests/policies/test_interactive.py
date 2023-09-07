@@ -25,10 +25,10 @@ class NoRenderingDiscreteInteractivePolicy(interactive.DiscreteInteractivePolicy
 def _get_interactive_policy(env: vec_env.VecEnv):
     num_actions = env.envs[0].action_space.n
     action_keys_names = collections.OrderedDict(
-        [(f"k{i}", f"n{i}") for i in range(num_actions)]
+        [(f"k{i}", f"n{i}") for i in range(num_actions)],
     )
     interactive_policy = NoRenderingDiscreteInteractivePolicy(
-        env.observation_space, env.action_space, action_keys_names
+        env.observation_space, env.action_space, action_keys_names,
     )
     return interactive_policy
 
