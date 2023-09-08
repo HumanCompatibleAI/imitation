@@ -1,6 +1,6 @@
 """Test `imitation.algorithms.tabular_irl` and tabular environments."""
 
-from typing import Any, Mapping
+from typing import Any, Mapping, cast
 
 import gymnasium as gym
 import numpy as np
@@ -133,8 +133,10 @@ DISCOUNT_RATES = FEW_DISCOUNT_RATES + [0.5, 0.9]
 def test_policy_om_random_mdp(discount: float):
     """Test that optimal policy occupancy measure ("om") for a random MDP is sane."""
     mdp = gym.make("seals/Random-v0")
-    assert isinstance(mdp, base_envs.TabularModelPOMDP)  # Note: hint for mypy
-    V, Q, pi = mce_partition_fh(mdp, discount=discount)
+    V, Q, pi = mce_partition_fh(
+        cast(base_envs.TabularModelPOMDP, mdp),
+        discount=discount,
+    )
     assert np.all(np.isfinite(V))
     assert np.all(np.isfinite(Q))
     assert np.all(np.isfinite(pi))
@@ -142,15 +144,19 @@ def test_policy_om_random_mdp(discount: float):
     assert np.all(pi >= 0)
     assert np.allclose(np.sum(pi, axis=-1), 1)
 
-    assert isinstance(mdp.horizon, int)  # Note: hint for mypy
-    Dt, D = mce_occupancy_measures(mdp, pi=pi, discount=discount)
-    assert len(Dt) == mdp.horizon + 1
+    horizon = cast(base_envs.TabularModelPOMDP, mdp).horizon
+    Dt, D = mce_occupancy_measures(
+        cast(base_envs.TabularModelPOMDP, mdp),
+        pi=pi,
+        discount=discount,
+    )
+    assert len(Dt) == horizon + 1
     assert np.all(np.isfinite(D))
     assert np.any(D > 0)
     # expected number of state visits (over all states) should be equal to the
     # horizon
     if discount == 1.0:
-        expected_sum = mdp.horizon + 1.0
+        expected_sum = horizon + 1.0
     else:
         expected_sum = (1 - discount ** (mdp.horizon + 1)) / (1 - discount)
     assert np.allclose(np.sum(D), expected_sum)
