@@ -10,8 +10,11 @@ from stable_baselines3.common import vec_env
 
 from imitation.policies import interactive
 
-ENVS = [
+SIMPLE_ENVS = [
     "seals/CartPole-v0",
+]
+ATARI_ENVS = [
+    "Pong-v4",
 ]
 
 
@@ -22,7 +25,7 @@ class NoRenderingDiscreteInteractivePolicy(interactive.DiscreteInteractivePolicy
         pass
 
 
-def _get_interactive_policy(env: vec_env.VecEnv):
+def _get_simple_interactive_policy(env: vec_env.VecEnv):
     num_actions = env.action_space.n
     action_keys_names = collections.OrderedDict(
         [(f"k{i}", f"n{i}") for i in range(num_actions)],
@@ -35,13 +38,16 @@ def _get_interactive_policy(env: vec_env.VecEnv):
     return interactive_policy
 
 
-@pytest.mark.parametrize("env_name", ENVS)
+@pytest.mark.parametrize("env_name", SIMPLE_ENVS + ATARI_ENVS)
 def test_interactive_policy(env_name: str):
     """Test if correct actions are selected, as specified by input keys."""
-    env = vec_env.DummyVecEnv([lambda: gym.wrappers.TimeLimit(gym.make(env_name), 10)])
+    env = vec_env.DummyVecEnv([lambda: gym.wrappers.TimeLimit(gym.make(env_name), 50)])
     env.seed(0)
 
-    interactive_policy = _get_interactive_policy(env)
+    if env_name in ATARI_ENVS:
+        interactive_policy = interactive.AtariInteractivePolicy(env)
+    else:
+        interactive_policy = _get_simple_interactive_policy(env)
     action_keys = list(interactive_policy.action_keys_names.keys())
 
     obs = env.reset()
@@ -62,7 +68,7 @@ def test_interactive_policy(env_name: str):
     with mock.patch("builtins.input", mock_input()):
         requested_action = 0
         while not done.all():
-            action, _ = interactive_policy.predict(obs)
+            action, _ = interactive_policy.predict(np.array(obs))
             assert isinstance(action, np.ndarray)
             assert all(env.action_space.contains(a) for a in action)
             assert action[0] == requested_action
@@ -76,13 +82,13 @@ def test_interactive_policy(env_name: str):
             requested_action = (requested_action + 1) % len(action_keys)
 
 
-@pytest.mark.parametrize("env_name", ENVS)
+@pytest.mark.parametrize("env_name", SIMPLE_ENVS)
 def test_interactive_policy_input_validity(capsys, env_name: str):
     """Test if appropriate feedback is given on the validity of the input."""
     env = vec_env.DummyVecEnv([lambda: gym.wrappers.TimeLimit(gym.make(env_name), 10)])
     env.seed(0)
 
-    interactive_policy = _get_interactive_policy(env)
+    interactive_policy = _get_simple_interactive_policy(env)
     action_keys = list(interactive_policy.action_keys_names.keys())
 
     # Valid input key case
@@ -115,3 +121,34 @@ def test_interactive_policy_input_validity(capsys, env_name: str):
         interactive_policy.predict(obs)
         stdout = capsys.readouterr().out
         assert "Your choice" in stdout and "Invalid" in stdout
+
+
+@pytest.mark.parametrize("env_name", ATARI_ENVS)
+def test_atari_action_mappings(env_name: str):
+    """Test if correct actions are selected, as specified by input keys."""
+    env = vec_env.DummyVecEnv([lambda: gym.wrappers.TimeLimit(gym.make(env_name), 50)])
+    env.seed(0)
+    action_meanings = env.env_method("get_action_meanings", indices=[0])[0]
+
+    interactive_policy = interactive.AtariInteractivePolicy(env)
+
+    obs = env.reset()
+
+    provided_keys = ["2", "a", "d"]
+    expected_action_meanings = ["FIRE", "LEFT", "RIGHT"]
+
+    class mock_input:
+        def __init__(self):
+            self.index = 0
+
+        def __call__(self, _):
+            key = provided_keys[self.index]
+            self.index += 1
+            return key
+
+    with mock.patch("builtins.input", mock_input()):
+        for expected_action_meaning in expected_action_meanings:
+            action, _ = interactive_policy.predict(np.array(obs))
+            obs, reward, done, info = env.step(action)
+
+            assert action_meanings[action[0]] == expected_action_meaning

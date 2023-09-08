@@ -2,7 +2,7 @@
 
 import abc
 import collections
-import typing
+from typing import Union, Optional
 
 import gym
 import matplotlib.pyplot as plt
@@ -79,7 +79,7 @@ class DiscreteInteractivePolicy(base_policies.NonTrainablePolicy, abc.ABC):
         return key
 
     @abc.abstractmethod
-    def _render(self, obs: np.ndarray) -> typing.Optional[object]:
+    def _render(self, obs: np.ndarray) -> Optional[object]:
         """Renders an observation, optionally returns a context for later cleanup."""
 
     def _clean_up(self, context: object) -> None:
@@ -132,7 +132,7 @@ ATARI_ACTION_NAMES_TO_KEYS = {
 class AtariInteractivePolicy(ImageObsDiscreteInteractivePolicy):
     """Interactive policy for Atari environments."""
 
-    def __init__(self, env: typing.Union[gym.Env, vec_env.VecEnv], *args, **kwargs):
+    def __init__(self, env: Union[gym.Env, vec_env.VecEnv], *args, **kwargs):
         """Builds AtariInteractivePolicy."""
         action_names = (
             env.get_action_meanings()
