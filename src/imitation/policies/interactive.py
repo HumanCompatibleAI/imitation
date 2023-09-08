@@ -2,7 +2,7 @@
 
 import abc
 import collections
-from typing import Union, Optional
+from typing import Optional, Union
 
 import gym
 import matplotlib.pyplot as plt
@@ -34,7 +34,8 @@ class DiscreteInteractivePolicy(base_policies.NonTrainablePolicy, abc.ABC):
             action_space: Action space.
             action_keys_names: `OrderedDict` containing pairs (key, name) for every
                 action, where key will be used in the console interface, and name
-                is a semantic action name. The index of the pair in the dictionary will be used as the discrete, integer action.
+                is a semantic action name. The index of the pair in the dictionary
+                will be used as the discrete, integer action.
             clear_screen_on_query: If `True`, console will be cleared on every query.
         """
         super().__init__(
