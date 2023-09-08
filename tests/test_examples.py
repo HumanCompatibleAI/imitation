@@ -31,9 +31,7 @@ EXAMPLES_DIR = THIS_DIR / ".." / "examples"
 TUTORIALS_DIR = THIS_DIR / ".." / "docs" / "tutorials"
 
 EXCLUDED_EXAMPLE_FILES = ["train_dagger_atari_interactive_policy.py"]
-EXCLUDED_EXAMPLE_PATHS = [
-    EXAMPLES_DIR / f for f in EXCLUDED_EXAMPLE_FILES
-]
+EXCLUDED_EXAMPLE_PATHS = [EXAMPLES_DIR / f for f in EXCLUDED_EXAMPLE_FILES]
 
 SH_PATHS = _paths_to_strs(set(EXAMPLES_DIR.glob("*.sh")) - set(EXCLUDED_EXAMPLE_PATHS))
 TUTORIAL_PATHS = _paths_to_strs(TUTORIALS_DIR.glob("*.ipynb"))
