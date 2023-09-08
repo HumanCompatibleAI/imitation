@@ -87,6 +87,7 @@ If you use ``imitation`` in your research project, please cite our paper to help
    tutorials/6_train_mce
    tutorials/7_train_density
    tutorials/8_train_sqil
+   tutorials/8a_train_sqil_sac
    tutorials/9_compare_baselines
    tutorials/10_train_custom_env
 

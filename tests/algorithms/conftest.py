@@ -99,3 +99,13 @@ def pendulum_venv(rng) -> VecEnv:
         post_wrappers=[lambda env, _: RolloutInfoWrapper(env)],
         rng=rng,
     )
+
+
+@pytest.fixture
+def pendulum_single_venv(rng) -> VecEnv:
+    return util.make_vec_env(
+        PENDULUM_ENV_NAME,
+        n_envs=1,
+        post_wrappers=[lambda env, _: RolloutInfoWrapper(env)],
+        rng=rng,
+    )
