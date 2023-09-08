@@ -1,9 +1,10 @@
 """Wrapper to record rendered video frames from an environment."""
 
 import pathlib
-from typing import Optional
+from typing import Any, Dict, Optional, SupportsFloat, Tuple
 
 import gymnasium as gym
+from gymnasium.core import WrapperActType, WrapperObsType
 from gymnasium.wrappers.monitoring import video_recorder
 
 
@@ -61,13 +62,22 @@ class VideoWrapper(gym.Wrapper):
                 metadata={"episode_id": self.episode_id},
             )
 
-    def reset(self):
+    def reset(
+        self,
+        *,
+        seed: Optional[int] = None,
+        options: Optional[Dict[str, Any]] = None,
+    ) -> Tuple[WrapperObsType, Dict[str, Any]]:
         self._reset_video_recorder()
         self.episode_id += 1
-        return self.env.reset()
+        return super().reset(seed=seed, options=options)
 
-    def step(self, action):
-        res = self.env.step(action)
+    def step(
+        self,
+        action: WrapperActType,
+    ) -> Tuple[WrapperObsType, SupportsFloat, bool, bool, Dict[str, Any]]:
+        res = super().step(action)
+        assert self.video_recorder is not None
         self.video_recorder.capture_frame()
         return res
 

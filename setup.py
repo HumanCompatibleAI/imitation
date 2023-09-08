@@ -42,6 +42,7 @@ TESTS_REQUIRE = (
         # TODO: upgrade jupyter-client once
         #  https://github.com/jupyter/jupyter_client/issues/637 is fixed
         "jupyter-client~=6.1.12",
+        "moviepy~=1.0.3",
         "mypy~=0.990",
         "pandas~=1.4.3",
         "pytest~=7.1.2",
