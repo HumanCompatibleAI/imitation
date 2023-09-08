@@ -515,7 +515,6 @@ class CnnRewardNet(RewardNet):
             raise ValueError(
                 "CnnRewardNet can only use Discrete action spaces.",
             )
-        assert isinstance(action_space, spaces.Discrete)  # Note: hint to mypy
 
         input_size = 0
         output_size = 1
@@ -524,6 +523,7 @@ class CnnRewardNet(RewardNet):
             input_size += self.get_num_channels_obs(observation_space)
 
         if self.use_action:
+            assert isinstance(action_space, spaces.Discrete)  # Note: hint to mypy
             output_size = int(action_space.n)
 
         if self.use_next_state:
