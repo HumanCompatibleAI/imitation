@@ -103,8 +103,10 @@ def make_vec_env(
     """
     # Resolve the spec outside of the subprocess first, so that it is available to
     # subprocesses running `make_env` via automatic pickling.
-    gym.make(env_name).close()  # Just to ensure packages are imported
-    spec = gym.spec(env_name)
+    # Just to ensure packages are imported and spec is properly resolved
+    tmp_env = gym.make(env_name)
+    tmp_env.close()
+    spec = tmp_env.spec
     env_make_kwargs = env_make_kwargs or {}
 
     def make_env(i: int, this_seed: int) -> gym.Env:
