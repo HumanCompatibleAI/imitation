@@ -199,7 +199,7 @@ def _test_sqil_performance(
     rewards_before, _ = evaluate_policy(
         model.policy,
         venv,
-        20,
+        100,
         return_episode_rewards=True,
     )
 
@@ -209,7 +209,7 @@ def _test_sqil_performance(
     rewards_after, _ = evaluate_policy(
         model.policy,
         venv,
-        20,
+        100,
         return_episode_rewards=True,
     )
 
@@ -239,8 +239,7 @@ def test_sqil_performance_discrete(
     )
 
 
-# TODO: make it work reliably for other algorithms besides SAC.
-@pytest.mark.parametrize("rl_algo_class", [sac.SAC])
+@pytest.mark.parametrize("rl_algo_class", RL_ALGOS_CONT_ACTIONS)
 def test_sqil_performance_continuous(
     rng: np.random.Generator,
     pytestconfig: pytest.Config,
@@ -254,7 +253,9 @@ def test_sqil_performance_continuous(
         "Pendulum-v1",
         rl_algo_class=rl_algo_class,
         rl_kwargs=dict(
-            learning_rate=0.002,
+            learning_starts=500,
+            learning_rate=0.001,
+            gamma=0.95,
             seed=42,
         ),
     )
