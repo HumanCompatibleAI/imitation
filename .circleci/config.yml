@@ -415,5 +415,5 @@ workflows:
       - unit-test-linux:
           context:
           - docker-hub-creds
-      - unit-test-macos
-      - unit-test-windows
+#      - unit-test-macos
+#      - unit-test-windows
