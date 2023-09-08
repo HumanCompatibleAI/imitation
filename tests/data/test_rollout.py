@@ -1,11 +1,12 @@
 """Tests for `imitation.data.rollout`."""
 
 import functools
-from typing import Mapping, Sequence
+from typing import Any, Dict, Mapping, Optional, Sequence, SupportsFloat, Tuple
 
 import gymnasium as gym
 import numpy as np
 import pytest
+from gymnasium.core import WrapperActType, WrapperObsType
 from stable_baselines3 import A2C
 from stable_baselines3.common import monitor, vec_env
 from stable_baselines3.common.env_util import make_atari_env
@@ -181,15 +182,21 @@ def test_seed_trajectories():
 class ObsRewHalveWrapper(gym.Wrapper):
     """Simple wrapper that scales every reward and observation feature by 0.5."""
 
-    def reset(self, **kwargs):
-        obs, info = self.env.reset(**kwargs)
-        obs /= 2
-        return obs, info
+    def reset(
+        self,
+        *,
+        seed: Optional[int] = None,
+        options: Optional[Dict[str, Any]] = None,
+    ) -> Tuple[WrapperObsType, Dict[str, Any]]:
+        obs, info = super().reset(seed=seed, options=options)
+        return obs / 2.0, info
 
-    def step(self, action):
-        obs, rew, terminated, truncated, info = self.env.step(action)
-        done = terminated or truncated
-        return obs / 2, rew / 2, done, truncated, info
+    def step(
+        self,
+        action: WrapperActType,
+    ) -> Tuple[WrapperObsType, SupportsFloat, bool, bool, Dict[str, Any]]:
+        obs, rew, terminated, truncated, info = super().step(action)
+        return obs / 2, float(rew) / 2, terminated, truncated, info
 
 
 def test_rollout_stats(rng):
