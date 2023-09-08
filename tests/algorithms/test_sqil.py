@@ -24,7 +24,7 @@ def get_demos(
     cache = pytestconfig.cache
     assert cache is not None
     return expert_trajectories.make_expert_transition_loader(
-        cache_dir=cache.mkdir(env_name.replace("/", "_")),
+        cache_dir=cache.mkdir("experts"),
         batch_size=4,
         expert_data_type=data_type,
         env_name=env_name,
