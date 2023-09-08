@@ -34,7 +34,7 @@ class DiscreteInteractivePolicy(base_policies.NonTrainablePolicy, abc.ABC):
             action_space: Action space.
             action_keys_names: `OrderedDict` containing pairs (key, name) for every
                 action, where key will be used in the console interface, and name
-                is a semantic action name.
+                is a semantic action name. The index of the pair in the dictionary will be used as the discrete, integer action.
             clear_screen_on_query: If `True`, console will be cleared on every query.
         """
         super().__init__(
@@ -84,7 +84,6 @@ class DiscreteInteractivePolicy(base_policies.NonTrainablePolicy, abc.ABC):
 
     def _clean_up(self, context: object) -> None:
         """Cleans up after the input has been captured, e.g. stops showing the image."""
-        pass
 
 
 class ImageObsDiscreteInteractivePolicy(DiscreteInteractivePolicy):

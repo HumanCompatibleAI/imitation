@@ -11,7 +11,7 @@ from stable_baselines3.common import vec_env
 from imitation.policies import interactive
 
 ENVS = [
-    "CartPole-v0",
+    "seals/CartPole-v0",
 ]
 
 
