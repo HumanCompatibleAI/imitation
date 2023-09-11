@@ -1,9 +1,8 @@
 """Tests for `imitation.data.buffer`."""
 
+import gymnasium as gym
 import numpy as np
 import pytest
-
-import gymnasium as gym
 
 from imitation.data import types
 from imitation.data.buffer import Buffer, ReplayBuffer
