@@ -55,13 +55,6 @@ For a more detailed example, refer to :doc:`../tutorials/5_train_preference_comp
         rng=rng,
     )
 
-    # Several hyperparameters (reward_epochs, ppo_clip_range, ppo_ent_coef,
-    # ppo_gae_lambda, ppo_n_epochs, discount_factor, use_sde, sde_sample_freq,
-    # ppo_lr, exploration_frac, num_iterations, initial_comparison_frac,
-    # initial_epoch_multiplier, query_schedule) used in this example have been
-    # approximately fine-tuned to reach a reasonable initial experience. It's
-    # worth noting that we did not optimize all parameters those we did optimize
-    # may not be optimal.
     agent = PPO(
         policy=FeedForward32Policy,
         policy_kwargs=dict(
@@ -86,11 +79,10 @@ For a more detailed example, refer to :doc:`../tutorials/5_train_preference_comp
         rng=rng,
     )
 
-    querent = preference_comparisons.PreferenceQuerent()
     pref_comparisons = preference_comparisons.PreferenceComparisons(
         trajectory_generator,
         reward_net,
-        num_iterations=60,
+        num_iterations=5, # Set to 60 for better performance
         fragmenter=fragmenter,
         preference_gatherer=gatherer,
         reward_trainer=reward_trainer,
@@ -99,9 +91,11 @@ For a more detailed example, refer to :doc:`../tutorials/5_train_preference_comp
         query_schedule="hyperbolic",
     )
     pref_comparisons.train(total_timesteps=50_000, total_comparisons=200)
-
-    reward, _ = evaluate_policy(agent.policy, venv, 10)
-    print("Reward:", reward)
+    
+    n_eval_episodes = 10
+    reward_mean, reward_std = evaluate_policy(learner.policy, venv, n_eval_episodes)
+    reward_stderr = reward_std/np.sqrt(n_eval_episodes)
+    print(f"Reward: {reward_mean:.0f} +/- {reward_stderr:.0f}")
 
 .. testoutput::
     :hide:
