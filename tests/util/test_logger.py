@@ -138,22 +138,22 @@ def test_name_to_value(tmpdir):
         hier_logger.record("A", 1)
         assert hier_logger.name_to_value["raw/foo/A"] == 1
         assert hier_logger.name_to_count["raw/foo/A"] == 0
-        assert hier_logger.name_to_excluded["raw/foo/A"] is None
+        assert hier_logger.name_to_excluded["raw/foo/A"] is hier_logger.to_tuple(None)
         hier_logger.record("B", 10)
         assert hier_logger.name_to_value["raw/foo/B"] == 10
         assert hier_logger.name_to_count["raw/foo/B"] == 0
-        assert hier_logger.name_to_excluded["raw/foo/B"] is None
+        assert hier_logger.name_to_excluded["raw/foo/B"] is hier_logger.to_tuple(None)
         hier_logger.dump()
         hier_logger.record("B", 20)
         assert hier_logger.name_to_value["raw/foo/B"] == 20
         assert hier_logger.name_to_count["raw/foo/B"] == 0
-        assert hier_logger.name_to_excluded["raw/foo/B"] is None
+        assert hier_logger.name_to_excluded["raw/foo/B"] is hier_logger.to_tuple(None)
     assert hier_logger.name_to_value["mean/foo/A"] == 1
     assert hier_logger.name_to_count["mean/foo/A"] == 1
-    assert hier_logger.name_to_excluded["mean/foo/A"] is None
+    assert hier_logger.name_to_excluded["mean/foo/A"] is hier_logger.to_tuple(None)
     assert hier_logger.name_to_value["mean/foo/B"] == 15
     assert hier_logger.name_to_count["mean/foo/B"] == 2
-    assert hier_logger.name_to_excluded["mean/foo/B"] is None
+    assert hier_logger.name_to_excluded["mean/foo/B"] is hier_logger.to_tuple(None)
     hier_logger.dump()
     assert len(hier_logger.name_to_value) == 0
     assert len(hier_logger.name_to_count) == 0
