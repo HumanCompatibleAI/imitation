@@ -150,6 +150,7 @@ def test_policy_om_random_mdp(discount: float):
         pi=pi,
         discount=discount,
     )
+    assert isinstance(horizon, int)
     assert len(Dt) == horizon + 1
     assert np.all(np.isfinite(D))
     assert np.any(D > 0)
@@ -158,7 +159,7 @@ def test_policy_om_random_mdp(discount: float):
     if discount == 1.0:
         expected_sum = horizon + 1.0
     else:
-        expected_sum = (1 - discount ** (mdp.horizon + 1)) / (1 - discount)
+        expected_sum = (1 - discount ** (horizon + 1)) / (1 - discount)
     assert np.allclose(np.sum(D), expected_sum)
 
 
