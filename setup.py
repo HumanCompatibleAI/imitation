@@ -198,7 +198,7 @@ setup(
         "stable-baselines3~=2.0.0",
         "sacred>=0.8.4",
         "tensorboard>=1.14",
-        "huggingface_sb3~=2.3.0",
+        "huggingface_sb3~=3.0.0",
         "datasets>=2.8.0",
     ],
     tests_require=TESTS_REQUIRE,
