@@ -9,6 +9,7 @@ import numpy as np
 from sacred.observers import FileStorageObserver
 
 from imitation.algorithms.dagger import SimpleDAggerTrainer
+from imitation.algorithms.sqil import SQIL
 from imitation.data import rollout, types
 from imitation.scripts.config.train_imitation import train_imitation_ex
 from imitation.scripts.ingredients import bc as bc_ingredient
@@ -138,6 +139,32 @@ def dagger(
     if expert_stats is not None:
         stats["expert_stats"] = expert_stats
     return stats
+
+
+@train_imitation_ex.command
+def sqil(
+    sqil: Mapping[str, Any],
+    _run,
+    _rnd: np.random.Generator,
+)   -> Mapping[str, Mapping[str, float]]:
+    custom_logger, log_dir = logging_ingredient.setup_logging()
+    expert_trajs = demonstrations.get_expert_trajectories()
+
+    with environment.make_venv() as venv:
+        sqil_trainer = SQIL(venv=venv, demonstrations=expert_trajs, policy=sqil["policy_model"], custom_logger=custom_logger, rl_algo_class=sqil["rl_algo_class"], rl_kwargs=sqil["rl_kwargs"])
+ 
+        sqil_trainer.train(total_timesteps=int(sqil["total_timesteps"]), **sqil["train_kwargs"])
+        sqil_trainer.save_policy(policy_path=osp.join(log_dir, "final.th"))
+
+        imit_stats = policy_evaluation.eval_policy(sqil_trainer.policy, venv)
+    
+    stats = {"imit_stats": imit_stats}
+    expert_stats = _try_computing_expert_stats(expert_trajs)
+    if expert_stats is not None:
+        stats["expert_stats"] = expert_stats
+    
+    return stats
+
 
 
 def main_console():

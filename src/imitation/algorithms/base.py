@@ -13,6 +13,7 @@ from typing import (
     cast,
 )
 
+import torch as th
 import torch.utils.data as th_data
 from stable_baselines3.common import policies
 
@@ -180,6 +181,14 @@ class DemonstrationAlgorithm(BaseImitationAlgorithm, Generic[TransitionKind]):
     @abc.abstractmethod
     def policy(self) -> policies.BasePolicy:
         """Returns a policy imitating the demonstration data."""
+
+    def save_policy(self, policy_path: types.AnyPath) -> None:
+        """Save policy to a path. Can be reloaded by `.reconstruct_policy()`.
+
+        Args:
+            policy_path: path to save policy to.
+        """
+        th.save(self.policy, util.parse_path(policy_path))
 
 
 class _WrappedDataLoader:
