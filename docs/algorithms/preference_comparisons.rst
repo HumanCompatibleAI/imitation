@@ -91,7 +91,7 @@ For a more detailed example, refer to :doc:`../tutorials/5_train_preference_comp
         query_schedule="hyperbolic",
     )
     pref_comparisons.train(total_timesteps=50_000, total_comparisons=200)
-    
+
     n_eval_episodes = 10
     reward_mean, reward_std = evaluate_policy(agent.policy, venv, n_eval_episodes)
     reward_stderr = reward_std/np.sqrt(n_eval_episodes)
