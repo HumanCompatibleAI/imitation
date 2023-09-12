@@ -352,6 +352,7 @@ jobs:
           name: run tests
           command: |
             source ~/venv/bin/activate
+            pip install gym==0.21.0
             TESTFILES=$(circleci tests glob tests/**/test*.py | circleci tests split --split-by=timings)
             pytest -n auto --junitxml=/tmp/test-reports/junit.xml -vv $TESTFILES
 
