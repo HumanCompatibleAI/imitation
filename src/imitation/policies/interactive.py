@@ -4,7 +4,7 @@ import abc
 import collections
 from typing import Optional, Union
 
-import gym
+import gymnasium as gym
 import matplotlib.pyplot as plt
 import numpy as np
 from stable_baselines3.common import vec_env
