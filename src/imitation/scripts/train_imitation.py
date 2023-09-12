@@ -161,7 +161,8 @@ def sqil(
         )
 
         sqil_trainer.train(
-            total_timesteps=int(sqil["total_timesteps"]), **sqil["train_kwargs"],
+            total_timesteps=int(sqil["total_timesteps"]),
+            **sqil["train_kwargs"],
         )
         sqil_trainer.save_policy(policy_path=osp.join(log_dir, "final.th"))
 
