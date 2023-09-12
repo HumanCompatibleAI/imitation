@@ -209,6 +209,7 @@ setup(
         "tensorboard>=1.14",
         "huggingface_sb3~=2.3",
         "datasets>=2.8.0",
+        "shine",
     ],
     tests_require=TESTS_REQUIRE,
     extras_require={
