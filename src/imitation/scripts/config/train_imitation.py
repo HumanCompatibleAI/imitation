@@ -34,7 +34,7 @@ def config():
         rl_algo_class=dqn.DQN,
         rl_kwargs=dict(),
         total_timesteps=3e5,
-        policy_model="MlpPolicy",  # TODO: this is a placeholder, change it to something that makes sense
+        policy_model="MlpPolicy",
         train_kwargs=dict(
             log_interval=4,  # Number of updates between Tensorboard/stdout logs
             progress_bar=True,
