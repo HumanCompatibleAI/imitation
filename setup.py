@@ -15,7 +15,9 @@ IS_NOT_WINDOWS = os.name != "nt"
 
 PARALLEL_REQUIRE = ["ray[debug,tune]~=2.0.0"]
 ATARI_REQUIRE = [
-    "seals[atari]~=0.2.0",
+    # TODO: revert when https://github.com/HumanCompatibleAI/seals/pull/77 is
+    #   released
+    "seals[atari] @ git+https://github.com/HumanCompatibleAI/seals.git@typing-fixes-py39",
 ]
 PYTYPE = ["pytype==2022.7.26"] if IS_NOT_WINDOWS else []
 
@@ -194,7 +196,9 @@ setup(
         "tqdm",
         "rich",
         "scikit-learn>=0.21.2",
-        "seals~=0.2.0",
+        # TODO: revert when https://github.com/HumanCompatibleAI/seals/pull/77 is
+        #   released
+        "seals @ git+https://github.com/HumanCompatibleAI/seals.git@typing-fixes-py39",
         "stable-baselines3~=2.0",
         "sacred>=0.8.4",
         "tensorboard>=1.14",
