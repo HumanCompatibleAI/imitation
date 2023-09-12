@@ -373,7 +373,7 @@ def generate_imitation_config(tmpdir, request, command_name):
         "expert_from_huggingface",
         "random_expert",
         "zero_expert",
-    ]
+    ],
 )
 def bc_config(tmpdir, request):
     return generate_imitation_config(tmpdir, request, "bc")
@@ -385,7 +385,7 @@ def bc_config(tmpdir, request):
         "expert_from_huggingface",
         "random_expert",
         "zero_expert",
-    ]
+    ],
 )
 def sqil_config(tmpdir, request):
     return generate_imitation_config(tmpdir, request, "sqil")
