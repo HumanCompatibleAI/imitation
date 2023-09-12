@@ -132,6 +132,8 @@ DISCOUNT_RATES = FEW_DISCOUNT_RATES + [0.5, 0.9]
 def test_policy_om_random_mdp(discount: float):
     """Test that optimal policy occupancy measure ("om") for a random MDP is sane."""
     mdp = gym.make("seals/Random-v0")
+    mdp.seed(0)
+
     V, Q, pi = mce_partition_fh(mdp, discount=discount)
     assert np.all(np.isfinite(V))
     assert np.all(np.isfinite(Q))
