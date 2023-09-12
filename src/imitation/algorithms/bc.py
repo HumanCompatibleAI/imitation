@@ -233,6 +233,24 @@ class BCLogger:
         return state
 
 
+def reconstruct_policy(
+    policy_path: str,
+    device: Union[th.device, str] = "auto",
+) -> policies.ActorCriticPolicy:
+    """Reconstruct a saved policy.
+
+    Args:
+        policy_path: path where `.save_policy()` has been run.
+        device: device on which to load the policy.
+
+    Returns:
+        policy: policy with reloaded weights.
+    """
+    policy = th.load(policy_path, map_location=utils.get_device(device))
+    assert isinstance(policy, policies.ActorCriticPolicy)
+    return policy
+
+
 class BC(algo_base.DemonstrationAlgorithm):
     """Behavioral cloning (BC).
 
