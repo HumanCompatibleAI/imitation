@@ -337,6 +337,7 @@ def test_train_bc_main_with_demonstrations_from_huggingface(tmpdir):
         ),
     )
 
+
 def generate_imitation_config(tmpdir, request, command_name):
     environment_named_config = "seals_cartpole"
 
@@ -365,11 +366,27 @@ def generate_imitation_config(tmpdir, request, command_name):
         ),
     )
 
-@pytest.fixture(params=["expert_from_path", "expert_from_huggingface", "random_expert", "zero_expert"])
+
+@pytest.fixture(
+    params=[
+        "expert_from_path",
+        "expert_from_huggingface",
+        "random_expert",
+        "zero_expert",
+    ]
+)
 def bc_config(tmpdir, request):
     return generate_imitation_config(tmpdir, request, "bc")
 
-@pytest.fixture(params=["expert_from_path", "expert_from_huggingface", "random_expert", "zero_expert"])
+
+@pytest.fixture(
+    params=[
+        "expert_from_path",
+        "expert_from_huggingface",
+        "random_expert",
+        "zero_expert",
+    ]
+)
 def sqil_config(tmpdir, request):
     return generate_imitation_config(tmpdir, request, "sqil")
 
@@ -407,11 +424,13 @@ def test_train_bc_warmstart(tmpdir):
     assert run_warmstart.status == "COMPLETED"
     assert isinstance(run_warmstart.result, dict)
 
+
 def test_train_sqil_main(sqil_config):
     # NOTE: Having four different expert types as in bc might be overkill for sqil
     run = train_imitation.train_imitation_ex.run(**sqil_config)
     assert run.status == "COMPLETED"
     assert isinstance(run.result, dict)
+
 
 def test_train_sqil_with_no_demonstrations_raises_value_error(tmpdir):
     # NOTE: This test might be overkill
@@ -425,6 +444,7 @@ def test_train_sqil_with_no_demonstrations_raises_value_error(tmpdir):
             ),
         )
 
+
 def test_train_sqil_main_with_demonstrations_from_huggingface(tmpdir):
     train_imitation.train_imitation_ex.run(
         command_name="sqil",
@@ -437,6 +457,7 @@ def test_train_sqil_main_with_demonstrations_from_huggingface(tmpdir):
             ),
         ),
     )
+
 
 @pytest.fixture(params=["cold_start", "warm_start"])
 def rl_train_ppo_config(request, tmpdir):
