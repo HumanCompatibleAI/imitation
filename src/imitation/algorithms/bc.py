@@ -483,11 +483,3 @@ class BC(algo_base.DemonstrationAlgorithm):
             # if there remains an incomplete batch
             batch_num += 1
             process_batch()
-
-    def save_policy(self, policy_path: types.AnyPath) -> None:
-        """Save policy to a path. Can be reloaded by `.reconstruct_policy()`.
-
-        Args:
-            policy_path: path to save policy to.
-        """
-        th.save(self.policy, util.parse_path(policy_path))

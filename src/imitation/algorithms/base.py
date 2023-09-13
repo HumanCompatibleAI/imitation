@@ -183,7 +183,7 @@ class DemonstrationAlgorithm(BaseImitationAlgorithm, Generic[TransitionKind]):
         """Returns a policy imitating the demonstration data."""
 
     def save_policy(self, policy_path: types.AnyPath) -> None:
-        """Save policy to a path. Can be reloaded by `.reconstruct_policy()`.
+        """Save policy to a path.
 
         Args:
             policy_path: path to save policy to.
