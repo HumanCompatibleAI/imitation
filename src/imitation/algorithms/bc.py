@@ -9,6 +9,7 @@ import itertools
 from typing import (
     Any,
     Callable,
+    Dict,
     Iterable,
     Iterator,
     Mapping,
@@ -114,9 +115,9 @@ class BehaviorCloningLossCalculator:
             A BCTrainingMetrics object with the loss and all the components it
             consists of.
         """
-        tensor_obs: Union[th.Tensor, dict[str, th.Tensor]]
+        tensor_obs: Union[th.Tensor, Dict[str, th.Tensor]]
         if isinstance(obs, types.DictObs):
-            tensor_obs = {k: util.safe_to_tensor(v) for k, v in obs.unwrap()}
+            tensor_obs = {k: util.safe_to_tensor(v) for k, v in obs.unwrap().items()}
         else:
             tensor_obs = util.safe_to_tensor(obs)
         acts = util.safe_to_tensor(acts)
@@ -475,15 +476,19 @@ class BC(algo_base.DemonstrationAlgorithm):
             minibatch_size,
             num_samples_so_far,
         ), batch in batches_with_stats:
-            obs = types.DictObs.map(
-                batch["obs"],
-                lambda o: util.safe_to_tensor(o, device=self.policy.device).detach(),
-            )
-            acts = util.safe_to_tensor(
-                batch["acts"],
-                device=self.policy.device,
-            ).detach()
-            training_metrics = self.loss_calculator(self.policy, obs, acts)
+            obs_tensor: Union[th.Tensor, Dict[str, th.Tensor]]
+            if isinstance(batch["obs"], types.DictObs):
+                obs_dict = batch["obs"].unwrap()
+                obs_tensor = {
+                    k: util.safe_to_tensor(v, device=self.policy.device)
+                    for k, v in obs_dict.items()
+                }
+            else:
+                obs_tensor = util.safe_to_tensor(
+                    batch["obs"], device=self.policy.device
+                )
+            acts = util.safe_to_tensor(batch["acts"], device=self.policy.device)
+            training_metrics = self.loss_calculator(self.policy, obs_tensor, acts)
 
             # Renormalise the loss to be averaged over the whole
             # batch size instead of the minibatch size.

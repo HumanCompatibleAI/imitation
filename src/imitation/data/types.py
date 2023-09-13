@@ -6,9 +6,9 @@ import os
 import warnings
 from typing import (
     Any,
-    Callable,
     Dict,
     Iterable,
+    Iterator,
     List,
     Mapping,
     Optional,
@@ -25,90 +25,91 @@ from torch.utils import data as th_data
 
 T = TypeVar("T")
 
+TensorVar = TypeVar("TensorVar", np.ndarray, th.Tensor)
+
+
 AnyPath = Union[str, bytes, os.PathLike]
 
 
 @dataclasses.dataclass(frozen=True)
 class DictObs:
-    # TODO: Docs!
     """
     Stores observations from an environment with a dictionary observation space.
-    This class serves two purposes:
-        1. enforcing invariants on the observations
-        2. providing an interface that more closely reflects that of observations
-        stored in a numpy array.
 
-    Observations are in the format dict[str, np.ndarray].
-    DictObs enforces that:
-        - all arrays have equal first dimension. This dimension usually represents
-        timesteps, but sometimes represents different environments in a vecenv.
+    Provides an interface that is similar to observations in a numpy array.
+    Length, slicing, indexing, and iterating operations will operate on the first
+    dimension of the constituent arrays, as they would for observations in a single
+    array.
 
-    For the inteface, DictObs provides:
-        - len(DictObs) returns the first dimension of the arrays(enforced to be equal)
-        - slicing/indexing along this first dimension (returning a dictobs)
-        - iterating (yeilds a series of dictobs, iterating over first dimension of each array)
-
-    There are some other convenience functions for mapping / stacking / concatenating
+    There are also utility functions for mapping / stacking / concatenating
     lists of dictobs.
     """
 
-    # TODO: should support th.tensor?
     d: dict[str, np.ndarray]
 
+    def __post_init__(self):
+        if not all((isinstance(v, np.ndarray) for v in self.d.values())):
+            raise ValueError("keys must by numpy arrays")
+
     def __len__(self):
+        """Returns the first dimension of constiuent arrays.
+
+        Only defined if there is at least one array, and all arrays have the same
+        length of first dimension. Otherwise raises ValueError.
+
+        Len of a DictObs usually represents number of timesteps, or number of
+        environments in a VecEnv.
+
+        Use `dict_len` to get the number of entries in the dictionary.
+
+        raises:
+            ValueError: if the arrays have different lengths or there are no arrays.
+        """
         lens = set(len(v) for v in self.d.values())
         if len(lens) == 1:
             return lens.pop()
+        elif len(lens) == 0:
+            raise ValueError("Length not defined as DictObs is empty")
         else:
-            raise ValueError(f"observations of conflicting lengths found: {lens}")
+            raise ValueError(
+                f"Length not defined; arrays have conflicting first dimensions: {lens}"
+            )
 
-    @classmethod
-    def map(cls, obj: Union["DictObs", np.ndarray, th.Tensor], fn: Callable):
-        if isinstance(obj, cls):
-            return cls({k: fn(v) for k, v in obj.d.items()})
-        else:
-            return fn(obj)
-
-    @classmethod
-    def stack(cls, dictobs_list: Iterable["DictObs"]) -> "DictObs":
-        unstacked: dict[str, list[np.ndarray]] = collections.defaultdict(list)
-        for do in dictobs_list:
-            for k, array in do.d.items():
-                unstacked[k].append(array)
-        stacked = {k: np.stack(arr_list) for k, arr_list in unstacked.items()}
-        return cls(stacked)
-
-    @classmethod
-    def concatenate(cls, dictobs_list: Iterable["DictObs"]) -> "DictObs":
-        unstacked: dict[str, list[np.ndarray]] = collections.defaultdict(list)
-        for do in dictobs_list:
-            for k, array in do.d.items():
-                unstacked[k].append(array)
-        catted = {
-            k: np.concatenate(arr_list, axis=0) for k, arr_list in unstacked.items()
-        }
-        return cls(catted)
+    @property
+    def dict_len(self):
+        return len(self.d)
 
     def __getitem__(self, key: Union[slice, int]) -> "DictObs":
-        # TODO assert just one slice? (multi dimensional slices are sketchy)
-        # TODO test
-        # TODO compare to adam's below
+        """
+        Indexes or slices into the first element of every array.
+        Note that it will still return singleton values as np.arrays, not scalars.
+        """
+        # asarray to handle case where we slice to a single array element.
+        return self.__class__({k: np.asarray(v[key]) for k, v in self.d.items()})
 
-        # TODO -- what if you slice for a single timestep? This would presumably invalidate
-        # the equal-first-dimension invariant. Do we want that invariant?
-        # maybe it should be optional at least?
-        return DictObs.map(self, lambda a: a[key])
-
-    def __iter__(self):
+    def __iter__(self) -> Iterator["DictObs"]:
+        """
+        Iterates over the first dimension of each array.
+        """
         return (self[i] for i in range(len(self)))
 
+    # TODO: eq?
+
+    @property
     def shape(self) -> dict[str, tuple[int, ...]]:
+        """
+        Returns a dictionary with shape-tuples in place of the arrays.
+        """
         return {k: v.shape for k, v in self.d.items()}
 
-    def dtype(self) -> dict[str, tuple[int, ...]]:
+    @property
+    def dtype(self) -> dict[str, np._DType]:
+        """
+        Returns a dictionary with shape-tuples in place of the arrays.
+        """
         return {k: v.dtype for k, v in self.d.items()}
 
-    def unwrap(self) -> dict:
+    def unwrap(self) -> dict[str, np.ndarray]:
         return self.d
 
     @classmethod
@@ -123,18 +124,44 @@ class DictObs:
             assert isinstance(obs, (np.ndarray, cls))
             return obs
 
+    @overload
     @classmethod
-    def maybe_unwrap(
-        cls, maybe_dictobs: Union["DictObs", np.ndarray]
-    ) -> Union[dict[str, np.ndarray], np.ndarray]:
+    def maybe_unwrap(cls, maybe_dictobs: "DictObs") -> dict[str, np.ndarray]:
+        ...
+
+    @overload
+    @classmethod
+    def maybe_unwrap(cls, maybe_dictobs: TensorVar) -> TensorVar:
+        ...
+
+    @classmethod
+    def maybe_unwrap(cls, maybe_dictobs):
         if isinstance(maybe_dictobs, cls):
             return maybe_dictobs.unwrap()
         else:
             assert isinstance(maybe_dictobs, (np.ndarray, th.Tensor))
             return maybe_dictobs
 
-    # TODO: eq
-    # TODO: post_init len check?
+    @staticmethod
+    def _unravel(dictobs_list: Iterable["DictObs"]) -> dict[str, list[np.ndarray]]:
+        """Converts a list of DictObs into a dictionary of lists of arrays."""
+        unraveled: dict[str, list[np.ndarray]] = collections.defaultdict(list)
+        for do in dictobs_list:
+            for k, array in do.d.items():
+                unraveled[k].append(array)
+        return unraveled
+
+    @classmethod
+    def stack(cls, dictobs_list: Iterable["DictObs"]) -> "DictObs":
+        return cls(
+            {k: np.stack(arr_list) for k, arr_list in cls._unravel(dictobs_list)}
+        )
+
+    @classmethod
+    def concatenate(cls, dictobs_list: Iterable["DictObs"]) -> "DictObs":
+        return cls(
+            {k: np.concatenate(arr_list) for k, arr_list in cls._unravel(dictobs_list)}
+        )
 
 
 def assert_not_dictobs(x: Union[np.ndarray, DictObs]) -> np.ndarray:
@@ -297,8 +324,8 @@ def transitions_collate_fn(
     result = th_data.dataloader.default_collate(batch_no_infos)
     assert isinstance(result, dict)
     result["infos"] = [sample["infos"] for sample in batch]
-    result["obs"] = stack([sample["obs"] for sample in batch])
-    result["next_obs"] = stack([sample["next_obs"] for sample in batch])
+    result["obs"] = stack_maybe_dictobs([sample["obs"] for sample in batch])
+    result["next_obs"] = stack_maybe_dictobs([sample["next_obs"] for sample in batch])
     # TODO: clean names, docs
     return result
 
@@ -473,7 +500,7 @@ class TransitionsWithRew(Transitions):
 ObsType = TypeVar("ObsType", np.ndarray, DictObs)
 
 
-def concatenate(arrs: List[ObsType]) -> ObsType:
+def concatenate_maybe_dictobs(arrs: List[ObsType]) -> ObsType:
     assert len(arrs) > 0
     if isinstance(arrs[0], DictObs):
         return DictObs.concatenate(arrs)
@@ -481,26 +508,9 @@ def concatenate(arrs: List[ObsType]) -> ObsType:
         return np.concatenate(arrs)
 
 
-def stack(arrs: List[ObsType]) -> ObsType:
+def stack_maybe_dictobs(arrs: List[ObsType]) -> ObsType:
     assert len(arrs) > 0
     if isinstance(arrs[0], DictObs):
         return DictObs.stack(arrs)
     else:
         return np.stack(arrs)
-
-
-# class ObsList(collections.UserList[O]):
-#     def isDict(self) -> bool:
-#         return (len(self) > 0) and isinstance(self[0], DictObs)
-
-#     def concatenate(self) -> O:
-#         if self.isDict():
-#             return DictObs.concatenate(self)
-#         else:
-#             return np.concatenate(self)
-
-#     def stack(self) -> O:
-#         if self.isDict():
-#             return DictObs.concatenate(self)
-#         else:
-#             return np.concatenate(self)

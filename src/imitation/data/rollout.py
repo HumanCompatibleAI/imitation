@@ -113,7 +113,7 @@ class TrajectoryAccumulator:
 
         # TODO: what about infos? Does this actually handle them well?
         traj = types.TrajectoryWithRew(
-            obs=types.stack(out_dict_unstacked["obs"]),
+            obs=types.stack_maybe_dictobs(out_dict_unstacked["obs"]),
             acts=np.stack(out_dict_unstacked["acts"], axis=0),
             infos=np.stack(out_dict_unstacked["infos"], axis=0),  # TODO: confused
             rews=np.stack(out_dict_unstacked["rews"], axis=0),
@@ -457,7 +457,8 @@ def generate_trajectories(
         acts, state = get_actions(obs, state, dones)
         obs, rews, dones, infos = venv.step(acts)
         assert isinstance(
-            obs, (np.ndarray, dict)
+            obs,
+            (np.ndarray, dict),
         ), "Tuple observations are not supported."
 
         # If an environment is inactive, i.e. the episode completed for that
@@ -616,7 +617,10 @@ def flatten_trajectories(
             infos = traj.infos
         parts["infos"].append(infos)
 
-    cat_parts = {key: types.concatenate(part_list) for key, part_list in parts.items()}
+    cat_parts = {
+        key: types.concatenate_maybe_dictobs(part_list)
+        for key, part_list in parts.items()
+    }
     lengths = set(map(len, cat_parts.values()))
     assert len(lengths) == 1, f"expected one length, got {lengths}"
     return types.Transitions(**cat_parts)
