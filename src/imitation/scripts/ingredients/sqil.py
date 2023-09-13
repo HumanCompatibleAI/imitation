@@ -1,6 +1,5 @@
 """This ingredient provides a sqil algorithm instance."""
 import sacred
-from stable_baselines3 import dqn as dqn_algorithm
 
 from imitation.scripts.ingredients import policy, rl
 
@@ -19,17 +18,3 @@ def config():
     )
 
     locals()  # quieten flake8 unused variable warning
-
-
-@sqil_ingredient.named_config
-def dqn():
-    rl.rl_ingredient.add_config(
-        dict(
-            rl_cls=dqn_algorithm.DQN,
-        ),
-    )
-    policy.policy_ingredient.add_config(
-        dict(
-            policy_cls="MlpPolicy",
-        ),
-    )
