@@ -16,6 +16,7 @@ from imitation.scripts.ingredients import bc as bc_ingredient
 from imitation.scripts.ingredients import demonstrations, environment, expert
 from imitation.scripts.ingredients import logging as logging_ingredient
 from imitation.scripts.ingredients import policy_evaluation
+from imitation.util.util import save_policy
 
 logger = logging.getLogger(__name__)
 
@@ -69,7 +70,7 @@ def bc(
 
         bc_trainer.train(**bc_train_kwargs)
         # TODO(adam): add checkpointing to BC?
-        bc_trainer.save_policy(policy_path=osp.join(log_dir, "final.th"))
+        save_policy(bc_trainer.policy, policy_path=osp.join(log_dir, "final.th"))
 
         imit_stats = policy_evaluation.eval_policy(bc_trainer.policy, venv)
 
@@ -144,6 +145,8 @@ def dagger(
 @train_imitation_ex.command
 def sqil(
     sqil: Mapping[str, Any],
+    policy: Mapping[str, Any],
+    rl: Mapping[str, Any],
     _run,
     _rnd: np.random.Generator,
 ) -> Mapping[str, Mapping[str, float]]:
@@ -154,17 +157,17 @@ def sqil(
         sqil_trainer = SQIL(
             venv=venv,
             demonstrations=expert_trajs,
-            policy=sqil["policy_model"],
+            policy=policy["policy_cls"],
             custom_logger=custom_logger,
-            rl_algo_class=sqil["rl_algo_class"],
-            rl_kwargs=sqil["rl_kwargs"],
+            rl_algo_class=rl["rl_cls"],
+            rl_kwargs=rl["rl_kwargs"],
         )
 
         sqil_trainer.train(
             total_timesteps=int(sqil["total_timesteps"]),
             **sqil["train_kwargs"],
         )
-        sqil_trainer.save_policy(policy_path=osp.join(log_dir, "final.th"))
+        save_policy(sqil_trainer.policy, policy_path=osp.join(log_dir, "final.th"))
 
         imit_stats = policy_evaluation.eval_policy(sqil_trainer.policy, venv)
 

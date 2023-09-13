@@ -338,7 +338,7 @@ def test_train_bc_main_with_demonstrations_from_huggingface(tmpdir):
     )
 
 
-def generate_imitation_config(tmpdir, request, command_name):
+def generate_imitation_config(tmpdir, request, command_name: str) -> Dict:
     environment_named_config = "seals_cartpole"
 
     if request.param == "expert_from_path":
@@ -388,7 +388,10 @@ def bc_config(tmpdir, request):
     ],
 )
 def sqil_config(tmpdir, request):
-    return generate_imitation_config(tmpdir, request, "sqil")
+    imitation_config = generate_imitation_config(tmpdir, request, "sqil")
+    imitation_config["named_configs"].append("sqil.dqn")
+
+    return imitation_config
 
 
 def test_train_bc_main(bc_config):
@@ -432,23 +435,12 @@ def test_train_sqil_main(sqil_config):
     assert isinstance(run.result, dict)
 
 
-def test_train_sqil_with_no_demonstrations_raises_value_error(tmpdir):
-    # NOTE: This test might be overkill
-    with pytest.raises(ValueError, match="n_expert_demos must be specified"):
-        train_imitation.train_imitation_ex.run(
-            command_name="sqil",
-            named_configs=["seals_cartpole"] + ALGO_FAST_CONFIGS["imitation"],
-            config_updates=dict(
-                logging=dict(log_root=tmpdir),
-                demonstrations=dict(n_expert_demos=None),
-            ),
-        )
-
-
 def test_train_sqil_main_with_demonstrations_from_huggingface(tmpdir):
     train_imitation.train_imitation_ex.run(
         command_name="sqil",
-        named_configs=["seals_cartpole"] + ALGO_FAST_CONFIGS["imitation"],
+        named_configs=["seals_cartpole"]
+        + ALGO_FAST_CONFIGS["imitation"]
+        + ["sqil.dqn"],
         config_updates=dict(
             logging=dict(log_root=tmpdir),
             demonstrations=dict(

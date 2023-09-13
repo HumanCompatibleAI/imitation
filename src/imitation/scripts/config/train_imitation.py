@@ -1,13 +1,12 @@
 """Configuration settings for train_dagger, training DAgger from synthetic demos."""
 
 import sacred
-from stable_baselines3 import dqn
 
 from imitation.scripts.ingredients import bc
 from imitation.scripts.ingredients import demonstrations as demos_common
 from imitation.scripts.ingredients import environment, expert
 from imitation.scripts.ingredients import logging as logging_ingredient
-from imitation.scripts.ingredients import policy_evaluation
+from imitation.scripts.ingredients import policy_evaluation, sqil
 
 train_imitation_ex = sacred.Experiment(
     "train_imitation",
@@ -18,6 +17,7 @@ train_imitation_ex = sacred.Experiment(
         environment.environment_ingredient,
         policy_evaluation.policy_evaluation_ingredient,
         bc.bc_ingredient,
+        sqil.sqil_ingredient,
     ],
 )
 
@@ -28,17 +28,6 @@ def config():
         use_offline_rollouts=False,  # warm-start policy with BC from offline demos
         total_timesteps=1e5,
         beta_schedule=None,
-    )
-
-    sqil = dict(
-        rl_algo_class=dqn.DQN,
-        rl_kwargs=dict(),
-        total_timesteps=3e5,
-        policy_model="MlpPolicy",
-        train_kwargs=dict(
-            log_interval=4,  # Number of updates between TensorBoard/stdout logs
-            progress_bar=True,
-        ),
     )
 
 

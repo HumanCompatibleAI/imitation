@@ -26,10 +26,20 @@ import gym
 import numpy as np
 import torch as th
 from gym.wrappers import TimeLimit
-from stable_baselines3.common import monitor
+from stable_baselines3.common import monitor, policies
 from stable_baselines3.common.vec_env import DummyVecEnv, SubprocVecEnv, VecEnv
 
 from imitation.data.types import AnyPath
+
+
+def save_policy(policy: policies.BasePolicy, policy_path: AnyPath) -> None:
+    """Save policy to a path.
+
+    Args:
+        policy: policy to save.
+        policy_path: path to save policy to.
+    """
+    th.save(policy, parse_path(policy_path))
 
 
 def oric(x: np.ndarray) -> np.ndarray:
