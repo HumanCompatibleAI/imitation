@@ -42,6 +42,18 @@ def _try_computing_expert_stats(
         return None
 
 
+def _collect_stats(
+    imit_stats: Mapping[str, float],
+    expert_trajs: Sequence[types.Trajectory],
+):
+    stats = {"imit_stats": imit_stats}
+    expert_stats = _try_computing_expert_stats(expert_trajs)
+    if expert_stats is not None:
+        stats["expert_stats"] = expert_stats
+
+    return stats
+
+
 @train_imitation_ex.command
 def bc(
     bc: Dict[str, Any],
@@ -74,10 +86,8 @@ def bc(
 
         imit_stats = policy_evaluation.eval_policy(bc_trainer.policy, venv)
 
-    stats = {"imit_stats": imit_stats}
-    expert_stats = _try_computing_expert_stats(expert_trajs)
-    if expert_stats is not None:
-        stats["expert_stats"] = expert_stats
+    stats = _collect_stats(imit_stats, expert_trajs)
+
     return stats
 
 
@@ -134,11 +144,9 @@ def dagger(
 
         imit_stats = policy_evaluation.eval_policy(bc_trainer.policy, venv)
 
-    stats = {"imit_stats": imit_stats}
     assert dagger_trainer._all_demos is not None
-    expert_stats = _try_computing_expert_stats(dagger_trainer._all_demos)
-    if expert_stats is not None:
-        stats["expert_stats"] = expert_stats
+    stats = _collect_stats(imit_stats, dagger_trainer._all_demos)
+
     return stats
 
 
@@ -171,10 +179,7 @@ def sqil(
 
         imit_stats = policy_evaluation.eval_policy(sqil_trainer.policy, venv)
 
-    stats = {"imit_stats": imit_stats}
-    expert_stats = _try_computing_expert_stats(expert_trajs)
-    if expert_stats is not None:
-        stats["expert_stats"] = expert_stats
+    stats = _collect_stats(imit_stats, expert_trajs)
 
     return stats
 
