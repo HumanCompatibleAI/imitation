@@ -36,7 +36,7 @@ def config():
         total_timesteps=3e5,
         policy_model="MlpPolicy",
         train_kwargs=dict(
-            log_interval=4,  # Number of updates between Tensorboard/stdout logs
+            log_interval=4,  # Number of updates between TensorBoard/stdout logs
             progress_bar=True,
         ),
     )
