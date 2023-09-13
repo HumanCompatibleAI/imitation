@@ -179,7 +179,9 @@ class TestData:
             assert trajectory != types.Trajectory(
                 obs=trajectory.obs[: new_length + 1],
                 acts=trajectory.acts[:new_length],
-                infos=trajectory.obs[:new_length],
+                infos=trajectory.infos[:new_length]
+                if trajectory.infos is not None
+                else None,
                 terminal=trajectory.terminal,
             )
 

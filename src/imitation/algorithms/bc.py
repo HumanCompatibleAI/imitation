@@ -100,7 +100,7 @@ class BehaviorCloningLossCalculator:
     def __call__(
         self,
         policy: policies.ActorCriticPolicy,
-        obs: Union[th.Tensor, np.ndarray],
+        obs: Union[th.Tensor, np.ndarray, types.DictObs],
         acts: Union[th.Tensor, np.ndarray],
     ) -> BCTrainingMetrics:
         """Calculate the supervised learning loss used to train the behavioral clone.
@@ -114,9 +114,18 @@ class BehaviorCloningLossCalculator:
             A BCTrainingMetrics object with the loss and all the components it
             consists of.
         """
-        obs = util.safe_to_tensor(obs)
+        tensor_obs: Union[th.Tensor, dict[str, th.Tensor]]
+        if isinstance(obs, types.DictObs):
+            tensor_obs = {k: util.safe_to_tensor(v) for k, v in obs.unwrap()}
+        else:
+            tensor_obs = util.safe_to_tensor(obs)
         acts = util.safe_to_tensor(acts)
-        _, log_prob, entropy = policy.evaluate_actions(obs, acts)
+        # TODO: add check obs is proper type?
+        # policy.evaluate_actions's type signature seems wrong to me.
+        # it declares it only takes a tensor but it calls
+        # extract_features which is happy with Dict[str, tensor].
+        # In reality the required type of obs depends on the feature extractor.
+        _, log_prob, entropy = policy.evaluate_actions(tensor_obs, acts)  # type: ignore
         prob_true_act = th.exp(log_prob).mean()
         log_prob = log_prob.mean()
         entropy = entropy.mean() if entropy is not None else None
@@ -325,6 +334,7 @@ class BC(algo_base.DemonstrationAlgorithm):
         self.rng = rng
 
         if policy is None:
+            # TODO: maybe default to comb. dict when dict obs space?
             policy = policy_base.FeedForward32Policy(
                 observation_space=observation_space,
                 action_space=action_space,
@@ -465,8 +475,14 @@ class BC(algo_base.DemonstrationAlgorithm):
             minibatch_size,
             num_samples_so_far,
         ), batch in batches_with_stats:
-            obs = th.as_tensor(batch["obs"], device=self.policy.device).detach()
-            acts = th.as_tensor(batch["acts"], device=self.policy.device).detach()
+            obs = types.DictObs.map(
+                batch["obs"],
+                lambda o: util.safe_to_tensor(o, device=self.policy.device).detach(),
+            )
+            acts = util.safe_to_tensor(
+                batch["acts"],
+                device=self.policy.device,
+            ).detach()
             training_metrics = self.loss_calculator(self.policy, obs, acts)
 
             # Renormalise the loss to be averaged over the whole

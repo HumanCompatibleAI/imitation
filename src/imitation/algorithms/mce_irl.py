@@ -347,6 +347,10 @@ class MCEIRL(base.DemonstrationAlgorithm[types.TransitionsMinimal]):
         num_demos = 0
         for traj in trajs:
             cum_discount = 1.0
+            if isinstance(traj.obs, types.DictObs):
+                raise ValueError(
+                    "Dictionary observations are not currently supported for mce_irl"
+                )
             for obs in traj.obs:
                 self.demo_state_om[obs] += cum_discount
                 cum_discount *= self.discount
@@ -411,12 +415,14 @@ class MCEIRL(base.DemonstrationAlgorithm[types.TransitionsMinimal]):
 
         if isinstance(demonstrations, types.Transitions):
             self._set_demo_from_obs(
-                demonstrations.obs,
+                types.assert_not_dictobs(demonstrations.obs),
                 demonstrations.dones,
-                demonstrations.next_obs,
+                types.assert_not_dictobs(demonstrations.next_obs),
             )
         elif isinstance(demonstrations, types.TransitionsMinimal):
-            self._set_demo_from_obs(demonstrations.obs, None, None)
+            self._set_demo_from_obs(
+                types.assert_not_dictobs(demonstrations.obs), None, None
+            )
         elif isinstance(demonstrations, Iterable):
             # Demonstrations are a Torch DataLoader or other Mapping iterable
             # Collect them together into one big NumPy array. This is inefficient,
@@ -427,7 +433,11 @@ class MCEIRL(base.DemonstrationAlgorithm[types.TransitionsMinimal]):
                 assert isinstance(batch, Mapping)
                 for k in ("obs", "dones", "next_obs"):
                     if k in batch:
-                        collated_list[k].append(batch[k])
+                        if isinstance(batch[k], types.DictObs):
+                            raise ValueError(
+                                "Dictionary observations are not currently supported for buffers"
+                            )
+                        collated_list[k].append()
             collated = {k: np.concatenate(v) for k, v in collated_list.items()}
 
             assert "obs" in collated

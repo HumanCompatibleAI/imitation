@@ -94,7 +94,9 @@ def _check_trajs_equal(
 ):
     assert len(trajs1) == len(trajs2)
     for traj1, traj2 in zip(trajs1, trajs2):
-        assert np.array_equal(traj1.obs, traj2.obs)
+        assert np.array_equal(
+            types.assert_not_dictobs(traj1.obs), types.assert_not_dictobs(traj2.obs)
+        )
         assert np.array_equal(traj1.acts, traj2.acts)
         assert np.array_equal(traj1.rews, traj2.rews)
         assert traj1.infos is not None

@@ -230,12 +230,17 @@ def endless_iter(iterable: Iterable[T]) -> Iterator[T]:
     return itertools.chain.from_iterable(itertools.repeat(iterable))
 
 
-def safe_to_tensor(array: Union[np.ndarray, th.Tensor], **kwargs) -> th.Tensor:
+def safe_to_tensor(
+    array: Union[np.ndarray, th.Tensor],
+    **kwargs,
+) -> th.Tensor:
     """Converts a NumPy array to a PyTorch tensor.
 
     The data is copied in the case where the array is non-writable. Unfortunately if
     you just use `th.as_tensor` for this, an ugly warning is logged and there's
     undefined behavior if you try to write to the tensor.
+
+    `array` can also be a dictionary, in which case all values will be converted.
 
     Args:
         array: The array to convert to a PyTorch tensor.

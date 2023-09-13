@@ -1,11 +1,11 @@
 """Wrapper to turn a policy into a more exploratory version."""
 
-from typing import Optional, Tuple
+from typing import Optional, Tuple, Union
 
 import numpy as np
 from stable_baselines3.common import vec_env
 
-from imitation.data import rollout
+from imitation.data import rollout, types
 from imitation.util import util
 
 
@@ -57,7 +57,7 @@ class ExplorationWrapper:
 
     def _random_policy(
         self,
-        obs: np.ndarray,
+        obs: Union[np.ndarray, types.DictObs],
         state: Optional[Tuple[np.ndarray, ...]],
         episode_start: Optional[np.ndarray],
     ) -> Tuple[np.ndarray, Optional[Tuple[np.ndarray, ...]]]:
@@ -74,7 +74,7 @@ class ExplorationWrapper:
 
     def __call__(
         self,
-        observation: np.ndarray,
+        observation: Union[np.ndarray, types.DictObs],
         input_state: Optional[Tuple[np.ndarray, ...]],
         episode_start: Optional[np.ndarray],
     ) -> Tuple[np.ndarray, Optional[Tuple[np.ndarray, ...]]]:

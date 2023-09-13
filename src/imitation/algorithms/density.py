@@ -168,9 +168,11 @@ class DensityAlgorithm(base.DemonstrationAlgorithm):
 
         if isinstance(demonstrations, types.TransitionsMinimal):
             next_obs_b = getattr(demonstrations, "next_obs", None)
+            if next_obs_b is not None:
+                next_obs_b = types.assert_not_dictobs(next_obs_b)
             transitions.update(
                 self._get_demo_from_batch(
-                    demonstrations.obs,
+                    types.assert_not_dictobs(demonstrations.obs),
                     demonstrations.acts,
                     next_obs_b,
                 ),
@@ -191,8 +193,9 @@ class DensityAlgorithm(base.DemonstrationAlgorithm):
                 demonstrations = cast(Iterable[types.Trajectory], demonstrations)
 
                 for traj in demonstrations:
+                    traj_obs = types.assert_not_dictobs(traj.obs)
                     for i, (obs, act, next_obs) in enumerate(
-                        zip(traj.obs[:-1], traj.acts, traj.obs[1:]),
+                        zip(traj_obs[:-1], traj.acts, traj_obs[1:]),
                     ):
                         flat_trans = self._preprocess_transition(obs, act, next_obs)
                         transitions.setdefault(i, []).append(flat_trans)

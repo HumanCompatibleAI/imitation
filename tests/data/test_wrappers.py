@@ -180,8 +180,11 @@ def test_pop(
     # Check `pop_transitions()`
     trans = _join_transitions(transitions_list)
 
-    _assert_equal_scrambled_vectors(trans.obs, expect_obs)
-    _assert_equal_scrambled_vectors(trans.next_obs, expect_next_obs)
+    _assert_equal_scrambled_vectors(types.assert_not_dictobs(trans.obs), expect_obs)
+    _assert_equal_scrambled_vectors(
+        types.assert_not_dictobs(trans.next_obs),
+        expect_next_obs,
+    )
     _assert_equal_scrambled_vectors(trans.acts, expect_acts)
     _assert_equal_scrambled_vectors(trans.rews, expect_rews)
 

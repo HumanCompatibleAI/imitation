@@ -31,7 +31,8 @@ def score_trajectories(
         dones = np.zeros(len(traj), dtype=bool)
         dones[-1] = True
         steps = np.arange(0, len(traj.acts))
-        rewards = density_reward(traj.obs[:-1], traj.acts, traj.obs[1:], dones, steps)
+        obs = types.assert_not_dictobs(traj.obs)
+        rewards = density_reward(obs[:-1], traj.acts, obs[1:], dones, steps)
         ret = np.sum(rewards)
         returns.append(ret)
     return returns
