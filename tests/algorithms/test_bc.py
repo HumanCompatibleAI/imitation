@@ -4,10 +4,13 @@ import dataclasses
 import os
 from typing import Any, Callable, Optional, Sequence
 
+import gym
 import hypothesis
 import hypothesis.strategies as st
 import numpy as np
 import pytest
+import stable_baselines3.common.envs as sb_envs
+import stable_baselines3.common.policies as sb_policies
 import torch as th
 from stable_baselines3.common import evaluation, vec_env
 
@@ -371,3 +374,59 @@ def test_that_bc_raises_error_when_data_loader_is_empty(
 
     # THEN
     assert batch_cnt == no_yield_after_iter
+
+
+class FloatReward(gym.RewardWrapper):
+    """Typecasts reward to a float."""
+
+    def reward(self, reward):
+        return float(reward)
+
+
+# TODO: make test nicer
+def test_dict_space():
+    # TODO: is sb_envs okay?
+    def make_env():
+        env = sb_envs.SimpleMultiObsEnv(channel_last=False)
+        return RolloutInfoWrapper(FloatReward(env))
+
+    env = vec_env.DummyVecEnv([make_env, make_env])
+    env.observation_space["img"], env.observation_space["vec"]
+    env.observation_space.shape
+
+    policy = sb_policies.MultiInputActorCriticPolicy(
+        env.observation_space,
+        env.action_space,
+        lambda: 0.001,
+    )
+    rng = np.random.default_rng()
+
+    def sample_expert_transitions():
+        print("Sampling expert transitions.")
+        rollouts = rollout.rollout(
+            policy=None,
+            venv=env,
+            sample_until=rollout.make_sample_until(min_timesteps=None, min_episodes=50),
+            rng=rng,
+            unwrap=False,  # TODO have rollout unwrap wrapper support dict
+        )
+        return rollout.flatten_trajectories(rollouts)
+
+    transitions = sample_expert_transitions()
+
+    bc_trainer = bc.BC(
+        observation_space=env.observation_space,
+        policy=policy,
+        action_space=env.action_space,
+        rng=rng,
+        demonstrations=transitions,
+    )
+
+    bc_trainer.train(n_epochs=1)
+
+    reward, _ = evaluation.evaluate_policy(
+        bc_trainer.policy,  # type: ignore[arg-type]
+        env,
+        n_eval_episodes=3,
+        render=False,  # comment out to speed up
+    )
