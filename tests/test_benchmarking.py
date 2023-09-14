@@ -3,7 +3,8 @@ import pathlib
 
 import pytest
 
-from imitation.scripts import train_adversarial, train_imitation
+from imitation.scripts import train_adversarial
+from imitation.scripts.config import train_imitation
 
 THIS_DIR = pathlib.Path(__file__).absolute().parent
 BENCHMARKING_DIR = THIS_DIR.parent / "benchmarking"
