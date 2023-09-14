@@ -345,20 +345,16 @@ class ReplayBuffer:
         Returns:
             A new ReplayBuffer.
         """
-        if isinstance(transitions.obs, types.DictObs):
-            raise ValueError(
-                "Dictionary observations are not currently supported for buffers"
-            )
-
-        obs_shape = transitions.obs.shape[1:]
+        obs = types.assert_not_dictobs(transitions.obs)
+        obs_shape = obs.shape[1:]
         act_shape = transitions.acts.shape[1:]
         if capacity is None:
-            capacity = transitions.obs.shape[0]
+            capacity = obs.shape[0]
         instance = cls(
             capacity=capacity,
             obs_shape=obs_shape,
             act_shape=act_shape,
-            obs_dtype=transitions.obs.dtype,
+            obs_dtype=obs.dtype,
             act_dtype=transitions.acts.dtype,
         )
         instance.store(transitions, truncate_ok=truncate_ok)

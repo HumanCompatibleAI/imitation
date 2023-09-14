@@ -7,7 +7,18 @@ Follows the description in chapters 9 and 10 of Brian Ziebart's `PhD thesis`_.
 """
 import collections
 import warnings
-from typing import Any, Iterable, List, Mapping, NoReturn, Optional, Tuple, Type, Union
+from typing import (
+    Any,
+    Dict,
+    Iterable,
+    List,
+    Mapping,
+    NoReturn,
+    Optional,
+    Tuple,
+    Type,
+    Union,
+)
 
 import gym
 import numpy as np
@@ -426,7 +437,15 @@ class MCEIRL(base.DemonstrationAlgorithm[types.TransitionsMinimal]):
             # Collect them together into one big NumPy array. This is inefficient,
             # we could compute the running statistics instead, but in practice do
             # not expect large dataset sizes together with MCE IRL.
-            collated_list = collections.defaultdict(list)
+            collated_list: Dict[
+                str,
+                List[
+                    Union[
+                        np.ndarray,
+                        th.Tensor,
+                    ]
+                ],
+            ] = collections.defaultdict(list)
             for batch in demonstrations:
                 assert isinstance(batch, Mapping)
                 for k in ("obs", "dones", "next_obs"):

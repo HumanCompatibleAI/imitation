@@ -23,7 +23,7 @@ SPACES = [
     gym.spaces.Box(-np.inf, np.inf, shape=(2,)),
 ]
 DICT_SPACE = gym.spaces.Dict(
-    {"a": gym.spaces.Discrete(3), "b": gym.spaces.Box(-1, 1, shape=(2,))}
+    {"a": gym.spaces.Discrete(3), "b": gym.spaces.Box(-1, 1, shape=(2,))},
 )
 
 OBS_SPACES = SPACES + [DICT_SPACE]
@@ -62,7 +62,8 @@ def trajectory_rew(trajectory: types.Trajectory) -> types.TrajectoryWithRew:
     """Like `trajectory` but with reward randomly sampled from a Gaussian."""
     rews = np.random.randn(len(trajectory))
     return types.TrajectoryWithRew(
-        **types.dataclass_quick_asdict(trajectory), rews=rews
+        **types.dataclass_quick_asdict(trajectory),
+        rews=rews,
     )
 
 
@@ -102,7 +103,8 @@ def transitions_rew(
     """Like `transitions` but with reward randomly sampled from a Gaussian."""
     rews = np.random.randn(length)
     return types.TransitionsWithRew(
-        **types.dataclass_quick_asdict(transitions), rews=rews
+        **types.dataclass_quick_asdict(transitions),
+        rews=rews,
     )
 
 
