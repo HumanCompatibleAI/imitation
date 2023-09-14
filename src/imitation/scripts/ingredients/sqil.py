@@ -1,4 +1,4 @@
-"""This ingredient provides a sqil algorithm instance."""
+"""This ingredient provides a SQIL algorithm instance."""
 import sacred
 
 from imitation.scripts.ingredients import policy, rl
