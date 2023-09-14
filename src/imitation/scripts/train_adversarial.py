@@ -24,12 +24,15 @@ logger = logging.getLogger("imitation.scripts.train_adversarial")
 
 
 class CheckpointCallback(BaseCallback):
+    """A callback for calling `save` at regular intervals."""
+
     def __init__(
         self,
         trainer: common.AdversarialTrainer,
         log_dir: pathlib.Path,
-        interval: int
+        interval: int,
     ):
+        """Creates new Checkpoint callback."""
         super().__init__(self)
         self.trainer = trainer
         self.log_dir = log_dir

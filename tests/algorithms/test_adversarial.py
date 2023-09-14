@@ -468,11 +468,10 @@ def test_regression_gail_with_sac(
 
 
 def test_gen_callback(trainer: common.AdversarialTrainer):
-    learner = stable_baselines3.PPO("MlpPolicy", env=trainer.venv)
-
     def make_fn_callback(calls, key):
         def cb(_a, _b):
             calls[key] += 1
+
         return cb
 
     class SB3Callback(BaseCallback):
@@ -490,10 +489,10 @@ def test_gen_callback(trainer: common.AdversarialTrainer):
 
     trainer.train(n_steps, callback=make_fn_callback(calls, "fn"))
     trainer.train(n_steps, callback=SB3Callback(calls, "sb3"))
-    trainer.train(n_steps, callback=[
-        SB3Callback(calls, "list.0"),
-        SB3Callback(calls, "list.1")
-    ])
+    trainer.train(
+        n_steps,
+        callback=[SB3Callback(calls, "list.0"), SB3Callback(calls, "list.1")],
+    )
 
     # Env steps for off-plicy algos (DQN) may exceed `total_timesteps`,
     # so we check if the callback was called *at least* that many times.
