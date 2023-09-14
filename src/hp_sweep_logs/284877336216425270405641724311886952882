@@ -1,0 +1,1 @@
+{"_id": null, "captured_out": "", "config": {"dagger": {"use_offline_rollouts": false, "total_timesteps": 50, "beta_schedule": null}, "seed": 427604630, "sqil": {"total_timesteps": 50, "train_kwargs": {"log_interval": 4, "progress_bar": true}}, "bc": {"batch_size": 32, "l2_weight": 3e-05, "optimizer_cls": 

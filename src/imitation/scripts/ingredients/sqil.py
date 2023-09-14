@@ -21,28 +21,24 @@ def config():
 
     locals()  # quieten flake8 unused variable warning
 
-
 @rl.rl_ingredient.config_hook
-def override_rl_cls(config, command_name, logger):
+def config_hook(config, command_name, logger):
     # want to remove arguments added by rl but keep the ones that are added by others
     del logger
 
     res = {}
     if command_name == "sqil" and config["rl"]["rl_cls"] is None:
         res["rl_cls"] = dqn_algorithm.DQN
-
+        res["rl_kwargs"] = {}
+    
     return res
 
-
 @policy.policy_ingredient.config_hook
-def override_policy_cls(config, command_name, logger):  # noqa
+def config_hook(config, command_name, logger):
     del logger
 
     res = {}
-    if (
-        command_name == "sqil"
-        and config["policy"]["policy_cls"] == base.FeedForward32Policy
-    ):
+    if command_name == "sqil" and config["policy"]["policy_cls"] == base.FeedForward32Policy:
         res["policy_cls"] = "MlpPolicy"
-
+    
     return res

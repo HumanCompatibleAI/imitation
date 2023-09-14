@@ -8,6 +8,9 @@ import warnings
 from typing import Any, Dict, Mapping, Optional, Type
 
 import sacred
+from imitation.policies import base
+from stable_baselines3 import dqn as dqn_algorithm
+
 import stable_baselines3 as sb3
 from stable_baselines3.common import (
     base_class,
@@ -37,15 +40,12 @@ def config():
     rl_kwargs = dict()
     locals()  # quieten flake8
 
-
 @rl_ingredient.config_hook
 def config_hook(config, command_name, logger):
     """Sets defaults equivalent to sb3.PPO default hyperparameters."""
     del logger
     res = {}
-    if (
-        config["rl"]["rl_cls"] is None or config["rl"]["rl_cls"] == sb3.PPO
-    ) and command_name != "sqil":
+    if (config["rl"]["rl_cls"] is None or config["rl"]["rl_cls"] == sb3.PPO) and command_name != "sqil":
         print("Running this againnn")
         res["rl_cls"] = sb3.PPO
         res["batch_size"] = 2048  # rl_kwargs["n_steps"] = batch_size // venv.num_envs

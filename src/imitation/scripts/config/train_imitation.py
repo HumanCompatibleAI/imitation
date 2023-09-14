@@ -95,7 +95,6 @@ def humanoid():
 def seals_humanoid():
     environment = dict(gym_id="seals/Humanoid-v0")
 
-
 @train_imitation_ex.named_config
 def fast():
     dagger = dict(total_timesteps=50)
