@@ -27,6 +27,8 @@ from torch.utils import data as th_data
 T = TypeVar("T")
 
 AnyPath = Union[str, bytes, os.PathLike]
+AnyTensor = Union[np.ndarray, th.Tensor]
+TensorVar = TypeVar("TensorVar", np.ndarray, th.Tensor)
 
 
 @dataclasses.dataclass(frozen=True)
@@ -146,27 +148,6 @@ class DictObs:
             assert isinstance(obs, (np.ndarray, cls))
             return obs
 
-    TensorVar = TypeVar("TensorVar", np.ndarray, th.Tensor)
-
-    @overload
-    @classmethod
-    def maybe_unwrap(cls, maybe_dictobs: "DictObs") -> Dict[str, np.ndarray]:
-        ...
-
-    @overload
-    @classmethod
-    def maybe_unwrap(cls, maybe_dictobs: TensorVar) -> TensorVar:
-        ...
-
-    @classmethod
-    def maybe_unwrap(cls, maybe_dictobs):
-        if isinstance(maybe_dictobs, cls):
-            return maybe_dictobs.unwrap()
-        else:
-            if not isinstance(maybe_dictobs, (np.ndarray, th.Tensor)):
-                warnings.warn(f"trying to unwrap object of type {type(maybe_dictobs)}")
-            return maybe_dictobs
-
     def map_arrays(self, fn: Callable[[np.ndarray], np.ndarray]) -> "DictObs":
         return self.__class__({k: fn(v) for k, v in self.d.items()})
 
@@ -200,14 +181,65 @@ class DictObs:
     # TODO: add keys, values, items?
 
 
-def assert_not_dictobs(x: Union[np.ndarray, DictObs]) -> np.ndarray:
+# DicObs utilities
+
+
+Observation = Union[np.ndarray, DictObs]
+ObsVar = TypeVar("ObsVar", np.ndarray, DictObs)
+
+
+def assert_not_dictobs(x: Observation) -> np.ndarray:
     if isinstance(x, DictObs):
         raise ValueError("Dictionary observations are not supported here.")
     return x
 
 
+def concatenate_maybe_dictobs(arrs: List[ObsVar]) -> ObsVar:
+    assert len(arrs) > 0
+    if isinstance(arrs[0], DictObs):
+        return DictObs.concatenate(arrs)
+    else:
+        return np.concatenate(arrs)
+
+
+def stack_maybe_dictobs(arrs: List[ObsVar]) -> ObsVar:
+    assert len(arrs) > 0
+    if isinstance(arrs[0], DictObs):
+        return DictObs.stack(arrs)
+    else:
+        return np.stack(arrs)
+
+
+@overload
+def maybe_unwrap_dictobs(maybe_dictobs: DictObs) -> Dict[str, np.ndarray]:
+    ...
+
+
+@overload
+def maybe_unwrap_dictobs(maybe_dictobs: TensorVar) -> TensorVar:
+    ...
+
+
+def maybe_unwrap_dictobs(maybe_dictobs):
+    """Unwraps if a DictObs, otherwise returns the object."""
+    if isinstance(maybe_dictobs, DictObs):
+        return maybe_dictobs.unwrap()
+    else:
+        if not isinstance(maybe_dictobs, (np.ndarray, th.Tensor)):
+            warnings.warn(f"trying to unwrap object of type {type(maybe_dictobs)}")
+        return maybe_dictobs
+
+
+def map_maybe_dict(fn, maybe_dict):
+    """Applies fn to all values a dictionary, or to the value itself if not a dict."""
+    if isinstance(maybe_dict, dict):
+        return {k: fn(v) for k, v in maybe_dict.items()}
+    else:
+        return fn(maybe_dict)
+
+
 # TODO: maybe should support DictObs?
-TransitionMapping = Mapping[str, Union[np.ndarray, th.Tensor]]
+TransitionMapping = Mapping[str, AnyTensor]
 
 
 def dataclass_quick_asdict(obj) -> Dict[str, Any]:
@@ -234,7 +266,7 @@ def dataclass_quick_asdict(obj) -> Dict[str, Any]:
 class Trajectory:
     """A trajectory, e.g. a one episode rollout from an expert policy."""
 
-    obs: Union[np.ndarray, DictObs]
+    obs: Observation
     """Observations, shape (trajectory_len + 1, ) + observation_shape."""
 
     acts: np.ndarray
@@ -344,7 +376,7 @@ TrajectoryWithRewPair = Pair[TrajectoryWithRew]
 
 def transitions_collate_fn(
     batch: Sequence[Mapping[str, np.ndarray]],
-) -> Mapping[str, Union[np.ndarray, th.Tensor]]:
+) -> Mapping[str, AnyTensor]:
     """Custom `torch.utils.data.DataLoader` collate_fn for `TransitionsMinimal`.
 
     Use this as the `collate_fn` argument to `DataLoader` if using an instance of
@@ -392,7 +424,7 @@ class TransitionsMinimal(th_data.Dataset, Sequence[Mapping[str, np.ndarray]]):
     field has been sliced.
     """
 
-    obs: Union[np.ndarray, DictObs]
+    obs: Observation
     """
     Previous observations. Shape: (batch_size, ) + observation_shape.
 
@@ -479,7 +511,7 @@ class TransitionsMinimal(th_data.Dataset, Sequence[Mapping[str, np.ndarray]]):
 class Transitions(TransitionsMinimal):
     """A batch of obs-act-obs-done transitions."""
 
-    next_obs: Union[np.ndarray, DictObs]
+    next_obs: Observation
     """New observation. Shape: (batch_size, ) + observation_shape.
 
     The i'th observation `next_obs[i]` in this array is the observation
@@ -500,19 +532,16 @@ class Transitions(TransitionsMinimal):
     def __post_init__(self):
         """Performs input validation: check shapes & dtypes match docstring."""
         super().__post_init__()
-        # TODO: could add support for checking dictobs shape/dtype of each array
-        # would be nice for debugging to have a dictobs.shapes -> dict{str: shape}
-        if isinstance(self.obs, np.ndarray):
-            if self.obs.shape != self.next_obs.shape:
-                raise ValueError(
-                    "obs and next_obs must have same shape: "
-                    f"{self.obs.shape} != {self.next_obs.shape}",
-                )
-            if self.obs.dtype != self.next_obs.dtype:
-                raise ValueError(
-                    "obs and next_obs must have the same dtype: "
-                    f"{self.obs.dtype} != {self.next_obs.dtype}",
-                )
+        if self.obs.shape != self.next_obs.shape:
+            raise ValueError(
+                "obs and next_obs must have same shape: "
+                f"{self.obs.shape} != {self.next_obs.shape}",
+            )
+        if self.obs.dtype != self.next_obs.dtype:
+            raise ValueError(
+                "obs and next_obs must have the same dtype: "
+                f"{self.obs.dtype} != {self.next_obs.dtype}",
+            )
         if self.dones.shape != (len(self.acts),):
             raise ValueError(
                 "dones must be 1D array, one entry for each timestep: "
@@ -538,22 +567,3 @@ class TransitionsWithRew(Transitions):
         """Performs input validation, including for rews."""
         super().__post_init__()
         _rews_validation(self.rews, self.acts)
-
-
-ObsType = TypeVar("ObsType", np.ndarray, DictObs)
-
-
-def concatenate_maybe_dictobs(arrs: List[ObsType]) -> ObsType:
-    assert len(arrs) > 0
-    if isinstance(arrs[0], DictObs):
-        return DictObs.concatenate(arrs)
-    else:
-        return np.concatenate(arrs)
-
-
-def stack_maybe_dictobs(arrs: List[ObsType]) -> ObsType:
-    assert len(arrs) > 0
-    if isinstance(arrs[0], DictObs):
-        return DictObs.stack(arrs)
-    else:
-        return np.stack(arrs)

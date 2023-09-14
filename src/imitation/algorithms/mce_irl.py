@@ -439,12 +439,7 @@ class MCEIRL(base.DemonstrationAlgorithm[types.TransitionsMinimal]):
             # not expect large dataset sizes together with MCE IRL.
             collated_list: Dict[
                 str,
-                List[
-                    Union[
-                        np.ndarray,
-                        th.Tensor,
-                    ]
-                ],
+                List[types.AnyTensor],
             ] = collections.defaultdict(list)
             for batch in demonstrations:
                 assert isinstance(batch, Mapping)

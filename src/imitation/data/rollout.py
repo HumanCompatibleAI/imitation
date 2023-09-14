@@ -321,7 +321,7 @@ def policy_to_callable(
             # pytype doesn't seem to understand that policy is a BaseAlgorithm
             # or BasePolicy here, rather than a Callable
             (acts, states) = policy.predict(  # pytype: disable=attribute-error
-                types.DictObs.maybe_unwrap(observations),
+                types.maybe_unwrap_dictobs(observations),
                 state=states,
                 episode_start=episode_starts,
                 deterministic=deterministic_policy,
@@ -580,7 +580,6 @@ def flatten_trajectories(
 
     assert all_of_type("obs", types.DictObs) or all_of_type("obs", np.ndarray)
     assert all_of_type("acts", np.ndarray)
-    assert all_of_type("dones", np.ndarray)
 
     # sad to use Any here, but mypy struggles otherwise.
     # we enforce type constraints in asserts above and below.

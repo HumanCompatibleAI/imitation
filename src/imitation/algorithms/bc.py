@@ -102,10 +102,10 @@ class BehaviorCloningLossCalculator:
         self,
         policy: policies.ActorCriticPolicy,
         obs: Union[
-            th.Tensor,
-            np.ndarray,
+            types.AnyTensor,
             types.DictObs,
-            Dict[str, Union[np.ndarray, th.Tensor]],
+            Dict[str, np.ndarray],
+            Dict[str, th.Tensor],
         ],
         acts: Union[th.Tensor, np.ndarray],
     ) -> BCTrainingMetrics:
@@ -492,17 +492,11 @@ class BC(algo_base.DemonstrationAlgorithm):
             num_samples_so_far,
         ), batch in batches_with_stats:
             obs_tensor: Union[th.Tensor, Dict[str, th.Tensor]]
-            if isinstance(batch["obs"], types.DictObs):
-                obs_dict = batch["obs"].unwrap()
-                obs_tensor = {
-                    k: util.safe_to_tensor(v, device=self.policy.device)
-                    for k, v in obs_dict.items()
-                }
-            else:
-                obs_tensor = util.safe_to_tensor(
-                    batch["obs"],
-                    device=self.policy.device,
-                )
+            # unwraps the observation if it's a dictobs and converts arrays to tensors
+            obs_tensor = types.map_maybe_dict(
+                lambda x: util.safe_to_tensor(x, device=self.policy.device),
+                types.maybe_unwrap_dictobs(batch["obs"]),
+            )
             acts = util.safe_to_tensor(batch["acts"], device=self.policy.device)
             training_metrics = self.loss_calculator(self.policy, obs_tensor, acts)
 
