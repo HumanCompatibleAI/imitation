@@ -209,14 +209,8 @@ class TestData:
                     perturbed["infos"] = [{"foo": 42}] * len(as_dict["infos"])
                 elif isinstance(as_dict[k], types.DictObs):
                     perturbed[k] = as_dict[k].map_arrays(lambda x: x + 1)
-                    # print(getattr(t, k), perturbed[k])
                 else:
                     perturbed[k] = as_dict[k] + 1
-                if t == type(t)(**perturbed):
-                    print("\n\n\n")
-                    print(t)
-                    print(perturbed)
-                    print(k)
                 assert t != type(t)(**perturbed)
 
     @pytest.mark.parametrize("type_safe", [False, True])
