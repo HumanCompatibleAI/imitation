@@ -347,11 +347,7 @@ class MCEIRL(base.DemonstrationAlgorithm[types.TransitionsMinimal]):
         num_demos = 0
         for traj in trajs:
             cum_discount = 1.0
-            if isinstance(traj.obs, types.DictObs):
-                raise ValueError(
-                    "Dictionary observations are not currently supported for mce_irl"
-                )
-            for obs in traj.obs:
+            for obs in types.assert_not_dictobs(traj.obs):
                 self.demo_state_om[obs] += cum_discount
                 cum_discount *= self.discount
             num_demos += 1
@@ -421,7 +417,9 @@ class MCEIRL(base.DemonstrationAlgorithm[types.TransitionsMinimal]):
             )
         elif isinstance(demonstrations, types.TransitionsMinimal):
             self._set_demo_from_obs(
-                types.assert_not_dictobs(demonstrations.obs), None, None
+                types.assert_not_dictobs(demonstrations.obs),
+                None,
+                None,
             )
         elif isinstance(demonstrations, Iterable):
             # Demonstrations are a Torch DataLoader or other Mapping iterable
@@ -433,11 +431,7 @@ class MCEIRL(base.DemonstrationAlgorithm[types.TransitionsMinimal]):
                 assert isinstance(batch, Mapping)
                 for k in ("obs", "dones", "next_obs"):
                     if k in batch:
-                        if isinstance(batch[k], types.DictObs):
-                            raise ValueError(
-                                "Dictionary observations are not currently supported for buffers"
-                            )
-                        collated_list[k].append()
+                        collated_list[k].append(batch[k])
             collated = {k: np.concatenate(v) for k, v in collated_list.items()}
 
             assert "obs" in collated
