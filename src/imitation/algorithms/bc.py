@@ -101,7 +101,12 @@ class BehaviorCloningLossCalculator:
     def __call__(
         self,
         policy: policies.ActorCriticPolicy,
-        obs: Union[th.Tensor, np.ndarray, types.DictObs],
+        obs: Union[
+            th.Tensor,
+            np.ndarray,
+            types.DictObs,
+            dict[str, Union[np.ndarray, th.Tensor]],
+        ],
         acts: Union[th.Tensor, np.ndarray],
     ) -> BCTrainingMetrics:
         """Calculate the supervised learning loss used to train the behavioral clone.
@@ -118,15 +123,20 @@ class BehaviorCloningLossCalculator:
         tensor_obs: Union[th.Tensor, Dict[str, th.Tensor]]
         if isinstance(obs, types.DictObs):
             tensor_obs = {k: util.safe_to_tensor(v) for k, v in obs.unwrap().items()}
+        elif isinstance(obs, dict):
+            tensor_obs = {k: util.safe_to_tensor(v) for k, v in obs.items()}
         else:
             tensor_obs = util.safe_to_tensor(obs)
         acts = util.safe_to_tensor(acts)
-        # TODO: add check obs is proper type?
+
         # policy.evaluate_actions's type signature seems wrong to me.
         # it declares it only takes a tensor but it calls
         # extract_features which is happy with Dict[str, tensor].
         # In reality the required type of obs depends on the feature extractor.
-        _, log_prob, entropy = policy.evaluate_actions(tensor_obs, acts)  # type: ignore
+        (_, log_prob, entropy) = policy.evaluate_actions(
+            tensor_obs,  # type: ignore[arg-type]
+            acts,
+        )
         prob_true_act = th.exp(log_prob).mean()
         log_prob = log_prob.mean()
         entropy = entropy.mean() if entropy is not None else None
@@ -485,7 +495,8 @@ class BC(algo_base.DemonstrationAlgorithm):
                 }
             else:
                 obs_tensor = util.safe_to_tensor(
-                    batch["obs"], device=self.policy.device
+                    batch["obs"],
+                    device=self.policy.device,
                 )
             acts = util.safe_to_tensor(batch["acts"], device=self.policy.device)
             training_metrics = self.loss_calculator(self.policy, obs_tensor, acts)

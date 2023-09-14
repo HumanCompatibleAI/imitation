@@ -26,9 +26,6 @@ from torch.utils import data as th_data
 
 T = TypeVar("T")
 
-TensorVar = TypeVar("TensorVar", np.ndarray, th.Tensor)
-
-
 AnyPath = Union[str, bytes, os.PathLike]
 
 
@@ -45,7 +42,7 @@ class DictObs:
     lists of dictobs.
     """
 
-    d: dict[str, np.ndarray]
+    d: Dict[str, np.ndarray]
 
     @classmethod
     def from_obs_list(cls, obs_list: List[Dict[str, np.ndarray]]):
@@ -68,8 +65,11 @@ class DictObs:
 
         Use `dict_len` to get the number of entries in the dictionary.
 
-        raises:
+        Raises:
             ValueError: if the arrays have different lengths or there are no arrays.
+
+        Returns:
+            The length (first dimension) of the constiuent arrays
         """
         lens = set(len(v) for v in self.d.values())
         if len(lens) == 1:
@@ -88,9 +88,17 @@ class DictObs:
     def __getitem__(self, key: Union[slice, int]) -> "DictObs":
         """Indexes or slices into the first element of every array.
 
-        Note that it will still return singleton values as np.arrays, not scalars.
+        Note that it will still return singleton values as np.arrays, not scalars,
+        to be consistent with DictObs type signature.
+        Also note that we don't support multi-dimensional slicing.
+
+        Args:
+            key: a single slice
+
+        Returns:
+            A new DictObj object with each array indexed.
         """
-        # asarray to handle case where we slice to a single array element.
+        # asarray handles case where we slice to a single array element.
         return self.__class__({k: np.asarray(v[key]) for k, v in self.d.items()})
 
     def __iter__(self) -> Iterator["DictObs"]:
@@ -105,22 +113,22 @@ class DictObs:
         return all(np.array_equal(self.d[k], other.d[k]) for k in self.d.keys())
 
     @property
-    def shape(self) -> dict[str, tuple[int, ...]]:
+    def shape(self) -> Dict[str, tuple[int, ...]]:
         """Returns a dictionary with shape-tuples in place of the arrays."""
         return {k: v.shape for k, v in self.d.items()}
 
     @property
-    def dtype(self) -> dict[str, np.dtype]:
+    def dtype(self) -> Dict[str, np.dtype]:
         """Returns a dictionary with shape-tuples in place of the arrays."""
         return {k: v.dtype for k, v in self.d.items()}
 
-    def unwrap(self) -> dict[str, np.ndarray]:
+    def unwrap(self) -> Dict[str, np.ndarray]:
         return self.d
 
     @classmethod
     def maybe_wrap(
         cls,
-        obs: Union[dict[str, np.ndarray], np.ndarray, "DictObs"],
+        obs: Union[Dict[str, np.ndarray], np.ndarray, "DictObs"],
     ) -> Union["DictObs", np.ndarray]:
         """Converts an observation into a DictObs, if necessary."""
         if isinstance(obs, dict):
@@ -129,9 +137,11 @@ class DictObs:
             assert isinstance(obs, (np.ndarray, cls))
             return obs
 
+    TensorVar = TypeVar("TensorVar", np.ndarray, th.Tensor)
+
     @overload
     @classmethod
-    def maybe_unwrap(cls, maybe_dictobs: "DictObs") -> dict[str, np.ndarray]:
+    def maybe_unwrap(cls, maybe_dictobs: "DictObs") -> Dict[str, np.ndarray]:
         ...
 
     @overload
@@ -151,9 +161,9 @@ class DictObs:
         return self.__class__({k: fn(v) for k, v in self.d.items()})
 
     @staticmethod
-    def _unravel(dictobs_list: Iterable["DictObs"]) -> dict[str, list[np.ndarray]]:
+    def _unravel(dictobs_list: Iterable["DictObs"]) -> Dict[str, List[np.ndarray]]:
         """Converts a list of DictObs into a dictionary of lists of arrays."""
-        unraveled: dict[str, list[np.ndarray]] = collections.defaultdict(list)
+        unraveled: Dict[str, List[np.ndarray]] = collections.defaultdict(list)
         for do in dictobs_list:
             for k, array in do.d.items():
                 unraveled[k].append(array)
@@ -196,6 +206,9 @@ def dataclass_quick_asdict(obj) -> Dict[str, Any]:
     This is a quick alternative to `dataclasses.asdict`, which expensively and
     undocumentedly deep-copies every numpy array value.
     See https://stackoverflow.com/a/52229565/1091722.
+
+    This is also used to preserve DictObj objects, as `dataclasses.asdict`
+    unwraps them recursively.
 
     Args:
         obj: A dataclass instance.

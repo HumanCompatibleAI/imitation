@@ -240,8 +240,6 @@ def safe_to_tensor(
     you just use `th.as_tensor` for this, an ugly warning is logged and there's
     undefined behavior if you try to write to the tensor.
 
-    `array` can also be a dictionary, in which case all values will be converted.
-
     Args:
         array: The array to convert to a PyTorch tensor.
         kwargs: Additional keyword arguments to pass to `th.as_tensor`.

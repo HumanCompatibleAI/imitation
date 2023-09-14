@@ -456,7 +456,7 @@ def generate_trajectories(
         obs, rews, dones, infos = venv.step(acts)
         assert isinstance(
             obs,
-            (np.ndarray, types.DictObs),
+            (np.ndarray, dict),
         ), "Tuple observations are not supported."
         wrapped_obs = types.DictObs.maybe_wrap(obs)
 

@@ -24,7 +24,6 @@ class NonTrainablePolicy(policies.BasePolicy, abc.ABC):
             action_space=action_space,
         )
 
-    # TODO: support
     def _predict(
         self,
         obs: Union[th.Tensor, Dict[str, th.Tensor]],
@@ -39,7 +38,6 @@ class NonTrainablePolicy(policies.BasePolicy, abc.ABC):
             np_obs = obs.detach().cpu().numpy()
         for np_ob in np_obs:
             np_ob_unwrapped = types.DictObs.maybe_unwrap(np_ob)
-            # print(np_ob_unwrapped, self.observation_space)
             assert self.observation_space.contains(np_ob_unwrapped)
             np_actions.append(self._choose_action(np_ob_unwrapped))
         np_actions = np.stack(np_actions, axis=0)

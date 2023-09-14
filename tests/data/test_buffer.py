@@ -17,7 +17,6 @@ def _fill_chunk(start, chunk_len, sample_shape, dtype=float):
 def _get_fill_from_chunk(chunk):
     chunk_len, *sample_shape = chunk.shape
     sample_size = max(1, np.prod(sample_shape))
-    types.assert_not_dictobs(chunk)
     return chunk.flatten()[::sample_size]
 
 
@@ -137,8 +136,8 @@ def test_replay_buffer(capacity, chunk_len, obs_shape, act_shape, dtype):
 
         # dictobs not supported for buffers, or by current code in
         # this test file (eg `_get_fill_from_chunk`)
-        types.assert_not_dictobs(sample.obs)
-        types.assert_not_dictobs(sample.next_obs)
+        sample.obs = types.assert_not_dictobs(sample.obs)
+        sample.next_obs = types.assert_not_dictobs(sample.next_obs)
 
         assert sample.obs.shape == sample.next_obs.shape == (100,) + obs_shape
         assert sample.acts.shape == (100,) + act_shape
