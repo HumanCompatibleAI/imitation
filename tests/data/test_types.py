@@ -459,3 +459,58 @@ def test_parse_path():
     # Parse optional path. Works the same way but passes None down the line.
     assert util.parse_optional_path(None) is None
     assert util.parse_optional_path("/foo/bar") == util.parse_path("/foo/bar")
+
+
+def test_dict_obs():
+    A = np.random.rand(3, 4)
+    B = np.random.rand(3, 7, 1)
+    C = np.random.rand(4)
+
+    ab = types.DictObs({"a": A, "b": B})
+    abc = types.DictObs({"a": A, "b": B, "c": C})
+
+    # len
+    assert len(ab) == 3
+    with pytest.raises(ValueError):
+        len(abc)
+    with pytest.raises(ValueError):
+        len(types.DictObs({}))
+
+    # slicing
+    np.testing.assert_equal(abc[0].d["a"], A[0])
+    np.testing.assert_equal(abc[0].d["c"], np.array(C[0]))
+    np.testing.assert_equal(abc[0:2].d["a"], np.array(A[0:2]))
+    np.testing.assert_equal(ab[:, 0].d["a"], np.array(A[:, 0]))
+    with pytest.raises(IndexError):
+        abc[:, 0]
+
+    # iter
+    for i, a_row in enumerate(A):
+        np.testing.assert_equal(a_row, ab[i].d["a"])
+    assert ab[0] == next(iter(ab))
+
+    # eq
+    assert abc == types.DictObs({"a": A, "b": B, "c": C})
+    assert abc != types.DictObs({"a": A, "c": B, "b": C})  # diff keys
+    assert abc != types.DictObs({"a": A, "b": B + 1, "c": C})  # diff values
+
+    # shape / dtype
+    assert abc.shape == {"a": A.shape, "b": B.shape, "c": C.shape}
+    assert abc.dtype == {"a": A.dtype, "b": B.dtype, "c": C.dtype}
+
+    # wrap
+    assert types.DictObs.maybe_wrap({"a": A, "b": B, "c": C}) == abc
+    assert abc.unwrap() == {"a": A, "b": B, "c": C}
+
+    # map, stack, concat
+    assert abc.map_arrays(lambda arr: arr + 1) == types.DictObs(
+        {"a": A + 1, "b": B + 1, "c": C + 1},
+    )
+    assert types.DictObs.stack(list(iter(ab))) == ab
+    np.testing.assert_equal(
+        types.DictObs.concatenate([abc, abc]).d["a"],
+        np.concatenate([A, A]),
+    )
+
+    with pytest.raises(ValueError):
+        types.assert_not_dictobs(abc)

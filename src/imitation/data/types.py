@@ -85,12 +85,14 @@ class DictObs:
     def dict_len(self):
         return len(self.d)
 
-    def __getitem__(self, key: Union[slice, int]) -> "DictObs":
-        """Indexes or slices into the first element of every array.
+    def __getitem__(
+        self,
+        key: Union[int, slice, Tuple[Union[int, slice], ...]],
+    ) -> "DictObs":
+        """Indexes or slices each array.
 
         Note that it will still return singleton values as np.arrays, not scalars,
         to be consistent with DictObs type signature.
-        Also note that we don't support multi-dimensional slicing.
 
         Args:
             key: a single slice
@@ -102,7 +104,14 @@ class DictObs:
         return self.__class__({k: np.asarray(v[key]) for k, v in self.d.items()})
 
     def __iter__(self) -> Iterator["DictObs"]:
-        """Iterates over the first dimension of each array."""
+        """Iterates over the first dimension of each array.
+
+        Raises:
+            ValueError if len() is not defined.
+
+        Returns:
+            Iterator of dictobjs by first dimension.
+        """
         return (self[i] for i in range(len(self)))
 
     def __eq__(self, other):
