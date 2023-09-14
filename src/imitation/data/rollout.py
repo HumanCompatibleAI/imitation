@@ -109,11 +109,10 @@ class TrajectoryAccumulator:
             for k, array in part_dict.items():
                 out_dict_unstacked[k].append(array)
 
-        # TODO: what about infos? Does this actually handle them well?
         traj = types.TrajectoryWithRew(
             obs=types.stack_maybe_dictobs(out_dict_unstacked["obs"]),
             acts=np.stack(out_dict_unstacked["acts"], axis=0),
-            infos=np.stack(out_dict_unstacked["infos"], axis=0),  # TODO: confused
+            infos=np.stack(out_dict_unstacked["infos"], axis=0),  # array of dict objs
             rews=np.stack(out_dict_unstacked["rews"], axis=0),
             terminal=terminal,
         )
@@ -430,9 +429,6 @@ def generate_trajectories(
 
     # need to wrap here to iterate over envs properly
     wrapped_obs = types.DictObs.maybe_wrap(obs)
-    # TODO: make this nicer, it's currently non-mypy compliant
-    # probably want helper
-
     for env_idx, ob in enumerate(wrapped_obs):
         # Seed with first obs only. Inside loop, we'll only add second obs from
         # each (s,a,r,s') tuple, under the same "obs" key again. That way we still
@@ -572,13 +568,22 @@ def flatten_trajectories(
     Returns:
         The trajectories flattened into a single batch of Transitions.
     """
+    all_of_type = lambda key, t: all(
+        isinstance(getattr(traj, key), t) for traj in trajectories
+    )
+    assert all_of_type("obs", types.DictObs) or all_of_type("obs", np.ndarray)
+    assert all_of_type("acts", np.ndarray)
+    assert all_of_type("dones", np.ndarray)
+
+    # sad to use Any here, but mypy struggles otherwise.
+    # we enforce type constraints in asserts above and below.
     keys = ["obs", "next_obs", "acts", "dones", "infos"]
-    # TODO: sad to use Any here
     parts: Mapping[str, List[Any]] = {key: [] for key in keys}
     for traj in trajectories:
         parts["acts"].append(traj.acts)
 
         obs = traj.obs
+
         parts["obs"].append(obs[:-1])
         parts["next_obs"].append(obs[1:])
 
@@ -599,13 +604,6 @@ def flatten_trajectories(
     lengths = set(map(len, cat_parts.values()))
     assert len(lengths) == 1, f"expected one length, got {lengths}"
     return types.Transitions(**cat_parts)
-    # TODO: clean
-    #     cat_parts["obs"],
-    #     types.assert_not_dictobs(cat_parts["acts"]),
-    #     types.assert_not_dictobs(cat_parts["infos"]),
-    #     cat_parts["next_obs"],
-    #     types.assert_not_dictobs(cat_parts["done"]),
-    # )
 
 
 def flatten_trajectories_with_rew(
