@@ -388,10 +388,7 @@ def bc_config(tmpdir, request):
     ],
 )
 def sqil_config(tmpdir, request):
-    imitation_config = generate_imitation_config(tmpdir, request, "sqil")
-    imitation_config["named_configs"].append("dqn")
-
-    return imitation_config
+    return generate_imitation_config(tmpdir, request, "sqil")
 
 
 def test_train_bc_main(bc_config):
@@ -438,7 +435,7 @@ def test_train_sqil_main(sqil_config):
 def test_train_sqil_main_with_demonstrations_from_huggingface(tmpdir):
     train_imitation.train_imitation_ex.run(
         command_name="sqil",
-        named_configs=["seals_cartpole"] + ALGO_FAST_CONFIGS["imitation"] + ["dqn"],
+        named_configs=["seals_cartpole"] + ALGO_FAST_CONFIGS["imitation"],
         config_updates=dict(
             logging=dict(log_root=tmpdir),
             demonstrations=dict(

@@ -8,15 +8,15 @@ from typing import Any, Dict, Mapping, Optional, Sequence, cast
 import numpy as np
 from sacred.observers import FileStorageObserver
 
-from imitation.algorithms.dagger import SimpleDAggerTrainer
-from imitation.algorithms.sqil import SQIL
+from imitation.algorithms import dagger as dagger_algorithm
+from imitation.algorithms import sqil as sqil_algorithm
 from imitation.data import rollout, types
-from imitation.scripts.config.train_imitation import train_imitation_ex
+from imitation.scripts.config import train_imitation
 from imitation.scripts.ingredients import bc as bc_ingredient
 from imitation.scripts.ingredients import demonstrations, environment, expert
 from imitation.scripts.ingredients import logging as logging_ingredient
 from imitation.scripts.ingredients import policy_evaluation
-from imitation.util.util import save_policy
+from imitation.util import util
 
 logger = logging.getLogger(__name__)
 
@@ -45,7 +45,7 @@ def _try_computing_expert_stats(
 def _collect_stats(
     imit_stats: Mapping[str, float],
     expert_trajs: Sequence[types.Trajectory],
-):
+) -> Mapping[str, Mapping[str, Any]]:
     stats = {"imit_stats": imit_stats}
     expert_stats = _try_computing_expert_stats(expert_trajs)
     if expert_stats is not None:
@@ -54,7 +54,7 @@ def _collect_stats(
     return stats
 
 
-@train_imitation_ex.command
+@train_imitation.train_imitation_ex.command
 def bc(
     bc: Dict[str, Any],
     _run,
@@ -82,7 +82,7 @@ def bc(
 
         bc_trainer.train(**bc_train_kwargs)
         # TODO(adam): add checkpointing to BC?
-        save_policy(bc_trainer.policy, policy_path=osp.join(log_dir, "final.th"))
+        util.save_policy(bc_trainer.policy, policy_path=osp.join(log_dir, "final.th"))
 
         imit_stats = policy_evaluation.eval_policy(bc_trainer.policy, venv)
 
@@ -91,7 +91,7 @@ def bc(
     return stats
 
 
-@train_imitation_ex.command
+@train_imitation.train_imitation_ex.command
 def dagger(
     bc: Dict[str, Any],
     dagger: Mapping[str, Any],
@@ -124,7 +124,7 @@ def dagger(
 
         expert_policy = expert.get_expert_policy(venv)
 
-        dagger_trainer = SimpleDAggerTrainer(
+        dagger_trainer = dagger_algorithm.SimpleDAggerTrainer(
             venv=venv,
             scratch_dir=osp.join(log_dir, "scratch"),
             expert_trajs=expert_trajs,
@@ -150,7 +150,7 @@ def dagger(
     return stats
 
 
-@train_imitation_ex.command
+@train_imitation.train_imitation_ex.command
 def sqil(
     sqil: Mapping[str, Any],
     policy: Mapping[str, Any],
@@ -162,7 +162,7 @@ def sqil(
     expert_trajs = demonstrations.get_expert_trajectories()
 
     with environment.make_venv() as venv:
-        sqil_trainer = SQIL(
+        sqil_trainer = sqil_algorithm.SQIL(
             venv=venv,
             demonstrations=expert_trajs,
             policy=policy["policy_cls"],
@@ -175,7 +175,7 @@ def sqil(
             total_timesteps=int(sqil["total_timesteps"]),
             **sqil["train_kwargs"],
         )
-        save_policy(sqil_trainer.policy, policy_path=osp.join(log_dir, "final.th"))
+        util.save_policy(sqil_trainer.policy, policy_path=osp.join(log_dir, "final.th"))
 
         imit_stats = policy_evaluation.eval_policy(sqil_trainer.policy, venv)
 
@@ -185,10 +185,10 @@ def sqil(
 
 
 def main_console():
-    observer_path = pathlib.Path.cwd() / "output" / "sacred" / "train_dagger"
+    observer_path = pathlib.Path.cwd() / "output" / "sacred" / "train_imitation"
     observer = FileStorageObserver(observer_path)
-    train_imitation_ex.observers.append(observer)
-    train_imitation_ex.run_commandline()
+    train_imitation.train_imitation_ex.observers.append(observer)
+    train_imitation.train_imitation_ex.run_commandline()
 
 
 if __name__ == "__main__":

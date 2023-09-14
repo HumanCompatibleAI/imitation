@@ -1,6 +1,8 @@
 """This ingredient provides a SQIL algorithm instance."""
 import sacred
+from stable_baselines3 import dqn as dqn_algorithm
 
+from imitation.policies import base
 from imitation.scripts.ingredients import policy, rl
 
 sqil_ingredient = sacred.Ingredient(
@@ -18,3 +20,29 @@ def config():
     )
 
     locals()  # quieten flake8 unused variable warning
+
+
+@rl.rl_ingredient.config_hook
+def override_rl_cls(config, command_name, logger):
+    # want to remove arguments added by rl but keep the ones that are added by others
+    del logger
+
+    res = {}
+    if command_name == "sqil" and config["rl"]["rl_cls"] is None:
+        res["rl_cls"] = dqn_algorithm.DQN
+
+    return res
+
+
+@policy.policy_ingredient.config_hook
+def override_policy_cls(config, command_name, logger):  # noqa
+    del logger
+
+    res = {}
+    if (
+        command_name == "sqil"
+        and config["policy"]["policy_cls"] == base.FeedForward32Policy
+    ):
+        res["policy_cls"] = "MlpPolicy"
+
+    return res

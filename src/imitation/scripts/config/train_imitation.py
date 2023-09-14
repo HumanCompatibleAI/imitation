@@ -1,7 +1,6 @@
 """Configuration settings for train_dagger, training DAgger from synthetic demos."""
 
 import sacred
-from stable_baselines3 import dqn as dqn_algorithm
 
 from imitation.scripts.ingredients import bc
 from imitation.scripts.ingredients import demonstrations as demos_common
@@ -95,12 +94,6 @@ def humanoid():
 @train_imitation_ex.named_config
 def seals_humanoid():
     environment = dict(gym_id="seals/Humanoid-v0")
-
-
-@train_imitation_ex.named_config
-def dqn():
-    rl = dict(rl_cls=dqn_algorithm.DQN)
-    policy = dict(policy_cls="MlpPolicy")
 
 
 @train_imitation_ex.named_config
