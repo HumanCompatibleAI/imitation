@@ -489,10 +489,14 @@ def generate_trajectories(
     for trajectory in trajectories:
         n_steps = len(trajectory.acts)
         # extra 1 for the end
-        if not isinstance(venv.observation_space, spaces.dict.Dict):
+        if isinstance(venv.observation_space, spaces.dict.Dict):
+            exp_obs = {
+                k: (n_steps + 1,) + v.shape for k, v in venv.observation_space.items()
+            }
+        else:
             exp_obs = (n_steps + 1,) + venv.observation_space.shape
-            real_obs = types.assert_not_dictobs(trajectory.obs).shape
-            assert real_obs == exp_obs, f"expected shape {exp_obs}, got {real_obs}"
+        real_obs = trajectory.obs.shape
+        assert real_obs == exp_obs, f"expected shape {exp_obs}, got {real_obs}"
         exp_act = (n_steps,) + venv.action_space.shape
         real_act = trajectory.acts.shape
         assert real_act == exp_act, f"expected shape {exp_act}, got {real_act}"
@@ -568,9 +572,12 @@ def flatten_trajectories(
     Returns:
         The trajectories flattened into a single batch of Transitions.
     """
-    all_of_type = lambda key, t: all(
-        isinstance(getattr(traj, key), t) for traj in trajectories
-    )
+
+    def all_of_type(key, desired_type):
+        return all(
+            isinstance(getattr(traj, key), desired_type) for traj in trajectories
+        )
+
     assert all_of_type("obs", types.DictObs) or all_of_type("obs", np.ndarray)
     assert all_of_type("acts", np.ndarray)
     assert all_of_type("dones", np.ndarray)
