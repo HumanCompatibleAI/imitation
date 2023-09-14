@@ -11,7 +11,7 @@ from sacred.observers import FileStorageObserver
 from imitation.algorithms import dagger as dagger_algorithm
 from imitation.algorithms import sqil as sqil_algorithm
 from imitation.data import rollout, types
-from imitation.scripts.config import train_imitation
+from imitation.scripts.config.train_imitation import train_imitation_ex
 from imitation.scripts.ingredients import bc as bc_ingredient
 from imitation.scripts.ingredients import demonstrations, environment, expert
 from imitation.scripts.ingredients import logging as logging_ingredient
@@ -54,7 +54,7 @@ def _collect_stats(
     return stats
 
 
-@train_imitation.train_imitation_ex.command
+@train_imitation_ex.command
 def bc(
     bc: Dict[str, Any],
     _run,
@@ -91,7 +91,7 @@ def bc(
     return stats
 
 
-@train_imitation.train_imitation_ex.command
+@train_imitation_ex.command
 def dagger(
     bc: Dict[str, Any],
     dagger: Mapping[str, Any],
@@ -150,7 +150,7 @@ def dagger(
     return stats
 
 
-@train_imitation.train_imitation_ex.command
+@train_imitation_ex.command
 def sqil(
     sqil: Mapping[str, Any],
     policy: Mapping[str, Any],
@@ -187,8 +187,8 @@ def sqil(
 def main_console():
     observer_path = pathlib.Path.cwd() / "output" / "sacred" / "train_imitation"
     observer = FileStorageObserver(observer_path)
-    train_imitation.train_imitation_ex.observers.append(observer)
-    train_imitation.train_imitation_ex.run_commandline()
+    train_imitation_ex.observers.append(observer)
+    train_imitation_ex.run_commandline()
 
 
 if __name__ == "__main__":

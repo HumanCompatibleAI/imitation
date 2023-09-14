@@ -43,9 +43,6 @@ def config_hook(config, command_name, logger):
     """Sets defaults equivalent to sb3.PPO default hyperparameters."""
     del logger
     res = {}
-    # NOTE(lukas): We check that command_name != 'sqil' because otherwise it would
-    # override the config_hook in sqil.py. I don't know why the override occurs, since
-    # the config_hook in sqil.py should run after this one, but it does.
     if (
         config["rl"]["rl_cls"] is None or config["rl"]["rl_cls"] == sb3.PPO
     ) and command_name != "sqil":
