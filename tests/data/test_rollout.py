@@ -371,3 +371,39 @@ def test_rollout_normal_error_for_other_shape_mismatch(rng):
                 rollout.make_sample_until(min_timesteps=None, min_episodes=2),
                 rng=rng,
             )
+
+
+class DictObsWrapper(gym.ObservationWrapper):
+    """Simple wrapper that turns the observation into a dictionary."""
+
+    def __init__(self, env: gym.Env) -> None:
+        super().__init__(env)
+        self.observation_space = gym.spaces.Dict(
+            {"a": env.observation_space, "b": env.observation_space},
+        )
+
+    def observation(self, observation):
+        return {"a": observation, "b": observation / 2}
+
+
+def test_dictionary_observations(rng):
+    """Test we can generate a rollout for a dict-type observation environment.
+
+    Args:
+        rng: Random state to use (with fixed seed).
+    """
+    env = gym.make("CartPole-v1")
+    env = monitor.Monitor(env, None)
+    env = DictObsWrapper(env)
+    venv = vec_env.DummyVecEnv([lambda: env])
+
+    policy = serialize.load_policy("zero", venv)
+    trajs = rollout.generate_trajectories(
+        policy,
+        venv,
+        rollout.make_min_episodes(10),
+        rng=rng,
+    )
+    for traj in trajs:
+        assert isinstance(traj.obs, types.DictObs)
+        np.testing.assert_allclose(traj.obs.d["a"] / 2, traj.obs.d["b"])

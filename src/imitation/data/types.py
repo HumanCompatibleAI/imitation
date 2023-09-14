@@ -34,8 +34,7 @@ AnyPath = Union[str, bytes, os.PathLike]
 
 @dataclasses.dataclass(frozen=True)
 class DictObs:
-    """
-    Stores observations from an environment with a dictionary observation space.
+    """Stores observations from an environment with a dictionary observation space.
 
     Provides an interface that is similar to observations in a numpy array.
     Length, slicing, indexing, and iterating operations will operate on the first
@@ -49,9 +48,9 @@ class DictObs:
     d: dict[str, np.ndarray]
 
     @classmethod
-    def from_obs_list(cls, obs_list: Iterable[Dict[str, np.ndarray]]):
+    def from_obs_list(cls, obs_list: List[Dict[str, np.ndarray]]):
         return cls(
-            {k: np.stack([obs[k] for obs in obs_list]) for k in obs_list[0].keys()}
+            {k: np.stack([obs[k] for obs in obs_list]) for k in obs_list[0].keys()},
         )
 
     def __post_init__(self):
@@ -79,7 +78,7 @@ class DictObs:
             raise ValueError("Length not defined as DictObs is empty")
         else:
             raise ValueError(
-                f"Length not defined; arrays have conflicting first dimensions: {lens}"
+                f"Length not defined; arrays have conflicting first dimensions: {lens}",
             )
 
     @property
@@ -87,17 +86,15 @@ class DictObs:
         return len(self.d)
 
     def __getitem__(self, key: Union[slice, int]) -> "DictObs":
-        """
-        Indexes or slices into the first element of every array.
+        """Indexes or slices into the first element of every array.
+
         Note that it will still return singleton values as np.arrays, not scalars.
         """
         # asarray to handle case where we slice to a single array element.
         return self.__class__({k: np.asarray(v[key]) for k, v in self.d.items()})
 
     def __iter__(self) -> Iterator["DictObs"]:
-        """
-        Iterates over the first dimension of each array.
-        """
+        """Iterates over the first dimension of each array."""
         return (self[i] for i in range(len(self)))
 
     def __eq__(self, other):
@@ -109,16 +106,12 @@ class DictObs:
 
     @property
     def shape(self) -> dict[str, tuple[int, ...]]:
-        """
-        Returns a dictionary with shape-tuples in place of the arrays.
-        """
+        """Returns a dictionary with shape-tuples in place of the arrays."""
         return {k: v.shape for k, v in self.d.items()}
 
     @property
     def dtype(self) -> dict[str, np.dtype]:
-        """
-        Returns a dictionary with shape-tuples in place of the arrays.
-        """
+        """Returns a dictionary with shape-tuples in place of the arrays."""
         return {k: v.dtype for k, v in self.d.items()}
 
     def unwrap(self) -> dict[str, np.ndarray]:
@@ -126,10 +119,10 @@ class DictObs:
 
     @classmethod
     def maybe_wrap(
-        cls, obs: Union[dict[str, np.ndarray], np.ndarray, "DictObs"]
+        cls,
+        obs: Union[dict[str, np.ndarray], np.ndarray, "DictObs"],
     ) -> Union["DictObs", np.ndarray]:
-        """If `obs` is a dict, wraps in a dict obs.
-        If `obs` is an array or already an obsdict, returns it unchanged"""
+        """Converts an observation into a DictObs, if necessary."""
         if isinstance(obs, dict):
             return cls(obs)
         else:
@@ -169,13 +162,19 @@ class DictObs:
     @classmethod
     def stack(cls, dictobs_list: Iterable["DictObs"]) -> "DictObs":
         return cls(
-            {k: np.stack(arr_list) for k, arr_list in cls._unravel(dictobs_list)}
+            {
+                k: np.stack(arr_list)
+                for k, arr_list in cls._unravel(dictobs_list).items()
+            },
         )
 
     @classmethod
     def concatenate(cls, dictobs_list: Iterable["DictObs"]) -> "DictObs":
         return cls(
-            {k: np.concatenate(arr_list) for k, arr_list in cls._unravel(dictobs_list)}
+            {
+                k: np.concatenate(arr_list)
+                for k, arr_list in cls._unravel(dictobs_list).items()
+            },
         )
 
     # TODO: add keys, values, items?
@@ -241,9 +240,8 @@ class Trajectory:
         if not isinstance(other, Trajectory):
             return False
 
-        dict_self, dict_other = dataclass_quick_asdict(self), dataclass_quick_asdict(
-            other
-        )
+        dict_self = dataclass_quick_asdict(self)
+        dict_other = dataclass_quick_asdict(other)
         # Trajectory objects may still have different keys if different subclasses
         if dict_self.keys() != dict_other.keys():
             return False

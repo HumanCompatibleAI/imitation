@@ -15,8 +15,6 @@ from typing import (
     Sequence,
     Tuple,
     Union,
-    cast,
-    overload,
 )
 
 import numpy as np
@@ -454,12 +452,13 @@ def generate_trajectories(
     state = None
     dones = np.zeros(venv.num_envs, dtype=bool)
     while np.any(active):
-        acts, state = get_actions(obs, state, dones)
+        acts, state = get_actions(wrapped_obs, state, dones)
         obs, rews, dones, infos = venv.step(acts)
         assert isinstance(
             obs,
-            (np.ndarray, dict),
+            (np.ndarray, types.DictObs),
         ), "Tuple observations are not supported."
+        wrapped_obs = types.DictObs.maybe_wrap(obs)
 
         # If an environment is inactive, i.e. the episode completed for that
         # environment after `sample_until(trajectories)` was true, then we do
@@ -469,7 +468,7 @@ def generate_trajectories(
 
         new_trajs = trajectories_accum.add_steps_and_auto_finish(
             acts,
-            obs,
+            wrapped_obs,
             rews,
             dones,
             infos,
@@ -560,30 +559,6 @@ def rollout_stats(
     for v in out_stats.values():
         assert isinstance(v, (int, float))
     return out_stats
-
-
-# TODO: I don't love these helpers here.
-
-
-@overload
-def concat_arrays_or_dictobs(arrs: Iterable[types.DictObs]) -> types.DictObs:
-    ...
-
-
-@overload
-def concat_arrays_or_dictobs(arrs: Iterable[np.ndarray]) -> np.ndarray:
-    ...
-
-
-# TODO: awkward that it officially accepts union of
-def concat_arrays_or_dictobs(arrs):
-    if isinstance(arrs[0], types.DictObs):
-        assert all((isinstance(a, types.DictObs) for a in arrs))
-        return types.DictObs.concatenate(arrs)
-    else:
-        assert all((isinstance(a, np.ndarray) for a in arrs))
-        cast_arrs = cast(Iterable[np.ndarray], arrs)
-        return np.concatenate(cast_arrs)
 
 
 def flatten_trajectories(
