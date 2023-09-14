@@ -23,7 +23,7 @@ import gym
 import numpy as np
 import torch as th
 import tqdm
-from stable_baselines3.common import policies, utils, vec_env
+from stable_baselines3.common import policies, torch_layers, utils, vec_env
 
 from imitation.algorithms import base as algo_base
 from imitation.data import rollout, types
@@ -345,13 +345,18 @@ class BC(algo_base.DemonstrationAlgorithm):
         self.rng = rng
 
         if policy is None:
-            # TODO: maybe default to comb. dict when dict obs space?
+            extractor = (
+                torch_layers.CombinedExtractor
+                if isinstance(observation_space, gym.spaces.Dict)
+                else torch_layers.FlattenExtractor
+            )
             policy = policy_base.FeedForward32Policy(
                 observation_space=observation_space,
                 action_space=action_space,
                 # Set lr_schedule to max value to force error if policy.optimizer
                 # is used by mistake (should use self.optimizer instead).
                 lr_schedule=lambda _: th.finfo(th.float32).max,
+                features_extractor_class=extractor,
             )
         self._policy = policy.to(utils.get_device(device))
         # TODO(adam): make policy mandatory and delete observation/action space params?
