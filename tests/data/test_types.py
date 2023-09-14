@@ -22,7 +22,11 @@ SPACES = [
     gym.spaces.Box(-1, 1, shape=(2,)),
     gym.spaces.Box(-np.inf, np.inf, shape=(2,)),
 ]
-OBS_SPACES = SPACES
+DICT_SPACE = gym.spaces.Dict(
+    {"a": gym.spaces.Discrete(3), "b": gym.spaces.Box(-1, 1, shape=(2,))}
+)
+
+OBS_SPACES = SPACES + [DICT_SPACE]
 ACT_SPACES = SPACES
 LENGTHS = [0, 1, 2, 10]
 
@@ -42,7 +46,12 @@ def trajectory(
     """Fixture to generate trajectory of length `length` iid sampled from spaces."""
     if length == 0:
         pytest.skip()
-    obs = np.array([obs_space.sample() for _ in range(length + 1)])
+
+    raw_obs = [obs_space.sample() for _ in range(length + 1)]
+    if isinstance(obs_space, gym.spaces.Dict):
+        obs = types.DictObs.from_obs_list(raw_obs)
+    else:
+        obs = np.array(raw_obs)
     acts = np.array([act_space.sample() for _ in range(length)])
     infos = np.array([{f"key{i}": i} for i in range(length)])
     return types.Trajectory(obs=obs, acts=acts, infos=infos, terminal=True)
@@ -52,7 +61,9 @@ def trajectory(
 def trajectory_rew(trajectory: types.Trajectory) -> types.TrajectoryWithRew:
     """Like `trajectory` but with reward randomly sampled from a Gaussian."""
     rews = np.random.randn(len(trajectory))
-    return types.TrajectoryWithRew(**dataclasses.asdict(trajectory), rews=rews)
+    return types.TrajectoryWithRew(
+        **types.dataclass_quick_asdict(trajectory), rews=rews
+    )
 
 
 @pytest.fixture
@@ -77,7 +88,7 @@ def transitions(
     next_obs = np.array([obs_space.sample() for _ in range(length)])
     dones = np.zeros(length, dtype=bool)
     return types.Transitions(
-        **dataclasses.asdict(transitions_min),
+        **types.dataclass_quick_asdict(transitions_min),
         next_obs=next_obs,
         dones=dones,
     )
@@ -90,7 +101,9 @@ def transitions_rew(
 ) -> types.TransitionsWithRew:
     """Like `transitions` but with reward randomly sampled from a Gaussian."""
     rews = np.random.randn(length)
-    return types.TransitionsWithRew(**dataclasses.asdict(transitions), rews=rews)
+    return types.TransitionsWithRew(
+        **types.dataclass_quick_asdict(transitions), rews=rews
+    )
 
 
 def _check_transitions_get_item(trans, key):
@@ -187,14 +200,22 @@ class TestData:
 
         # Or with contents changed
         for t in [trajectory, trajectory_rew]:
-            as_dict = dataclasses.asdict(t)
+            as_dict = types.dataclass_quick_asdict(t)
             for k in as_dict.keys():
                 perturbed = dict(as_dict)
                 if k == "infos":
                     perturbed["infos"] = [{"foo": 42}] * len(as_dict["infos"])
+                elif isinstance(as_dict[k], types.DictObs):
+                    perturbed[k] = as_dict[k].map_arrays(lambda x: x + 1)
+                    # print(getattr(t, k), perturbed[k])
                 else:
                     perturbed[k] = as_dict[k] + 1
-                assert trajectory != type(t)(**perturbed)
+                if t == type(t)(**perturbed):
+                    print("\n\n\n")
+                    print(t)
+                    print(perturbed)
+                    print(k)
+                assert t != type(t)(**perturbed)
 
     @pytest.mark.parametrize("type_safe", [False, True])
     @pytest.mark.parametrize("use_pickle", [False, True])

@@ -6,6 +6,7 @@ import os
 import warnings
 from typing import (
     Any,
+    Callable,
     Dict,
     Iterable,
     Iterator,
@@ -46,6 +47,12 @@ class DictObs:
     """
 
     d: dict[str, np.ndarray]
+
+    @classmethod
+    def from_obs_list(cls, obs_list: Iterable[Dict[str, np.ndarray]]):
+        return cls(
+            {k: np.stack([obs[k] for obs in obs_list]) for k in obs_list[0].keys()}
+        )
 
     def __post_init__(self):
         if not all((isinstance(v, np.ndarray) for v in self.d.values())):
@@ -93,7 +100,12 @@ class DictObs:
         """
         return (self[i] for i in range(len(self)))
 
-    # TODO: eq?
+    def __eq__(self, other):
+        if not isinstance(other, self.__class__):
+            return False
+        if not self.d.keys() == other.d.keys():
+            return False
+        return all(np.array_equal(self.d[k], other.d[k]) for k in self.d.keys())
 
     @property
     def shape(self) -> dict[str, tuple[int, ...]]:
@@ -103,7 +115,7 @@ class DictObs:
         return {k: v.shape for k, v in self.d.items()}
 
     @property
-    def dtype(self) -> dict[str, np._DType]:
+    def dtype(self) -> dict[str, np.dtype]:
         """
         Returns a dictionary with shape-tuples in place of the arrays.
         """
@@ -142,6 +154,9 @@ class DictObs:
             assert isinstance(maybe_dictobs, (np.ndarray, th.Tensor))
             return maybe_dictobs
 
+    def map_arrays(self, fn: Callable[[np.ndarray], np.ndarray]) -> "DictObs":
+        return self.__class__({k: fn(v) for k, v in self.d.items()})
+
     @staticmethod
     def _unravel(dictobs_list: Iterable["DictObs"]) -> dict[str, list[np.ndarray]]:
         """Converts a list of DictObs into a dictionary of lists of arrays."""
@@ -162,6 +177,8 @@ class DictObs:
         return cls(
             {k: np.concatenate(arr_list) for k, arr_list in cls._unravel(dictobs_list)}
         )
+
+    # TODO: add keys, values, items?
 
 
 def assert_not_dictobs(x: Union[np.ndarray, DictObs]) -> np.ndarray:
@@ -224,7 +241,9 @@ class Trajectory:
         if not isinstance(other, Trajectory):
             return False
 
-        dict_self, dict_other = dataclasses.asdict(self), dataclasses.asdict(other)
+        dict_self, dict_other = dataclass_quick_asdict(self), dataclass_quick_asdict(
+            other
+        )
         # Trajectory objects may still have different keys if different subclasses
         if dict_self.keys() != dict_other.keys():
             return False
@@ -240,6 +259,9 @@ class Trajectory:
                 # Treat None equivalent to sequence of empty dicts
                 self_v = [{}] * len(self) if self_v is None else self_v
                 other_v = [{}] * len(other) if other_v is None else other_v
+            if isinstance(self_v, DictObs):
+                if not self_v == other_v:
+                    return False
             if not np.array_equal(self_v, other_v):
                 return False
 

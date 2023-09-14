@@ -124,6 +124,8 @@ def trajectories_to_dict(
         ],
         terminal=[traj.terminal for traj in trajectories],
     )
+    if any(isinstance(traj.obs, types.DictObs) for traj in trajectories):
+        raise ValueError("DictObs are not currently supported")
 
     # Encode infos as jsonpickled strings
     trajectory_dict["infos"] = [
