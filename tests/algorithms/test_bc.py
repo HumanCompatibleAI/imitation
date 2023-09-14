@@ -392,8 +392,6 @@ def test_dict_space():
         return RolloutInfoWrapper(FloatReward(env))
 
     env = vec_env.DummyVecEnv([make_env, make_env])
-    env.observation_space["img"], env.observation_space["vec"]
-    env.observation_space.shape
 
     policy = sb_policies.MultiInputActorCriticPolicy(
         env.observation_space,
