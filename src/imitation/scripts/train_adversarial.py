@@ -8,6 +8,7 @@ from typing import Any, Mapping, Optional, Type
 import sacred.commands
 import torch as th
 from sacred.observers import FileStorageObserver
+from stable_baselines3.common.callbacks import BaseCallback
 
 from imitation.algorithms.adversarial import airl as airl_algo
 from imitation.algorithms.adversarial import common
@@ -20,6 +21,28 @@ from imitation.scripts.ingredients import logging as logging_ingredient
 from imitation.scripts.ingredients import policy_evaluation, reward, rl
 
 logger = logging.getLogger("imitation.scripts.train_adversarial")
+
+
+class CheckpointCallback(BaseCallback):
+    def __init__(
+        self,
+        trainer: common.AdversarialTrainer,
+        log_dir: pathlib.Path,
+        interval: int
+    ):
+        super().__init__(self)
+        self.trainer = trainer
+        self.log_dir = log_dir
+        self.interval = interval
+        self.round_num = 0
+
+    def _on_step(self) -> bool:
+        return True
+
+    def _on_training_end(self) -> None:
+        self.round_num += 1
+        if self.interval > 0 and self.round_num % self.interval == 0:
+            save(self.trainer, self.log_dir / "checkpoints" / f"{self.round_num:05d}")
 
 
 def save(trainer: common.AdversarialTrainer, save_path: pathlib.Path):
@@ -153,10 +176,7 @@ def train_adversarial(
             **algorithm_kwargs,
         )
 
-        def callback(round_num: int, /) -> None:
-            if checkpoint_interval > 0 and round_num % checkpoint_interval == 0:
-                save(trainer, log_dir / "checkpoints" / f"{round_num:05d}")
-
+        callback = CheckpointCallback(trainer, log_dir, checkpoint_interval)
         trainer.train(total_timesteps, callback)
         imit_stats = policy_evaluation.eval_policy(trainer.policy, trainer.venv_train)
 

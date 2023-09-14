@@ -10,6 +10,7 @@ import seals  # noqa: F401
 import stable_baselines3
 import torch as th
 from stable_baselines3.common import policies
+from stable_baselines3.common.callbacks import BaseCallback
 from torch.utils import data as th_data
 
 from imitation.algorithms.adversarial import airl, common, gail
@@ -464,3 +465,39 @@ def test_regression_gail_with_sac(
         reward_net=reward_net,
     )
     gail_trainer.train(8)
+
+
+def test_gen_callback(trainer: common.AdversarialTrainer):
+    learner = stable_baselines3.PPO("MlpPolicy", env=trainer.venv)
+
+    def make_fn_callback(calls, key):
+        def cb(_a, _b):
+            calls[key] += 1
+        return cb
+
+    class SB3Callback(BaseCallback):
+        def __init__(self, calls, key):
+            super().__init__(self)
+            self.calls = calls
+            self.key = key
+
+        def _on_step(self):
+            self.calls[self.key] += 1
+            return True
+
+    n_steps = trainer.gen_train_timesteps * 2
+    calls = {"fn": 0, "sb3": 0, "list.0": 0, "list.1": 0}
+
+    trainer.train(n_steps, callback=make_fn_callback(calls, "fn"))
+    trainer.train(n_steps, callback=SB3Callback(calls, "sb3"))
+    trainer.train(n_steps, callback=[
+        SB3Callback(calls, "list.0"),
+        SB3Callback(calls, "list.1")
+    ])
+
+    # Env steps for off-plicy algos (DQN) may exceed `total_timesteps`,
+    # so we check if the callback was called *at least* that many times.
+    assert calls["fn"] >= n_steps
+    assert calls["sb3"] >= n_steps
+    assert calls["list.0"] >= n_steps
+    assert calls["list.1"] >= n_steps
