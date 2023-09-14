@@ -123,7 +123,7 @@ class TrajectoryAccumulator:
     def add_steps_and_auto_finish(
         self,
         acts: np.ndarray,
-        obs: Union[np.ndarray, dict[str, np.ndarray], types.DictObs],
+        obs: Union[np.ndarray, Dict[str, np.ndarray], types.DictObs],
         rews: np.ndarray,
         dones: np.ndarray,
         infos: List[dict],

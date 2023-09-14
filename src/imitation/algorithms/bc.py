@@ -105,7 +105,7 @@ class BehaviorCloningLossCalculator:
             th.Tensor,
             np.ndarray,
             types.DictObs,
-            dict[str, Union[np.ndarray, th.Tensor]],
+            Dict[str, Union[np.ndarray, th.Tensor]],
         ],
         acts: Union[th.Tensor, np.ndarray],
     ) -> BCTrainingMetrics:

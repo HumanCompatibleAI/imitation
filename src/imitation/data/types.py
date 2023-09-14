@@ -113,7 +113,7 @@ class DictObs:
         return all(np.array_equal(self.d[k], other.d[k]) for k in self.d.keys())
 
     @property
-    def shape(self) -> Dict[str, tuple[int, ...]]:
+    def shape(self) -> Dict[str, Tuple[int, ...]]:
         """Returns a dictionary with shape-tuples in place of the arrays."""
         return {k: v.shape for k, v in self.d.items()}
 

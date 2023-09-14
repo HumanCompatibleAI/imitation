@@ -397,7 +397,7 @@ def test_dict_space():
     policy = sb_policies.MultiInputActorCriticPolicy(
         env.observation_space,
         env.action_space,
-        lambda: 0.001,
+        lambda _: 0.001,
     )
     rng = np.random.default_rng()
 
