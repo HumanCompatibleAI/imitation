@@ -154,7 +154,8 @@ class DictObs:
         if isinstance(maybe_dictobs, cls):
             return maybe_dictobs.unwrap()
         else:
-            assert isinstance(maybe_dictobs, (np.ndarray, th.Tensor))
+            if not isinstance(maybe_dictobs, (np.ndarray, th.Tensor)):
+                warnings.warn(f"trying to unwrap object of type {type(maybe_dictobs)}")
             return maybe_dictobs
 
     def map_arrays(self, fn: Callable[[np.ndarray], np.ndarray]) -> "DictObs":

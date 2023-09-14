@@ -9,10 +9,11 @@ import hypothesis
 import hypothesis.strategies as st
 import numpy as np
 import pytest
-import stable_baselines3.common.envs as sb_envs
-import stable_baselines3.common.policies as sb_policies
 import torch as th
-from stable_baselines3.common import evaluation, vec_env
+from stable_baselines3.common import envs as sb_envs
+from stable_baselines3.common import evaluation
+from stable_baselines3.common import policies as sb_policies
+from stable_baselines3.common import vec_env
 
 from imitation.algorithms import bc
 from imitation.data import rollout, types

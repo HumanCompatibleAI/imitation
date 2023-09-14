@@ -136,31 +136,31 @@ def test_replay_buffer(capacity, chunk_len, obs_shape, act_shape, dtype):
 
         # dictobs not supported for buffers, or by current code in
         # this test file (eg `_get_fill_from_chunk`)
-        sample.obs = types.assert_not_dictobs(sample.obs)
-        sample.next_obs = types.assert_not_dictobs(sample.next_obs)
+        obs = types.assert_not_dictobs(sample.obs)
+        next_obs = types.assert_not_dictobs(sample.next_obs)
 
-        assert sample.obs.shape == sample.next_obs.shape == (100,) + obs_shape
+        assert obs.shape == next_obs.shape == (100,) + obs_shape
         assert sample.acts.shape == (100,) + act_shape
         assert sample.dones.shape == (100,)
         assert info_vals.shape == (100,)
 
         # Are samples right data type?
-        assert sample.obs.dtype == dtype
+        assert obs.dtype == dtype
         assert sample.acts.dtype == dtype
-        assert sample.next_obs.dtype == dtype
+        assert next_obs.dtype == dtype
         assert info_vals.dtype == dtype
         assert sample.dones.dtype == bool
         assert sample.infos.dtype == object
 
         # Are samples in range?
-        _check_bound(i + chunk_len, capacity, sample.obs)
-        _check_bound(i + chunk_len, capacity, sample.next_obs, 3 * capacity)
+        _check_bound(i + chunk_len, capacity, obs)
+        _check_bound(i + chunk_len, capacity, next_obs, 3 * capacity)
         _check_bound(i + chunk_len, capacity, sample.acts, 6 * capacity)
         _check_bound(i + chunk_len, capacity, info_vals, 9 * capacity)
 
         # Are samples in-order?
-        obs_fill = _get_fill_from_chunk(sample.obs)
-        next_obs_fill = _get_fill_from_chunk(sample.next_obs)
+        obs_fill = _get_fill_from_chunk(obs)
+        next_obs_fill = _get_fill_from_chunk(next_obs)
         act_fill = _get_fill_from_chunk(sample.acts)
         info_vals_fill = _get_fill_from_chunk(info_vals)
 
