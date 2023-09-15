@@ -57,7 +57,7 @@ class DictObs:
             raise ValueError("keys must by numpy arrays")
 
     def __len__(self):
-        """Returns the first dimension of constiuent arrays.
+        """Returns the first dimension of constituent arrays.
 
         Only defined if there is at least one array, and all arrays have the same
         length of first dimension. Otherwise raises ValueError.
@@ -130,7 +130,7 @@ class DictObs:
 
     @property
     def dtype(self) -> Dict[str, np.dtype]:
-        """Returns a dictionary with shape-tuples in place of the arrays."""
+        """Returns a dictionary with dtype-tuples in place of the arrays."""
         return {k: v.dtype for k, v in self.d.items()}
 
     def unwrap(self) -> Dict[str, np.ndarray]:
