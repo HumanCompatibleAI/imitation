@@ -33,7 +33,7 @@ def get_sqil_results(config, named_configs=[]):
 
     signature = str(random.getrandbits(128))
     # Run the separate script
-    log_path = os.path.join(LOGDIR, signature)  # Define your log directory here
+    log_path = os.path.join(LOGDIR, signature) 
     subprocess.run(
         [
             "python",
@@ -68,8 +68,7 @@ def objective(trial, environment):
     config_updates = {
         "environment.gym_id": environment,
         "demonstrations.n_expert_demos": 50,
-
-        "sqil.total_timesteps": 10, # 100_000, # CHANGE
+        "sqil.total_timesteps": 100_000,
         "sqil.train_kwargs": {
             "progress_bar": True,
             "log_interval": 100,
@@ -87,7 +86,7 @@ def objective(trial, environment):
         },
     }
 
-    named_configs = ["rl.sac", "policy.sac256"] + fast_configs  # DELETE FAST CONFIGS
+    named_configs = ["rl.sac", "policy.sac256"]
 
     return get_sqil_results(config_updates, named_configs)
 
@@ -112,6 +111,6 @@ def perform_trial(study_name, environment, n_trials, n_jobs):
 
 if __name__ == "__main__":
     n_trials, n_jobs = 40, 10
-    n_trials, n_jobs = 1, 1  # DELETE THIS
+
     for name, env in environments:
-        perform_trial(f"{name}_short", env, n_trials, n_jobs)
+        perform_trial(f"{name}_final", env, n_trials, n_jobs)
