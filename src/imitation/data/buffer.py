@@ -273,14 +273,36 @@ class ReplayBuffer:
         """
         params = (obs_shape, act_shape, obs_dtype, act_dtype)
         if venv is not None:
-            if not all(x is None for x in params):
-                raise ValueError(
-                    "Cannot specify both shape/dtype and also environment.",
-                )
-            obs_shape = tuple(venv.observation_space.shape)
-            act_shape = tuple(venv.action_space.shape)
-            obs_dtype = venv.observation_space.dtype
-            act_dtype = venv.action_space.dtype
+            if venv.observation_space.shape is not None:
+                if obs_shape is not None:
+                    raise ValueError(
+                        "Cannot specify both observation shape and also environment "
+                        "with an observation space that has a shape.",
+                    )
+                obs_shape = tuple(venv.observation_space.shape)
+            if venv.observation_space.dtype is not None:
+                if obs_dtype is not None:
+                    raise ValueError(
+                        "Cannot specify both observation dtype and also environment "
+                        "with an observation space that has a dtype.",
+                    )
+                obs_dtype = venv.observation_space.dtype
+
+            if venv.action_space.shape is not None:
+                if act_shape is not None:
+                    raise ValueError(
+                        "Cannot specify both action shape and also environment "
+                        "with an action space that has a shape.",
+                    )
+                act_shape = tuple(venv.action_space.shape)
+
+            if venv.action_space.dtype is not None:
+                if act_dtype is not None:
+                    raise ValueError(
+                        "Cannot specify both action dtype and also environment "
+                        "with an action space that has a dtype.",
+                    )
+                act_dtype = venv.action_space.dtype
         else:
             if any(x is None for x in params):
                 raise ValueError("Shape or dtype missing and no environment specified.")

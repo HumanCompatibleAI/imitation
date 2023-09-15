@@ -26,7 +26,7 @@ Detailed example notebook: :doc:`../tutorials/2_train_dagger`
     import tempfile
 
     import numpy as np
-    import seals  # noqa: F401  # needed to load "seals/" environments
+    import gymnasium as gym
     from stable_baselines3.common.evaluation import evaluate_policy
 
     from imitation.algorithms import bc
@@ -36,7 +36,7 @@ Detailed example notebook: :doc:`../tutorials/2_train_dagger`
 
     rng = np.random.default_rng(0)
     env = make_vec_env(
-        "seals/CartPole-v0",
+        "seals:seals/CartPole-v0",
         rng=rng,
     )
     expert = load_policy(

@@ -211,7 +211,7 @@ class InteractiveTrajectoryCollector(vec_env.VecEnvWrapper):
             elements may be None, if the env does not return anything when seeded.
         """
         self.rng = np.random.default_rng(seed=seed)
-        return self.venv.seed(seed)
+        return list(self.venv.seed(seed))
 
     def reset(self) -> np.ndarray:
         """Resets the environment.

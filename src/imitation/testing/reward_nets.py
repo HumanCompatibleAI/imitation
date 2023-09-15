@@ -1,14 +1,14 @@
 """Utility functions for testing reward nets."""
 
-import gym
+import gymnasium as gym
 import torch as th
 
 from imitation.rewards import reward_nets
 
 
 def make_ensemble(
-    obs_space: gym.Env,
-    action_space: gym.Env,
+    obs_space: gym.Space,
+    action_space: gym.Space,
     num_members: int = 2,
     **kwargs,
 ):

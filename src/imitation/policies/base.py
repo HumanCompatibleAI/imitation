@@ -3,7 +3,7 @@
 import abc
 from typing import Type
 
-import gym
+import gymnasium as gym
 import numpy as np
 import torch as th
 from stable_baselines3.common import policies, torch_layers
@@ -53,8 +53,20 @@ class RandomPolicy(NonTrainablePolicy):
 class ZeroPolicy(NonTrainablePolicy):
     """Returns constant zero action."""
 
+    def __init__(self, observation_space: gym.Space, action_space: gym.Space):
+        """Builds ZeroPolicy with specified observation and action space."""
+        super().__init__(observation_space, action_space)
+        self._zero_action = np.zeros_like(
+            action_space.sample(),
+            dtype=action_space.dtype,
+        )
+        if self._zero_action not in action_space:
+            raise ValueError(
+                f"Zero action {self._zero_action} not in action space {action_space}",
+            )
+
     def _choose_action(self, obs: np.ndarray) -> np.ndarray:
-        return np.zeros(self.action_space.shape, dtype=self.action_space.dtype)
+        return self._zero_action
 
 
 class FeedForward32Policy(policies.ActorCriticPolicy):

@@ -1,8 +1,8 @@
 """Test `imitation.algorithms.tabular_irl` and tabular environments."""
 
-from typing import Any, Mapping
+from typing import Any, Mapping, cast
 
-import gym
+import gymnasium as gym
 import numpy as np
 import pytest
 import torch as th
@@ -26,16 +26,17 @@ def rollouts(env, n=10, seed=None):
     rv = []
     for i in range(n):
         done = False
+        # if a seed is given, then we use the same seed each time (should
+        # give same trajectory each time)
+        obs = env.reset(seed=seed)
         if seed is not None:
-            # if a seed is given, then we use the same seed each time (should
-            # give same trajectory each time)
-            env.seed(seed)
             env.action_space.seed(seed)
-        obs = env.reset()
+
         traj = [obs]
         while not done:
             act = env.action_space.sample()
-            obs, rew, done, info = env.step(act)
+            obs, rew, terminated, truncated, info = env.step(act)
+            done = terminated or truncated
             traj.append((obs, rew))
         rv.append(traj)
     return rv
@@ -132,9 +133,10 @@ DISCOUNT_RATES = FEW_DISCOUNT_RATES + [0.5, 0.9]
 def test_policy_om_random_mdp(discount: float):
     """Test that optimal policy occupancy measure ("om") for a random MDP is sane."""
     mdp = gym.make("seals/Random-v0")
-    mdp.seed(0)
-
-    V, Q, pi = mce_partition_fh(mdp, discount=discount)
+    V, Q, pi = mce_partition_fh(
+        cast(base_envs.TabularModelPOMDP, mdp),
+        discount=discount,
+    )
     assert np.all(np.isfinite(V))
     assert np.all(np.isfinite(Q))
     assert np.all(np.isfinite(pi))
@@ -142,16 +144,22 @@ def test_policy_om_random_mdp(discount: float):
     assert np.all(pi >= 0)
     assert np.allclose(np.sum(pi, axis=-1), 1)
 
-    Dt, D = mce_occupancy_measures(mdp, pi=pi, discount=discount)
-    assert len(Dt) == mdp.horizon + 1
+    horizon = cast(base_envs.TabularModelPOMDP, mdp).horizon
+    Dt, D = mce_occupancy_measures(
+        cast(base_envs.TabularModelPOMDP, mdp),
+        pi=pi,
+        discount=discount,
+    )
+    assert isinstance(horizon, int)
+    assert len(Dt) == horizon + 1
     assert np.all(np.isfinite(D))
     assert np.any(D > 0)
     # expected number of state visits (over all states) should be equal to the
     # horizon
     if discount == 1.0:
-        expected_sum = mdp.horizon + 1
+        expected_sum = horizon + 1.0
     else:
-        expected_sum = (1 - discount ** (mdp.horizon + 1)) / (1 - discount)
+        expected_sum = (1 - discount ** (horizon + 1)) / (1 - discount)
     assert np.allclose(np.sum(D), expected_sum)
 
 
@@ -441,7 +449,8 @@ def test_mce_irl_reasonable_mdp(
 
         # test MCE IRL on the MDP
         mdp = ReasonablePOMDP()
-        mdp.seed(715298)
+        mdp.reset(seed=715298)
+        # mdp.seed(715298)    # NOTE: not sure this is the correct approach in this case
 
         # demo occupancy measure
         V, Q, pi = mce_partition_fh(mdp, discount=discount)

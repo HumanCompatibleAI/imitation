@@ -1,11 +1,13 @@
 """Tests interactive policies."""
 
 import collections
+from typing import cast
 from unittest import mock
 
-import gym
+import gymnasium as gym
 import numpy as np
 import pytest
+from gymnasium import spaces
 from stable_baselines3.common import vec_env
 
 from imitation.policies import interactive
@@ -26,7 +28,7 @@ class NoRenderingDiscreteInteractivePolicy(interactive.DiscreteInteractivePolicy
 
 
 def _get_simple_interactive_policy(env: vec_env.VecEnv):
-    num_actions = env.action_space.n
+    num_actions = cast(spaces.Discrete, env.action_space).n
     action_keys_names = collections.OrderedDict(
         [(f"k{i}", f"n{i}") for i in range(num_actions)],
     )
