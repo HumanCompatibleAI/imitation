@@ -209,12 +209,14 @@ ObsVar = TypeVar("ObsVar", np.ndarray, DictObs)
 
 
 def assert_not_dictobs(x: Observation) -> np.ndarray:
+    """Typeguard to assert `x` is an array, not a DictObs."""
     if isinstance(x, DictObs):
         assert False, "Dictionary observations are not supported here."
     return x
 
 
 def concatenate_maybe_dictobs(arrs: List[ObsVar]) -> ObsVar:
+    """Concatenates a list of observations appropriately (depending on type)."""
     assert len(arrs) > 0
     if isinstance(arrs[0], DictObs):
         return DictObs.concatenate(arrs)
@@ -223,6 +225,7 @@ def concatenate_maybe_dictobs(arrs: List[ObsVar]) -> ObsVar:
 
 
 def stack_maybe_dictobs(arrs: List[ObsVar]) -> ObsVar:
+    """Stacks a list of observations appropriately (depending on type)."""
     assert len(arrs) > 0
     if isinstance(arrs[0], DictObs):
         return DictObs.stack(arrs)
