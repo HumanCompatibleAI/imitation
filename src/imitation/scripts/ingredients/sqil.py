@@ -24,7 +24,8 @@ def config():
 
 @rl.rl_ingredient.config_hook
 def override_rl_cls(config, command_name, logger):
-    # want to remove arguments added by the rl ingredient but keep the ones that are added by others
+    # want to remove arguments added by the rl ingredient but keep
+    # the ones that are added by others
     del logger
 
     res = {}
