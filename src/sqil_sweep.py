@@ -22,8 +22,8 @@ fast_configs = [
 environments = [
     ("cheetah", "seals/HalfCheetah-v1"),
     ("ant", "seals/Ant-v1"),
-    ("walker", "seals/Walker2d-v1"),
-    ("hopper", "seals/Hopper-v1"),
+    # ("walker", "seals/Walker2d-v1"), # these currently lead to errors
+    # ("hopper", "seals/Hopper-v1"),
     ("swimmer", "seals/Swimmer-v1"),
 ]
 
@@ -68,7 +68,8 @@ def objective(trial, environment):
     config_updates = {
         "environment.gym_id": environment,
         "demonstrations.n_expert_demos": 50,
-        "sqil.total_timesteps": 100_000,
+
+        "sqil.total_timesteps": 10, # 100_000, # CHANGE
         "sqil.train_kwargs": {
             "progress_bar": True,
             "log_interval": 100,
@@ -113,4 +114,4 @@ if __name__ == "__main__":
     n_trials, n_jobs = 40, 10
     n_trials, n_jobs = 1, 1  # DELETE THIS
     for name, env in environments:
-        perform_trial(name, env)
+        perform_trial(f"{name}_short", env, n_trials, n_jobs)
