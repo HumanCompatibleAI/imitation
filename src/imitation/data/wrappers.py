@@ -187,19 +187,19 @@ class RolloutInfoWrapper(gym.Wrapper):
 
     def reset(self, **kwargs):
         new_obs = super().reset(**kwargs)
-        self._obs = [new_obs]
+        self._obs = [types.maybe_wrap_in_dictobs(new_obs)]
         self._rews = []
         return new_obs
 
     def step(self, action):
         obs, rew, done, info = self.env.step(action)
-        self._obs.append(obs)
+        self._obs.append(types.maybe_wrap_in_dictobs(obs))
         self._rews.append(rew)
 
         if done:
             assert "rollout" not in info
             info["rollout"] = {
-                "obs": np.stack(self._obs),
+                "obs": types.stack_maybe_dictobs(self._obs),
                 "rews": np.stack(self._rews),
             }
         return obs, rew, done, info

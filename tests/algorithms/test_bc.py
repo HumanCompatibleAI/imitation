@@ -407,7 +407,7 @@ def test_dict_space():
             venv=env,
             sample_until=rollout.make_sample_until(min_timesteps=None, min_episodes=50),
             rng=rng,
-            unwrap=False,  # TODO have rollout unwrap wrapper support dict
+            unwrap=True,
         )
         return rollout.flatten_trajectories(rollouts)
 
