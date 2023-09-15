@@ -278,7 +278,7 @@ def make_sample_until(
 # corresponding actions.
 PolicyCallable = Callable[
     [
-        types.Observation,
+        Union[np.ndarray, Dict[str, np.ndarray]],
         Optional[Tuple[np.ndarray, ...]],
         Optional[np.ndarray],
     ],
@@ -297,7 +297,7 @@ def policy_to_callable(
     if policy is None:
 
         def get_actions(
-            observations: types.Observation,
+            observations: Union[np.ndarray, Dict[str, np.ndarray]],
             states: Optional[Tuple[np.ndarray, ...]],
             episode_starts: Optional[np.ndarray],
         ) -> Tuple[np.ndarray, Optional[Tuple[np.ndarray, ...]]]:
@@ -311,7 +311,7 @@ def policy_to_callable(
         # (which would call .forward()). So this elif clause must come first!
 
         def get_actions(
-            observations: types.Observation,
+            observations: Union[np.ndarray, Dict[str, np.ndarray]],
             states: Optional[Tuple[np.ndarray, ...]],
             episode_starts: Optional[np.ndarray],
         ) -> Tuple[np.ndarray, Optional[Tuple[np.ndarray, ...]]]:
@@ -319,7 +319,7 @@ def policy_to_callable(
             # pytype doesn't seem to understand that policy is a BaseAlgorithm
             # or BasePolicy here, rather than a Callable
             (acts, states) = policy.predict(  # pytype: disable=attribute-error
-                types.maybe_unwrap_dictobs(observations),
+                observations,
                 state=states,
                 episode_start=episode_starts,
                 deterministic=deterministic_policy,
@@ -422,6 +422,7 @@ def generate_trajectories(
     ), "Tuple observations are not supported."
     wrapped_obs = types.maybe_wrap_in_dictobs(obs)
 
+    # we use dictobs to iterate over the envs in a vecenv
     for env_idx, ob in enumerate(wrapped_obs):
         # Seed with first obs only. Inside loop, we'll only add second obs from
         # each (s,a,r,s') tuple, under the same "obs" key again. That way we still
@@ -441,7 +442,8 @@ def generate_trajectories(
     state = None
     dones = np.zeros(venv.num_envs, dtype=bool)
     while np.any(active):
-        acts, state = get_actions(wrapped_obs, state, dones)
+        # policy gets unwrapped observations (eg as dict, not dictobs)
+        acts, state = get_actions(obs, state, dones)
         obs, rews, dones, infos = venv.step(acts)
         assert isinstance(
             obs,
