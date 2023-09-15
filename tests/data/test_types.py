@@ -468,9 +468,9 @@ def test_dict_obs():
 
     # len
     assert len(ab) == 3
-    with pytest.raises(ValueError):
+    with pytest.raises(RuntimeError):
         len(abc)
-    with pytest.raises(ValueError):
+    with pytest.raises(RuntimeError):
         len(types.DictObs({}))
 
     assert abc.dict_len == 3
@@ -516,5 +516,5 @@ def test_dict_obs():
     with pytest.raises(AssertionError):
         types.assert_not_dictobs(abc)
 
-    with pytest.raises(ValueError):
+    with pytest.raises(TypeError):
         types.DictObs({"a": "not an array"})  # type: ignore[wrong-arg-types]

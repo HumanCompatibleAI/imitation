@@ -57,7 +57,7 @@ class DictObs:
         if not all(
             isinstance(v, (np.ndarray, numbers.Number)) for v in self._d.values()
         ):
-            raise ValueError("keys must by numpy arrays")
+            raise TypeError("keys must by numpy arrays")
 
     def __len__(self):
         """Returns the first dimension of constituent arrays.
@@ -71,7 +71,7 @@ class DictObs:
         Use `dict_len` to get the number of entries in the dictionary.
 
         Raises:
-            ValueError: if the arrays have different lengths or there are no arrays.
+            RuntimeError: if the arrays have different lengths or there are no arrays.
 
         Returns:
             The length (first dimension) of the constiuent arrays
@@ -80,9 +80,9 @@ class DictObs:
         if len(lens) == 1:
             return lens.pop()
         elif len(lens) == 0:
-            raise ValueError("Length not defined as DictObs is empty")
+            raise RuntimeError("Length not defined as DictObs is empty")
         else:
-            raise ValueError(
+            raise RuntimeError(
                 f"Length not defined; arrays have conflicting first dimensions: {lens}",
             )
 
