@@ -227,6 +227,9 @@ class TestData:
         use_rewards,
         type_safe,
     ):
+        if isinstance(trajectory.obs, types.DictObs):
+            pytest.xfail("Saving/loading dictobs trajectories not yet supported")
+
         chdir_context: contextlib.AbstractContextManager
         """Check that trajectories are properly saved."""
         if use_chdir:
