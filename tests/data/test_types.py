@@ -473,6 +473,8 @@ def test_dict_obs():
     with pytest.raises(ValueError):
         len(types.DictObs({}))
 
+    assert abc.dict_len == 3
+
     # slicing
     np.testing.assert_equal(abc[0].get("a"), A[0])
     np.testing.assert_equal(abc[0].get("c"), np.array(C[0]))
@@ -490,6 +492,8 @@ def test_dict_obs():
     assert abc == types.DictObs({"a": A, "b": B, "c": C})
     assert abc != types.DictObs({"a": A, "c": B, "b": C})  # diff keys
     assert abc != types.DictObs({"a": A, "b": B + 1, "c": C})  # diff values
+    assert abc != {"a": A, "b": B + 1, "c": C}  # diff type
+    assert abc != ab  # diff keys
 
     # shape / dtype
     assert abc.shape == {"a": A.shape, "b": B.shape, "c": C.shape}
@@ -509,5 +513,8 @@ def test_dict_obs():
         np.concatenate([A, A]),
     )
 
-    with pytest.raises(ValueError):
+    with pytest.raises(AssertionError):
         types.assert_not_dictobs(abc)
+
+    with pytest.raises(ValueError):
+        types.DictObs({"a": "not an array"})  # type: ignore[wrong-arg-types]
