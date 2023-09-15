@@ -103,6 +103,8 @@ def objective_ant(trial):
     # if things don't work maybe changing entropy coeff will help
 
     config_updates = {
+        "environment.gym_id": "seals/Ant-v1",
+
         "demonstrations.n_expert_demos": 50,
         "sqil.total_timesteps": total_timesteps, 
         # "policy.policy_cls": SACPolicies.SACPolicy,
@@ -118,9 +120,12 @@ def objective_ant(trial):
             "gamma": gamma,
             "learning_starts": 1000,
         },
+        "expert.loader_kwargs": {
+            "organization": "ernestum",
+        },
     }
 
-    named_configs = ["rl.sac", "policy.sac256", "seals_ant"]
+    named_configs = ["rl.sac", "policy.sac256"]
 
 
     return get_sqil_results(config_updates, named_configs)    

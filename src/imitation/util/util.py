@@ -25,8 +25,9 @@ from typing import (
 import gymnasium as gym
 import numpy as np
 import torch as th
-from stable_baselines3.common import monitor
+from stable_baselines3.common import monitor, policies
 from stable_baselines3.common.vec_env import DummyVecEnv, SubprocVecEnv, VecEnv
+
 
 from imitation.data.types import AnyPath
 
