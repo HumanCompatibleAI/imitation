@@ -376,14 +376,14 @@ def test_rollout_normal_error_for_other_shape_mismatch(rng):
 class DictObsWrapper(gym.ObservationWrapper):
     """Simple wrapper that turns the observation into a dictionary.
 
-    The observation is duplicated and returned under two keys, one of them divided
-    in half."""
+    The observation is duplicated, with "b" rescaled.
+    """
 
     def __init__(self, env: gym.Env):
         """Builds DictObsWrapper.
 
         Args:
-            venv: The wrapped VecEnv.
+            env: The wrapped Env.
         """
         super().__init__(env)
         self.observation_space = gym.spaces.Dict(
