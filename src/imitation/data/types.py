@@ -200,13 +200,18 @@ def stack_maybe_dictobs(arrs: List[ObsVar]) -> ObsVar:
         return np.stack(arrs)
 
 
+# the following overloads have a type error as a DictObs matches both definitions, but
+# the return types are incompatible. Ideally T would exclude DictObs but that's not
+# possible.
 @overload
-def maybe_unwrap_dictobs(maybe_dictobs: DictObs) -> Dict[str, np.ndarray]:
+def maybe_unwrap_dictobs(  # type: ignore[misc]
+    maybe_dictobs: DictObs,
+) -> Dict[str, np.ndarray]:
     ...
 
 
 @overload
-def maybe_unwrap_dictobs(maybe_dictobs: TensorVar) -> TensorVar:
+def maybe_unwrap_dictobs(maybe_dictobs: T) -> T:
     ...
 
 

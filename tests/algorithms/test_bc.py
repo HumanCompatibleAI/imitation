@@ -291,6 +291,7 @@ def test_that_policy_reconstruction_preserves_parameters(
         th.testing.assert_close(original, reconstructed)
 
 
+# TODO: remove after https://github.com/DLR-RM/stable-baselines3/pull/1676 merged
 class FloatReward(gym.RewardWrapper):
     """Typecasts reward to a float."""
 

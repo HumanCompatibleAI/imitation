@@ -120,13 +120,10 @@ class BehaviorCloningLossCalculator:
             A BCTrainingMetrics object with the loss and all the components it
             consists of.
         """
-        tensor_obs: Union[th.Tensor, Dict[str, th.Tensor]]
-        if isinstance(obs, types.DictObs):
-            tensor_obs = {k: util.safe_to_tensor(v) for k, v in obs.unwrap().items()}
-        elif isinstance(obs, dict):
-            tensor_obs = {k: util.safe_to_tensor(v) for k, v in obs.items()}
-        else:
-            tensor_obs = util.safe_to_tensor(obs)
+        tensor_obs = types.map_maybe_dict(
+            util.safe_to_tensor,
+            types.maybe_unwrap_dictobs(obs),
+        )
         acts = util.safe_to_tensor(acts)
 
         # policy.evaluate_actions's type signature seems wrong to me.
