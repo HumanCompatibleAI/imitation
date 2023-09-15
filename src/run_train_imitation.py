@@ -48,8 +48,8 @@ def generate_imitation_config(command_name: str, environment_named_config) -> Di
         command_name=command_name,
         named_configs=[],
         config_updates=dict(
-            expert=expert_config,
-            demonstrations=dict(path=CARTPOLE_TEST_ROLLOUT_PATH, n_expert_demos=10),
+            # expert=expert_config,
+            # demonstrations=dict(path=CARTPOLE_TEST_ROLLOUT_PATH, n_expert_demos=10),
         ),
     )
 

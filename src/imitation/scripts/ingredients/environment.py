@@ -53,6 +53,7 @@ def make_venv(
     """
     # Note: we create the venv outside the try -- finally block for the case that env
     #     creation fails.
+    print("GYM ID: ", gym_id)
     venv = util.make_vec_env(
         gym_id,
         rng=_rnd,

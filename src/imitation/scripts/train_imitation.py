@@ -158,6 +158,8 @@ def sqil(
     _run,
     _rnd: np.random.Generator,
 ) -> Mapping[str, Mapping[str, float]]:
+    print("-" * 40, "config", "-" * 40)
+
     custom_logger, log_dir = logging_ingredient.setup_logging()
     expert_trajs = demonstrations.get_expert_trajectories()
 

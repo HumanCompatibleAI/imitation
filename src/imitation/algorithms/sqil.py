@@ -74,6 +74,8 @@ class SQIL(algo_base.DemonstrationAlgorithm[types.Transitions]):
                 "'replay_buffer_kwargs' not allowed.",
             )
 
+        print("RL algo class: ", rl_algo_class)
+        print("Env: ", venv)
         self.rl_algo = rl_algo_class(
             policy=policy,
             env=venv,
