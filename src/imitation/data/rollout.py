@@ -70,7 +70,7 @@ class TrajectoryAccumulator:
 
     def add_step(
         self,
-        step_dict: Mapping[str, Union[np.ndarray, Mapping[str, Any], types.DictObs]],
+        step_dict: Mapping[str, Union[types.Observation, Mapping[str, Any]]],
         key: Hashable = None,
     ) -> None:
         """Add a single step to the partial trajectory identified by `key`.
@@ -122,7 +122,7 @@ class TrajectoryAccumulator:
     def add_steps_and_auto_finish(
         self,
         acts: np.ndarray,
-        obs: Union[np.ndarray, Dict[str, np.ndarray], types.DictObs],
+        obs: Union[types.Observation, Dict[str, np.ndarray]],
         rews: np.ndarray,
         dones: np.ndarray,
         infos: List[dict],
@@ -147,9 +147,9 @@ class TrajectoryAccumulator:
             each `True` in the `dones` argument.
         """
         trajs: List[types.TrajectoryWithRew] = []
-        wrapped_obs = types.DictObs.maybe_wrap(obs)
+        wrapped_obs = types.maybe_wrap_in_dictobs(obs)
 
-        # len of dictobs is the shape[0] of each value array - which here is # of envs
+        # iterate through environments
         for env_idx in range(len(wrapped_obs)):
             assert env_idx in self.partial_trajectories
             assert list(self.partial_trajectories[env_idx][0].keys()) == ["obs"], (
@@ -157,16 +157,14 @@ class TrajectoryAccumulator:
                 "self._traj_accum.add_step({'obs': ob}, key=env_idx)"
             )
 
+        # iterate through steps
         zip_iter = enumerate(zip(acts, wrapped_obs, rews, dones, infos))
         for env_idx, (act, ob, rew, done, info) in zip_iter:
             if done:
                 # When dones[i] from VecEnv.step() is True, obs[i] is the first
                 # observation following reset() of the ith VecEnv, and
                 # infos[i]["terminal_observation"] is the actual final observation.
-                real_ob = info["terminal_observation"]
-                if isinstance(real_ob, dict):
-                    # TODO: does this need to be unsqueezed or something?
-                    real_ob = types.DictObs(real_ob)
+                real_ob = types.maybe_wrap_in_dictobs(info["terminal_observation"])
             else:
                 real_ob = ob
 
@@ -280,7 +278,7 @@ def make_sample_until(
 # corresponding actions.
 PolicyCallable = Callable[
     [
-        Union[np.ndarray, types.DictObs],
+        types.Observation,
         Optional[Tuple[np.ndarray, ...]],
         Optional[np.ndarray],
     ],
@@ -299,7 +297,7 @@ def policy_to_callable(
     if policy is None:
 
         def get_actions(
-            observations: Union[np.ndarray, types.DictObs],
+            observations: types.Observation,
             states: Optional[Tuple[np.ndarray, ...]],
             episode_starts: Optional[np.ndarray],
         ) -> Tuple[np.ndarray, Optional[Tuple[np.ndarray, ...]]]:
@@ -313,7 +311,7 @@ def policy_to_callable(
         # (which would call .forward()). So this elif clause must come first!
 
         def get_actions(
-            observations: Union[np.ndarray, types.DictObs],
+            observations: types.Observation,
             states: Optional[Tuple[np.ndarray, ...]],
             episode_starts: Optional[np.ndarray],
         ) -> Tuple[np.ndarray, Optional[Tuple[np.ndarray, ...]]]:
@@ -418,17 +416,12 @@ def generate_trajectories(
     # accumulator for incomplete trajectories
     trajectories_accum = TrajectoryAccumulator()
     obs = venv.reset()
-
     assert isinstance(
         obs,
-        (
-            np.ndarray,
-            dict,
-        ),
+        (np.ndarray, dict),
     ), "Tuple observations are not supported."
+    wrapped_obs = types.maybe_wrap_in_dictobs(obs)
 
-    # need to wrap here to iterate over envs properly
-    wrapped_obs = types.DictObs.maybe_wrap(obs)
     for env_idx, ob in enumerate(wrapped_obs):
         # Seed with first obs only. Inside loop, we'll only add second obs from
         # each (s,a,r,s') tuple, under the same "obs" key again. That way we still
@@ -454,7 +447,7 @@ def generate_trajectories(
             obs,
             (np.ndarray, dict),
         ), "Tuple observations are not supported."
-        wrapped_obs = types.DictObs.maybe_wrap(obs)
+        wrapped_obs = types.maybe_wrap_in_dictobs(obs)
 
         # If an environment is inactive, i.e. the episode completed for that
         # environment after `sample_until(trajectories)` was true, then we do

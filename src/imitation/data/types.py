@@ -137,18 +137,6 @@ class DictObs:
     def unwrap(self) -> Dict[str, np.ndarray]:
         return self.d
 
-    @classmethod
-    def maybe_wrap(
-        cls,
-        obs: Union[Dict[str, np.ndarray], np.ndarray, "DictObs"],
-    ) -> Union["DictObs", np.ndarray]:
-        """Converts an observation into a DictObs, if necessary."""
-        if isinstance(obs, dict):
-            return cls(obs)
-        else:
-            assert isinstance(obs, (np.ndarray, cls))
-            return obs
-
     def map_arrays(self, fn: Callable[[np.ndarray], np.ndarray]) -> "DictObs":
         return self.__class__({k: fn(v) for k, v in self.d.items()})
 
@@ -229,6 +217,27 @@ def maybe_unwrap_dictobs(maybe_dictobs):
         if not isinstance(maybe_dictobs, (np.ndarray, th.Tensor)):
             warnings.warn(f"trying to unwrap object of type {type(maybe_dictobs)}")
         return maybe_dictobs
+
+
+@overload
+def maybe_wrap_in_dictobs(obs: Union[Dict[str, np.ndarray], DictObs]) -> DictObs:
+    ...
+
+
+@overload
+def maybe_wrap_in_dictobs(obs: np.ndarray) -> np.ndarray:
+    ...
+
+
+def maybe_wrap_in_dictobs(
+    obs: Union[Dict[str, np.ndarray], np.ndarray, DictObs],
+) -> Observation:
+    """Converts an observation into a DictObs, if necessary."""
+    if isinstance(obs, dict):
+        return DictObs(obs)
+    else:
+        assert isinstance(obs, (np.ndarray, DictObs))
+        return obs
 
 
 def map_maybe_dict(fn, maybe_dict):

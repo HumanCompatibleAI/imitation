@@ -493,7 +493,7 @@ def test_dict_obs():
     assert abc.dtype == {"a": A.dtype, "b": B.dtype, "c": C.dtype}
 
     # wrap
-    assert types.DictObs.maybe_wrap({"a": A, "b": B, "c": C}) == abc
+    assert types.maybe_wrap_in_dictobs({"a": A, "b": B, "c": C}) == abc
     assert abc.unwrap() == {"a": A, "b": B, "c": C}
 
     # map, stack, concat
