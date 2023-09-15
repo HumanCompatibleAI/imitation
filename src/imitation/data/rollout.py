@@ -109,13 +109,11 @@ class TrajectoryAccumulator:
             for k, array in part_dict.items():
                 out_dict_unstacked[k].append(array)
 
-        traj = types.TrajectoryWithRew(
-            obs=types.stack_maybe_dictobs(out_dict_unstacked["obs"]),
-            acts=np.stack(out_dict_unstacked["acts"], axis=0),
-            infos=np.stack(out_dict_unstacked["infos"], axis=0),  # array of dict objs
-            rews=np.stack(out_dict_unstacked["rews"], axis=0),
-            terminal=terminal,
-        )
+        out_dict_stacked = {
+            k: types.stack_maybe_dictobs(arr_list)
+            for k, arr_list in out_dict_unstacked.items()
+        }
+        traj = types.TrajectoryWithRew(**out_dict_stacked, terminal=terminal)
         assert traj.rews.shape[0] == traj.acts.shape[0] == len(traj.obs) - 1
         return traj
 
@@ -278,11 +276,11 @@ def make_sample_until(
 # corresponding actions.
 PolicyCallable = Callable[
     [
-        Union[np.ndarray, Dict[str, np.ndarray]],
-        Optional[Tuple[np.ndarray, ...]],
-        Optional[np.ndarray],
+        Union[np.ndarray, Dict[str, np.ndarray]],  # observations
+        Optional[Tuple[np.ndarray, ...]],  # states
+        Optional[np.ndarray],  # episode_starts
     ],
-    Tuple[np.ndarray, Optional[Tuple[np.ndarray, ...]]],
+    Tuple[np.ndarray, Optional[Tuple[np.ndarray, ...]]],  # actions, states
 ]
 AnyPolicy = Union[BaseAlgorithm, BasePolicy, PolicyCallable, None]
 
@@ -576,15 +574,14 @@ def flatten_trajectories(
     assert all_of_type("obs", types.DictObs) or all_of_type("obs", np.ndarray)
     assert all_of_type("acts", np.ndarray)
 
-    # sad to use Any here, but mypy struggles otherwise.
-    # we enforce type constraints in asserts above and below.
+    # mypy struggles without Any annotation here.
+    # The necessary constraints are enforced above.
     keys = ["obs", "next_obs", "acts", "dones", "infos"]
     parts: Mapping[str, List[Any]] = {key: [] for key in keys}
     for traj in trajectories:
         parts["acts"].append(traj.acts)
 
         obs = traj.obs
-
         parts["obs"].append(obs[:-1])
         parts["next_obs"].append(obs[1:])
 
