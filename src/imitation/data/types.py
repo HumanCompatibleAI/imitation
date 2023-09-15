@@ -48,7 +48,8 @@ class DictObs:
 
     @classmethod
     def from_obs_list(cls, obs_list: List[Dict[str, np.ndarray]]):
-        assert len(set(obs.keys() for obs in obs_list)) == 1
+        # assert all have same keys
+        assert len(set(frozenset(obs.keys()) for obs in obs_list)) == 1
         return cls(
             {k: np.stack([obs[k] for obs in obs_list]) for k in obs_list[0].keys()},
         )
