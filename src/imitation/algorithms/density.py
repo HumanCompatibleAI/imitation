@@ -134,9 +134,9 @@ class DensityAlgorithm(base.DemonstrationAlgorithm):
 
     def _get_demo_from_batch(
         self,
-        obs_b: np.ndarray,
+        obs_b: types.Observation,
         act_b: np.ndarray,
-        next_obs_b: Optional[np.ndarray],
+        next_obs_b: Optional[types.Observation],
     ) -> Dict[Optional[int], List[np.ndarray]]:
         if next_obs_b is None and self.density_type == DensityType.STATE_STATE_DENSITY:
             raise ValueError(
@@ -145,11 +145,16 @@ class DensityAlgorithm(base.DemonstrationAlgorithm):
             )
 
         assert act_b.shape[1:] == self.venv.action_space.shape
-        assert obs_b.shape[1:] == self.venv.observation_space.shape
+
+        if isinstance(obs_b, types.DictObs):
+            exp_shape = {k: v.shape for k, v in self.venv.observation_space.items()}
+            obs_shape = {k: v.shape[1:] for k, v in obs_b.items()}
+            assert exp_shape == obs_shape, f"Expected {exp_shape}, got {obs_shape}"
+        else:
+            assert obs_b.shape[1:] == self.venv.observation_space.shape
         assert len(act_b) == len(obs_b)
         if next_obs_b is not None:
-            assert next_obs_b.shape[1:] == self.venv.observation_space.shape
-            assert len(next_obs_b) == len(obs_b)
+            assert next_obs_b.shape == obs_b.shape
 
         if next_obs_b is not None:
             next_obs_b_iterator: Iterable = next_obs_b
@@ -168,11 +173,9 @@ class DensityAlgorithm(base.DemonstrationAlgorithm):
 
         if isinstance(demonstrations, types.TransitionsMinimal):
             next_obs_b = getattr(demonstrations, "next_obs", None)
-            if next_obs_b is not None:
-                next_obs_b = types.assert_not_dictobs(next_obs_b)
             transitions.update(
                 self._get_demo_from_batch(
-                    types.assert_not_dictobs(demonstrations.obs),
+                    demonstrations.obs,
                     demonstrations.acts,
                     next_obs_b,
                 ),
@@ -193,9 +196,8 @@ class DensityAlgorithm(base.DemonstrationAlgorithm):
                 demonstrations = cast(Iterable[types.Trajectory], demonstrations)
 
                 for traj in demonstrations:
-                    traj_obs = types.assert_not_dictobs(traj.obs)
                     for i, (obs, act, next_obs) in enumerate(
-                        zip(traj_obs[:-1], traj.acts, traj_obs[1:]),
+                        zip(traj.obs[:-1], traj.acts, traj.obs[1:]),
                     ):
                         flat_trans = self._preprocess_transition(obs, act, next_obs)
                         transitions.setdefault(i, []).append(flat_trans)
@@ -203,14 +205,17 @@ class DensityAlgorithm(base.DemonstrationAlgorithm):
                 # analogous to cast above.
                 demonstrations = cast(Iterable[types.TransitionMapping], demonstrations)
 
+                def to_np_maybe_dictobs(x):
+                    if isinstance(x, types.DictObs):
+                        return x
+                    else:
+                        return util.safe_to_numpy(x, warn=True)
+
                 for batch in demonstrations:
-                    transitions.update(
-                        self._get_demo_from_batch(
-                            util.safe_to_numpy(batch["obs"], warn=True),
-                            util.safe_to_numpy(batch["acts"], warn=True),
-                            util.safe_to_numpy(batch.get("next_obs"), warn=True),
-                        ),
-                    )
+                    obs = to_np_maybe_dictobs(batch["obs"])
+                    acts = util.safe_to_numpy(batch["acts"], warn=True)
+                    next_obs = to_np_maybe_dictobs(batch.get("next_obs"))
+                    transitions.update(self._get_demo_from_batch(obs, acts, next_obs))
             else:
                 raise TypeError(
                     f"Unsupported demonstration type {type(demonstrations)}",
@@ -256,28 +261,28 @@ class DensityAlgorithm(base.DemonstrationAlgorithm):
 
     def _preprocess_transition(
         self,
-        obs: np.ndarray,
+        obs: types.Observation,
         act: np.ndarray,
-        next_obs: Optional[np.ndarray],
+        next_obs: Optional[types.Observation],
     ) -> np.ndarray:
         """Compute flattened transition on subset specified by `self.density_type`."""
+        flattened_obs = flatten(
+            self.venv.observation_space,
+            types.maybe_unwrap_dictobs(obs),
+        )
         if self.density_type == DensityType.STATE_DENSITY:
-            return flatten(self.venv.observation_space, obs)
+            return flattened_obs
         elif self.density_type == DensityType.STATE_ACTION_DENSITY:
             return np.concatenate(
-                [
-                    flatten(self.venv.observation_space, obs),
-                    flatten(self.venv.action_space, act),
-                ],
+                [flattened_obs, flatten(self.venv.action_space, act)],
             )
         elif self.density_type == DensityType.STATE_STATE_DENSITY:
             assert next_obs is not None
-            return np.concatenate(
-                [
-                    flatten(self.venv.observation_space, obs),
-                    flatten(self.venv.observation_space, next_obs),
-                ],
+            flattened_next_obs = flatten(
+                self.venv.observation_space,
+                types.maybe_unwrap_dictobs(obs),
             )
+            return np.concatenate([flattened_obs, flattened_next_obs])
         else:
             raise ValueError(f"Unknown density type {self.density_type}")
 

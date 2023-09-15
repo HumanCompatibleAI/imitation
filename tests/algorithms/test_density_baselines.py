@@ -1,7 +1,7 @@
 """Tests for `imitation.algorithms.density_baselines`."""
 
 from dataclasses import asdict
-from typing import Sequence
+from typing import Sequence, cast
 
 import numpy as np
 import pytest
@@ -119,9 +119,7 @@ def test_density_with_other_trajectory_types(
     )
     rollouts = pendulum_expert_trajectories[:2]
     transitions = rollout.flatten_trajectories_with_rew(rollouts)
-    transitions_mappings = [
-        asdict(transitions),
-    ]
+    transitions_mappings = [cast(types.TransitionMapping, asdict(transitions))]
 
     minimal_transitions = types.TransitionsMinimal(
         obs=transitions.obs,

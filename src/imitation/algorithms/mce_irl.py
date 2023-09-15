@@ -444,8 +444,10 @@ class MCEIRL(base.DemonstrationAlgorithm[types.TransitionsMinimal]):
             for batch in demonstrations:
                 assert isinstance(batch, Mapping)
                 for k in ("obs", "dones", "next_obs"):
-                    if k in batch:
-                        collated_list[k].append(batch[k])
+                    x = batch.get(k)
+                    if x is not None:
+                        assert isinstance(x, (np.ndarray, th.Tensor))
+                        collated_list[k].append(x)
             collated = {k: np.concatenate(v) for k, v in collated_list.items()}
 
             assert "obs" in collated

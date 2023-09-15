@@ -17,6 +17,7 @@ from typing import (
     Optional,
     Sequence,
     Tuple,
+    TypedDict,
     TypeVar,
     Union,
     overload,
@@ -288,8 +289,20 @@ def map_maybe_dict(fn, maybe_dict):
         return fn(maybe_dict)
 
 
-# TODO: maybe should support DictObs?
-TransitionMapping = Mapping[str, AnyTensor]
+class TransitionMappingNoNextObs(TypedDict):
+    """Dictionary with `obs` and `acts`."""
+
+    obs: Union[Observation, th.Tensor]
+    acts: AnyTensor
+
+
+# inheritance with total=False so these are not required
+class TransitionMapping(TransitionMappingNoNextObs, total=False):
+    """Dictionary with `obs` and `acts`, maybe also `next_obs`, `dones`, `rew`."""
+
+    next_obs: AnyTensor
+    dones: AnyTensor
+    rew: AnyTensor
 
 
 def dataclass_quick_asdict(obj) -> Dict[str, Any]:
