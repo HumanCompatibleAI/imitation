@@ -2,6 +2,8 @@
 
 import collections
 import dataclasses
+import itertools
+import numbers
 import os
 import warnings
 from typing import (
@@ -52,7 +54,9 @@ class DictObs:
         return cls.stack(map(cls, obs_list))
 
     def __post_init__(self):
-        if not all((isinstance(v, np.ndarray) for v in self._d.values())):
+        if not all(
+            isinstance(v, (np.ndarray, numbers.Number)) for v in self._d.values()
+        ):
             raise ValueError("keys must by numpy arrays")
 
     def __len__(self):
@@ -162,15 +166,16 @@ class DictObs:
     @staticmethod
     def _unravel(dictobs_list: Iterable["DictObs"]) -> Dict[str, List[np.ndarray]]:
         """Converts a list of DictObs into a dictionary of lists of arrays."""
+        it1, it2 = itertools.tee(dictobs_list)
         # assert all have same keys
-        key_set = set(frozenset(obs.keys()) for obs in dictobs_list)
+        key_set = set(frozenset(obs.keys()) for obs in it1)
         if len(key_set) == 0:
             raise ValueError("Empty list of DictObs")
         if not len(key_set) == 1:
             raise ValueError(f"Inconsistent keys: {key_set}")
 
         unraveled: Dict[str, List[np.ndarray]] = collections.defaultdict(list)
-        for do in dictobs_list:
+        for do in it2:
             for k, array in do._d.items():
                 unraveled[k].append(array)
         return unraveled
@@ -205,7 +210,7 @@ ObsVar = TypeVar("ObsVar", np.ndarray, DictObs)
 
 def assert_not_dictobs(x: Observation) -> np.ndarray:
     if isinstance(x, DictObs):
-        raise ValueError("Dictionary observations are not supported here.")
+        assert False, "Dictionary observations are not supported here."
     return x
 
 
@@ -433,12 +438,12 @@ def transitions_collate_fn(
         list of dicts. (The default behavior would recursively collate every
         info dict into a single dict, which is incorrect.)
     """
-    batch_no_infos = [
+    batch_acts_and_dones = [
         {k: np.array(v) for k, v in sample.items() if k in ["acts", "dones"]}
         for sample in batch
     ]
 
-    result = th_data.dataloader.default_collate(batch_no_infos)
+    result = th_data.dataloader.default_collate(batch_acts_and_dones)
     assert isinstance(result, dict)
     result["infos"] = [sample["infos"] for sample in batch]
     result["obs"] = stack_maybe_dictobs([sample["obs"] for sample in batch])

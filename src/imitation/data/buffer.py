@@ -1,6 +1,5 @@
 """Buffers to store NumPy arrays and transitions in."""
 
-import dataclasses
 from typing import Any, Mapping, Optional, Tuple
 
 import numpy as np
@@ -384,7 +383,7 @@ class ReplayBuffer:
         Raises:
             ValueError: The arguments didn't have the same length.
         """  # noqa: DAR402
-        trans_dict = dataclasses.asdict(transitions)
+        trans_dict = types.dataclass_quick_asdict(transitions)
         # Remove unnecessary fields
         trans_dict = {k: trans_dict[k] for k in self._buffer.sample_shapes.keys()}
         self._buffer.store(trans_dict, truncate_ok=truncate_ok)

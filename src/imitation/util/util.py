@@ -230,10 +230,7 @@ def endless_iter(iterable: Iterable[T]) -> Iterator[T]:
     return itertools.chain.from_iterable(itertools.repeat(iterable))
 
 
-def safe_to_tensor(
-    array: Union[np.ndarray, th.Tensor],
-    **kwargs,
-) -> th.Tensor:
+def safe_to_tensor(array: Union[np.ndarray, th.Tensor], **kwargs) -> th.Tensor:
     """Converts a NumPy array to a PyTorch tensor.
 
     The data is copied in the case where the array is non-writable. Unfortunately if

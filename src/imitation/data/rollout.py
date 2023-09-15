@@ -609,7 +609,10 @@ def flatten_trajectories_with_rew(
 ) -> types.TransitionsWithRew:
     transitions = flatten_trajectories(trajectories)
     rews = np.concatenate([traj.rews for traj in trajectories])
-    return types.TransitionsWithRew(**dataclasses.asdict(transitions), rews=rews)
+    return types.TransitionsWithRew(
+        **types.dataclass_quick_asdict(transitions),
+        rews=rews,
+    )
 
 
 def generate_transitions(
@@ -650,7 +653,7 @@ def generate_transitions(
     )
     transitions = flatten_trajectories_with_rew(traj)
     if truncate and n_timesteps is not None:
-        as_dict = dataclasses.asdict(transitions)
+        as_dict = types.dataclass_quick_asdict(transitions)
         truncated = {k: arr[:n_timesteps] for k, arr in as_dict.items()}
         transitions = types.TransitionsWithRew(**truncated)
     return transitions
