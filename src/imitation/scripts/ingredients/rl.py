@@ -43,9 +43,10 @@ def config_hook(config, command_name, logger):
     """Sets defaults equivalent to sb3.PPO default hyperparameters."""
     del logger
     res = {}
-    if (
+    uses_default_rl_cls_or_ppo = (
         config["rl"]["rl_cls"] is None or config["rl"]["rl_cls"] == sb3.PPO
-    ) and command_name != "sqil":
+    )
+    if uses_default_rl_cls_or_ppo and command_name != "sqil":
         res["rl_cls"] = sb3.PPO
         res["batch_size"] = 2048  # rl_kwargs["n_steps"] = batch_size // venv.num_envs
         res["rl_kwargs"] = dict(
