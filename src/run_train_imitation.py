@@ -1,7 +1,7 @@
 import json
 import argparse
 import os
-from typing import Dict
+from typing import Dict, List, Optional
 from imitation.util import util
 from imitation.scripts import train_imitation 
 
@@ -35,28 +35,26 @@ ALGO_FAST_CONFIGS = {
     "rl": ["environment.fast", "rl.fast", "fast"],
 }
 
-def generate_imitation_config(command_name: str) -> Dict:
-    environment_named_config = "seals_cartpole"
-
+def generate_imitation_config(command_name: str, environment_named_config) -> Dict:
     expert_config = dict(
         policy_type="ppo",
         loader_kwargs=dict(path=CARTPOLE_TEST_POLICY_PATH / "model.zip"),
     )
     # Note: we don't have a seals_cartpole expert in our testdata folder,
     # so we use the cartpole environment in this case.
-    environment_named_config = "cartpole"
+    # environment_named_config = "cartpole"
 
     return dict(
         command_name=command_name,
-        named_configs=[environment_named_config] + ALGO_FAST_CONFIGS["imitation"], # added for iteration
+        named_configs=[],
         config_updates=dict(
             expert=expert_config,
             demonstrations=dict(path=CARTPOLE_TEST_ROLLOUT_PATH, n_expert_demos=10),
         ),
     )
 
-def sqil_config():
-    imitation_config = generate_imitation_config("sqil")
+def sqil_config(env_name):
+    imitation_config = generate_imitation_config("sqil", env_name)
 
     return imitation_config
 
@@ -64,14 +62,21 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--config', type=str, required=True)
     parser.add_argument('--log_path', type=str, required=True)
+    parser.add_argument('--env_name', type=Optional[str], default=None)
+    parser.add_argument('--named_configs', type=str, default={"named_configs": []})
     args = parser.parse_args()
 
-    config = sqil_config()
+    config = sqil_config(args.env_name)
+
+    config["config_updates"].update(json.loads(args.config))
+    named_configs = json.loads(args.named_configs)
+    config["named_configs"] += named_configs["named_configs"]
+    print("Config lajsdfklasjfd: ", config)
 
     run = train_imitation.train_imitation_ex.run(**config)
-    print(run.info)
+    print(run.result)
     with open(args.log_path, 'w') as f:
-        json.dump(run.info, f)
+        json.dump(run.result, f)
 
 if __name__ == '__main__':
     main()
