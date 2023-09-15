@@ -49,7 +49,7 @@ def trajectory(
 
     raw_obs = [obs_space.sample() for _ in range(length + 1)]
     if isinstance(obs_space, gym.spaces.Dict):
-        obs = types.DictObs.from_obs_list(raw_obs)
+        obs: types.Observation = types.DictObs.from_obs_list(raw_obs)
     else:
         obs = np.array(raw_obs)
     acts = np.array([act_space.sample() for _ in range(length)])
@@ -474,16 +474,16 @@ def test_dict_obs():
         len(types.DictObs({}))
 
     # slicing
-    np.testing.assert_equal(abc[0].d["a"], A[0])
-    np.testing.assert_equal(abc[0].d["c"], np.array(C[0]))
-    np.testing.assert_equal(abc[0:2].d["a"], np.array(A[0:2]))
-    np.testing.assert_equal(ab[:, 0].d["a"], np.array(A[:, 0]))
+    np.testing.assert_equal(abc[0].get("a"), A[0])
+    np.testing.assert_equal(abc[0].get("c"), np.array(C[0]))
+    np.testing.assert_equal(abc[0:2].get("a"), np.array(A[0:2]))
+    np.testing.assert_equal(ab[:, 0].get("a"), np.array(A[:, 0]))
     with pytest.raises(IndexError):
         abc[:, 0]
 
     # iter
     for i, a_row in enumerate(A):
-        np.testing.assert_equal(a_row, ab[i].d["a"])
+        np.testing.assert_equal(a_row, ab[i].get("a"))
     assert ab[0] == next(iter(ab))
 
     # eq
@@ -505,7 +505,7 @@ def test_dict_obs():
     )
     assert types.DictObs.stack(list(iter(ab))) == ab
     np.testing.assert_equal(
-        types.DictObs.concatenate([abc, abc]).d["a"],
+        types.DictObs.concatenate([abc, abc]).get("a"),
         np.concatenate([A, A]),
     )
 

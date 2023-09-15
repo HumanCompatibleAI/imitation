@@ -44,18 +44,15 @@ class DictObs:
     lists of dictobs.
     """
 
-    d: Dict[str, np.ndarray]
+    _d: Dict[str, np.ndarray]
 
     @classmethod
-    def from_obs_list(cls, obs_list: List[Dict[str, np.ndarray]]):
-        # assert all have same keys
-        assert len(set(frozenset(obs.keys()) for obs in obs_list)) == 1
-        return cls(
-            {k: np.stack([obs[k] for obs in obs_list]) for k in obs_list[0].keys()},
-        )
+    def from_obs_list(cls, obs_list: List[Dict[str, np.ndarray]]) -> "DictObs":
+        """Stacks the observation list into a single DictObs."""
+        return cls.stack(map(cls, obs_list))
 
     def __post_init__(self):
-        if not all((isinstance(v, np.ndarray) for v in self.d.values())):
+        if not all((isinstance(v, np.ndarray) for v in self._d.values())):
             raise ValueError("keys must by numpy arrays")
 
     def __len__(self):
@@ -75,7 +72,7 @@ class DictObs:
         Returns:
             The length (first dimension) of the constiuent arrays
         """
-        lens = set(len(v) for v in self.d.values())
+        lens = set(len(v) for v in self._d.values())
         if len(lens) == 1:
             return lens.pop()
         elif len(lens) == 0:
@@ -87,13 +84,16 @@ class DictObs:
 
     @property
     def dict_len(self):
-        return len(self.d)
+        """Returns the number of arrays in the DictObs."""
+        return len(self._d)
 
     def __getitem__(
         self,
         key: Union[int, slice, Tuple[Union[int, slice], ...]],
     ) -> "DictObs":
         """Indexes or slices each array.
+
+        See `.get` for accessing a value from the underlying dictionary.
 
         Note that it will still return singleton values as np.arrays, not scalars,
         to be consistent with DictObs type signature.
@@ -105,7 +105,7 @@ class DictObs:
             A new DictObj object with each array indexed.
         """
         # asarray handles case where we slice to a single array element.
-        return self.__class__({k: np.asarray(v[key]) for k, v in self.d.items()})
+        return self.__class__({k: np.asarray(v[key]) for k, v in self._d.items()})
 
     def __iter__(self) -> Iterator["DictObs"]:
         """Iterates over the first dimension of each array.
@@ -121,54 +121,79 @@ class DictObs:
     def __eq__(self, other):
         if not isinstance(other, self.__class__):
             return False
-        if not self.d.keys() == other.d.keys():
+        if not self.keys() == other.keys():
             return False
-        return all(np.array_equal(self.d[k], other.d[k]) for k in self.d.keys())
+        return all(np.array_equal(self.get(k), other.get(k)) for k in self.keys())
 
     @property
     def shape(self) -> Dict[str, Tuple[int, ...]]:
         """Returns a dictionary with shape-tuples in place of the arrays."""
-        return {k: v.shape for k, v in self.d.items()}
+        return {k: v.shape for k, v in self.items()}
 
     @property
     def dtype(self) -> Dict[str, np.dtype]:
         """Returns a dictionary with dtype-tuples in place of the arrays."""
-        return {k: v.dtype for k, v in self.d.items()}
+        return {k: v.dtype for k, v in self.items()}
+
+    def keys(self):
+        return self._d.keys()
+
+    def values(self):
+        return self._d.values()
+
+    def items(self):
+        return self._d.items()
+
+    def __contains__(self, key):
+        return key in self._d
+
+    def get(self, key: str) -> np.ndarray:
+        """Returns the array for the given key, or raises KeyError."""
+        return self._d[key]
 
     def unwrap(self) -> Dict[str, np.ndarray]:
-        return self.d
+        """Returns a copy of the underlying dictionary (arrays are not copied)."""
+        return {k: v for k, v in self._d.items()}
 
     def map_arrays(self, fn: Callable[[np.ndarray], np.ndarray]) -> "DictObs":
-        return self.__class__({k: fn(v) for k, v in self.d.items()})
+        """Returns a new DictObs with `fn` applied to every array."""
+        return self.__class__({k: fn(v) for k, v in self.items()})
 
     @staticmethod
     def _unravel(dictobs_list: Iterable["DictObs"]) -> Dict[str, List[np.ndarray]]:
         """Converts a list of DictObs into a dictionary of lists of arrays."""
+        # assert all have same keys
+        key_set = set(frozenset(obs.keys()) for obs in dictobs_list)
+        if len(key_set) == 0:
+            raise ValueError("Empty list of DictObs")
+        if not len(key_set) == 1:
+            raise ValueError(f"Inconsistent keys: {key_set}")
+
         unraveled: Dict[str, List[np.ndarray]] = collections.defaultdict(list)
         for do in dictobs_list:
-            for k, array in do.d.items():
+            for k, array in do._d.items():
                 unraveled[k].append(array)
         return unraveled
 
     @classmethod
-    def stack(cls, dictobs_list: Iterable["DictObs"]) -> "DictObs":
+    def stack(cls, dictobs_list: Iterable["DictObs"], axis=0) -> "DictObs":
+        """Returns a single dictobs stacking the arrays by key."""
         return cls(
             {
-                k: np.stack(arr_list)
+                k: np.stack(arr_list, axis=axis)
                 for k, arr_list in cls._unravel(dictobs_list).items()
             },
         )
 
     @classmethod
-    def concatenate(cls, dictobs_list: Iterable["DictObs"]) -> "DictObs":
+    def concatenate(cls, dictobs_list: Iterable["DictObs"], axis=0) -> "DictObs":
+        """Returns a single dictobs concatenating the arrays by key."""
         return cls(
             {
-                k: np.concatenate(arr_list)
+                k: np.concatenate(arr_list, axis=axis)
                 for k, arr_list in cls._unravel(dictobs_list).items()
             },
         )
-
-    # TODO: add keys, values, items?
 
 
 # DicObs utilities
@@ -418,7 +443,6 @@ def transitions_collate_fn(
     result["infos"] = [sample["infos"] for sample in batch]
     result["obs"] = stack_maybe_dictobs([sample["obs"] for sample in batch])
     result["next_obs"] = stack_maybe_dictobs([sample["next_obs"] for sample in batch])
-    # TODO: clean names, docs
     return result
 
 
