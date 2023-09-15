@@ -58,7 +58,7 @@ class DictObs:
         if not all(
             isinstance(v, (np.ndarray, numbers.Number)) for v in self._d.values()
         ):
-            raise TypeError("keys must by numpy arrays")
+            raise TypeError("Values must be NumPy arrays")
 
     def __len__(self):
         """Returns the first dimension of constituent arrays.
@@ -75,7 +75,7 @@ class DictObs:
             RuntimeError: if the arrays have different lengths or there are no arrays.
 
         Returns:
-            The length (first dimension) of the constiuent arrays
+            The length (first dimension) of the constituent arrays
         """
         lens = set(len(v) for v in self._d.values())
         if len(lens) == 1:
@@ -158,7 +158,7 @@ class DictObs:
 
     def unwrap(self) -> Dict[str, np.ndarray]:
         """Returns a copy of the underlying dictionary (arrays are not copied)."""
-        return {k: v for k, v in self._d.items()}
+        return dict(self._d)
 
     def map_arrays(self, fn: Callable[[np.ndarray], np.ndarray]) -> "DictObs":
         """Returns a new DictObs with `fn` applied to every array."""
@@ -202,7 +202,7 @@ class DictObs:
         )
 
 
-# DicObs utilities
+# DictObs utilities
 
 
 Observation = Union[np.ndarray, DictObs]
