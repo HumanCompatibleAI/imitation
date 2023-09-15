@@ -5,6 +5,8 @@ from typing import Any, Mapping, Type
 
 import sacred
 from stable_baselines3.common import policies, utils, vec_env
+from stable_baselines3.sac import policies as SACPolicies
+
 
 import imitation.util.networks
 from imitation.policies import base
@@ -29,6 +31,10 @@ def config():
 @policy_ingredient.named_config
 def sac():
     policy_cls = base.SAC1024Policy  # noqa: F841
+
+@policy_ingredient.named_config
+def sac256():
+    policy_cls = SACPolicies.SACPolicy
 
 
 NORMALIZE_RUNNING_POLICY_KWARGS = {
