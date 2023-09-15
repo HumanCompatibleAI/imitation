@@ -215,7 +215,7 @@ def maybe_unwrap_dictobs(maybe_dictobs):
     if isinstance(maybe_dictobs, DictObs):
         return maybe_dictobs.unwrap()
     else:
-        if not isinstance(maybe_dictobs, (np.ndarray, th.Tensor)):
+        if not isinstance(maybe_dictobs, (np.ndarray, th.Tensor, int)):
             warnings.warn(f"trying to unwrap object of type {type(maybe_dictobs)}")
         return maybe_dictobs
 
@@ -237,7 +237,8 @@ def maybe_wrap_in_dictobs(
     if isinstance(obs, dict):
         return DictObs(obs)
     else:
-        assert isinstance(obs, (np.ndarray, DictObs))
+        if not isinstance(obs, (np.ndarray, DictObs, float, int)):
+            warnings.warn(f"tried to wrap {type(obs)} as an observation")
         return obs
 
 
