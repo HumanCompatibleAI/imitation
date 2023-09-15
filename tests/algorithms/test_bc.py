@@ -291,6 +291,49 @@ def test_that_policy_reconstruction_preserves_parameters(
         th.testing.assert_close(original, reconstructed)
 
 
+class FloatReward(gym.RewardWrapper):
+    """Typecasts reward to a float."""
+
+    def reward(self, reward):
+        return float(reward)
+
+
+def test_dict_space():
+    def make_env():
+        env = sb_envs.SimpleMultiObsEnv(channel_last=False)
+        env = FloatReward(env)
+        return RolloutInfoWrapper(env)
+
+    env = vec_env.DummyVecEnv([make_env, make_env])
+
+    # multi-input policy to accept dict observations
+    policy = sb_policies.MultiInputActorCriticPolicy(
+        env.observation_space,
+        env.action_space,
+        lambda _: 0.001,
+    )
+    rng = np.random.default_rng()
+
+    # sample random transitions
+    rollouts = rollout.rollout(
+        policy=None,
+        venv=env,
+        sample_until=rollout.make_sample_until(min_timesteps=None, min_episodes=50),
+        rng=rng,
+        unwrap=True,
+    )
+    transitions = rollout.flatten_trajectories(rollouts)
+    bc_trainer = bc.BC(
+        observation_space=env.observation_space,
+        policy=policy,
+        action_space=env.action_space,
+        rng=rng,
+        demonstrations=transitions,
+    )
+    # confirm that training works
+    bc_trainer.train(n_epochs=1)
+
+
 #############################################
 # ENSURE EXCEPTIONS ARE THROWN WHEN EXPECTED
 #############################################
@@ -375,57 +418,3 @@ def test_that_bc_raises_error_when_data_loader_is_empty(
 
     # THEN
     assert batch_cnt == no_yield_after_iter
-
-
-class FloatReward(gym.RewardWrapper):
-    """Typecasts reward to a float."""
-
-    def reward(self, reward):
-        return float(reward)
-
-
-# TODO: make test nicer
-def test_dict_space():
-    # TODO: is sb_envs okay?
-    def make_env():
-        env = sb_envs.SimpleMultiObsEnv(channel_last=False)
-        return RolloutInfoWrapper(FloatReward(env))
-
-    env = vec_env.DummyVecEnv([make_env, make_env])
-
-    policy = sb_policies.MultiInputActorCriticPolicy(
-        env.observation_space,
-        env.action_space,
-        lambda _: 0.001,
-    )
-    rng = np.random.default_rng()
-
-    def sample_expert_transitions():
-        print("Sampling expert transitions.")
-        rollouts = rollout.rollout(
-            policy=None,
-            venv=env,
-            sample_until=rollout.make_sample_until(min_timesteps=None, min_episodes=50),
-            rng=rng,
-            unwrap=True,
-        )
-        return rollout.flatten_trajectories(rollouts)
-
-    transitions = sample_expert_transitions()
-
-    bc_trainer = bc.BC(
-        observation_space=env.observation_space,
-        policy=policy,
-        action_space=env.action_space,
-        rng=rng,
-        demonstrations=transitions,
-    )
-
-    bc_trainer.train(n_epochs=1)
-
-    reward, _ = evaluation.evaluate_policy(
-        bc_trainer.policy,  # type: ignore[arg-type]
-        env,
-        n_eval_episodes=3,
-        render=False,  # comment out to speed up
-    )
