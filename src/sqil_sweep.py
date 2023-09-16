@@ -108,9 +108,25 @@ def perform_trial(study_name, environment, n_trials, n_jobs):
     print(f"Best params: {study.best_params}")
     print(f"Best value: {study.best_value}")
 
+def show_study(study_name):
+    storage_name = "sqlite:///{}.db".format(study_name)
+    study = optuna.create_study(
+        study_name=study_name,
+        storage=storage_name,
+        load_if_exists=True,
+        direction="maximize",
+    )
+    print("-" * 80)
+    print("Study name: ", study_name)
+    print(f"Best params: {study.best_params}")
+    print(f"Best value: {study.best_value}")
+    print(f"Num trials: {len(study.trials)}")
+
+
 
 if __name__ == "__main__":
     n_trials, n_jobs = 40, 10
 
     for name, env in environments:
-        perform_trial(f"{name}_final", env, n_trials, n_jobs)
+        # perform_trial(f"{name}_final", env, n_trials, n_jobs)
+        show_study(f"{name}_final")
