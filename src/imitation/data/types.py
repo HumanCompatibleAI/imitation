@@ -281,8 +281,7 @@ def maybe_wrap_in_dictobs(
 
 
 def map_maybe_dict(fn, maybe_dict):
-    """Either maps fn over the values of maybe_dict (if it is a dict), or applies fn
-    to `maybe dict` itself (if it's not a dict).
+    """Either maps fn over dictionary values or applies fn to `maybe_dict`.
 
     Args:
         fn: function to apply. Must take a single argument.
