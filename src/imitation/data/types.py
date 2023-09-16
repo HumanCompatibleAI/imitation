@@ -176,8 +176,8 @@ class DictObs:
             raise ValueError(f"Inconsistent keys: {key_set}")
 
         unraveled: Dict[str, List[np.ndarray]] = collections.defaultdict(list)
-        for do in it2:
-            for k, array in do._d.items():
+        for ob_dict in it2:
+            for k, array in ob_dict._d.items():
                 unraveled[k].append(array)
         return unraveled
 
@@ -211,8 +211,7 @@ ObsVar = TypeVar("ObsVar", np.ndarray, DictObs)
 
 def assert_not_dictobs(x: Observation) -> np.ndarray:
     """Typeguard to assert `x` is an array, not a DictObs."""
-    if isinstance(x, DictObs):
-        assert False, "Dictionary observations are not supported here."
+    assert not isinstance(x, DictObs), "Dictionary observations are not supported here."
     return x
 
 
@@ -282,7 +281,16 @@ def maybe_wrap_in_dictobs(
 
 
 def map_maybe_dict(fn, maybe_dict):
-    """Applies fn to all values a dictionary, or to the value itself if not a dict."""
+    """Either maps fn over the values of maybe_dict (if it is a dict), or applies fn
+    to `maybe dict` itself (if it's not a dict).
+
+    Args:
+        fn: function to apply. Must take a single argument.
+        maybe_dict: either a dict or a value that can be passed to fn.
+
+    Returns:
+        Either a dict (if maybe_dict was a dict) or `fn(maybe_dict)`.
+    """
     if isinstance(maybe_dict, dict):
         return {k: fn(v) for k, v in maybe_dict.items()}
     else:

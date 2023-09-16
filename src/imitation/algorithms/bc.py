@@ -126,10 +126,8 @@ class BehaviorCloningLossCalculator:
         )
         acts = util.safe_to_tensor(acts)
 
-        # policy.evaluate_actions's type signature seems wrong to me.
-        # it declares it only takes a tensor but it calls
-        # extract_features which is happy with Dict[str, tensor].
-        # In reality the required type of obs depends on the feature extractor.
+        # policy.evaluate_actions's type signatures are incorrect.
+        # See https://github.com/DLR-RM/stable-baselines3/issues/1679
         (_, log_prob, entropy) = policy.evaluate_actions(
             tensor_obs,  # type: ignore[arg-type]
             acts,
