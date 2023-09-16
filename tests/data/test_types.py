@@ -490,6 +490,7 @@ def test_dict_obs():
 
     # eq
     assert abc == types.DictObs({"a": A, "b": B, "c": C})
+    assert abc == types.DictObs({"a": np.array(A), "b": np.array(B), "c": np.array(C)})
     assert abc != types.DictObs({"a": A, "c": B, "b": C})  # diff keys
     assert abc != types.DictObs({"a": A, "b": B + 1, "c": C})  # diff values
     assert abc != {"a": A, "b": B + 1, "c": C}  # diff type

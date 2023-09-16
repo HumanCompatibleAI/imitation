@@ -300,7 +300,7 @@ class TransitionMappingNoNextObs(TypedDict):
 class TransitionMapping(TransitionMappingNoNextObs, total=False):
     """Dictionary with `obs` and `acts`, maybe also `next_obs`, `dones`, `rew`."""
 
-    next_obs: AnyTensor
+    next_obs: Union[Observation, th.Tensor]
     dones: AnyTensor
     rew: AnyTensor
 
