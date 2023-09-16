@@ -544,17 +544,9 @@ class DAggerTrainer(base.BaseImitationAlgorithm):
             self.scratch_dir / "policy-latest.pt",
         ]
         for policy_path in policy_paths:
-            self.save_policy(policy_path)
+            util.save_policy(self.policy, policy_path)
 
         return checkpoint_paths[0], policy_paths[0]
-
-    def save_policy(self, policy_path: types.AnyPath) -> None:
-        """Save the current policy only (and not the rest of the trainer).
-
-        Args:
-            policy_path: path to save policy to.
-        """
-        self.bc_trainer.save_policy(policy_path)
 
 
 class SimpleDAggerTrainer(DAggerTrainer):

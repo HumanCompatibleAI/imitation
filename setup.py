@@ -202,6 +202,7 @@ setup(
         "numpy>=1.15",
         "torch>=1.4.0",
         "tqdm",
+        "rich",
         "scikit-learn>=0.21.2",
         "seals~=0.1.5",
         STABLE_BASELINES3,
