@@ -44,6 +44,14 @@ def config_hook(config, command_name, logger):
 
     This hook is a no-op if command_name is "sqil" (used only in train_imitation),
     which has its own config hook.
+
+    Args:
+        config: Sacred config dict.
+        command_name: Sacred command name.
+        logger: Sacred logger.
+
+    Returns:
+        config: Updated Sacred config dict.
     """
     del logger
     res = {}
