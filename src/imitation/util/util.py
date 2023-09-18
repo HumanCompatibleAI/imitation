@@ -25,7 +25,6 @@ from typing import (
 import gymnasium as gym
 import numpy as np
 import torch as th
-from gymnasium.wrappers import TimeLimit
 from stable_baselines3.common import monitor, policies
 from stable_baselines3.common.vec_env import DummyVecEnv, SubprocVecEnv, VecEnv
 
