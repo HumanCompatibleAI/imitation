@@ -55,7 +55,7 @@ def config_hook(config, command_name, logger):
     """
     del logger
     res = {}
-    if config["rl"]["rl_cls"] == None and command_name != "sqil":
+    if config["rl"]["rl_cls"] is None and command_name != "sqil":
         res["rl_cls"] = sb3.PPO
         res["batch_size"] = 2048  # rl_kwargs["n_steps"] = batch_size // venv.num_envs
         res["rl_kwargs"] = dict(
