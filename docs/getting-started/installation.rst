@@ -6,13 +6,7 @@ Prerequisites
 -------------
 
 - Python 3.8+
-- Specific versions of pip and setuptools due to \
-  `a bug with gym <https://github.com/openai/gym/issues/3176>`_:
-
-.. code-block:: bash
-
-    pip install -U setuptools==65.5.0 pip==21
-
+- pip (it helps to make sure this is up-to-date: ``pip install -U pip``)
 - (on ARM64 Macs) you need to set environment variables due to \
   `a bug in grpcio <https://stackoverflow.com/questions/66640705/how-can-i-install-grpcio-on-an-apple-m1-silicon-laptop>`_:
 
