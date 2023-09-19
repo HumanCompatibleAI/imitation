@@ -291,8 +291,7 @@ jobs:
             # Note: we don't want to execute the example notebooks in this step since
             #   this happens in a separate readthedocs job anyway.
             NB_EXECUTION_MODE: "off"
-          command: pip install gym==0.21.0 &&
-            pushd docs/ && make clean && make doctest && popd
+          command: pushd docs/ && make clean && make doctest && popd
 
   type:
     executor: static-analysis-medium
@@ -329,7 +328,6 @@ jobs:
       - run:
           name: run tests
           command: |
-            pip install gym==0.21.0
             Xdummy-entrypoint.py pytest -n ${NUM_CPUS} --cov=/venv/lib/python3.8/site-packages/imitation \
                   --cov=tests --junitxml=/tmp/test-reports/junit.xml \
                   --durations=500 -vv tests/
@@ -352,7 +350,6 @@ jobs:
           name: run tests
           command: |
             source ~/venv/bin/activate
-            pip install gym==0.21.0
             TESTFILES=$(circleci tests glob tests/**/test*.py | circleci tests split --split-by=timings)
             pytest -n auto --junitxml=/tmp/test-reports/junit.xml -vv $TESTFILES
 
