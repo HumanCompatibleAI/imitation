@@ -17,11 +17,6 @@ Prerequisites
 
 - (Optional) OpenGL (to render gym environments)
 - (Optional) FFmpeg (to encode videos of renders)
-- (Optional) MuJoCo (follow instructions to install `mujoco\_py v1.5 here`_)
-
-.. _mujoco_py v1.5 here:
-    https://github.com/openai/mujoco-py/tree/498b451a03fb61e5bdfcb6956d8d7c881b1098b5#install-mujoco
-
 
 Installation from PyPI
 ----------------------
