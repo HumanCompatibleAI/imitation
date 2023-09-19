@@ -5,7 +5,7 @@ Note that this is a toy example that does not lead to training a reasonable poli
 
 import tempfile
 
-import gym
+import gymnasium as gym
 import numpy as np
 from stable_baselines3.common import vec_env
 
