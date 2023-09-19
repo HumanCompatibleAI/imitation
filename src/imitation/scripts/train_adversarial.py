@@ -33,7 +33,7 @@ class CheckpointCallback(BaseCallback):
         interval: int,
     ):
         """Creates new Checkpoint callback."""
-        super().__init__(self)
+        super().__init__()
         self.trainer = trainer
         self.log_dir = log_dir
         self.interval = interval

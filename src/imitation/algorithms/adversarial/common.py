@@ -2,7 +2,7 @@
 import abc
 import dataclasses
 import logging
-from typing import Iterable, Iterator, Mapping, Optional, Type, overload
+from typing import Iterable, Iterator, Mapping, Optional, Type, List, overload
 
 import numpy as np
 import torch as th
@@ -414,7 +414,10 @@ class AdversarialTrainer(base.DemonstrationAlgorithm[types.Transitions]):
         if learn_kwargs is None:
             learn_kwargs = {}
 
-        callbacks = [self.gen_callback]
+        callbacks: List[BaseCallback] = []
+
+        if self.gen_callback:
+            callbacks.append(self.gen_callback)
 
         if isinstance(callback, list):
             callbacks.extend(callback)
