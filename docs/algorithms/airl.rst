@@ -84,7 +84,7 @@ Detailed example notebook: :doc:`../tutorials/4_train_airl`
         reward_net=reward_net,
     )
 
-    env.reset(seed=SEED)
+    env.seed(SEED)
     learner_rewards_before_training, _ = evaluate_policy(
         learner, env, 100, return_episode_rewards=True,
     )
