@@ -450,7 +450,6 @@ def test_mce_irl_reasonable_mdp(
         # test MCE IRL on the MDP
         mdp = ReasonablePOMDP()
         mdp.reset(seed=715298)
-        # mdp.seed(715298)    # NOTE: not sure this is the correct approach in this case
 
         # demo occupancy measure
         V, Q, pi = mce_partition_fh(mdp, discount=discount)
