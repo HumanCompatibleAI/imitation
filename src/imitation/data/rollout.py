@@ -432,8 +432,10 @@ def generate_trajectories(
     # To start with, all environments are active.
     active = np.ones(venv.num_envs, dtype=bool)
     if not isinstance(obs, np.ndarray):
-        raise ValueError("Dict/tuple observations are not supported."
-                         "Currently only np.ndarray observations are supported.")
+        raise ValueError(
+            "Dict/tuple observations are not supported."
+            "Currently only np.ndarray observations are supported."
+        )
 
     state = None
     dones = np.zeros(venv.num_envs, dtype=bool)
