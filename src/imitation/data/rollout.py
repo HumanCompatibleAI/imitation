@@ -434,7 +434,7 @@ def generate_trajectories(
     if not isinstance(obs, np.ndarray):
         raise ValueError(
             "Dict/tuple observations are not supported."
-            "Currently only np.ndarray observations are supported."
+            "Currently only np.ndarray observations are supported.",
         )
 
     state = None
