@@ -280,6 +280,7 @@ class ReplayBuffer:
                         "with an observation space that has a shape.",
                     )
                 obs_shape = tuple(venv.observation_space.shape)
+
             if venv.observation_space.dtype is not None:
                 if obs_dtype is not None:
                     raise ValueError(
