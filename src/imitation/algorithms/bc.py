@@ -57,7 +57,6 @@ class BatchIteratorWithEpochEndCallback:
 
     def __iter__(self) -> Iterator[types.TransitionMapping]:
         def batch_iterator() -> Iterator[types.TransitionMapping]:
-
             # Note: the islice here ensures we do not exceed self.n_epochs
             for epoch_num in itertools.islice(itertools.count(), self.n_epochs):
                 some_batch_was_yielded = False

@@ -5,8 +5,8 @@ from typing import Any, Mapping, Optional
 from unittest import mock
 
 import pytest
-import wandb
 
+import wandb
 from imitation.util import logger
 
 
@@ -62,7 +62,6 @@ class MockWandb:
         commit: bool = False,
         sync: bool = False,
     ):
-
         assert self._initialized
         if sync:
             raise NotImplementedError("usage of sync to MockWandb.log not implemented")

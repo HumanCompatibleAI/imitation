@@ -639,7 +639,7 @@ class SimpleDAggerTrainer(DAggerTrainer):
         Args:
             total_timesteps: The number of timesteps to train inside the environment.
                 In practice this is a lower bound, because the number of timesteps is
-                rounded up to finish the minimum number of episdoes or timesteps in the
+                rounded up to finish the minimum number of episodes or timesteps in the
                 last DAgger training round, and the environment timesteps are executed
                 in multiples of `self.venv.num_envs`.
             rollout_round_min_episodes: The number of episodes the must be completed

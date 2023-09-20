@@ -16,6 +16,7 @@ class TrajectoryDatasetSequence(Sequence[types.Trajectory]):
 
     def __init__(self, dataset: datasets.Dataset):
         """Construct a TrajectoryDatasetSequence."""
+
         # TODO: this is just a temporary workaround for
         #  https://github.com/huggingface/datasets/issues/5517
         #  switch to .with_format("numpy") once it's fixed
@@ -31,7 +32,6 @@ class TrajectoryDatasetSequence(Sequence[types.Trajectory]):
         return len(self._dataset)
 
     def __getitem__(self, idx):
-
         if isinstance(idx, slice):
             # Note: we could use self._dataset[idx] here and then convert the result of
             #   that to a series of trajectories, but if we do that, we run into trouble

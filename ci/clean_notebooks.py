@@ -63,7 +63,6 @@ def clean_notebook(file: pathlib.Path, check_only=False) -> None:
         print(f"Checking {file}")
 
     for cell in nb.cells:
-
         # Remove empty cells
         if cell["cell_type"] == "code" and not cell["source"]:
             if check_only:
