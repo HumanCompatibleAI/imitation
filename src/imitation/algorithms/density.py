@@ -301,7 +301,7 @@ class DensityAlgorithm(base.DemonstrationAlgorithm):
                     f"flattens to {type(flat_observation)}",
                 )
 
-            assert type(flat_observation) == type(flat_next_observation)
+            assert type(flat_observation) is type(flat_next_observation)
 
             return np.concatenate([flat_observation, flat_next_observation])
         else:

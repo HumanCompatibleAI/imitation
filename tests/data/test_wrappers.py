@@ -149,7 +149,7 @@ def test_pop(
     # To test `pop_transitions`, we will check that every obs, act, and rew
     # returned by `.reset()` and `.step()` is also returned by one of the
     # calls to `pop_transitions()`.
-    transitions_list = []  # type: List[types.TransitionsWithRew]
+    transitions_list: List[types.TransitionsWithRew] = []
 
     # Initial observation (only matters for pop_transitions()).
     obs = venv_buffer.reset()
