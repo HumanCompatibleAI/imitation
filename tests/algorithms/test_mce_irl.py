@@ -35,7 +35,7 @@ def rollouts(env, n=10, seed=None):
         traj = [obs]
         while not done:
             act = env.action_space.sample()
-            obs, rew, terminated, truncated, info = env.step(act)
+            obs, rew, terminated, truncated, _ = env.step(act)
             done = terminated or truncated
             traj.append((obs, rew))
         rv.append(traj)
