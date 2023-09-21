@@ -5,8 +5,8 @@ from typing import Any, Mapping, Optional
 from unittest import mock
 
 import pytest
-
 import wandb
+
 from imitation.util import logger
 
 
