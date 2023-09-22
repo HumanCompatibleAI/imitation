@@ -8,12 +8,17 @@ import numpy as np
 import torch as th
 import torch.utils.tensorboard as thboard
 import tqdm
-from stable_baselines3.common import base_class, on_policy_algorithm, policies, vec_env
+from stable_baselines3.common import base_class
+from stable_baselines3.common import buffers as sb3_buffers
+from stable_baselines3.common import on_policy_algorithm, policies, type_aliases
+from stable_baselines3.common import utils as sb3_utils
+from stable_baselines3.common import vec_env
 from stable_baselines3.sac import policies as sac_policies
 from torch.nn import functional as F
 
 from imitation.algorithms import base
 from imitation.data import buffer, rollout, types, wrappers
+from imitation.policies import replay_buffer_wrapper
 from imitation.rewards import reward_nets, reward_wrapper
 from imitation.util import logger, networks, util
 
@@ -246,6 +251,38 @@ class AdversarialTrainer(base.DemonstrationAlgorithm[types.Transitions]):
         else:
             self.gen_train_timesteps = gen_train_timesteps
 
+        self.is_gen_on_policy = isinstance(
+            self.gen_algo, on_policy_algorithm.OnPolicyAlgorithm
+        )
+        if self.is_gen_on_policy:
+            rollout_buffer = self.gen_algo.rollout_buffer
+            self.gen_algo.rollout_buffer = (
+                replay_buffer_wrapper.RolloutBufferRewardWrapper(
+                    buffer_size=self.gen_train_timesteps // rollout_buffer.n_envs,
+                    observation_space=rollout_buffer.observation_space,
+                    action_space=rollout_buffer.action_space,
+                    rollout_buffer_class=rollout_buffer.__class__,
+                    reward_fn=self.reward_train.predict_processed,
+                    device=rollout_buffer.device,
+                    gae_lambda=rollout_buffer.gae_lambda,
+                    gamma=rollout_buffer.gamma,
+                    n_envs=rollout_buffer.n_envs,
+                )
+            )
+        else:
+            replay_buffer = self.gen_algo.replay_buffer
+            self.gen_algo.replay_buffer = (
+                replay_buffer_wrapper.ReplayBufferRewardWrapper(
+                    buffer_size=self.gen_train_timesteps,
+                    observation_space=replay_buffer.observation_space,
+                    action_space=replay_buffer.action_space,
+                    replay_buffer_class=sb3_buffers.ReplayBuffer,
+                    reward_fn=self.reward_train.predict_processed,
+                    device=replay_buffer.device,
+                    n_envs=replay_buffer.n_envs,
+                )
+            )
+
         if gen_replay_buffer_capacity is None:
             gen_replay_buffer_capacity = self.gen_train_timesteps
         self._gen_replay_buffer = buffer.ReplayBuffer(
@@ -382,41 +419,126 @@ class AdversarialTrainer(base.DemonstrationAlgorithm[types.Transitions]):
 
         return train_stats
 
-    def train_gen(
+    def collect_rollouts(
         self,
         total_timesteps: Optional[int] = None,
+        callback: type_aliases.MaybeCallback = None,
         learn_kwargs: Optional[Mapping] = None,
-    ) -> None:
-        """Trains the generator to maximize the discriminator loss.
-
-        After the end of training populates the generator replay buffer (used in
-        discriminator training) with `self.disc_batch_size` transitions.
+    ):
+        """Collect rollouts.
 
         Args:
             total_timesteps: The number of transitions to sample from
                 `self.venv_train` during training. By default,
                 `self.gen_train_timesteps`.
+            callback: Callback that will be called at each step
+                (and at the beginning and end of the rollout)
             learn_kwargs: kwargs for the Stable Baselines `RLModel.learn()`
                 method.
         """
-        if total_timesteps is None:
-            total_timesteps = self.gen_train_timesteps
         if learn_kwargs is None:
             learn_kwargs = {}
 
-        with self.logger.accumulate_means("gen"):
-            self.gen_algo.learn(
-                total_timesteps=total_timesteps,
-                reset_num_timesteps=False,
-                callback=self.gen_callback,
+        if total_timesteps is None:
+            total_timesteps = self.gen_train_timesteps
+
+        # total timesteps should be per env
+        total_timesteps = total_timesteps // self.gen_algo.n_envs
+        # NOTE (Taufeeque): call setup_learn or not?
+        if "eval_env" not in learn_kwargs:
+            total_timesteps, callback = self.gen_algo._setup_learn(
+                total_timesteps,
+                eval_env=None,
+                callback=callback,
                 **learn_kwargs,
             )
-            self._global_step += 1
+        else:
+            total_timesteps, callback = self.gen_algo._setup_learn(
+                total_timesteps,
+                callback=callback,
+                **learn_kwargs,
+            )
+        callback.on_training_start(locals(), globals())
+        if self.is_gen_on_policy:
+            self.gen_algo.collect_rollouts(
+                self.gen_algo.env,
+                callback,
+                self.gen_algo.rollout_buffer,
+                n_rollout_steps=total_timesteps,
+            )
+            rollouts = None
+        else:
+            self.gen_algo.train_freq = total_timesteps
+            self.gen_algo._convert_train_freq()
+            rollouts = self.gen_algo.collect_rollouts(
+                self.gen_algo.env,
+                train_freq=self.gen_algo.train_freq,
+                action_noise=self.gen_algo.action_noise,
+                callback=callback,
+                learning_starts=self.gen_algo.learning_starts,
+                replay_buffer=self.gen_algo.replay_buffer,
+            )
+
+        if self.is_gen_on_policy:
+            if (
+                len(self.gen_algo.ep_info_buffer) > 0
+                and len(self.gen_algo.ep_info_buffer[0]) > 0
+            ):
+                self.logger.record(
+                    "rollout/ep_rew_mean",
+                    sb3_utils.safe_mean(
+                        [ep_info["r"] for ep_info in self.gen_algo.ep_info_buffer]
+                    ),
+                )
+                self.logger.record(
+                    "rollout/ep_len_mean",
+                    sb3_utils.safe_mean(
+                        [ep_info["l"] for ep_info in self.gen_algo.ep_info_buffer]
+                    ),
+                )
+                self.logger.record(
+                    "time/total_timesteps",
+                    self.gen_algo.num_timesteps,
+                    exclude="tensorboard",
+                )
+        else:
+            self.gen_algo._dump_logs()
 
         gen_trajs, ep_lens = self.venv_buffering.pop_trajectories()
         self._check_fixed_horizon(ep_lens)
         gen_samples = rollout.flatten_trajectories_with_rew(gen_trajs)
         self._gen_replay_buffer.store(gen_samples)
+        callback.on_training_end()
+        return rollouts
+
+    def train_gen(
+        self,
+        rollouts,
+    ) -> None:
+        """Trains the generator to maximize the discriminator loss.
+
+        After the end of training populates the generator replay buffer (used in
+        discriminator training) with `self.disc_batch_size` transitions.
+        """
+        with self.logger.accumulate_means("gen"):
+            #     self.gen_algo.learn(
+            #         total_timesteps=total_timesteps,
+            #         reset_num_timesteps=False,
+            #         callback=self.gen_callback,
+            #         **learn_kwargs,
+            #     )
+            if self.is_gen_on_policy:
+                self.gen_algo.train()
+            else:
+                if self.gen_algo.gradient_steps >= 0:
+                    gradient_steps = self.gen_algo.gradient_steps
+                else:
+                    gradient_steps = rollouts.episode_timesteps
+                self.gen_algo.train(
+                    batch_size=self.gen_algo.batch_size,
+                    gradient_steps=gradient_steps,
+                )
+            self._global_step += 1
 
     def train(
         self,
@@ -445,11 +567,14 @@ class AdversarialTrainer(base.DemonstrationAlgorithm[types.Transitions]):
             f"total_timesteps={total_timesteps})!"
         )
         for r in tqdm.tqdm(range(0, n_rounds), desc="round"):
-            self.train_gen(self.gen_train_timesteps)
+            rollouts = self.collect_rollouts(
+                self.gen_train_timesteps, self.gen_callback
+            )
             for _ in range(self.n_disc_updates_per_round):
                 with networks.training(self.reward_train):
                     # switch to training mode (affects dropout, normalization)
                     self.train_disc()
+            self.train_gen(rollouts)
             if callback:
                 callback(r)
             self.logger.dump(self._global_step)
