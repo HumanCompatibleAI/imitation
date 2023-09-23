@@ -44,10 +44,18 @@ def config_hook(config, command_name, logger):
 
     This hook is a no-op if command_name is "sqil" (used only in train_imitation),
     which has its own config hook.
+
+    Args:
+        config: Sacred config dict.
+        command_name: Sacred command name.
+        logger: Sacred logger.
+
+    Returns:
+        config: Updated Sacred config dict.
     """
     del logger
     res = {}
-    if config["rl"]["rl_cls"] == None and command_name != "sqil":
+    if config["rl"]["rl_cls"] is None and command_name != "sqil":
         res["rl_cls"] = sb3.PPO
         res["batch_size"] = 2048  # rl_kwargs["n_steps"] = batch_size // venv.num_envs
         res["rl_kwargs"] = dict(

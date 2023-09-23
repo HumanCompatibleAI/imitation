@@ -23,7 +23,7 @@ Detailed example notebook: :doc:`../tutorials/4_train_airl`
     :skipif: skip_doctests
 
     import numpy as np
-    import seals  # noqa: F401  # needed to load "seals/" environments
+    import gymnasium as gym
     from stable_baselines3 import PPO
     from stable_baselines3.common.evaluation import evaluate_policy
     from stable_baselines3.ppo import MlpPolicy
@@ -39,7 +39,7 @@ Detailed example notebook: :doc:`../tutorials/4_train_airl`
     SEED = 42
 
     env = make_vec_env(
-        "seals/CartPole-v0",
+        "seals:seals/CartPole-v0",
         rng=np.random.default_rng(SEED),
         n_envs=8,
         post_wrappers=[lambda env, _: RolloutInfoWrapper(env)],  # to compute rollouts

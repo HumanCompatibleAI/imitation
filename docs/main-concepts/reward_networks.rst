@@ -47,7 +47,7 @@ In order to use a reward network to train a policy, we need to integrate it into
 
     import numpy as np
     rng = np.random.default_rng(0)
-    from gym.spaces import Box
+    from gymnasium.spaces import Box
     obs_space = Box(np.ones(2), np.ones(2))
     action_space = Box(np.ones(5), np.ones(5))
 
