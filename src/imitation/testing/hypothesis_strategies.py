@@ -1,7 +1,7 @@
 """Hypothesis strategies for generating sequences of trajectories for testing."""
 from typing import Dict, List, Union
 
-import gym
+import gymnasium as gym
 import numpy as np
 from hypothesis import strategies as st
 
@@ -10,7 +10,7 @@ from imitation.data import types
 gym_spaces = st.sampled_from(
     [
         gym.spaces.Discrete(3),
-        gym.spaces.MultiDiscrete((3, 4)),
+        gym.spaces.MultiDiscrete([3, 4]),
         gym.spaces.Box(-1, 1, shape=(1,)),
         gym.spaces.Box(-1, 1, shape=(2,)),
         gym.spaces.Box(-np.inf, np.inf, shape=(2,)),

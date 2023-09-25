@@ -119,17 +119,19 @@ def make_expert_transition_loader(
     env_name: str,
     rng: np.random.Generator,
     num_trajectories: int = 1,
+    shuffle: bool = True,
 ):
     """Creates different kinds of PyTorch data loaders for expert transitions.
 
     Args:
         cache_dir: The directory to use for caching the expert trajectories.
         batch_size: The batch size to use for the data loader.
-        expert_data_type: The type of expert data to use. Can be one of "data_loader",
-            "ducktyped_data_loader", "transitions".
+        expert_data_type: The type of expert data to use. Can be one of "trajectories",
+            "data_loader", "ducktyped_data_loader", "transitions".
         env_name: The environment to generate trajectories for.
         rng: The random number generator to use.
         num_trajectories: The number of trajectories to generate.
+        shuffle: Whether to shuffle the dataset when creating a data loader.
 
     Raises:
         ValueError: If `expert_data_type` is not one of the supported types.
@@ -143,6 +145,10 @@ def make_expert_transition_loader(
         num_trajectories,
         rng,
     )
+
+    if expert_data_type == "trajectories":
+        return trajectories
+
     transitions = rollout.flatten_trajectories(trajectories)
 
     if len(transitions) < batch_size:  # pragma: no cover
@@ -163,7 +169,7 @@ def make_expert_transition_loader(
         return th_data.DataLoader(
             transitions,
             batch_size=batch_size,
-            shuffle=True,
+            shuffle=shuffle,
             drop_last=True,
             collate_fn=types.transitions_collate_fn,
         )

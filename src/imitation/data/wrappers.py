@@ -6,8 +6,8 @@ import tempfile
 import uuid
 from typing import List, Optional, Sequence, Tuple
 
+import gymnasium as gym
 import cv2
-import gym
 import numpy as np
 import numpy.typing as npt
 from stable_baselines3.common.vec_env import VecEnv, VecEnvWrapper
@@ -257,13 +257,14 @@ class RolloutInfoWrapper(gym.Wrapper):
         self._rews = None
 
     def reset(self, **kwargs):
-        new_obs = super().reset(**kwargs)
+        new_obs, info = super().reset(**kwargs)
         self._obs = [new_obs]
         self._rews = []
-        return new_obs
+        return new_obs, info
 
     def step(self, action):
-        obs, rew, done, info = self.env.step(action)
+        obs, rew, terminated, truncated, info = self.env.step(action)
+        done = terminated or truncated
         self._obs.append(obs)
         self._rews.append(rew)
 
@@ -273,4 +274,4 @@ class RolloutInfoWrapper(gym.Wrapper):
                 "obs": np.stack(self._obs),
                 "rews": np.stack(self._rews),
             }
-        return obs, rew, done, info
+        return obs, rew, terminated, truncated, info

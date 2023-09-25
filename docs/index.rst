@@ -71,6 +71,7 @@ If you use ``imitation`` in your research project, please cite our paper to help
    algorithms/density
    algorithms/mce_irl
    algorithms/preference_comparisons
+   algorithms/sqil
 
 .. toctree::
    :maxdepth: 2
@@ -86,8 +87,10 @@ If you use ``imitation`` in your research project, please cite our paper to help
    tutorials/5b_train_preference_comparisons_with_synchronous_human_feedback
    tutorials/6_train_mce
    tutorials/7_train_density
-   tutorials/8_train_custom_env
+   tutorials/8_train_sqil
+   tutorials/8a_train_sqil_sac
    tutorials/9_compare_baselines
+   tutorials/10_train_custom_env
 
 API Reference
 ~~~~~~~~~~~~~
