@@ -1,7 +1,7 @@
 .. _preference comparisons docs:
 
 ======================
-Preference comparisons
+Preference Comparisons
 ======================
 
 The preference comparison algorithm learns a reward function from preferences between pairs of trajectories.
@@ -18,7 +18,8 @@ to predict the preference comparison.
 Example
 =======
 
-Detailed example notebook: :doc:`../tutorials/5_train_preference_comparisons`
+You can copy this example to train `PPO <https://stable-baselines3.readthedocs.io/en/master/modules/ppo.html>`_ on `Pendulum <https://www.gymlibrary.dev/environments/classic_control/pendulum/>`_ using a reward model trained on 200 synthetic preference comparisons.
+For a more detailed example, refer to :doc:`../tutorials/5_train_preference_comparisons`.
 
 .. testcode::
     :skipif: skip_doctests
@@ -50,7 +51,7 @@ Detailed example notebook: :doc:`../tutorials/5_train_preference_comparisons`
     reward_trainer = preference_comparisons.BasicRewardTrainer(
         preference_model=preference_model,
         loss=preference_comparisons.CrossEntropyRewardLoss(),
-        epochs=3,
+        epochs=10,
         rng=rng,
     )
 
@@ -62,29 +63,39 @@ Detailed example notebook: :doc:`../tutorials/5_train_preference_comparisons`
         ),
         env=venv,
         n_steps=2048 // venv.num_envs,
+        clip_range=0.1,
+        ent_coef=0.01,
+        gae_lambda=0.95,
+        n_epochs=10,
+        gamma=0.97,
+        learning_rate=2e-3,
     )
 
     trajectory_generator = preference_comparisons.AgentTrainer(
         algorithm=agent,
         reward_fn=reward_net,
         venv=venv,
-        exploration_frac=0.0,
+        exploration_frac=0.05,
         rng=rng,
     )
 
     pref_comparisons = preference_comparisons.PreferenceComparisons(
         trajectory_generator,
         reward_net,
-        num_iterations=5,
+        num_iterations=5, # Set to 60 for better performance
         fragmenter=fragmenter,
         preference_gatherer=gatherer,
         reward_trainer=reward_trainer,
-        initial_epoch_multiplier=1,
+        initial_epoch_multiplier=4,
+        initial_comparison_frac=0.1,
+        query_schedule="hyperbolic",
     )
-    pref_comparisons.train(total_timesteps=5_000, total_comparisons=200)
+    pref_comparisons.train(total_timesteps=50_000, total_comparisons=200)
 
-    reward, _ = evaluate_policy(agent.policy, venv, 10)
-    print("Reward:", reward)
+    n_eval_episodes = 10
+    reward_mean, reward_std = evaluate_policy(agent.policy, venv, n_eval_episodes)
+    reward_stderr = reward_std/np.sqrt(n_eval_episodes)
+    print(f"Reward: {reward_mean:.0f} +/- {reward_stderr:.0f}")
 
 .. testoutput::
     :hide:

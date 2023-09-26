@@ -18,7 +18,7 @@ from typing import (
     Union,
 )
 
-import gym
+import gymnasium as gym
 import numpy as np
 import torch as th
 import tqdm
@@ -38,7 +38,7 @@ class BatchIteratorWithEpochEndCallback:
     Will throw an exception when an epoch contains no batches.
     """
 
-    batch_loader: Iterable[algo_base.TransitionMapping]
+    batch_loader: Iterable[types.TransitionMapping]
     n_epochs: Optional[int]
     n_batches: Optional[int]
     on_epoch_end: Optional[Callable[[int], None]]
@@ -55,9 +55,8 @@ class BatchIteratorWithEpochEndCallback:
                 "Must provide exactly one of `n_epochs` and `n_batches` arguments.",
             )
 
-    def __iter__(self) -> Iterator[algo_base.TransitionMapping]:
-        def batch_iterator() -> Iterator[algo_base.TransitionMapping]:
-
+    def __iter__(self) -> Iterator[types.TransitionMapping]:
+        def batch_iterator() -> Iterator[types.TransitionMapping]:
             # Note: the islice here ensures we do not exceed self.n_epochs
             for epoch_num in itertools.islice(itertools.count(), self.n_epochs):
                 some_batch_was_yielded = False
@@ -143,8 +142,8 @@ class BehaviorCloningLossCalculator:
 
 
 def enumerate_batches(
-    batch_it: Iterable[algo_base.TransitionMapping],
-) -> Iterable[Tuple[Tuple[int, int, int], algo_base.TransitionMapping]]:
+    batch_it: Iterable[types.TransitionMapping],
+) -> Iterable[Tuple[Tuple[int, int, int], types.TransitionMapping]]:
     """Prepends batch stats before the batches of a batch iterator."""
     num_samples_so_far = 0
     for num_batches, batch in enumerate(batch_it):
@@ -308,7 +307,7 @@ class BC(algo_base.DemonstrationAlgorithm):
                 parameter `l2_weight` instead), or if the batch size is not a multiple
                 of the minibatch size.
         """
-        self._demo_data_loader: Optional[Iterable[algo_base.TransitionMapping]] = None
+        self._demo_data_loader: Optional[Iterable[types.TransitionMapping]] = None
         self.batch_size = batch_size
         self.minibatch_size = minibatch_size or batch_size
         if self.batch_size % self.minibatch_size != 0:
@@ -483,11 +482,3 @@ class BC(algo_base.DemonstrationAlgorithm):
             # if there remains an incomplete batch
             batch_num += 1
             process_batch()
-
-    def save_policy(self, policy_path: types.AnyPath) -> None:
-        """Save policy to a path. Can be reloaded by `.reconstruct_policy()`.
-
-        Args:
-            policy_path: path to save policy to.
-        """
-        th.save(self.policy, util.parse_path(policy_path))

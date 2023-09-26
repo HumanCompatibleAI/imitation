@@ -43,10 +43,21 @@ If you use ``imitation`` in your research project, please cite our paper to help
    :caption: Getting Started
    :hidden:
 
+   getting-started/what_is_imitation
    getting-started/installation
-   getting-started/what-is-imitation
-   getting-started/variable-horizon
-   getting-started/first-steps
+   getting-started/first_steps
+   getting-started/cli
+
+.. toctree::
+    :maxdepth: 2
+    :caption: Main Concepts
+    :hidden:
+
+    main-concepts/experts
+    main-concepts/trajectories
+    main-concepts/reward_networks
+    main-concepts/variable_horizon
+
 
 .. toctree::
    :maxdepth: 2
@@ -60,6 +71,7 @@ If you use ``imitation`` in your research project, please cite our paper to help
    algorithms/density
    algorithms/mce_irl
    algorithms/preference_comparisons
+   algorithms/sqil
 
 .. toctree::
    :maxdepth: 2
@@ -74,16 +86,10 @@ If you use ``imitation`` in your research project, please cite our paper to help
    tutorials/5a_train_preference_comparisons_with_cnn
    tutorials/6_train_mce
    tutorials/7_train_density
-   tutorials/8_train_custom_env
+   tutorials/8_train_sqil
+   tutorials/8a_train_sqil_sac
    tutorials/9_compare_baselines
-   tutorials/trajectories
-
-.. toctree::
-   :maxdepth: 2
-   :caption: Experts
-   :hidden:
-
-   experts/loading-experts
+   tutorials/10_train_custom_env
 
 API Reference
 ~~~~~~~~~~~~~

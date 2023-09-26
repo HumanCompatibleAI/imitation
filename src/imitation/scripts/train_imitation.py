@@ -8,13 +8,15 @@ from typing import Any, Dict, Mapping, Optional, Sequence, cast
 import numpy as np
 from sacred.observers import FileStorageObserver
 
-from imitation.algorithms.dagger import SimpleDAggerTrainer
+from imitation.algorithms import dagger as dagger_algorithm
+from imitation.algorithms import sqil as sqil_algorithm
 from imitation.data import rollout, types
 from imitation.scripts.config.train_imitation import train_imitation_ex
 from imitation.scripts.ingredients import bc as bc_ingredient
 from imitation.scripts.ingredients import demonstrations, environment, expert
 from imitation.scripts.ingredients import logging as logging_ingredient
 from imitation.scripts.ingredients import policy_evaluation
+from imitation.util import util
 
 logger = logging.getLogger(__name__)
 
@@ -38,6 +40,18 @@ def _try_computing_expert_stats(
             "statistics cannot be computed.",
         )
         return None
+
+
+def _collect_stats(
+    imit_stats: Mapping[str, float],
+    expert_trajs: Sequence[types.Trajectory],
+) -> Mapping[str, Mapping[str, Any]]:
+    stats = {"imit_stats": imit_stats}
+    expert_stats = _try_computing_expert_stats(expert_trajs)
+    if expert_stats is not None:
+        stats["expert_stats"] = expert_stats
+
+    return stats
 
 
 @train_imitation_ex.command
@@ -68,14 +82,12 @@ def bc(
 
         bc_trainer.train(**bc_train_kwargs)
         # TODO(adam): add checkpointing to BC?
-        bc_trainer.save_policy(policy_path=osp.join(log_dir, "final.th"))
+        util.save_policy(bc_trainer.policy, policy_path=osp.join(log_dir, "final.th"))
 
         imit_stats = policy_evaluation.eval_policy(bc_trainer.policy, venv)
 
-    stats = {"imit_stats": imit_stats}
-    expert_stats = _try_computing_expert_stats(expert_trajs)
-    if expert_stats is not None:
-        stats["expert_stats"] = expert_stats
+    stats = _collect_stats(imit_stats, expert_trajs)
+
     return stats
 
 
@@ -112,7 +124,7 @@ def dagger(
 
         expert_policy = expert.get_expert_policy(venv)
 
-        dagger_trainer = SimpleDAggerTrainer(
+        dagger_trainer = dagger_algorithm.SimpleDAggerTrainer(
             venv=venv,
             scratch_dir=osp.join(log_dir, "scratch"),
             expert_trajs=expert_trajs,
@@ -133,16 +145,48 @@ def dagger(
 
         imit_stats = policy_evaluation.eval_policy(bc_trainer.policy, venv)
 
-    stats = {"imit_stats": imit_stats}
     assert dagger_trainer._all_demos is not None
-    expert_stats = _try_computing_expert_stats(dagger_trainer._all_demos)
-    if expert_stats is not None:
-        stats["expert_stats"] = expert_stats
+    stats = _collect_stats(imit_stats, dagger_trainer._all_demos)
+
+    return stats
+
+
+@train_imitation_ex.command
+def sqil(
+    sqil: Mapping[str, Any],
+    policy: Mapping[str, Any],
+    rl: Mapping[str, Any],
+    _run,
+    _rnd: np.random.Generator,
+) -> Mapping[str, Mapping[str, float]]:
+    custom_logger, log_dir = logging_ingredient.setup_logging()
+    expert_trajs = demonstrations.get_expert_trajectories()
+
+    with environment.make_venv() as venv:
+        sqil_trainer = sqil_algorithm.SQIL(
+            venv=venv,
+            demonstrations=expert_trajs,
+            policy=policy["policy_cls"],
+            custom_logger=custom_logger,
+            rl_algo_class=rl["rl_cls"],
+            rl_kwargs=rl["rl_kwargs"],
+        )
+
+        sqil_trainer.train(
+            total_timesteps=int(sqil["total_timesteps"]),
+            **sqil["train_kwargs"],
+        )
+        util.save_policy(sqil_trainer.policy, policy_path=osp.join(log_dir, "final.th"))
+
+        imit_stats = policy_evaluation.eval_policy(sqil_trainer.policy, venv)
+
+    stats = _collect_stats(imit_stats, expert_trajs)
+
     return stats
 
 
 def main_console():
-    observer_path = pathlib.Path.cwd() / "output" / "sacred" / "train_dagger"
+    observer_path = pathlib.Path.cwd() / "output" / "sacred" / "train_imitation"
     observer = FileStorageObserver(observer_path)
     train_imitation_ex.observers.append(observer)
     train_imitation_ex.run_commandline()

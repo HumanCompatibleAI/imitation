@@ -1,6 +1,6 @@
-===============
-Loading Experts
-===============
+=======
+Experts
+=======
 
 The algorithms in the imitation library are all about learning from some kind of
 expert.
@@ -12,7 +12,7 @@ learning library.
 For example, BC and DAgger can learn from an expert policy and the command line
 interface of AIRL/GAIL allows one to specify an expert to sample demonstrations from.
 
-In the :doc:`../getting-started/first-steps` tutorial, we first train an expert policy
+In the :doc:`../getting-started/first_steps` tutorial, we first train an expert policy
 using the stable-baselines3 library and then imitate it's behavior using
 :doc:`../algorithms/bc`.
 In practice, you may want to load a pre-trained policy for performance reasons.
@@ -70,7 +70,8 @@ When using the Python API, you also have to specify the environment name as `env
     remote_policy = load_policy(
         "ppo-huggingface",
         organization="your-org",
-        env_name="your-env"
+        env_name="your-env",
+        venv=venv,
         )
     )
 

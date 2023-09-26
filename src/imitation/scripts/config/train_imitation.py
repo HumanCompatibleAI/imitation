@@ -6,18 +6,18 @@ from imitation.scripts.ingredients import bc
 from imitation.scripts.ingredients import demonstrations as demos_common
 from imitation.scripts.ingredients import environment, expert
 from imitation.scripts.ingredients import logging as logging_ingredient
-from imitation.scripts.ingredients import policy, policy_evaluation
+from imitation.scripts.ingredients import policy_evaluation, sqil
 
 train_imitation_ex = sacred.Experiment(
     "train_imitation",
     ingredients=[
         logging_ingredient.logging_ingredient,
         demos_common.demonstrations_ingredient,
-        policy.policy_ingredient,
         expert.expert_ingredient,
         environment.environment_ingredient,
         policy_evaluation.policy_evaluation_ingredient,
         bc.bc_ingredient,
+        sqil.sqil_ingredient,
     ],
 )
 
@@ -125,3 +125,4 @@ def seals_humanoid():
 def fast():
     dagger = dict(total_timesteps=50)
     bc = dict(train_kwargs=dict(n_batches=50))
+    sqil = dict(total_timesteps=50)

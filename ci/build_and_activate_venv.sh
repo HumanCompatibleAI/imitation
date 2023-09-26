@@ -20,8 +20,9 @@ fi
 virtualenv -p ${python_version} ${venv}
 # shellcheck disable=SC1090,SC1091
 source ${venv}/bin/activate
-# Note: We need to install setuptools==66.1.1 to allow installing gym==0.21.0.
-python -m pip install --upgrade pip setuptools==66.1.1
+
+# Update pip to the latest version.
+pip install --upgrade pip
 
 # If platform is linux, install pytorch CPU version.
 # This will prevent installing the CUDA version in the pip install ".[docs,parallel,test]" command.

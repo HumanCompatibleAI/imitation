@@ -1,4 +1,4 @@
-"""Common configuration elements for reward network training."""
+"""This ingredient provides a reward network."""
 
 import logging
 import typing

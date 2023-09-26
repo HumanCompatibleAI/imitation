@@ -22,6 +22,7 @@ from torch.utils import data as th_data
 T = TypeVar("T")
 
 AnyPath = Union[str, bytes, os.PathLike]
+TransitionMapping = Mapping[str, Union[np.ndarray, th.Tensor]]
 
 
 def dataclass_quick_asdict(obj) -> Dict[str, Any]:
