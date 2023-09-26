@@ -12,7 +12,7 @@
   },
   "expert": {
     "loader_kwargs": {
-      "gym_id": "seals/Walker2d-v0",
+      "gym_id": "seals/Walker2d-v1",
       "organization": "HumanCompatibleAI"
     }
   },
@@ -81,6 +81,6 @@
     "n_episodes_eval": 50
   },
   "environment": {
-    "gym_id": "seals/Walker2d-v0"
+    "gym_id": "seals/Walker2d-v1"
   }
 }

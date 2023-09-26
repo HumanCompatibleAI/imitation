@@ -47,6 +47,6 @@
     "n_episodes_eval": 50
   },
   "environment": {
-    "gym_id": "seals/HalfCheetah-v0"
+    "gym_id": "seals/HalfCheetah-v1"
   }
 }
