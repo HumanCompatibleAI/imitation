@@ -499,14 +499,13 @@ class AdversarialTrainer(base.DemonstrationAlgorithm[types.Transitions]):
         if learn_kwargs is None:
             learn_kwargs = {}
 
-        with self.logger.accumulate_means("gen"):
-            self.gen_algo.learn(
-                total_timesteps=total_timesteps,
-                reset_num_timesteps=False,
-                callback=self.gen_callback,
-                **learn_kwargs,
-            )
-            self._global_step += 1
+        self.gen_algo.learn(
+            total_timesteps=total_timesteps,
+            reset_num_timesteps=False,
+            callback=self.gen_callback,
+            **learn_kwargs,
+        )
+        self._global_step += 1
 
         gen_trajs, ep_lens = self.venv_buffering.pop_trajectories()
         self._check_fixed_horizon(ep_lens)
