@@ -28,7 +28,7 @@ Detailed example notebook: :doc:`../tutorials/8_train_sqil`
     :skipif: skip_doctests
 
     import datasets
-    import gym
+    import gymnasium as gym
     from stable_baselines3.common.evaluation import evaluate_policy
     from stable_baselines3.common.vec_env import DummyVecEnv
 

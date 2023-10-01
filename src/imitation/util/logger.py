@@ -6,7 +6,7 @@ import os
 import pathlib
 import sys
 import tempfile
-from typing import Any, Dict, Generator, List, Optional, Sequence, Tuple, Union
+from typing import Any, Dict, Generator, List, Optional, Sequence, Tuple
 
 import stable_baselines3.common.logger as sb_logger
 
@@ -366,7 +366,7 @@ class WandbOutputFormat(sb_logger.KVWriter):
     def write(
         self,
         key_values: Dict[str, Any],
-        key_excluded: Dict[str, Union[str, Tuple[str, ...]]],
+        key_excluded: Dict[str, Tuple[str, ...]],
         step: int = 0,
     ) -> None:
         for (key, value), (key_ex, excluded) in zip(

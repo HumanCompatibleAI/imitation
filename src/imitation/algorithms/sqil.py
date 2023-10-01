@@ -8,10 +8,15 @@ from typing import Any, Dict, List, Optional, Type, Union
 
 import numpy as np
 import torch as th
-from gym import spaces
+from gymnasium import spaces
 from stable_baselines3 import dqn
-from stable_baselines3.common import buffers, policies, type_aliases, vec_env
-from stable_baselines3.dqn.policies import DQNPolicy
+from stable_baselines3.common import (
+    buffers,
+    off_policy_algorithm,
+    policies,
+    type_aliases,
+    vec_env,
+)
 
 from imitation.algorithms import base as algo_base
 from imitation.data import rollout, types
@@ -32,9 +37,10 @@ class SQIL(algo_base.DemonstrationAlgorithm[types.Transitions]):
         *,
         venv: vec_env.VecEnv,
         demonstrations: Optional[algo_base.AnyTransitions],
-        policy: Union[str, Type[DQNPolicy]],
+        policy: Union[str, Type[policies.BasePolicy]],
         custom_logger: Optional[logger.HierarchicalLogger] = None,
-        dqn_kwargs: Optional[Dict[str, Any]] = None,
+        rl_algo_class: Type[off_policy_algorithm.OffPolicyAlgorithm] = dqn.DQN,
+        rl_kwargs: Optional[Dict[str, Any]] = None,
     ):
         """Builds SQIL.
 
@@ -43,7 +49,8 @@ class SQIL(algo_base.DemonstrationAlgorithm[types.Transitions]):
             demonstrations: Demonstrations to use for training.
             policy: The policy model to use (SB3).
             custom_logger: Where to log to; if None (default), creates a new logger.
-            dqn_kwargs: Keyword arguments to pass to the DQN constructor.
+            rl_algo_class: Off-policy RL algorithm to use.
+            rl_kwargs: Keyword arguments to pass to the RL algorithm constructor.
 
         Raises:
             ValueError: if `dqn_kwargs` includes a key
@@ -51,38 +58,38 @@ class SQIL(algo_base.DemonstrationAlgorithm[types.Transitions]):
         """
         self.venv = venv
 
-        if dqn_kwargs is None:
-            dqn_kwargs = {}
+        if rl_kwargs is None:
+            rl_kwargs = {}
         # SOMEDAY(adam): we could support users specifying their own replay buffer
         # if we made SQILReplayBuffer a more flexible wrapper. Does not seem worth
         # the added complexity until we have a concrete use case, however.
-        if "replay_buffer_class" in dqn_kwargs:
+        if "replay_buffer_class" in rl_kwargs:
             raise ValueError(
                 "SQIL uses a custom replay buffer: "
                 "'replay_buffer_class' not allowed.",
             )
-        if "replay_buffer_kwargs" in dqn_kwargs:
+        if "replay_buffer_kwargs" in rl_kwargs:
             raise ValueError(
                 "SQIL uses a custom replay buffer: "
                 "'replay_buffer_kwargs' not allowed.",
             )
 
-        self.dqn = dqn.DQN(
+        self.rl_algo = rl_algo_class(
             policy=policy,
             env=venv,
             replay_buffer_class=SQILReplayBuffer,
             replay_buffer_kwargs={"demonstrations": demonstrations},
-            **dqn_kwargs,
+            **rl_kwargs,
         )
 
         super().__init__(demonstrations=demonstrations, custom_logger=custom_logger)
 
     def set_demonstrations(self, demonstrations: algo_base.AnyTransitions) -> None:
-        assert isinstance(self.dqn.replay_buffer, SQILReplayBuffer)
-        self.dqn.replay_buffer.set_demonstrations(demonstrations)
+        assert isinstance(self.rl_algo.replay_buffer, SQILReplayBuffer)
+        self.rl_algo.replay_buffer.set_demonstrations(demonstrations)
 
     def train(self, *, total_timesteps: int, tb_log_name: str = "SQIL", **kwargs: Any):
-        self.dqn.learn(
+        self.rl_algo.learn(
             total_timesteps=total_timesteps,
             tb_log_name=tb_log_name,
             **kwargs,
@@ -90,8 +97,8 @@ class SQIL(algo_base.DemonstrationAlgorithm[types.Transitions]):
 
     @property
     def policy(self) -> policies.BasePolicy:
-        assert isinstance(self.dqn.policy, policies.BasePolicy)
-        return self.dqn.policy
+        assert isinstance(self.rl_algo.policy, policies.BasePolicy)
+        return self.rl_algo.policy
 
 
 class SQILReplayBuffer(buffers.ReplayBuffer):

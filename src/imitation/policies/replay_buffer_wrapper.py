@@ -3,7 +3,7 @@
 from typing import Mapping, Type
 
 import numpy as np
-from gym import spaces
+from gymnasium import spaces
 from stable_baselines3.common.buffers import ReplayBuffer
 from stable_baselines3.common.type_aliases import ReplayBufferSamples
 

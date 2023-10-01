@@ -8,7 +8,13 @@ import numpy as np
 import torch as th
 import torch.utils.tensorboard as thboard
 import tqdm
-from stable_baselines3.common import base_class, on_policy_algorithm, policies, vec_env
+from stable_baselines3.common import (
+    base_class,
+    distributions,
+    on_policy_algorithm,
+    policies,
+    vec_env,
+)
 from stable_baselines3.sac import policies as sac_policies
 from torch.nn import functional as F
 
@@ -493,6 +499,10 @@ class AdversarialTrainer(base.DemonstrationAlgorithm[types.Transitions]):
             assert gen_algo_actor is not None
             # generate log_policy_act_prob from SAC actor.
             mean_actions, log_std, _ = gen_algo_actor.get_action_dist_params(obs_th)
+            assert isinstance(
+                gen_algo_actor.action_dist,
+                distributions.SquashedDiagGaussianDistribution,
+            )  # Note: this is just a hint to mypy
             distribution = gen_algo_actor.action_dist.proba_distribution(
                 mean_actions,
                 log_std,
