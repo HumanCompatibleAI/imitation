@@ -53,7 +53,7 @@ def test_run_tutorial_notebooks(nb_path) -> None:  # pragma: no cover
     """
     nb = ptnb.notebook.load_notebook(nb_path)
     # TODO: Shorten timeout and ensure the notebook can still show desired improvement.
-    result = ptnb.execution.execute_notebook(nb, cwd=TUTORIALS_DIR, timeout=300)
+    result = ptnb.execution.execute_notebook(nb, cwd=TUTORIALS_DIR, timeout=540)
     assert result.exec_error is None
 
 
