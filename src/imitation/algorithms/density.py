@@ -147,8 +147,11 @@ class DensityAlgorithm(base.DemonstrationAlgorithm):
         assert act_b.shape[1:] == self.venv.action_space.shape
 
         if isinstance(obs_b, types.DictObs):
-            # type: ignore[attr-defined]
-            exp_shape = {k: v.shape for k, v in self.venv.observation_space.items()}
+            exp_shape = {
+                k: v.shape
+                # type: ignore[attr-defined]
+                for k, v in self.venv.observation_space.items()
+            }
             obs_shape = {k: v.shape[1:] for k, v in obs_b.items()}
             assert exp_shape == obs_shape, f"Expected {exp_shape}, got {obs_shape}"
         else:
