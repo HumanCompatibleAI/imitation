@@ -18,7 +18,7 @@ from typing import (
 )
 
 import numpy as np
-from gym import spaces
+from gymnasium import spaces
 from stable_baselines3.common.base_class import BaseAlgorithm
 from stable_baselines3.common.policies import BasePolicy
 from stable_baselines3.common.utils import check_for_correct_spaces
@@ -413,12 +413,6 @@ def generate_trajectories(
         ValueError: If the observation or action space has no shape or the observations
             are not a numpy array.
     """
-    if venv.observation_space.shape is None:
-        raise ValueError("Observation space must have a shape.")
-
-    if venv.action_space.shape is None:
-        raise ValueError("Action space must have a shape.")
-
     get_actions = policy_to_callable(policy, venv, deterministic_policy)
 
     # Collect rollout tuples.
@@ -494,7 +488,7 @@ def generate_trajectories(
     for trajectory in trajectories:
         n_steps = len(trajectory.acts)
         # extra 1 for the end
-        if isinstance(venv.observation_space, spaces.dict.Dict):
+        if isinstance(venv.observation_space, spaces.Dict):
             exp_obs = {
                 k: (n_steps + 1,) + v.shape for k, v in venv.observation_space.items()
             }
