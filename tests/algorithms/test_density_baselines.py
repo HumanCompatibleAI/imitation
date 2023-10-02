@@ -79,7 +79,7 @@ def test_density_reward(
         sample_until=sample_until,
         rng=rng,
     )
-    expert_trajectories_test = pendulum_expert_trajectories[n_experts // 2:]
+    expert_trajectories_test = pendulum_expert_trajectories[n_experts // 2 :]
     random_returns = score_trajectories(random_trajectories, reward_fn)
     expert_returns = score_trajectories(expert_trajectories_test, reward_fn)
     assert reward_improvement.is_significant_reward_improvement(
