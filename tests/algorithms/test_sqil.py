@@ -253,9 +253,9 @@ def test_sqil_performance_continuous(
         "Pendulum-v1",
         rl_algo_class=rl_algo_class,
         rl_kwargs=dict(
-            learning_starts=500,
+            learning_starts=100,
             learning_rate=0.001,
-            gamma=0.95,
+            gamma=0.99,
             seed=42,
         ),
     )
