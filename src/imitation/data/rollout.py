@@ -408,9 +408,6 @@ def generate_trajectories(
         Sequence of trajectories, satisfying `sample_until`. Additional trajectories
         may be collected to avoid biasing process towards short episodes; the user
         should truncate if required.
-
-    Raises:
-        ValueError: If the environment's observation space is not tuple or spaces.Dict.
     """
     get_actions = policy_to_callable(policy, venv, deterministic_policy)
 
@@ -488,18 +485,14 @@ def generate_trajectories(
         n_steps = len(trajectory.acts)
         # extra 1 for the end
         if isinstance(venv.observation_space, spaces.Dict):
-            for v in venv.observation_space.values():
+            exp_obs = {}
+            for k, v in venv.observation_space.items():
                 assert v.shape is not None
-            exp_obs = {
-                k: (n_steps + 1,) + v.shape for k, v in venv.observation_space.items()
-            }
-        elif isinstance(venv.observation_space.shape, tuple):
-            exp_obs = (n_steps + 1,) + venv.observation_space.shape
+                exp_obs[k] = (n_steps + 1,) + v.shape
         else:
-            raise ValueError(
-                "Observation space has unexpected shape type:"
-                f"{type(venv.observation_space.shape)}",
-            )
+            assert venv.observation_space.shape is not None
+            # type: ignore[assignment]
+            exp_obs = (n_steps + 1,) + venv.observation_space.shape
         real_obs = trajectory.obs.shape
         assert real_obs == exp_obs, f"expected shape {exp_obs}, got {real_obs}"
         assert venv.action_space.shape is not None

@@ -147,6 +147,7 @@ class DensityAlgorithm(base.DemonstrationAlgorithm):
         assert act_b.shape[1:] == self.venv.action_space.shape
 
         if isinstance(obs_b, types.DictObs):
+            # type: ignore[attr-defined]
             exp_shape = {k: v.shape for k, v in self.venv.observation_space.items()}
             obs_shape = {k: v.shape[1:] for k, v in obs_b.items()}
             assert exp_shape == obs_shape, f"Expected {exp_shape}, got {obs_shape}"
@@ -270,12 +271,12 @@ class DensityAlgorithm(base.DemonstrationAlgorithm):
             self.venv.observation_space,
             types.maybe_unwrap_dictobs(obs),
         )
-        _check_data_is_np_array(flattened_obs, "observation")
+        flattened_obs = _check_data_is_np_array(flattened_obs, "observation")
         if self.density_type == DensityType.STATE_DENSITY:
             return flattened_obs
         elif self.density_type == DensityType.STATE_ACTION_DENSITY:
             flattened_action = space_utils.flatten(self.venv.action_space, act)
-            _check_data_is_np_array(flattened_action, "action")
+            flattened_action = _check_data_is_np_array(flattened_action, "action")
             return np.concatenate([flattened_obs, flattened_action])
         elif self.density_type == DensityType.STATE_STATE_DENSITY:
             assert next_obs is not None
@@ -283,7 +284,7 @@ class DensityAlgorithm(base.DemonstrationAlgorithm):
                 self.venv.observation_space,
                 types.maybe_unwrap_dictobs(next_obs),
             )
-            _check_data_is_np_array(flat_next_obs, "observation")
+            flat_next_obs = _check_data_is_np_array(flat_next_obs, "observation")
             assert type(flattened_obs) is type(flat_next_obs)
 
             return np.concatenate([flattened_obs, flat_next_obs])
@@ -409,11 +410,11 @@ class DensityAlgorithm(base.DemonstrationAlgorithm):
         return self.rl_algo.policy
 
 
-def _check_data_is_np_array(data: space_utils.FlatType, name: str) -> None:
+def _check_data_is_np_array(data: space_utils.FlatType, name: str) -> np.ndarray:
     """Raises error if the flattened data is not a numpy array."""
-    if not isinstance(data, np.ndarray):
-        raise ValueError(
-            "The density estimator only supports spaces that "
-            f"flatten to a numpy array but the {name} space "
-            f"flattens to {type(data)}",
-        )
+    assert isinstance(data, np.ndarray), (
+        "The density estimator only supports spaces that "
+        f"flatten to a numpy array but the {name} space "
+        f"flattens to {type(data)}",
+    )
+    return data
