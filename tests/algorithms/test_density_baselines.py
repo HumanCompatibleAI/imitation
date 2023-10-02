@@ -3,14 +3,17 @@
 from dataclasses import asdict
 from typing import Sequence, cast
 
+import gymnasium as gym
 import numpy as np
 import pytest
 import stable_baselines3
-from stable_baselines3.common import policies
+from stable_baselines3.common import envs as sb_envs
+from stable_baselines3.common import policies, vec_env
 
 from imitation.algorithms.density import DensityAlgorithm, DensityType
 from imitation.data import rollout, types
 from imitation.data.types import TrajectoryWithRew
+from imitation.data.wrappers import RolloutInfoWrapper
 from imitation.policies.base import RandomPolicy
 from imitation.testing import reward_improvement
 
@@ -76,7 +79,7 @@ def test_density_reward(
         sample_until=sample_until,
         rng=rng,
     )
-    expert_trajectories_test = pendulum_expert_trajectories[n_experts // 2 :]
+    expert_trajectories_test = pendulum_expert_trajectories[n_experts // 2:]
     random_returns = score_trajectories(random_trajectories, reward_fn)
     expert_returns = score_trajectories(expert_trajectories_test, reward_fn)
     assert reward_improvement.is_significant_reward_improvement(
@@ -120,12 +123,6 @@ def test_density_with_other_trajectory_types(
     rollouts = pendulum_expert_trajectories[:2]
     transitions = rollout.flatten_trajectories_with_rew(rollouts)
     transitions_mappings = [cast(types.TransitionMapping, asdict(transitions))]
-
-    minimal_transitions = types.TransitionsMinimal(
-        obs=transitions.obs,
-        acts=transitions.acts,
-        infos=transitions.infos,
-    )
     d = DensityAlgorithm(
         demonstrations=transitions_mappings,
         venv=pendulum_venv,
@@ -136,6 +133,11 @@ def test_density_with_other_trajectory_types(
     d.train_policy(n_timesteps=2)
     d.test_policy(n_trajectories=2)
 
+    minimal_transitions = types.TransitionsMinimal(
+        obs=transitions.obs,
+        acts=transitions.acts,
+        infos=transitions.infos,
+    )
     d = DensityAlgorithm(
         demonstrations=minimal_transitions,
         venv=pendulum_venv,
@@ -168,3 +170,47 @@ def test_density_trainer_raises(
 
     with pytest.raises(TypeError, match="Unsupported demonstration type"):
         density_trainer.set_demonstrations("foo")  # type: ignore[arg-type]
+
+
+# TODO: remove after https://github.com/DLR-RM/stable-baselines3/pull/1676 merged
+class FloatReward(gym.RewardWrapper):
+    """Typecasts reward to a float."""
+
+    def reward(self, reward):
+        return float(reward)
+
+
+@parametrize_density_stationary
+def test_dict_space(density_type, is_stationary):
+    def make_env():
+        env = sb_envs.SimpleMultiObsEnv(channel_last=False)
+        env = FloatReward(env)
+        return RolloutInfoWrapper(env)
+
+    venv = vec_env.DummyVecEnv([make_env, make_env])
+
+    # multi-input policy to accept dict observations
+    rl_algo = stable_baselines3.PPO(policies.MultiInputActorCriticPolicy, venv)
+    rng = np.random.default_rng()
+
+    # sample random transitions
+    rollouts = rollout.rollout(
+        policy=None,
+        venv=venv,
+        sample_until=rollout.make_sample_until(min_timesteps=None, min_episodes=50),
+        rng=rng,
+        unwrap=True,
+    )
+    density_trainer = DensityAlgorithm(
+        demonstrations=rollouts,
+        density_type=density_type,
+        kernel="gaussian",
+        venv=venv,
+        is_stationary=is_stationary,
+        rl_algo=rl_algo,
+        kernel_bandwidth=0.2,
+        standardise_inputs=True,
+        rng=rng,
+    )
+    # confirm that training works
+    density_trainer.train()
