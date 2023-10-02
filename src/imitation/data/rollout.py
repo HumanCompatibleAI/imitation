@@ -410,7 +410,7 @@ def generate_trajectories(
         should truncate if required.
 
     Raises:
-        ValueError: If the environment's observation space is not a tuple or spaces.Dict.
+        ValueError: If the environment's observation space is not tuple or spaces.Dict.
     """
     get_actions = policy_to_callable(policy, venv, deterministic_policy)
 
@@ -498,7 +498,7 @@ def generate_trajectories(
         else:
             raise ValueError(
                 "Observation space has unexpected shape type:"
-                f"{type(venv.observation_space.shape)}."
+                f"{type(venv.observation_space.shape)}",
             )
         real_obs = trajectory.obs.shape
         assert real_obs == exp_obs, f"expected shape {exp_obs}, got {real_obs}"
