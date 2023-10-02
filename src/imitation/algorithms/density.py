@@ -10,7 +10,7 @@ from collections.abc import Mapping
 from typing import Any, Dict, Iterable, List, Optional, cast
 
 import numpy as np
-from gym.spaces.utils import flatten
+from gymnasium.spaces import utils as space_utils
 from sklearn import neighbors, preprocessing
 from stable_baselines3.common import base_class, vec_env
 
@@ -266,23 +266,27 @@ class DensityAlgorithm(base.DemonstrationAlgorithm):
         next_obs: Optional[types.Observation],
     ) -> np.ndarray:
         """Compute flattened transition on subset specified by `self.density_type`."""
-        flattened_obs = flatten(
+        flattened_obs = space_utils.flatten(
             self.venv.observation_space,
             types.maybe_unwrap_dictobs(obs),
         )
+        _check_data_is_np_array(flattened_obs, "observation")
         if self.density_type == DensityType.STATE_DENSITY:
             return flattened_obs
         elif self.density_type == DensityType.STATE_ACTION_DENSITY:
-            return np.concatenate(
-                [flattened_obs, flatten(self.venv.action_space, act)],
-            )
+            flattened_action = space_utils.flatten(self.venv.action_space, act)
+            _check_data_is_np_array(flattened_action, "action")
+            return np.concatenate([flattened_obs, flattened_action])
         elif self.density_type == DensityType.STATE_STATE_DENSITY:
             assert next_obs is not None
-            flattened_next_obs = flatten(
+            flat_next_obs = space_utils.flatten(
                 self.venv.observation_space,
-                types.maybe_unwrap_dictobs(obs),
+                types.maybe_unwrap_dictobs(next_obs),
             )
-            return np.concatenate([flattened_obs, flattened_next_obs])
+            _check_data_is_np_array(flat_next_obs, "observation")
+            assert type(flattened_obs) is type(flat_next_obs)
+
+            return np.concatenate([flattened_obs, flat_next_obs])
         else:
             raise ValueError(f"Unknown density type {self.density_type}")
 
@@ -403,3 +407,13 @@ class DensityAlgorithm(base.DemonstrationAlgorithm):
         assert self.rl_algo is not None
         assert self.rl_algo.policy is not None
         return self.rl_algo.policy
+
+
+def _check_data_is_np_array(data: space_utils.FlatType, name: str) -> None:
+    """Raises error if the flattened data is not a numpy array."""
+    if not isinstance(data, np.ndarray):
+        raise ValueError(
+            "The density estimator only supports spaces that "
+            f"flatten to a numpy array but the {name} space "
+            f"flattens to {type(data)}",
+        )

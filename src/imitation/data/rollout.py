@@ -354,6 +354,8 @@ def policy_to_callable(
             venv_obs_shape = venv.observation_space.shape
             assert policy.observation_space is not None
             policy_obs_shape = policy.observation_space.shape
+            assert venv_obs_shape is not None
+            assert policy_obs_shape is not None
             if len(venv_obs_shape) != 3 or len(policy_obs_shape) != 3:
                 raise e
             venv_obs_rearranged = (
@@ -406,7 +408,17 @@ def generate_trajectories(
         Sequence of trajectories, satisfying `sample_until`. Additional trajectories
         may be collected to avoid biasing process towards short episodes; the user
         should truncate if required.
+
+    Raises:
+        ValueError: If the observation or action space has no shape or the observations
+            are not a numpy array.
     """
+    if venv.observation_space.shape is None:
+        raise ValueError("Observation space must have a shape.")
+
+    if venv.action_space.shape is None:
+        raise ValueError("Action space must have a shape.")
+
     get_actions = policy_to_callable(policy, venv, deterministic_policy)
 
     # Collect rollout tuples.

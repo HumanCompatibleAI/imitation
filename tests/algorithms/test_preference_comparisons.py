@@ -4,13 +4,13 @@ import math
 import re
 from typing import Any, Sequence
 
-import gym
+import gymnasium as gym
 import numpy as np
 import pytest
 import seals  # noqa: F401
 import stable_baselines3
 import torch as th
-from gym import spaces
+from gymnasium import spaces
 from stable_baselines3.common import evaluation
 from stable_baselines3.common.envs import FakeImageEnv
 from stable_baselines3.common.vec_env import DummyVecEnv
@@ -959,11 +959,11 @@ class ActionIsRewardEnv(gym.Env):
         done = self.steps > 0
         info = {}
         self.steps += 1
-        return obs, reward, done, info
+        return obs, reward, done, False, info
 
-    def reset(self):
+    def reset(self, seed=None):
         self.steps = 0.0
-        return np.array([0])
+        return np.array([0]), {}
 
 
 @pytest.fixture

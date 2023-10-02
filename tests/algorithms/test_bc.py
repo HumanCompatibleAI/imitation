@@ -281,7 +281,7 @@ def test_that_policy_reconstruction_preserves_parameters(
     original_parameters = list(cartpole_bc_trainer.policy.parameters())
 
     # WHEN
-    cartpole_bc_trainer.save_policy(pol_path)
+    util.save_policy(cartpole_bc_trainer.policy, pol_path)
     reconstructed_policy = bc.reconstruct_policy(pol_path)
 
     # THEN

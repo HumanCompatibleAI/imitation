@@ -2,7 +2,7 @@
 
 from typing import List, Optional, Sequence, Tuple
 
-import gym
+import gymnasium as gym
 import numpy as np
 import numpy.typing as npt
 from stable_baselines3.common.vec_env import VecEnv, VecEnvWrapper
@@ -186,13 +186,14 @@ class RolloutInfoWrapper(gym.Wrapper):
         self._rews = None
 
     def reset(self, **kwargs):
-        new_obs = super().reset(**kwargs)
+        new_obs, info = super().reset(**kwargs)
         self._obs = [types.maybe_wrap_in_dictobs(new_obs)]
         self._rews = []
-        return new_obs
+        return new_obs, info
 
     def step(self, action):
-        obs, rew, done, info = self.env.step(action)
+        obs, rew, terminated, truncated, info = self.env.step(action)
+        done = terminated or truncated
         self._obs.append(types.maybe_wrap_in_dictobs(obs))
         self._rews.append(rew)
 
@@ -202,4 +203,4 @@ class RolloutInfoWrapper(gym.Wrapper):
                 "obs": types.stack_maybe_dictobs(self._obs),
                 "rews": np.stack(self._rews),
             }
-        return obs, rew, done, info
+        return obs, rew, terminated, truncated, info

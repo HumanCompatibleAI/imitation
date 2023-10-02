@@ -71,7 +71,6 @@ def test_sliced_access(data: st.DataObject, trajectories: Sequence[types.Traject
 
     # Note: we test if for 10 slices at a time because creating the dataset is slow
     for _ in range(10):
-
         # GIVEN
         the_slice = data.draw(slices_strategy)
         indices_of_slice = list(range(*the_slice.indices(len(trajectories))))
@@ -113,7 +112,6 @@ def test_sliced_info_dict_access(
 
     # Note: we test if for 10 slices at a time because creating the dataset is slow
     for _ in range(10):
-
         # GIVEN
         the_slice = data.draw(slices_strategy)
         indices_of_slice = list(range(*the_slice.indices(len(wrapped_info_dicts))))

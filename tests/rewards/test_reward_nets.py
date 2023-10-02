@@ -7,7 +7,7 @@ import tempfile
 from typing import Callable, Tuple
 from unittest import mock
 
-import gym
+import gymnasium as gym
 import numpy as np
 import pytest
 import torch as th

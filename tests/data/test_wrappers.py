@@ -2,7 +2,7 @@
 
 from typing import List, Sequence
 
-import gym
+import gymnasium as gym
 import numpy as np
 import pytest
 from stable_baselines3.common.vec_env import DummyVecEnv
@@ -31,9 +31,9 @@ class _CountingEnv(gym.Env):  # pragma: no cover
         self.episode_length = episode_length
         self.timestep = None
 
-    def reset(self):
+    def reset(self, seed=None):
         t, self.timestep = 0, 1
-        return t
+        return t, {}
 
     def step(self, action):
         if self.timestep is None:
@@ -45,7 +45,7 @@ class _CountingEnv(gym.Env):  # pragma: no cover
 
         t, self.timestep = self.timestep, self.timestep + 1
         done = t == self.episode_length
-        return t, t * 10, done, {}
+        return t, t * 10, done, False, {}
 
 
 def _make_buffering_venv(
@@ -149,7 +149,7 @@ def test_pop(
     # To test `pop_transitions`, we will check that every obs, act, and rew
     # returned by `.reset()` and `.step()` is also returned by one of the
     # calls to `pop_transitions()`.
-    transitions_list = []  # type: List[types.TransitionsWithRew]
+    transitions_list: List[types.TransitionsWithRew] = []
 
     # Initial observation (only matters for pop_transitions()).
     obs = venv_buffer.reset()

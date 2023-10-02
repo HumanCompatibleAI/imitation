@@ -8,7 +8,7 @@ from typing import Any, Dict, List, Optional, Type, Union
 
 import numpy as np
 import torch as th
-from gym import spaces
+from gymnasium import spaces
 from stable_baselines3 import dqn
 from stable_baselines3.common import (
     buffers,

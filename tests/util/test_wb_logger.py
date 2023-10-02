@@ -62,7 +62,6 @@ class MockWandb:
         commit: bool = False,
         sync: bool = False,
     ):
-
         assert self._initialized
         if sync:
             raise NotImplementedError("usage of sync to MockWandb.log not implemented")

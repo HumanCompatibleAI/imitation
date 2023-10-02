@@ -7,7 +7,7 @@ import os
 from typing import List, Optional, Sequence
 from unittest import mock
 
-import gym
+import gymnasium as gym
 import numpy as np
 import pytest
 import torch.random
@@ -520,7 +520,7 @@ def test_simple_dagger_trainer_train(
 def test_policy_save_reload(tmpdir, trainer):
     # just make sure the methods run; we already test them in test_bc.py
     policy_path = os.path.join(tmpdir, "policy.pt")
-    trainer.save_policy(policy_path)
+    util.save_policy(trainer.policy, policy_path)
     pol = bc.reconstruct_policy(policy_path)
     assert isinstance(pol, policies.BasePolicy)
 

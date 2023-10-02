@@ -4,7 +4,7 @@ import functools
 import importlib
 from typing import Callable, Generic, Iterable, Optional, TypeVar
 
-import gym
+import gymnasium as gym
 from stable_baselines3.common.vec_env import VecEnv
 
 T = TypeVar("T")

@@ -19,7 +19,7 @@ from typing import (
     Union,
 )
 
-import gym
+import gymnasium as gym
 import numpy as np
 import torch as th
 import tqdm
@@ -58,7 +58,6 @@ class BatchIteratorWithEpochEndCallback:
 
     def __iter__(self) -> Iterator[types.TransitionMapping]:
         def batch_iterator() -> Iterator[types.TransitionMapping]:
-
             # Note: the islice here ensures we do not exceed self.n_epochs
             for epoch_num in itertools.islice(itertools.count(), self.n_epochs):
                 some_batch_was_yielded = False
@@ -509,11 +508,3 @@ class BC(algo_base.DemonstrationAlgorithm):
             # if there remains an incomplete batch
             batch_num += 1
             process_batch()
-
-    def save_policy(self, policy_path: types.AnyPath) -> None:
-        """Save policy to a path. Can be reloaded by `.reconstruct_policy()`.
-
-        Args:
-            policy_path: path to save policy to.
-        """
-        th.save(self.policy, util.parse_path(policy_path))

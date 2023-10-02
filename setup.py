@@ -15,16 +15,9 @@ IS_NOT_WINDOWS = os.name != "nt"
 
 PARALLEL_REQUIRE = ["ray[debug,tune]~=2.0.0"]
 ATARI_REQUIRE = [
-    "opencv-python",
-    "ale-py==0.7.4",
-    "pillow",
-    "autorom[accept-rom-license]~=0.6.0",
+    "seals[atari]~=0.2.1",
 ]
 PYTYPE = ["pytype==2022.7.26"] if IS_NOT_WINDOWS else []
-STABLE_BASELINES3 = "stable-baselines3>=1.7.0,<2.0.0"
-# pinned to 0.21 until https://github.com/DLR-RM/stable-baselines3/pull/780 goes
-# upstream.
-GYM_VERSION_SPECIFIER = "==0.21.0"
 
 # Note: the versions of the test and doc requirements should be tightly pinned to known
 #   working versions to make our CI/CD pipeline as stable as possible.
@@ -49,6 +42,7 @@ TESTS_REQUIRE = (
         # TODO: upgrade jupyter-client once
         #  https://github.com/jupyter/jupyter_client/issues/637 is fixed
         "jupyter-client~=6.1.12",
+        "moviepy~=1.0.3",
         "mypy~=0.990",
         "pandas~=1.4.3",
         "pytest~=7.1.2",
@@ -72,7 +66,7 @@ DOCS_REQUIRE = [
     "furo==2022.6.21",
     "sphinx-copybutton==0.5.0",
     "sphinx-github-changelog~=1.2.0",
-    "myst-nb==0.16.0",
+    "myst-nb==0.17.2",
     "ipykernel~=6.15.2",
 ] + ATARI_REQUIRE
 
@@ -193,21 +187,18 @@ setup(
     #   encode only known incompatibilities here. This prevents nasty dependency issues
     #   for our users.
     install_requires=[
-        "gym[classic_control]" + GYM_VERSION_SPECIFIER,
-        # TODO(adam): remove pyglet dependency once Gym upgraded to >0.21
-        # Workaround for https://github.com/openai/gym/issues/2986
-        # Discussed in https://github.com/HumanCompatibleAI/imitation/pull/603
-        "pyglet==1.5.27",
+        "gymnasium[classic-control]~=0.28.1",
         "matplotlib",
         "numpy>=1.15",
         "torch>=1.4.0",
         "tqdm",
+        "rich",
         "scikit-learn>=0.21.2",
-        "seals~=0.1.5",
-        STABLE_BASELINES3,
+        "seals~=0.2.1",
+        "stable-baselines3~=2.0",
         "sacred>=0.8.4",
         "tensorboard>=1.14",
-        "huggingface_sb3~=2.3",
+        "huggingface_sb3~=3.0",
         "datasets>=2.8.0",
     ],
     tests_require=TESTS_REQUIRE,
@@ -228,7 +219,7 @@ setup(
         "docs": DOCS_REQUIRE,
         "parallel": PARALLEL_REQUIRE,
         "mujoco": [
-            "gym[classic_control,mujoco]" + GYM_VERSION_SPECIFIER,
+            "gymnasium[classic-control,mujoco]~=0.28.1",
         ],
         "atari": ATARI_REQUIRE,
     },
