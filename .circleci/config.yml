@@ -192,7 +192,7 @@ commands:
           shell: powershell.exe
 
       - run:
-          name: Update PATH and Define Environment Variable at Runtime
+          name: enable long path
           command: |
             New-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Control\FileSystem" `
             -Name "LongPathsEnabled" -Value 1 -PropertyType DWORD -Force
