@@ -222,8 +222,16 @@ class HumanReadableWrapper(gym.Wrapper):
             env: Environment to wrap.
             original_obs_key: The key for original observation if the original
                 observation is not in dict format.
+
+        Raises:
+            ValueError: If `env.render_mode` is not "rgb_array".
+
         """
-        env.render_mode = "rgb_array"
+        if env.render_mode != "rgb_array":
+            raise ValueError(
+                "HumanReadableWrapper requires render_mode='rgb_array', "
+                f"got {env.render_mode!r}"
+            )
         self._original_obs_key = original_obs_key
         super().__init__(env)
 
@@ -245,8 +253,6 @@ class HumanReadableWrapper(gym.Wrapper):
             KeyError: When the key HR_OBS_KEY already exists in the observation
                 dictionary.
         """
-        assert self.env.render_mode is not None
-        assert self.env.render_mode == "rgb_array"
         hr_obs = self.env.render()
         if not isinstance(obs, Dict):
             obs = {self._original_obs_key: obs}

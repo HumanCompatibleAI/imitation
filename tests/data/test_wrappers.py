@@ -28,12 +28,17 @@ class _CountingEnv(gym.Env):  # pragma: no cover
     ```
     """
 
-    def __init__(self, episode_length=5):
+    def __init__(self, episode_length: int = 5, render_mode: Optional[str] = None):
         assert episode_length >= 1
         self.observation_space = gym.spaces.Box(low=0, high=np.inf, shape=())
         self.action_space = gym.spaces.Box(low=0, high=np.inf, shape=())
         self.episode_length = episode_length
-        self.timestep = None
+        self.timestep: Optional[int] = None
+        self._render_mode = render_mode
+
+    @property
+    def render_mode(self):
+        return self._render_mode
 
     def reset(self, *, seed: Optional[int] = None, options: Optional[dict] = None):
         t, self.timestep = 0, 1
@@ -52,14 +57,16 @@ class _CountingEnv(gym.Env):  # pragma: no cover
         return t, t * 10, done, False, {}
 
     def render(self) -> np.ndarray:
+        if self._render_mode != "rgb_array":
+            raise ValueError(f"Invalid render mode {self._render_mode}")
         return np.array([self.timestep] * 10)
 
 
 class _CountingDictEnv(_CountingEnv):  # pragma: no cover
     """Similar to _CountingEnv, but with Dict observation."""
 
-    def __init__(self, episode_length=5):
-        super().__init__(episode_length)
+    def __init__(self, episode_length: int = 5, render_mode: Optional[str] = None):
+        super().__init__(episode_length, render_mode)
         self.observation_space = gym.spaces.Dict(
             spaces={"t": gym.spaces.Box(low=0, high=np.inf, shape=())},
         )
@@ -85,7 +92,7 @@ Envs = [_CountingEnv, _CountingDictEnv]
 
 
 def _make_buffering_venv(
-    Env: Type[gym.Env],
+    Env: _CountingEnv,
     error_on_premature_reset: bool,
 ) -> BufferingWrapper:
     venv = DummyVecEnv([Env] * 2)
@@ -128,7 +135,7 @@ def _join_transitions(
 @pytest.mark.parametrize("n_steps", [1, 2, 20, 21])
 @pytest.mark.parametrize("extra_pop_timesteps", [(), (1,), (4, 8)])
 def test_pop(
-    Env: Type[gym.Env],
+    Env: _CountingEnv,
     episode_lengths: Sequence[int],
     n_steps: int,
     extra_pop_timesteps: Sequence[int],
@@ -235,7 +242,7 @@ def test_pop(
 
 
 @pytest.mark.parametrize("Env", Envs)
-def test_reset_error(Env: Type[gym.Env]):
+def test_reset_error(Env: _CountingEnv):
     # Resetting before a `step()` is okay.
     for flag in [True, False]:
         venv = _make_buffering_venv(Env, flag)
@@ -271,7 +278,7 @@ def test_reset_error(Env: Type[gym.Env]):
 
 
 @pytest.mark.parametrize("Env", Envs)
-def test_n_transitions_and_empty_error(Env: Type[gym.Env]):
+def test_n_transitions_and_empty_error(Env: _CountingEnv):
     venv = _make_buffering_venv(Env, True)
     trajs, ep_lens = venv.pop_trajectories()
     assert trajs == []
@@ -289,10 +296,12 @@ def test_n_transitions_and_empty_error(Env: Type[gym.Env]):
 
 @pytest.mark.parametrize("Env", Envs)
 @pytest.mark.parametrize("original_obs_key", ["k1", "k2"])
-def test_human_readable_wrapper(Env: Type[gym.Env], original_obs_key: str):
+def test_human_readable_wrapper(Env: _CountingEnv, original_obs_key: str):
     num_obs_key_expected = 2 if Env == _CountingEnv else 3
     origin_obs_key = original_obs_key if Env == _CountingEnv else "t"
-    env = HumanReadableWrapper(Env(), original_obs_key=original_obs_key)
+    env = HumanReadableWrapper(
+        Env(render_mode="rgb_array"), original_obs_key=original_obs_key
+    )
 
     obs, _ = env.reset()
     assert isinstance(obs, Dict)
