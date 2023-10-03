@@ -20,8 +20,6 @@ from imitation.policies import base
 from imitation.testing import reward_improvement
 from imitation.util import util
 
-os.environ["CUDA_VISIBLE_DEVICES"] = ""
-
 
 @pytest.fixture(params=[True, False])
 def maybe_pendulum_expert_trajectories(

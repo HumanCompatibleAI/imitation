@@ -172,7 +172,8 @@ def test_density_trainer_raises(
         density_trainer.set_demonstrations("foo")  # type: ignore[arg-type]
 
 
-# TODO: remove after https://github.com/DLR-RM/stable-baselines3/pull/1676 merged
+# TODO(GH#794): Remove after https://github.com/DLR-RM/stable-baselines3/pull/1676
+# merged and released.
 class FloatReward(gym.RewardWrapper):
     """Typecasts reward to a float."""
 

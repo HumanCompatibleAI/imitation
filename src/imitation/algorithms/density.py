@@ -296,9 +296,9 @@ class DensityAlgorithm(base.DemonstrationAlgorithm):
 
     def __call__(
         self,
-        state: np.ndarray,
+        state: types.Observation,
         action: np.ndarray,
-        next_state: np.ndarray,
+        next_state: types.Observation,
         done: np.ndarray,
         steps: Optional[np.ndarray] = None,
     ) -> np.ndarray:
@@ -334,6 +334,8 @@ class DensityAlgorithm(base.DemonstrationAlgorithm):
 
         rew_list = []
         assert len(state) == len(action) and len(state) == len(next_state)
+        state = types.maybe_wrap_in_dictobs(state)
+        next_state = types.maybe_wrap_in_dictobs(next_state)
         for idx, (obs, act, next_obs) in enumerate(zip(state, action, next_state)):
             flat_trans = self._preprocess_transition(obs, act, next_obs)
             assert self._scaler is not None
