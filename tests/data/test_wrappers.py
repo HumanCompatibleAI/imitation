@@ -54,7 +54,7 @@ class _CountingDictEnv(_CountingEnv):  # pragma: no cover
     def __init__(self, episode_length=5):
         super().__init__(episode_length)
         self.observation_space = gym.spaces.Dict(
-            spaces={"t": gym.spaces.Box(low=0, high=np.inf, shape=())}
+            spaces={"t": gym.spaces.Box(low=0, high=np.inf, shape=())},
         )
 
     def reset(self, seed=None):
@@ -151,6 +151,7 @@ def test_pop(
     ```
 
     Args:
+        Env: Environment class type.
         episode_lengths: The number of timesteps before episode end in each dummy
             environment.
         n_steps: Number of times to call `step()` on the dummy environment.

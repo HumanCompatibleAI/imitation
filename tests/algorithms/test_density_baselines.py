@@ -191,7 +191,12 @@ def test_dict_space(density_type, is_stationary):
     venv = vec_env.DummyVecEnv([make_env, make_env])
 
     # multi-input policy to accept dict observations
-    rl_algo = stable_baselines3.PPO(policies.MultiInputActorCriticPolicy, venv)
+    rl_algo = stable_baselines3.PPO(
+        policies.MultiInputActorCriticPolicy,
+        venv,
+        n_steps=10,  # small value to make test faster
+        n_epochs=2,  # small value to make test faster
+    )
     rng = np.random.default_rng()
 
     # sample random transitions
