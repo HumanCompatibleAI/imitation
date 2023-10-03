@@ -53,9 +53,11 @@ class BufferingWrapper(VecEnvWrapper):
         self.n_transitions = 0
         obs = self.venv.reset(**kwargs)
         self._traj_accum = rollout.TrajectoryAccumulator()
+        obs = types.maybe_wrap_in_dictobs(obs)
         for i, ob in enumerate(obs):
             self._traj_accum.add_step({"obs": ob}, key=i)
         self._timesteps = np.zeros((len(obs),), dtype=int)
+        obs = types.maybe_unwrap_dictobs(obs)
         return obs
 
     def step_async(self, actions):
