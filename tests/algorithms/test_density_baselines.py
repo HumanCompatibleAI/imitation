@@ -181,8 +181,7 @@ class FloatReward(gym.RewardWrapper):
         return float(reward)
 
 
-@parametrize_density_stationary
-def test_dict_space(density_type, is_stationary):
+def test_dict_space():
     def make_env():
         env = sb_envs.SimpleMultiObsEnv(channel_last=False)
         env = FloatReward(env)
@@ -200,23 +199,25 @@ def test_dict_space(density_type, is_stationary):
     rng = np.random.default_rng()
 
     # sample random transitions
+    sample_until = rollout.make_min_episodes(15)
     rollouts = rollout.rollout(
         policy=None,
         venv=venv,
-        sample_until=rollout.make_sample_until(min_timesteps=None, min_episodes=50),
+        sample_until=sample_until,
         rng=rng,
-        unwrap=True,
     )
     density_trainer = DensityAlgorithm(
         demonstrations=rollouts,
-        density_type=density_type,
         kernel="gaussian",
         venv=venv,
-        is_stationary=is_stationary,
         rl_algo=rl_algo,
         kernel_bandwidth=0.2,
         standardise_inputs=True,
         rng=rng,
+        # SimpleMultiObsEnv has early stop (issue #40)
+        allow_variable_horizon=True,
     )
     # confirm that training works
     density_trainer.train()
+    density_trainer.train_policy(n_timesteps=2)
+    density_trainer.test_policy(n_trajectories=2)

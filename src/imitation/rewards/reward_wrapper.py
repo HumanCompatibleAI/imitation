@@ -102,11 +102,17 @@ class RewardVecEnvWrapper(vec_env.VecEnvWrapper):
                 single_obs = single_infos["terminal_observation"]
 
             obs_fixed.append(types.maybe_wrap_in_dictobs(single_obs))
-        obs_fixed = types.DictObs.stack(obs_fixed) if isinstance(
-            obs, types.DictObs) else np.stack(obs_fixed)
-
-        rews = self.reward_fn(self._old_obs, self._actions,
-                              types.maybe_unwrap_dictobs(obs_fixed), np.array(dones))
+        obs_fixed = (
+            types.DictObs.stack(obs_fixed)
+            if isinstance(obs, types.DictObs)
+            else np.stack(obs_fixed)
+        )
+        rews = self.reward_fn(
+            self._old_obs,
+            self._actions,
+            types.maybe_unwrap_dictobs(obs_fixed),
+            np.array(dones),
+        )
         assert len(rews) == len(obs), "must return one rew for each env"
         done_mask = np.asarray(dones, dtype="bool").reshape((len(dones),))
 
