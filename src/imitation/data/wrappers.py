@@ -1,13 +1,17 @@
 """Environment wrappers for collecting rollouts."""
 
-from typing import List, Optional, Sequence, Tuple
+from typing import List, Optional, Sequence, Tuple, Dict, Union
 
 import gymnasium as gym
+from gymnasium.core import Env
 import numpy as np
 import numpy.typing as npt
 from stable_baselines3.common.vec_env import VecEnv, VecEnvWrapper
 
 from imitation.data import rollout, types
+
+# The key for human readable data in the observation.
+HR_OBS_KEY = "HR_OBS"
 
 
 class BufferingWrapper(VecEnvWrapper):
@@ -170,7 +174,7 @@ class BufferingWrapper(VecEnvWrapper):
 
 
 class RolloutInfoWrapper(gym.Wrapper):
-    """Add the entire episode's rewards and observations to `info` at episode end.
+    """Adds the entire episode's rewards and observations to `info` at episode end.
 
     Whenever done=True, `info["rollouts"]` is a dict with keys "obs" and "rews", whose
     corresponding values hold the NumPy arrays containing the raw observations and
@@ -206,3 +210,56 @@ class RolloutInfoWrapper(gym.Wrapper):
                 "rews": np.stack(self._rews),
             }
         return obs, rew, terminated, truncated, info
+
+
+class HumanReadableWrapper(gym.Wrapper):
+    """Adds human-readable observation to `obs` at every step."""
+
+    def __init__(self, env: Env, original_obs_key: str = "ORI_OBS"):
+        """Builds HumanReadableWrapper
+
+        Args:
+            env: Environment to wrap.
+            original_obs_key: The key for original observation if the original
+                observation is not in dict format.
+        """
+        env.render_mode = "rgb_array"
+        self._original_obs_key = original_obs_key
+        super().__init__(env)
+
+    def _add_hr_obs(
+        self, obs: Union[np.ndarray, Dict[str, np.ndarray]]
+    ) -> Dict[str, np.ndarray]:
+        """Adds human-readable observation to obs.
+
+        Transforms obs into dictionary if it is not already, and adds the human-readable
+        observation from `env.render()` under the key HR_OBS_KEY.
+
+        Args:
+            obs: Observation from environment.
+
+        Returns:
+            Observation dictionary with the human-readable data
+
+        Raises:
+            KeyError: When the key HR_OBS_KEY already exists in the observation
+                dictionary.
+        """
+        assert self.env.render_mode is not None
+        assert self.env.render_mode == "rgb_array"
+        hr_obs = self.env.render()
+        if not isinstance(obs, Dict):
+            obs = {self._original_obs_key: obs}
+
+        if HR_OBS_KEY in obs:
+            raise KeyError(f"{HR_OBS_KEY!r} already exists in observation dict")
+        obs[HR_OBS_KEY] = hr_obs
+        return obs
+
+    def reset(self, **kwargs):
+        obs, info = super().reset(**kwargs)
+        return self._add_hr_obs(obs), info
+
+    def step(self, action):
+        obs, rew, terminated, truncated, info = self.env.step(action)
+        return self._add_hr_obs(obs), rew, terminated, truncated, info
