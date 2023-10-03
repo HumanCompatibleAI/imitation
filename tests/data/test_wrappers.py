@@ -1,6 +1,6 @@
 """Tests for `imitation.data.wrappers`."""
 
-from typing import List, Sequence, Type
+from typing import List, Sequence, Type, Dict, Optional
 
 import gymnasium as gym
 import numpy as np
@@ -8,7 +8,11 @@ import pytest
 from stable_baselines3.common.vec_env import DummyVecEnv
 
 from imitation.data import types
-from imitation.data.wrappers import BufferingWrapper
+from imitation.data.wrappers import (
+    BufferingWrapper,
+    HumanReadableWrapper,
+    HR_OBS_KEY,
+)
 
 
 class _CountingEnv(gym.Env):  # pragma: no cover
@@ -31,7 +35,7 @@ class _CountingEnv(gym.Env):  # pragma: no cover
         self.episode_length = episode_length
         self.timestep = None
 
-    def reset(self, seed=None):
+    def reset(self, *, seed: Optional[int] = None, options: Optional[dict] = None):
         t, self.timestep = 0, 1
         return t, {}
 
@@ -47,6 +51,9 @@ class _CountingEnv(gym.Env):  # pragma: no cover
         done = t == self.episode_length
         return t, t * 10, done, False, {}
 
+    def render(self) -> np.ndarray:
+        return np.array([self.timestep] * 10)
+
 
 class _CountingDictEnv(_CountingEnv):  # pragma: no cover
     """Similar to _CountingEnv, but with Dict observation."""
@@ -57,9 +64,9 @@ class _CountingDictEnv(_CountingEnv):  # pragma: no cover
             spaces={"t": gym.spaces.Box(low=0, high=np.inf, shape=())},
         )
 
-    def reset(self, seed=None):
-        t, self.timestep = 0.0, 1.0
-        return {"t": t}, {}
+    def reset(self, *, seed: Optional[int] = None, options: Optional[dict] = None):
+        t, self.timestep = 0, 1
+        return {"t": t, "2t": 2 * t}, {}
 
     def step(self, action):
         if self.timestep is None:
@@ -71,7 +78,7 @@ class _CountingDictEnv(_CountingEnv):  # pragma: no cover
 
         t, self.timestep = self.timestep, self.timestep + 1
         done = t == self.episode_length
-        return {"t": t}, t * 10, done, False, {}
+        return {"t": t, "2t": 2 * t}, t * 10, done, False, {}
 
 
 Envs = [_CountingEnv, _CountingDictEnv]
@@ -278,3 +285,25 @@ def test_n_transitions_and_empty_error(Env: Type[gym.Env]):
     assert venv.n_transitions == 0
     with pytest.raises(RuntimeError, match=".* empty .*"):
         venv.pop_transitions()
+
+
+@pytest.mark.parametrize("Env", Envs)
+@pytest.mark.parametrize("original_obs_key", ["k1", "k2"])
+def test_human_readable_wrapper(Env: Type[gym.Env], original_obs_key: str):
+    num_obs_key_expected = 2 if Env == _CountingEnv else 3
+    origin_obs_key = original_obs_key if Env == _CountingEnv else "t"
+    env = HumanReadableWrapper(Env(), original_obs_key=original_obs_key)
+
+    obs, _ = env.reset()
+    assert isinstance(obs, Dict)
+    assert HR_OBS_KEY in obs
+    assert len(obs) == num_obs_key_expected
+    assert obs[origin_obs_key] == 0
+    _assert_equal_scrambled_vectors(obs[HR_OBS_KEY], np.array([1] * 10))
+
+    next_obs, *_ = env.step(env.action_space.sample())
+    assert isinstance(next_obs, Dict)
+    assert HR_OBS_KEY in next_obs
+    assert len(next_obs) == num_obs_key_expected
+    assert next_obs[origin_obs_key] == 1
+    _assert_equal_scrambled_vectors(next_obs[HR_OBS_KEY], np.array([2] * 10))
