@@ -164,7 +164,7 @@ class InteractiveTrajectoryCollector(vec_env.VecEnvWrapper):
     """
 
     traj_accum: Optional[rollout.TrajectoryAccumulator]
-    _last_obs: Optional[np.ndarray]
+    _last_obs: Optional[Dict[str, np.ndarray]]
     _last_user_actions: Optional[np.ndarray]
 
     def __init__(
@@ -216,7 +216,7 @@ class InteractiveTrajectoryCollector(vec_env.VecEnvWrapper):
         self.rng = np.random.default_rng(seed=seed)
         return list(self.venv.seed(seed))
 
-    def reset(self) -> Union[np.ndarray, Dict[str, np.ndarray]]:
+    def reset(self) -> Dict[str, np.ndarray]:
         """Resets the environment.
 
         Returns:
@@ -224,14 +224,15 @@ class InteractiveTrajectoryCollector(vec_env.VecEnvWrapper):
         """
         self.traj_accum = rollout.TrajectoryAccumulator()
         obs = self.venv.reset()
+        assert isinstance(obs, Dict)
+        assert wrappers.HR_OBS_KEY in obs
         obs = types.maybe_wrap_in_dictobs(obs)
-        assert isinstance(obs, types.DictObs)
         for i, ob in enumerate(obs):
             self.traj_accum.add_step({"obs": ob}, key=i)
+        obs = types.maybe_unwrap_dictobs(obs)
         self._last_obs = obs
         self._is_reset = True
         self._last_user_actions = None
-        obs = types.maybe_unwrap_dictobs(obs)
         return obs
 
     def step_async(self, actions: np.ndarray) -> None:

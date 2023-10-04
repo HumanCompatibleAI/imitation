@@ -23,10 +23,9 @@ if __name__ == "__main__":
 
     expert = interactive.AtariInteractivePolicy(venv)
 
-    venv_with_no_rgb = wrappers.RemoveHumanReadableWrapper(venv)
     bc_trainer = bc.BC(
-        observation_space=venv_with_no_rgb.observation_space,
-        action_space=venv_with_no_rgb.action_space,
+        observation_space=venv.observation_space,
+        action_space=venv.action_space,
         rng=rng,
     )
 

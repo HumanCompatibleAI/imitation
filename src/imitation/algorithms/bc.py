@@ -294,7 +294,7 @@ class BC(algo_base.DemonstrationAlgorithm):
             observation_space: the observation space of the environment.
             action_space: the action space of the environment.
             rng: the random state to use for the random number generator.
-            policy: a Stable Baselines3 policy; if unspecified,
+            policy: a Stable Baselines3 policy for learning; if unspecified,
                 defaults to `FeedForward32Policy`.
             demonstrations: Demonstrations from an expert (optional). Transitions
                 expressed directly as a `types.TransitionsMinimal` object, a sequence
@@ -334,18 +334,19 @@ class BC(algo_base.DemonstrationAlgorithm):
         self._bc_logger = BCLogger(self.logger)
 
         self.action_space = action_space
-        self.observation_space = observation_space
+        ob_space_without_rgb = wrappers.remove_rgb_obs_space(observation_space)
+        self.observation_space = ob_space_without_rgb
 
         self.rng = rng
 
         if policy is None:
             extractor = (
                 torch_layers.CombinedExtractor
-                if isinstance(observation_space, gym.spaces.Dict)
+                if isinstance(ob_space_without_rgb, gym.spaces.Dict)
                 else torch_layers.FlattenExtractor
             )
             policy = policy_base.FeedForward32Policy(
-                observation_space=observation_space,
+                observation_space=ob_space_without_rgb,
                 action_space=action_space,
                 # Set lr_schedule to max value to force error if policy.optimizer
                 # is used by mistake (should use self.optimizer instead).
@@ -354,7 +355,7 @@ class BC(algo_base.DemonstrationAlgorithm):
             )
         self._policy = policy.to(utils.get_device(device))
         # TODO(adam): make policy mandatory and delete observation/action space params?
-        assert self.policy.observation_space == self.observation_space
+        assert self.policy.observation_space == ob_space_without_rgb
         assert self.policy.action_space == self.action_space
 
         if optimizer_kwargs:
@@ -491,9 +492,11 @@ class BC(algo_base.DemonstrationAlgorithm):
                 lambda x: util.safe_to_tensor(x, device=self.policy.device),
                 types.maybe_unwrap_dictobs(batch["obs"]),
             )
-            obs_tensor = wrappers.remove_rgb_obs(obs_tensor)
+            obs_tensor_without_rgb = wrappers.remove_rgb_obs(obs_tensor)
             acts = util.safe_to_tensor(batch["acts"], device=self.policy.device)
-            training_metrics = self.loss_calculator(self.policy, obs_tensor, acts)
+            training_metrics = self.loss_calculator(
+                self.policy, obs_tensor_without_rgb, acts
+            )
 
             # Renormalise the loss to be averaged over the whole
             # batch size instead of the minibatch size.

@@ -318,27 +318,3 @@ def remove_rgb_obs(
         # unwrap dictionary structure
         return list(obs.values())[0]
     return obs
-
-
-class RemoveHumanReadableWrapper(VecEnvWrapper):
-    """A vectorized wrapper for removing human readable observations.
-
-    :param venv: The vectorized environment
-    """
-
-    def __init__(self, venv: VecEnv):
-        assert isinstance(
-            venv.observation_space, gym.spaces.Dict
-        ), "RemoveHumanReadableWrapper only works with gym.spaces.Dict space"
-        assert (
-            HR_OBS_KEY in venv.observation_space.spaces
-        ), f"Observation space must contain {HR_OBS_KEY!r}"
-        new_obs_space = remove_rgb_obs_space(venv.observation_space)
-        super().__init__(venv=venv, observation_space=new_obs_space)
-
-    def reset(self) -> Union[np.ndarray, Dict[str, np.ndarray]]:
-        return remove_rgb_obs(self.venv.reset())
-
-    def step_wait(self):
-        observations, rewards, dones, infos = self.venv.step_wait()
-        return remove_rgb_obs(observations), rewards, dones, infos
