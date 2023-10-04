@@ -508,7 +508,7 @@ class DAggerTrainer(base.BaseImitationAlgorithm):
         beta = self.beta_schedule(self.round_num)
         collector = InteractiveTrajectoryCollector(
             venv=self.venv,
-            get_robot_acts=lambda obs: self.bc_trainer.policy.predict(obs)[0],
+            get_robot_acts=lambda acts: self.bc_trainer.policy.predict(acts)[0],
             beta=beta,
             save_dir=save_dir,
             rng=self.rng,
