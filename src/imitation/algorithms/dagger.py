@@ -11,11 +11,13 @@ import logging
 import os
 import pathlib
 import uuid
-from typing import Any, Callable, List, Mapping, Optional, Sequence, Tuple, Union
+from typing import Any, Callable, Dict, List, Mapping, Optional, Sequence, Tuple, Union
 
 import numpy as np
 import torch as th
+from gymnasium import spaces
 from stable_baselines3.common import policies, utils, vec_env
+from stable_baselines3.common.type_aliases import GymEnv
 from stable_baselines3.common.vec_env.base_vec_env import VecEnvStepReturn
 from torch.utils import data as th_data
 
@@ -23,6 +25,7 @@ from imitation.algorithms import base, bc
 from imitation.data import rollout, serialize, types
 from imitation.util import logger as imit_logger
 from imitation.util import util
+from imitation.data import wrappers
 
 
 class BetaSchedule(abc.ABC):
@@ -213,7 +216,7 @@ class InteractiveTrajectoryCollector(vec_env.VecEnvWrapper):
         self.rng = np.random.default_rng(seed=seed)
         return list(self.venv.seed(seed))
 
-    def reset(self) -> np.ndarray:
+    def reset(self) -> Union[np.ndarray, Dict[str, np.ndarray]]:
         """Resets the environment.
 
         Returns:
@@ -221,12 +224,14 @@ class InteractiveTrajectoryCollector(vec_env.VecEnvWrapper):
         """
         self.traj_accum = rollout.TrajectoryAccumulator()
         obs = self.venv.reset()
-        assert isinstance(obs, np.ndarray)
+        obs = types.maybe_wrap_in_dictobs(obs)
+        assert isinstance(obs, types.DictObs)
         for i, ob in enumerate(obs):
             self.traj_accum.add_step({"obs": ob}, key=i)
         self._last_obs = obs
         self._is_reset = True
         self._last_user_actions = None
+        obs = types.maybe_unwrap_dictobs(obs)
         return obs
 
     def step_async(self, actions: np.ndarray) -> None:
@@ -270,7 +275,6 @@ class InteractiveTrajectoryCollector(vec_env.VecEnvWrapper):
             Observation, reward, dones (is terminal?) and info dict.
         """
         next_obs, rews, dones, infos = self.venv.step_wait()
-        assert isinstance(next_obs, np.ndarray)
         assert self.traj_accum is not None
         assert self._last_user_actions is not None
         self._last_obs = next_obs
@@ -289,6 +293,26 @@ class InteractiveTrajectoryCollector(vec_env.VecEnvWrapper):
 
 class NeedsDemosException(Exception):
     """Signals demos need to be collected for current round before continuing."""
+
+
+def _check_for_correct_spaces_with_rgb_env(
+    env_might_with_rgb: GymEnv,
+    obs_space: spaces.Space,
+    action_space: spaces.Space,
+) -> None:
+    """Checks that whether an environment has the same spaces as provided ones."""
+    if isinstance(obs_space, spaces.Dict):
+        assert wrappers.HR_OBS_KEY not in obs_space.spaces
+    env_obs_space = wrappers.remove_rgb_obs_space(env_might_with_rgb.observation_space)
+    if obs_space != env_obs_space:
+        raise ValueError(
+            f"Observation spaces do not match: obs {obs_space} != env {env_obs_space}"
+        )
+    env_action_space = env_might_with_rgb.action_space
+    if action_space != env_action_space:
+        raise ValueError(
+            f"Action spaces do not match: obs {action_space} != env {env_action_space}"
+        )
 
 
 class DAggerTrainer(base.BaseImitationAlgorithm):
@@ -361,7 +385,7 @@ class DAggerTrainer(base.BaseImitationAlgorithm):
         self._all_demos = []
         self.rng = rng
 
-        utils.check_for_correct_spaces(
+        _check_for_correct_spaces_with_rgb_env(
             self.venv,
             bc_trainer.observation_space,
             bc_trainer.action_space,
