@@ -423,4 +423,5 @@ def test_dictionary_observations(rng):
     )
     for traj in trajs:
         assert isinstance(traj.obs, types.DictObs)
+        assert venv.observation_space.contains(obs)
         np.testing.assert_allclose(traj.obs.get("a") / 2, traj.obs.get("b"))
