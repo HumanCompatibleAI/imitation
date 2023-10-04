@@ -96,7 +96,7 @@ commands:
 
       - restore_cache:
           keys:
-            - v8macos-dependencies-{{ checksum "setup.py" }}-{{ checksum "ci/build_and_activate_venv.sh" }}
+            - v7macos-dependencies-{{ checksum "setup.py" }}-{{ checksum "ci/build_and_activate_venv.sh" }}
 
       - run:
           name: install dependencies
@@ -108,7 +108,7 @@ commands:
       - save_cache:
           paths:
             - ~/venv
-          key: v8macos-dependencies-{{ checksum "setup.py" }}-{{ checksum "ci/build_and_activate_venv.sh" }}
+          key: v7macos-dependencies-{{ checksum "setup.py" }}-{{ checksum "ci/build_and_activate_venv.sh" }}
 
       - run:
           name: install imitation
