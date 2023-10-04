@@ -7,8 +7,7 @@ import gymnasium as gym
 import numpy as np
 import pytest
 import stable_baselines3
-from stable_baselines3.common import policies
-from stable_baselines3.common import vec_env
+from stable_baselines3.common import policies, vec_env
 
 from imitation.algorithms.density import DensityAlgorithm, DensityType
 from imitation.data import rollout, types
