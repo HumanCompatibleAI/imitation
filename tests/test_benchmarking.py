@@ -1,11 +1,9 @@
 """Tests for config files in benchmarking/ folder."""
 import pathlib
-import subprocess
-import sys
 
 import pytest
 
-from imitation.scripts import train_adversarial, train_imitation
+from imitation.scripts import train_adversarial, train_imitation, tuning
 
 THIS_DIR = pathlib.Path(__file__).absolute().parent
 BENCHMARKING_DIR = THIS_DIR.parent / "benchmarking"
@@ -48,26 +46,20 @@ def test_benchmarks_print_config_succeeds(algorithm: str, environment: str):
     assert run.status == "COMPLETED"
 
 
+@pytest.mark.parametrize("environment", ENVIRONMENTS)
 @pytest.mark.parametrize("algorithm", ALGORITHMS)
-def test_tuning_print_config_succeeds(algorithm: str):
+def test_tuning_print_config_succeeds(algorithm: str, environment: str):
     # We test the configs using the print_config command,
     # because running the configs requires MuJoCo.
     # Requiring MuJoCo to run the tests adds too much complexity.
-
-    # We need to use sys.executable, not just "python", on Windows as
-    # subprocess.call ignores PATH (unless shell=True) so runs a
-    # system-wide Python interpreter outside of our venv. See:
-    # https://stackoverflow.com/questions/5658622/
-    tuning_path = str(BENCHMARKING_DIR / "tuning.py")
-    env = 'parallel_run_config.base_named_configs=["seals_cartpole"]'
-    exit_code = subprocess.call(
-        [
-            sys.executable,
-            tuning_path,
-            "print_config",
-            "with",
-            f"{algorithm}",
-            env,
-        ],
+    experiment = tuning.tuning_ex
+    run = experiment.run(
+        command_name="print_config",
+        named_configs=[algorithm],
+        config_updates=dict(
+            parallel_run_config=dict(
+                base_named_configs=[environment],
+            ),
+        ),
     )
-    assert exit_code == 0
+    assert run.status == "COMPLETED"

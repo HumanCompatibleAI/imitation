@@ -2,7 +2,7 @@
 
 import copy
 import pathlib
-from typing import Any, Dict
+from typing import Dict
 
 import numpy as np
 import ray
@@ -16,7 +16,7 @@ from imitation.scripts.config.tuning import tuning_ex
 
 @tuning_ex.main
 def tune(
-    parallel_run_config: Dict[str, Any],
+    parallel_run_config,
     eval_best_trial_resource_multiplier: int = 1,
     num_eval_seeds: int = 5,
 ) -> None:
@@ -128,7 +128,7 @@ def evaluate_trial(
     trial: ray.tune.experiment.Trial,
     num_eval_seeds: int,
     run_name: str,
-    parallel_run_config: Dict[str, Any],
+    parallel_run_config,
     resources_per_trial: Dict[str, int],
     return_key: str,
     print_return: bool = False,
