@@ -170,7 +170,7 @@ class InteractiveTrajectoryCollector(vec_env.VecEnvWrapper):
     def __init__(
         self,
         venv: vec_env.VecEnv,
-        get_robot_acts: Callable[[np.ndarray], np.ndarray],
+        get_robot_acts: Callable[[Dict[str, np.ndarray]], np.ndarray],
         beta: float,
         save_dir: types.AnyPath,
         rng: np.random.Generator,
@@ -226,10 +226,8 @@ class InteractiveTrajectoryCollector(vec_env.VecEnvWrapper):
         obs = self.venv.reset()
         assert isinstance(obs, Dict)
         assert wrappers.HR_OBS_KEY in obs
-        obs = types.maybe_wrap_in_dictobs(obs)
-        for i, ob in enumerate(obs):
-            self.traj_accum.add_step({"obs": ob}, key=i)
-        obs = types.maybe_unwrap_dictobs(obs)
+        for k, ob in enumerate(obs.items()):
+            self.traj_accum.add_step({"obs": ob}, key=k)
         self._last_obs = obs
         self._is_reset = True
         self._last_user_actions = None
@@ -262,7 +260,9 @@ class InteractiveTrajectoryCollector(vec_env.VecEnvWrapper):
 
         mask = self.rng.uniform(0, 1, size=(self.num_envs,)) > self.beta
         if np.sum(mask) != 0:
-            actual_acts[mask] = self.get_robot_acts(self._last_obs[mask])
+            last_obs = types.DictObs(self._last_obs)
+            obs_for_robot = types.maybe_unwrap_dictobs(last_obs[mask])
+            actual_acts[mask] = self.get_robot_acts(obs_for_robot)
 
         self._last_user_actions = actions
         self.venv.step_async(actual_acts)
@@ -521,6 +521,25 @@ class DAggerTrainer(base.BaseImitationAlgorithm):
         logging.info(f"New round number is {self.round_num}")
         return self.round_num
 
+    def _get_trainable_predict_fn(
+        self,
+    ) -> Callable[[Dict[str, np.ndarray]], np.ndarray]:
+        """Returns a function that uses `bc_trainer.policy` to predict observations.
+
+        Since bc_trainer.policy doesn't accept RGB observations, this function removes
+        The RGB observation part, if any, before passing the observation to prediction.
+
+        Returns:
+            A function that accepts a dictionary observation and returns a numpy array
+            of actions.
+        """
+
+        def remove_rgb_and_predict(obs: Dict[str, np.ndarray]) -> np.ndarray:
+            obs = wrappers.remove_rgb_obs(obs)
+            return self.bc_trainer.policy.predict(obs)[0]
+
+        return remove_rgb_and_predict
+
     def create_trajectory_collector(self) -> InteractiveTrajectoryCollector:
         """Create trajectory collector to extend current round's demonstration set.
 
@@ -533,7 +552,7 @@ class DAggerTrainer(base.BaseImitationAlgorithm):
         beta = self.beta_schedule(self.round_num)
         collector = InteractiveTrajectoryCollector(
             venv=self.venv,
-            get_robot_acts=lambda obs: self.bc_trainer.policy.predict(obs)[0],
+            get_robot_acts=self._get_trainable_predict_fn(),
             beta=beta,
             save_dir=save_dir,
             rng=self.rng,
@@ -575,7 +594,7 @@ class DAggerTrainer(base.BaseImitationAlgorithm):
 
 
 class SimpleDAggerTrainer(DAggerTrainer):
-    """Simpler subclass of DAggerTrainer for training with synthetic feedback."""
+    """Simpler subclass of DAggerTrainer for training with feedback."""
 
     def __init__(
         self,
@@ -596,7 +615,7 @@ class SimpleDAggerTrainer(DAggerTrainer):
                 simultaneously for that timestep.
             scratch_dir: Directory to use to store intermediate training
                 information (e.g. for resuming training).
-            expert_policy: The expert policy used to generate synthetic demonstrations.
+            expert_policy: The expert policy used to generate demonstrations.
             rng: Random state to use for the random number generator.
             expert_trajs: Optional starting dataset that is inserted into the round 0
                 dataset.
