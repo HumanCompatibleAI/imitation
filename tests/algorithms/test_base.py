@@ -144,7 +144,7 @@ def test_make_data_loader():
         for batch, expected_batch in zip(data_loader, trans_mapping):
             assert batch.keys() == expected_batch.keys()
             for k in batch.keys():
-                v = batch[k]  # type: ignore[typed-dict-error]
+                v = batch[k]
                 if isinstance(v, th.Tensor):
                     v = v.numpy()
                 assert np.all(v == expected_batch[k])
