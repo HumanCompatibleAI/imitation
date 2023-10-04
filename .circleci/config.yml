@@ -178,13 +178,6 @@ commands:
           shell: powershell.exe
 
       - run:
-          name: install gymansium[mujoco]
-          command: |
-            .\venv\Scripts\activate
-            pip install gymnasium[mujoco]
-          shell: powershell.exe
-
-      - run:
           name: print installed packages
           command: |
             .\venv\Scripts\activate
