@@ -3,9 +3,9 @@ from typing import Sequence
 
 import gymnasium as gym
 import pytest
-from stable_baselines3.common.policies import BasePolicy
 from stable_baselines3.common import envs
-from stable_baselines3.common.vec_env import VecEnv, DummyVecEnv
+from stable_baselines3.common.policies import BasePolicy
+from stable_baselines3.common.vec_env import DummyVecEnv, VecEnv
 
 from imitation.algorithms import bc
 from imitation.data.types import TrajectoryWithRew
