@@ -17,7 +17,7 @@ PARALLEL_REQUIRE = ["ray[debug,tune]~=2.0.0"]
 ATARI_REQUIRE = [
     "seals[atari]~=0.2.1",
 ]
-PYTYPE = ["pytype==2023.9.27"] if IS_NOT_WINDOWS else []
+PYTYPE = ["pytype==2022.7.26"] if IS_NOT_WINDOWS else []
 
 # Note: the versions of the test and doc requirements should be tightly pinned to known
 #   working versions to make our CI/CD pipeline as stable as possible.
