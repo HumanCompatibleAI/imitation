@@ -78,7 +78,7 @@ repos:
     name: pytype
     language: system
     types: [python]
-    entry: "bash -c 'pytype -j ${NUM_CPUS:-auto}'"
+    entry: "bash -c 'pytype ./ -j ${NUM_CPUS:-auto}'"
     require_serial: true
     verbose: true
   - id: docs
