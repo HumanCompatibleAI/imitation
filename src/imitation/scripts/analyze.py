@@ -268,13 +268,10 @@ def analyze_imitation(
     Returns:
         The DataFrame generated from the Sacred logs.
     """
-    if table_verbosity == 3:
-        # Get column names for which we have get value using make_entry_fn
-        # These are same across Level 2 & 3. In Level 3, we additionally add remaining
-        #  config columns.
-        table_entry_fns_subset = _get_table_entry_fns_subset(2)
-    else:
-        table_entry_fns_subset = _get_table_entry_fns_subset(table_verbosity)
+    # Get column names for which we have get value using make_entry_fn
+    # These are same across Level 2 & 3. In Level 3, we additionally add remaining
+    #  config columns.
+    table_entry_fns_subset = _get_table_entry_fns_subset(min(table_verbosity, 2))
 
     output_table = pd.DataFrame()
     for sd in _gather_sacred_dicts():

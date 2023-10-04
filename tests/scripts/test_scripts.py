@@ -981,7 +981,7 @@ def test_analyze_imitation(tmpdir: str, run_names: List[str], run_sacred_fn):
             assert run.status == "COMPLETED"
 
     # Check that analyze script finds the correct number of logs.
-    def check(run_name: Optional[str], count: int, table_verbosity=1) -> None:
+    def check(run_name: Optional[str], count: int, table_verbosity: int = 1) -> None:
         run = analyze.analysis_ex.run(
             command_name="analyze_imitation",
             config_updates=dict(

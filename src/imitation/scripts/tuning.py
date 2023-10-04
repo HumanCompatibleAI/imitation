@@ -9,7 +9,9 @@ import ray
 from pandas.api import types as pd_types
 from ray.tune.search import optuna
 from sacred.observers import FileStorageObserver
-from tuning_config import parallel_ex, tuning_ex
+
+from imitation.scripts.config.parallel import parallel_ex
+from imitation.scripts.config.tuning import tuning_ex
 
 
 @tuning_ex.main
@@ -18,10 +20,15 @@ def tune(
     eval_best_trial_resource_multiplier: int = 1,
     num_eval_seeds: int = 5,
 ) -> None:
-    """Tune hyperparameters of imitation algorithms using parallel script.
+    """Tune hyperparameters of imitation algorithms using the parallel script.
+
+    The parallel script is called twice in this function. The first call is to
+    tune the hyperparameters. The second call is to evaluate the best trial on
+    a separate set of seeds.
 
     Args:
         parallel_run_config: Dictionary of arguments to pass to the parallel script.
+            This is used to define the search space for tuning the hyperparameters.
         eval_best_trial_resource_multiplier: Factor by which to multiply the
             number of cpus per trial in `resources_per_trial`. This is useful for
             allocating more resources per trial to the evaluation trials than the
@@ -35,10 +42,8 @@ def tune(
     """
     updated_parallel_run_config = copy.deepcopy(parallel_run_config)
     search_alg = optuna.OptunaSearch()
-    if "tune_run_kwargs" in updated_parallel_run_config:
-        updated_parallel_run_config["tune_run_kwargs"]["search_alg"] = search_alg
-    else:
-        updated_parallel_run_config["tune_run_kwargs"] = dict(search_alg=search_alg)
+    tune_run_kwargs = updated_parallel_run_config.setdefault("tune_run_kwargs", dict())
+    tune_run_kwargs["search_alg"] = search_alg
     run = parallel_ex.run(config_updates=updated_parallel_run_config)
     experiment_analysis = run.result
     if not experiment_analysis.trials:
@@ -93,9 +98,13 @@ def find_best_trial(
         if pd_types.is_object_dtype(df[col]):
             df[col] = df[col].astype("str")
     # group into separate HP configs
-    grp_keys = [c for c in df.columns if c.startswith("config") and "seed" not in c]
+    grp_keys = [c for c in df.columns if c.startswith("config")]
+    grp_keys = [c for c in grp_keys if "seed" not in c and "trial_index" not in c]
     grps = df.groupby(grp_keys)
     # store mean return of runs across all seeds in a group
+    # the transform method is applied to get the mean return for every trial
+    # instead of for every group. So every trial in a group will have the same
+    # mean return column.
     df["mean_return"] = grps[return_key].transform(lambda x: x.mean())
     best_config_df = df[df["mean_return"] == df["mean_return"].max()]
     row = best_config_df.iloc[0]
@@ -149,10 +158,11 @@ def evaluate_trial(
         num_samples=1,
         search_space=config,
         resources_per_trial=resources_per_trial,
-        search_alg=None,
         repeat=1,
         experiment_checkpoint_path="",
     )
+    # required for grid search
+    eval_config_updates["tune_run_kwargs"].update(search_alg=None)
     eval_run = parallel_ex.run(config_updates=eval_config_updates)
     eval_result = eval_run.result
     returns = eval_result.results_df[return_key].to_numpy()

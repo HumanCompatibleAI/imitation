@@ -2,7 +2,6 @@
 
 import collections.abc
 import copy
-import glob
 import pathlib
 from typing import Any, Callable, Dict, Mapping, Sequence
 
@@ -37,8 +36,8 @@ def parallel(
     to `upload_dir` if that argument is provided in `tune_run_kwargs`.
 
     Args:
-        sacred_ex_name: The Sacred experiment to tune. Either "train_rl" or
-            "train_imitation" or "train_adversarial" or "train_preference_comparisons".
+        sacred_ex_name: The Sacred experiment to tune. Either "train_rl",
+            "train_imitation", "train_adversarial" or "train_preference_comparisons".
         run_name: A name describing this parallelizing experiment.
             This argument is also passed to `ray.tune.run` as the `name` argument.
             It is also saved in 'sacred/run.json' of each inner Sacred experiment
@@ -132,14 +131,7 @@ def parallel(
 
     try:
         if experiment_checkpoint_path:
-            # load experiment analysis results
             result = ray.tune.ExperimentAnalysis(experiment_checkpoint_path)
-            result._load_checkpoints_from_latest(
-                glob.glob(experiment_checkpoint_path + "/experiment_state*.json"),
-            )
-            # update result.trials using all the experiment_state json files
-            result.trials = None
-            result.fetch_trial_dataframes()
         else:
             result = ray.tune.run(
                 trainable,
