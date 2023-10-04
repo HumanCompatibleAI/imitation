@@ -8,7 +8,7 @@ Adding custom named configs is necessary because the CLI interface can't add
 search spaces to the config like `"seed": tune.choice([0, 1, 2, 3])`.
 
 For tuning hyperparameters of an algorithm on a given environment,
-check out the benchmarking/tuning.py script.
+check out the imitation/scripts/tuning.py script.
 """
 
 import numpy as np

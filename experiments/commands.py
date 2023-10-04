@@ -12,9 +12,10 @@ using multiple random seeds.
 
 For example, we can run:
 
+TUNED_HPS_DIR=../src/imitation/scripts/config/tuned_hps
 python commands.py \
     --name=run0 \
-    --cfg_pattern=../benchmarking/*ai*_seals_walker_*.json \
+    --cfg_pattern=$TUNED_HPS_DIR/*ai*_seals_walker_*.json \
     --output_dir=output
 
 And get the following commands printed out:
@@ -22,13 +23,13 @@ And get the following commands printed out:
 python -m imitation.scripts.train_adversarial airl \
     --capture=sys --name=run0 \
     --file_storage=output/sacred/$USER-cmd-run0-airl-0-a3531726 \
-    with ../benchmarking/airl_seals_walker_best_hp_eval.json \
+    with ../src/imitation/scripts/config/tuned_hps/airl_seals_walker_best_hp_eval.json \
     seed=0 logging.log_root=output
 
 python -m imitation.scripts.train_adversarial gail \
     --capture=sys --name=run0 \
     --file_storage=output/sacred/$USER-cmd-run0-gail-0-a1ec171b \
-    with ../benchmarking/gail_seals_walker_best_hp_eval.json \
+    with $TUNED_HPS_DIR/gail_seals_walker_best_hp_eval.json \
     seed=0 logging.log_root=output
 
 We can execute commands in parallel by piping them to GNU parallel:
@@ -40,9 +41,10 @@ to run training scripts in containers on the Hofvarpnir cluster.
 
 For example, we can run:
 
+TUNED_HPS_DIR=../src/imitation/scripts/config/tuned_hps
 python commands.py \
     --name=run0 \
-    --cfg_pattern=../benchmarking/bc_seals_half_cheetah_best_hp_eval.json \
+    --cfg_pattern=$TUNED_HPS_DIR/bc_seals_half_cheetah_best_hp_eval.json \
     --output_dir=/data/output \
     --remote
 
@@ -51,8 +53,9 @@ And get the following command printed out:
 ctl job run --name $USER-cmd-run0-bc-0-72cb1df3 \
     --command "python -m imitation.scripts.train_imitation bc \
     --capture=sys --name=run0 \
-    --file_storage=/data/output/sacred/$USER-cmd-run0-bc-0-72cb1df3 \
-    with /data/imitation/benchmarking/bc_seals_half_cheetah_best_hp_eval.json \
+    --file_storage=/data/output/sacred/$USER-cmd-run0-bc-0-72cb1df3 with \
+    /data/imitation/src/imitation/scripts/config/tuned_hps/
+    bc_seals_half_cheetah_best_hp_eval.json \
     seed=0 logging.log_root=/data/output" \
     --container hacobe/devbox:imitation \
     --login --force-pull --never-restart --gpu 0 --shared-host-dir-mount /data
@@ -220,7 +223,7 @@ in containers on the Hofvarpnir cluster.""",
     parser.add_argument(
         "--remote_cfg_dir",
         type=str,
-        default="/data/imitation/benchmarking",
+        default="/data/imitation/src/imitation/scripts/config/tuned_hps",
         help="""Path to a directory storing config files \
 accessible from each container. """,
     )

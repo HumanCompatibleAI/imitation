@@ -3,6 +3,7 @@
 import glob
 import os
 import pathlib
+import re
 import subprocess
 from typing import List
 
@@ -18,30 +19,31 @@ SCRIPT_NAMES = (
 )
 
 THIS_DIR = pathlib.Path(__file__).absolute().parent
-BENCHMARKING_DIR = THIS_DIR.parent / "benchmarking"
+BENCHMARKING_DIR = THIS_DIR.parent / "src/imitation/scripts/config/tuned_hps"
 EXPERIMENTS_DIR = THIS_DIR.parent / "experiments"
 COMMANDS_PY_PATH = EXPERIMENTS_DIR / "commands.py"
 
-EXPECTED_LOCAL_CONFIG_TEMPLATE = """python -m imitation.scripts.train_imitation dagger \
---capture=sys --name=run0 --file_storage={output_dir}/sacred/\
-$USER-cmd-run0-dagger-0-8bf911a8 \
-with benchmarking/fast_dagger_seals_cartpole.json \
-seed=0 logging.log_root={output_dir}"""
+EXPECTED_LOCAL_CONFIG_TEMPLATE = f"""python -m imitation.scripts.train_imitation \
+dagger --capture=sys --name=run0 --file_storage={{output_dir}}/sacred/\
+$USER-cmd-run0-dagger-0-72542943 \
+with {BENCHMARKING_DIR}/fast_dagger_seals_cartpole.json \
+seed=0 logging.log_root={{output_dir}}"""
 
-EXPECTED_HOFVARPNIR_CONFIG_TEMPLATE = """ctl job run \
---name $USER-cmd-run0-dagger-0-c3ac179d \
+BENCHMARKING_DIR_SUFFIX = re.sub(r".*/src/", "", str(BENCHMARKING_DIR))
+EXPECTED_HOFVARPNIR_CONFIG_TEMPLATE = f"""ctl job run \
+--name $USER-cmd-run0-dagger-0-aab021ce \
 --command "python -m imitation.scripts.train_imitation dagger \
---capture=sys --name=run0 --file_storage={output_dir}/sacred/\
-$USER-cmd-run0-dagger-0-c3ac179d \
-with /data/imitation/benchmarking/fast_dagger_seals_cartpole.json \
-seed=0 logging.log_root={output_dir}" \
+--capture=sys --name=run0 --file_storage={{output_dir}}/sacred/\
+$USER-cmd-run0-dagger-0-aab021ce \
+with /data/imitation/src/{BENCHMARKING_DIR_SUFFIX}/fast_dagger_seals_cartpole.json \
+seed=0 logging.log_root={{output_dir}}" \
 --container hacobe/devbox:imitation \
 --login --force-pull --never-restart --gpu 0 \
 --shared-host-dir-mount /data"""
 
 
 def _get_benchmarking_path(benchmarking_file):
-    return os.path.join(BENCHMARKING_DIR.stem, benchmarking_file)
+    return os.path.join(BENCHMARKING_DIR, benchmarking_file)
 
 
 def _run_commands_from_flags(**kwargs) -> List[str]:
@@ -148,10 +150,10 @@ def test_commands_local_config_with_custom_flags():
         output_dir="/foo/bar",
     )
     assert len(commands) == 1
-    expected = """python -m imitation.scripts.train_imitation dagger \
+    expected = f"""python -m imitation.scripts.train_imitation dagger \
 --capture=sys --name=baz --file_storage=/foo/bar/sacred/\
-$USER-cmd-baz-dagger-1-8bf911a8 \
-with benchmarking/fast_dagger_seals_cartpole.json \
+$USER-cmd-baz-dagger-1-72542943 \
+with {BENCHMARKING_DIR}/fast_dagger_seals_cartpole.json \
 seed=1 logging.log_root=/foo/bar"""
     assert commands[0] == expected
 
@@ -248,10 +250,10 @@ def test_commands_bc_config():
     cfg_pattern = _get_benchmarking_path("bc_seals_ant_best_hp_eval.json")
     commands = _run_commands_from_flags(cfg_pattern=cfg_pattern)
     assert len(commands) == 1
-    expected = """python -m imitation.scripts.train_imitation bc \
+    expected = f"""python -m imitation.scripts.train_imitation bc \
 --capture=sys --name=run0 --file_storage=output/sacred/\
-$USER-cmd-run0-bc-0-78e5112a \
-with benchmarking/bc_seals_ant_best_hp_eval.json \
+$USER-cmd-run0-bc-0-47a528c5 \
+with {BENCHMARKING_DIR}/bc_seals_ant_best_hp_eval.json \
 seed=0 logging.log_root=output"""
     assert commands[0] == expected
 
@@ -262,10 +264,10 @@ def test_commands_dagger_config():
     cfg_pattern = _get_benchmarking_path("dagger_seals_ant_best_hp_eval.json")
     commands = _run_commands_from_flags(cfg_pattern=cfg_pattern)
     assert len(commands) == 1
-    expected = """python -m imitation.scripts.train_imitation dagger \
+    expected = f"""python -m imitation.scripts.train_imitation dagger \
 --capture=sys --name=run0 --file_storage=output/sacred/\
-$USER-cmd-run0-dagger-0-c27812cf \
-with benchmarking/dagger_seals_ant_best_hp_eval.json \
+$USER-cmd-run0-dagger-0-efa42a6a \
+with {BENCHMARKING_DIR}/dagger_seals_ant_best_hp_eval.json \
 seed=0 logging.log_root=output"""
     assert commands[0] == expected
 
@@ -276,10 +278,10 @@ def test_commands_gail_config():
     cfg_pattern = _get_benchmarking_path("gail_seals_ant_best_hp_eval.json")
     commands = _run_commands_from_flags(cfg_pattern=cfg_pattern)
     assert len(commands) == 1
-    expected = """python -m imitation.scripts.train_adversarial gail \
+    expected = f"""python -m imitation.scripts.train_adversarial gail \
 --capture=sys --name=run0 --file_storage=output/sacred/\
-$USER-cmd-run0-gail-0-9d8d1202 \
-with benchmarking/gail_seals_ant_best_hp_eval.json \
+$USER-cmd-run0-gail-0-9b83299d \
+with {BENCHMARKING_DIR}/gail_seals_ant_best_hp_eval.json \
 seed=0 logging.log_root=output"""
     assert commands[0] == expected
 
@@ -290,10 +292,10 @@ def test_commands_airl_config():
     cfg_pattern = _get_benchmarking_path("airl_seals_ant_best_hp_eval.json")
     commands = _run_commands_from_flags(cfg_pattern=cfg_pattern)
     assert len(commands) == 1
-    expected = """python -m imitation.scripts.train_adversarial airl \
+    expected = f"""python -m imitation.scripts.train_adversarial airl \
 --capture=sys --name=run0 \
---file_storage=output/sacred/$USER-cmd-run0-airl-0-9ed3120d \
-with benchmarking/airl_seals_ant_best_hp_eval.json \
+--file_storage=output/sacred/$USER-cmd-run0-airl-0-9cc929a8 \
+with {BENCHMARKING_DIR}/airl_seals_ant_best_hp_eval.json \
 seed=0 logging.log_root=output"""
     assert commands[0] == expected
 

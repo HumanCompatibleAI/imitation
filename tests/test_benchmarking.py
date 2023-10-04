@@ -1,12 +1,8 @@
-"""Tests for config files in benchmarking/ folder."""
-import pathlib
+"""Tests for config files in imitation/scripts/config/tuned_hps/ folder."""
 
 import pytest
 
 from imitation.scripts import train_adversarial, train_imitation, tuning
-
-THIS_DIR = pathlib.Path(__file__).absolute().parent
-BENCHMARKING_DIR = THIS_DIR.parent / "benchmarking"
 
 ALGORITHMS = ["bc", "dagger", "airl", "gail"]
 ENVIRONMENTS = [
@@ -25,7 +21,6 @@ def test_benchmarks_print_config_succeeds(algorithm: str, environment: str):
     # because running the configs requires MuJoCo.
     # Requiring MuJoCo to run the tests adds too much complexity.
 
-    # GIVEN
     if algorithm in ("bc", "dagger"):
         experiment = train_imitation.train_imitation_ex
     elif algorithm in ("airl", "gail"):
@@ -34,15 +29,7 @@ def test_benchmarks_print_config_succeeds(algorithm: str, environment: str):
         raise ValueError(f"Unknown algorithm: {algorithm}")  # pragma: no cover
 
     config_name = f"{algorithm}_{environment}"
-    config_file = str(
-        BENCHMARKING_DIR / f"{algorithm}_{environment}_best_hp_eval.json",
-    )
-
-    # WHEN
-    experiment.add_named_config(config_name, config_file)
     run = experiment.run(command_name="print_config", named_configs=[config_name])
-
-    # THEN
     assert run.status == "COMPLETED"
 
 
@@ -58,7 +45,7 @@ def test_tuning_print_config_succeeds(algorithm: str, environment: str):
         named_configs=[algorithm],
         config_updates=dict(
             parallel_run_config=dict(
-                base_named_configs=[environment],
+                base_named_configs=[f"{algorithm}_{environment}"],
             ),
         ),
     )

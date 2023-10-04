@@ -1,0 +1,67 @@
+{
+  "algorithm_kwargs": {
+    "demo_batch_size": 8192,
+    "gen_replay_buffer_capacity": 8192,
+    "n_disc_updates_per_round": 16
+  },
+  "checkpoint_interval": 0,
+  "demonstrations": {
+    "source": "huggingface",
+    "algo_name": "ppo",
+    "n_expert_demos": null
+  },
+  "reward": {
+    "add_std_alpha": null,
+    "ensemble_size": null,
+    "net_cls": {
+      "py/type": "imitation.rewards.reward_nets.BasicShapedRewardNet"
+    },
+    "net_kwargs": {
+      "normalize_input_layer": {
+        "py/type": "imitation.util.networks.RunningNorm"
+      }
+    },
+    "normalize_output_layer": {
+      "py/type": "imitation.util.networks.RunningNorm"
+    }
+  },
+  "rl": {
+    "batch_size": 8192,
+    "rl_cls": {
+      "py/type": "stable_baselines3.ppo.ppo.PPO"
+    },
+    "rl_kwargs": {
+      "batch_size": 16,
+      "clip_range": 0.3,
+      "ent_coef": 3.27750078482474e-6,
+      "gae_lambda": 0.8,
+      "gamma": 0.995,
+      "learning_rate": 3.249429831179079e-5,
+      "max_grad_norm": 0.9,
+      "n_epochs": 10,
+      "vf_coef": 0.4351450387648799
+    }
+  },
+  "total_timesteps": 10000000,
+  "policy": {
+    "policy_cls": {
+      "py/type": "imitation.policies.base.FeedForward32Policy"
+    },
+    "policy_kwargs": {
+      "features_extractor_class": {
+        "py/type": "imitation.policies.base.NormalizeFeaturesExtractor"
+      },
+      "features_extractor_kwargs": {
+        "normalize_class": {
+          "py/type": "imitation.util.networks.RunningNorm"
+        }
+      }
+    }
+  },
+  "policy_evaluation": {
+    "n_episodes_eval": 50
+  },
+  "environment": {
+    "gym_id": "seals/Ant-v1"
+  }
+}
