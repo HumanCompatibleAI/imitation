@@ -143,7 +143,7 @@ def _generate_expert_trajs(
         raise ValueError("n_expert_demos must be specified when generating demos.")
 
     logger.info(f"Generating {n_expert_demos} expert trajectories")
-    with environment.make_rollout_venv() as rollout_env:
+    with environment.make_rollout_venv() as rollout_env:  # type: ignore[wrong-arg-count]
         return rollout.rollout(
             expert.get_expert_policy(rollout_env),
             rollout_env,
