@@ -490,10 +490,9 @@ def generate_trajectories(
                 assert v.shape is not None
                 exp_obs[k] = (n_steps + 1,) + v.shape
         else:
-            assert venv.observation_space.shape is not None
-            exp_obs = (
-                n_steps + 1,
-            ) + venv.observation_space.shape  # type: ignore[assignment]
+            obs_space_shape = venv.observation_space.shape
+            assert obs_space_shape is not None
+            exp_obs = (n_steps + 1,) + obs_space_shape  # type: ignore[assignment]
         real_obs = trajectory.obs.shape
         assert real_obs == exp_obs, f"expected shape {exp_obs}, got {real_obs}"
         assert venv.action_space.shape is not None

@@ -145,14 +145,15 @@ class DensityAlgorithm(base.DemonstrationAlgorithm):
             )
 
         assert act_b.shape[1:] == self.venv.action_space.shape
-
+        ob_space = self.venv.observation_space
         if isinstance(obs_b, types.DictObs):
-            exp_shape = {k: v.shape for k, v in self.venv.observation_space.items()}  # type: ignore[attr-defined] # noqa: E501
-
+            exp_shape = {
+                k: v.shape for k, v in ob_space.items()  # type: ignore[attr-defined]
+            }
             obs_shape = {k: v.shape[1:] for k, v in obs_b.items()}
             assert exp_shape == obs_shape, f"Expected {exp_shape}, got {obs_shape}"
         else:
-            assert obs_b.shape[1:] == self.venv.observation_space.shape
+            assert obs_b.shape[1:] == ob_space.shape
         assert len(act_b) == len(obs_b)
         if next_obs_b is not None:
             assert next_obs_b.shape == obs_b.shape
