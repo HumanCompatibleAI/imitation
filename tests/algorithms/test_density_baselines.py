@@ -3,10 +3,12 @@
 from dataclasses import asdict
 from typing import Sequence, cast
 
+import gymnasium as gym
 import numpy as np
 import pytest
 import stable_baselines3
 from stable_baselines3.common import policies
+from stable_baselines3.common import vec_env
 
 from imitation.algorithms.density import DensityAlgorithm, DensityType
 from imitation.data import rollout, types
@@ -169,8 +171,9 @@ def test_density_trainer_raises(
         density_trainer.set_demonstrations("foo")  # type: ignore[arg-type]
 
 
-def test_dict_space(multi_obs_venv):
+def test_dict_space(multi_obs_venv: vec_env.VecEnv):
     # multi-input policy to accept dict observations
+    assert isinstance(multi_obs_venv.observation_space, gym.spaces.Dict)
     rl_algo = stable_baselines3.PPO(
         policies.MultiInputActorCriticPolicy,
         multi_obs_venv,

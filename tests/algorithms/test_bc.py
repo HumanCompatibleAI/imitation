@@ -4,6 +4,7 @@ import dataclasses
 import os
 from typing import Any, Callable, Optional, Sequence
 
+import gymnasium as gym
 import hypothesis
 import hypothesis.strategies as st
 import numpy as np
@@ -291,6 +292,7 @@ def test_that_policy_reconstruction_preserves_parameters(
 
 def test_dict_space(multi_obs_venv: vec_env.VecEnv):
     # multi-input policy to accept dict observations
+    assert isinstance(multi_obs_venv.observation_space, gym.spaces.Dict)
     policy = sb_policies.MultiInputActorCriticPolicy(
         multi_obs_venv.observation_space,
         multi_obs_venv.action_space,

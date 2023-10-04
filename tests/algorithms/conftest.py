@@ -123,7 +123,7 @@ class FloatReward(gym.RewardWrapper):
 
 
 @pytest.fixture
-def multi_obs_venv():
+def multi_obs_venv() -> VecEnv:
     def make_env():
         env = envs.SimpleMultiObsEnv(channel_last=False)
         env = FloatReward(env)
