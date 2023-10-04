@@ -7,7 +7,6 @@ from gymnasium.core import Env
 import numpy as np
 import numpy.typing as npt
 from stable_baselines3.common.vec_env import VecEnv, VecEnvWrapper
-import torch as th
 
 from imitation.data import rollout, types
 
@@ -235,25 +234,6 @@ class HumanReadableWrapper(gym.Wrapper):
             )
         self._original_obs_key = original_obs_key
         super().__init__(env)
-        self._update_obs_space()
-
-    def _update_obs_space(self):
-        # need to reset before render.
-        self.env.reset()
-        example_rgb_obs = self.env.render()
-        new_rgb_space = gym.spaces.Box(
-            low=0, high=255, shape=example_rgb_obs.shape, dtype=np.uint8
-        )
-        curr_sapce = self.observation_space
-        if isinstance(curr_sapce, gym.spaces.Dict):
-            curr_sapce.spaces[HR_OBS_KEY] = new_rgb_space
-        else:
-            self.observation_space = gym.spaces.Dict(
-                {
-                    HR_OBS_KEY: new_rgb_space,
-                    self._original_obs_key: curr_sapce,
-                }
-            )
 
     def _add_hr_obs(
         self, obs: Union[np.ndarray, Dict[str, np.ndarray]]
@@ -289,56 +269,3 @@ class HumanReadableWrapper(gym.Wrapper):
     def step(self, action):
         obs, rew, terminated, truncated, info = self.env.step(action)
         return self._add_hr_obs(obs), rew, terminated, truncated, info
-
-
-def remove_rgb_obs_space(obs_space: gym.Space) -> gym.Space:
-    """Removes rgb observation space from the observation space."""
-    if not isinstance(obs_space, gym.spaces.Dict):
-        return obs_space
-    if HR_OBS_KEY not in obs_space.spaces:
-        return obs_space
-    new_obs_space = gym.spaces.Dict(obs_space.spaces.copy())
-    del new_obs_space.spaces[HR_OBS_KEY]
-    if len(new_obs_space.spaces) == 1:
-        # unwrap dictionary structure
-        return list(new_obs_space.values())[0]
-    return new_obs_space
-
-
-def remove_rgb_obs(
-    obs: Union[Dict[str, np.ndarray | th.Tensor], np.ndarray, th.Tensor]
-) -> Union[np.ndarray, Dict[str, np.ndarray]]:
-    """Removes rgb observation from the observation."""
-    if not isinstance(obs, dict):
-        return obs
-    if HR_OBS_KEY not in obs:
-        return obs
-    del obs[HR_OBS_KEY]
-    if len(obs) == 1:
-        # unwrap dictionary structure
-        return list(obs.values())[0]
-    return obs
-
-
-class RemoveHumanReadableWrapper(VecEnvWrapper):
-    """A vectorized wrapper for removing human readable observations.
-
-    :param venv: The vectorized environment
-    """
-
-    def __init__(self, venv: VecEnv):
-        assert isinstance(
-            venv.observation_space, gym.spaces.Dict
-        ), "RemoveHumanReadableWrapper only works with gym.spaces.Dict space"
-        assert (
-            HR_OBS_KEY in venv.observation_space.spaces
-        ), f"Observation space must contain {HR_OBS_KEY!r}"
-        new_obs_space = remove_rgb_obs_space(venv.observation_space)
-        super().__init__(venv=venv, observation_space=new_obs_space)
-
-    def reset(self) -> Union[np.ndarray, Dict[str, np.ndarray]]:
-        return remove_rgb_obs(self.venv.reset())
-
-    def step_wait(self):
-        observations, rewards, dones, infos = self.venv.step_wait()
-        return remove_rgb_obs(observations), rewards, dones, infos

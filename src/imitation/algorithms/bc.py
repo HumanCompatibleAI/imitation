@@ -26,7 +26,7 @@ import tqdm
 from stable_baselines3.common import policies, torch_layers, utils, vec_env
 
 from imitation.algorithms import base as algo_base
-from imitation.data import rollout, types, wrappers
+from imitation.data import rollout, types
 from imitation.policies import base as policy_base
 from imitation.util import logger as imit_logger
 from imitation.util import util
@@ -491,7 +491,6 @@ class BC(algo_base.DemonstrationAlgorithm):
                 lambda x: util.safe_to_tensor(x, device=self.policy.device),
                 types.maybe_unwrap_dictobs(batch["obs"]),
             )
-            obs_tensor = wrappers.remove_rgb_obs(obs_tensor)
             acts = util.safe_to_tensor(batch["acts"], device=self.policy.device)
             training_metrics = self.loss_calculator(self.policy, obs_tensor, acts)
 

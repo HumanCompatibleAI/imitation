@@ -11,7 +11,6 @@ from shimmy import atari_env
 from stable_baselines3.common import vec_env
 
 import imitation.policies.base as base_policies
-from imitation.data import wrappers
 from imitation.util import util
 
 
@@ -65,6 +64,9 @@ class DiscreteInteractivePolicy(base_policies.NonTrainablePolicy, abc.ABC):
         if self.clear_screen_on_query:
             util.clear_screen()
 
+        if isinstance(obs, dict):
+            raise ValueError("Dictionary observations are not supported here")
+
         context = self._render(obs)
         key = self._get_input_key()
         self._clean_up(context)
@@ -108,15 +110,9 @@ class ImageObsDiscreteInteractivePolicy(DiscreteInteractivePolicy):
     def _clean_up(self, context: plt.Figure) -> None:
         plt.close(context)
 
-    def _prepare_obs_image(
-        self, obs: Union[np.ndarray, Dict[str, np.ndarray]]
-    ) -> np.ndarray:
+    def _prepare_obs_image(self, obs: np.ndarray) -> np.ndarray:
         """Applies any required observation processing to get an image to show."""
-        if not isinstance(obs, Dict):
-            return obs
-        if wrappers.HR_OBS_KEY not in obs:
-            raise KeyError(f"Observation does not contain {wrappers.HR_OBS_KEY!r}")
-        return obs[wrappers.HR_OBS_KEY]
+        return obs
 
 
 ATARI_ACTION_NAMES_TO_KEYS = {
