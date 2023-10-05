@@ -181,7 +181,7 @@ setup(
     python_requires=">=3.8.0",
     packages=find_packages("src"),
     package_dir={"": "src"},
-    package_data={"imitation": ["py.typed", "envs/examples/airl_envs/assets/*.xml"]},
+    package_data={"imitation": ["py.typed", "scripts/config/tuned_hps/*.json"]},
     # Note: while we are strict with our test and doc requirement versions, we try to
     #   impose as little restrictions on the install requirements as possible. Try to
     #   encode only known incompatibilities here. This prevents nasty dependency issues
