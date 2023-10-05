@@ -55,6 +55,9 @@ nb_execution_mode = os.getenv("NB_EXECUTION_MODE", "cache")
 nb_execution_timeout = 120
 nb_merge_streams = True
 nb_output_stderr = "remove"
+nb_execution_raise_on_error = True
+nb_execution_show_tb = True
+
 # Enable LaTeX macros in markdown cells
 myst_enable_extensions = [
     "amsmath",
