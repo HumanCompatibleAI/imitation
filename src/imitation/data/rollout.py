@@ -18,6 +18,7 @@ from typing import (
 )
 
 import numpy as np
+from gymnasium import spaces
 from stable_baselines3.common.base_class import BaseAlgorithm
 from stable_baselines3.common.policies import BasePolicy
 from stable_baselines3.common.utils import check_for_correct_spaces
@@ -69,7 +70,7 @@ class TrajectoryAccumulator:
 
     def add_step(
         self,
-        step_dict: Mapping[str, Union[np.ndarray, Mapping[str, Any]]],
+        step_dict: Mapping[str, Union[types.Observation, Mapping[str, Any]]],
         key: Hashable = None,
     ) -> None:
         """Add a single step to the partial trajectory identified by `key`.
@@ -107,17 +108,19 @@ class TrajectoryAccumulator:
         for part_dict in part_dicts:
             for k, array in part_dict.items():
                 out_dict_unstacked[k].append(array)
+
         out_dict_stacked = {
-            k: np.stack(arr_list, axis=0) for k, arr_list in out_dict_unstacked.items()
+            k: types.stack_maybe_dictobs(arr_list)
+            for k, arr_list in out_dict_unstacked.items()
         }
         traj = types.TrajectoryWithRew(**out_dict_stacked, terminal=terminal)
-        assert traj.rews.shape[0] == traj.acts.shape[0] == traj.obs.shape[0] - 1
+        assert traj.rews.shape[0] == traj.acts.shape[0] == len(traj.obs) - 1
         return traj
 
     def add_steps_and_auto_finish(
         self,
         acts: np.ndarray,
-        obs: np.ndarray,
+        obs: Union[types.Observation, Dict[str, np.ndarray]],
         rews: np.ndarray,
         dones: np.ndarray,
         infos: List[dict],
@@ -142,20 +145,24 @@ class TrajectoryAccumulator:
             each `True` in the `dones` argument.
         """
         trajs: List[types.TrajectoryWithRew] = []
-        for env_idx in range(len(obs)):
+        wrapped_obs = types.maybe_wrap_in_dictobs(obs)
+
+        # iterate through environments
+        for env_idx in range(len(wrapped_obs)):
             assert env_idx in self.partial_trajectories
             assert list(self.partial_trajectories[env_idx][0].keys()) == ["obs"], (
                 "Need to first initialize partial trajectory using "
                 "self._traj_accum.add_step({'obs': ob}, key=env_idx)"
             )
 
-        zip_iter = enumerate(zip(acts, obs, rews, dones, infos))
+        # iterate through steps
+        zip_iter = enumerate(zip(acts, wrapped_obs, rews, dones, infos))
         for env_idx, (act, ob, rew, done, info) in zip_iter:
             if done:
                 # When dones[i] from VecEnv.step() is True, obs[i] is the first
                 # observation following reset() of the ith VecEnv, and
                 # infos[i]["terminal_observation"] is the actual final observation.
-                real_ob = info["terminal_observation"]
+                real_ob = types.maybe_wrap_in_dictobs(info["terminal_observation"])
             else:
                 real_ob = ob
 
@@ -268,8 +275,12 @@ def make_sample_until(
 # array of states, and an optional array of episode starts and returns an array of
 # corresponding actions.
 PolicyCallable = Callable[
-    [np.ndarray, Optional[Tuple[np.ndarray, ...]], Optional[np.ndarray]],
-    Tuple[np.ndarray, Optional[Tuple[np.ndarray, ...]]],
+    [
+        Union[np.ndarray, Dict[str, np.ndarray]],  # observations
+        Optional[Tuple[np.ndarray, ...]],  # states
+        Optional[np.ndarray],  # episode_starts
+    ],
+    Tuple[np.ndarray, Optional[Tuple[np.ndarray, ...]]],  # actions, states
 ]
 AnyPolicy = Union[BaseAlgorithm, BasePolicy, PolicyCallable, None]
 
@@ -284,7 +295,7 @@ def policy_to_callable(
     if policy is None:
 
         def get_actions(
-            observations: np.ndarray,
+            observations: Union[np.ndarray, Dict[str, np.ndarray]],
             states: Optional[Tuple[np.ndarray, ...]],
             episode_starts: Optional[np.ndarray],
         ) -> Tuple[np.ndarray, Optional[Tuple[np.ndarray, ...]]]:
@@ -298,7 +309,7 @@ def policy_to_callable(
         # (which would call .forward()). So this elif clause must come first!
 
         def get_actions(
-            observations: np.ndarray,
+            observations: Union[np.ndarray, Dict[str, np.ndarray]],
             states: Optional[Tuple[np.ndarray, ...]],
             episode_starts: Optional[np.ndarray],
         ) -> Tuple[np.ndarray, Optional[Tuple[np.ndarray, ...]]]:
@@ -397,17 +408,7 @@ def generate_trajectories(
         Sequence of trajectories, satisfying `sample_until`. Additional trajectories
         may be collected to avoid biasing process towards short episodes; the user
         should truncate if required.
-
-    Raises:
-        ValueError: If the observation or action space has no shape or the observations
-            are not a numpy array.
     """
-    if venv.observation_space.shape is None:
-        raise ValueError("Observation space must have a shape.")
-
-    if venv.action_space.shape is None:
-        raise ValueError("Action space must have a shape.")
-
     get_actions = policy_to_callable(policy, venv, deterministic_policy)
 
     # Collect rollout tuples.
@@ -415,7 +416,14 @@ def generate_trajectories(
     # accumulator for incomplete trajectories
     trajectories_accum = TrajectoryAccumulator()
     obs = venv.reset()
-    for env_idx, ob in enumerate(obs):
+    assert isinstance(
+        obs,
+        (np.ndarray, dict),
+    ), "Tuple observations are not supported."
+    wrapped_obs = types.maybe_wrap_in_dictobs(obs)
+
+    # we use dictobs to iterate over the envs in a vecenv
+    for env_idx, ob in enumerate(wrapped_obs):
         # Seed with first obs only. Inside loop, we'll only add second obs from
         # each (s,a,r,s') tuple, under the same "obs" key again. That way we still
         # get all observations, but they're not duplicated into "next obs" and
@@ -431,18 +439,17 @@ def generate_trajectories(
     #
     # To start with, all environments are active.
     active = np.ones(venv.num_envs, dtype=bool)
-    if not isinstance(obs, np.ndarray):
-        raise ValueError(
-            "Dict/tuple observations are not supported."
-            "Currently only np.ndarray observations are supported.",
-        )
-
     state = None
     dones = np.zeros(venv.num_envs, dtype=bool)
     while np.any(active):
+        # policy gets unwrapped observations (eg as dict, not dictobs)
         acts, state = get_actions(obs, state, dones)
         obs, rews, dones, infos = venv.step(acts)
-        assert isinstance(obs, np.ndarray)
+        assert isinstance(
+            obs,
+            (np.ndarray, dict),
+        ), "Tuple observations are not supported."
+        wrapped_obs = types.maybe_wrap_in_dictobs(obs)
 
         # If an environment is inactive, i.e. the episode completed for that
         # environment after `sample_until(trajectories)` was true, then we do
@@ -452,7 +459,7 @@ def generate_trajectories(
 
         new_trajs = trajectories_accum.add_steps_and_auto_finish(
             acts,
-            obs,
+            wrapped_obs,
             rews,
             dones,
             infos,
@@ -477,9 +484,18 @@ def generate_trajectories(
     for trajectory in trajectories:
         n_steps = len(trajectory.acts)
         # extra 1 for the end
-        exp_obs = (n_steps + 1,) + venv.observation_space.shape
+        if isinstance(venv.observation_space, spaces.Dict):
+            exp_obs = {}
+            for k, v in venv.observation_space.items():
+                assert v.shape is not None
+                exp_obs[k] = (n_steps + 1,) + v.shape
+        else:
+            obs_space_shape = venv.observation_space.shape
+            assert obs_space_shape is not None
+            exp_obs = (n_steps + 1,) + obs_space_shape  # type: ignore[assignment]
         real_obs = trajectory.obs.shape
         assert real_obs == exp_obs, f"expected shape {exp_obs}, got {real_obs}"
+        assert venv.action_space.shape is not None
         exp_act = (n_steps,) + venv.action_space.shape
         real_act = trajectory.acts.shape
         assert real_act == exp_act, f"expected shape {exp_act}, got {real_act}"
@@ -555,8 +571,19 @@ def flatten_trajectories(
     Returns:
         The trajectories flattened into a single batch of Transitions.
     """
+
+    def all_of_type(key, desired_type):
+        return all(
+            isinstance(getattr(traj, key), desired_type) for traj in trajectories
+        )
+
+    assert all_of_type("obs", types.DictObs) or all_of_type("obs", np.ndarray)
+    assert all_of_type("acts", np.ndarray)
+
+    # mypy struggles without Any annotation here.
+    # The necessary constraints are enforced above.
     keys = ["obs", "next_obs", "acts", "dones", "infos"]
-    parts: Mapping[str, List[np.ndarray]] = {key: [] for key in keys}
+    parts: Mapping[str, List[Any]] = {key: [] for key in keys}
     for traj in trajectories:
         parts["acts"].append(traj.acts)
 
@@ -575,7 +602,8 @@ def flatten_trajectories(
         parts["infos"].append(infos)
 
     cat_parts = {
-        key: np.concatenate(part_list, axis=0) for key, part_list in parts.items()
+        key: types.concatenate_maybe_dictobs(part_list)
+        for key, part_list in parts.items()
     }
     lengths = set(map(len, cat_parts.values()))
     assert len(lengths) == 1, f"expected one length, got {lengths}"
@@ -587,7 +615,10 @@ def flatten_trajectories_with_rew(
 ) -> types.TransitionsWithRew:
     transitions = flatten_trajectories(trajectories)
     rews = np.concatenate([traj.rews for traj in trajectories])
-    return types.TransitionsWithRew(**dataclasses.asdict(transitions), rews=rews)
+    return types.TransitionsWithRew(
+        **types.dataclass_quick_asdict(transitions),
+        rews=rews,
+    )
 
 
 def generate_transitions(
@@ -628,7 +659,7 @@ def generate_transitions(
     )
     transitions = flatten_trajectories_with_rew(traj)
     if truncate and n_timesteps is not None:
-        as_dict = dataclasses.asdict(transitions)
+        as_dict = types.dataclass_quick_asdict(transitions)
         truncated = {k: arr[:n_timesteps] for k, arr in as_dict.items()}
         transitions = types.TransitionsWithRew(**truncated)
     return transitions
