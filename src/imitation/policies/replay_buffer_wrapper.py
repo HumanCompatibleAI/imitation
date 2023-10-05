@@ -4,7 +4,7 @@ from typing import Mapping, Type
 
 import numpy as np
 from gymnasium import spaces
-from stable_baselines3.common.buffers import ReplayBuffer
+from stable_baselines3.common.buffers import ReplayBuffer, RolloutBuffer
 from stable_baselines3.common.type_aliases import ReplayBufferSamples
 
 from imitation.rewards.reward_function import RewardFn
@@ -20,6 +20,48 @@ def _samples_to_reward_fn_input(
         action=samples.actions.cpu().numpy(),
         next_state=samples.next_observations.cpu().numpy(),
         done=samples.dones.cpu().numpy(),
+    )
+
+
+def _rollout_buffer_to_reward_fn_input(
+    buffer: RolloutBuffer,
+) -> Mapping[str, np.ndarray]:
+    """Convert a sample from a rollout buffer to a numpy array."""
+    assert buffer.observations is not None
+    assert buffer.actions is not None
+    obs = buffer.observations
+    next_obs = obs[1:]
+    next_obs = np.concatenate([next_obs, obs[-1:]], axis=0)  # last obs not available
+    actions = buffer.actions
+    dones = buffer.episode_starts
+    dones = np.roll(dones, -1, axis=0)
+    dones[-1] = np.ones_like(dones[-1])  # last dones not available
+
+    return dict(
+        state=obs.reshape(-1, *obs.shape[2:]),
+        action=actions.reshape(-1, *actions.shape[2:]),
+        next_state=next_obs.reshape(-1, *next_obs.shape[2:]),
+        done=dones.reshape(-1),
+    )
+
+
+def _replay_buffer_to_reward_fn_input(
+    buffer: ReplayBuffer,
+) -> Mapping[str, np.ndarray]:
+    """Convert a sample from a replay buffer to a numpy array."""
+    assert buffer.observations is not None
+    assert buffer.next_observations is not None
+    assert buffer.actions is not None
+    obs = buffer.observations
+    next_obs = buffer.next_observations
+    actions = buffer.actions
+    dones = buffer.dones
+
+    return dict(
+        state=obs.reshape(-1, *obs.shape[2:]),
+        action=actions.reshape(-1, *actions.shape[2:]),
+        next_state=next_obs.reshape(-1, *next_obs.shape[2:]),
+        done=dones.reshape(-1),
     )
 
 

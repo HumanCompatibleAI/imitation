@@ -188,7 +188,7 @@ setup(
     #   encode only known incompatibilities here. This prevents nasty dependency issues
     #   for our users.
     install_requires=[
-        "gymnasium[classic-control]~=0.28.1",
+        "gymnasium[classic-control]~=0.29",
         "matplotlib",
         "numpy>=1.15",
         "torch>=1.4.0",
@@ -200,6 +200,7 @@ setup(
         "sacred>=0.8.4",
         "tensorboard>=1.14",
         "huggingface_sb3~=3.0",
+        "optuna>=3.0.1",
         "datasets>=2.8.0",
     ],
     tests_require=TESTS_REQUIRE,
@@ -220,7 +221,7 @@ setup(
         "docs": DOCS_REQUIRE,
         "parallel": PARALLEL_REQUIRE,
         "mujoco": [
-            "gymnasium[classic-control,mujoco]~=0.28.1",
+            "gymnasium[classic-control,mujoco]~=0.29",
         ],
         "atari": ATARI_REQUIRE,
     },

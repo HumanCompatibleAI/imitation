@@ -70,6 +70,8 @@ def ant():
 @train_imitation_ex.named_config
 def seals_ant():
     environment = dict(gym_id="seals/Ant-v0")
+    demonstrations = dict(rollout_type="ppo-huggingface")
+    expert = {"policy_type": "ppo-huggingface"}
 
 
 @train_imitation_ex.named_config
@@ -84,6 +86,29 @@ def seals_half_cheetah():
     environment = dict(gym_id="seals/HalfCheetah-v0")
     bc = dict(l2_weight=0.0)
     dagger = dict(total_timesteps=60000)
+    demonstrations = dict(rollout_type="ppo-huggingface")
+    expert = {"policy_type": "ppo-huggingface"}
+
+
+@train_imitation_ex.named_config
+def seals_hopper():
+    environment = dict(gym_id="seals/Hopper-v0")
+    demonstrations = dict(rollout_type="ppo-huggingface")
+    expert = {"policy_type": "ppo-huggingface"}
+
+
+@train_imitation_ex.named_config
+def seals_swimmer():
+    environment = dict(gym_id="seals/Swimmer-v0")
+    demonstrations = dict(rollout_type="ppo-huggingface")
+    expert = {"policy_type": "ppo-huggingface"}
+
+
+@train_imitation_ex.named_config
+def seals_walker():
+    environment = dict(gym_id="seals/Walker2d-v0")
+    demonstrations = dict(rollout_type="ppo-huggingface")
+    expert = {"policy_type": "ppo-huggingface"}
 
 
 @train_imitation_ex.named_config

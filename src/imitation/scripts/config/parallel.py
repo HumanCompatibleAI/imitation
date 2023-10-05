@@ -5,7 +5,10 @@ via CLI. For example, a user should add a new
 `@parallel_ex.named_config` to define a new parallel experiment.
 
 Adding custom named configs is necessary because the CLI interface can't add
-search spaces to the config like `"seed": tune.grid_search([0, 1, 2, 3])`.
+search spaces to the config like `"seed": tune.choice([0, 1, 2, 3])`.
+
+For tuning hyperparameters of an algorithm on a given environment,
+check out the benchmarking/tuning.py script.
 """
 
 import numpy as np
@@ -31,19 +34,10 @@ def config():
         "config_updates": {},
     }  # `config` argument to `ray.tune.run(trainable, config)`
 
-    local_dir = None  # `local_dir` arg for `ray.tune.run`
-    upload_dir = None  # `upload_dir` arg for `ray.tune.run`
-    n_seeds = 3  # Number of seeds to search over by default
-
-
-@parallel_ex.config
-def seeds(n_seeds):
-    search_space = {"config_updates": {"seed": tune.grid_search(list(range(n_seeds)))}}
-
-
-@parallel_ex.named_config
-def s3():
-    upload_dir = "s3://shwang-chai/private"
+    num_samples = 1  # Number of samples per grid search configuration
+    repeat = 1  # Number of times to repeat a sampled configuration
+    experiment_checkpoint_path = ""  # Path to checkpoint of experiment
+    tune_run_kwargs = {}  # Additional kwargs to pass to `tune.run`
 
 
 # Debug named configs
@@ -58,12 +52,12 @@ def generate_test_data():
     """
     sacred_ex_name = "train_rl"
     run_name = "TEST"
-    n_seeds = 1
+    repeat = 1
     search_space = {
         "config_updates": {
             "rl": {
                 "rl_kwargs": {
-                    "learning_rate": tune.grid_search(
+                    "learning_rate": tune.choice(
                         [3e-4 * x for x in (1 / 3, 1 / 2)],
                     ),
                 },
@@ -86,63 +80,16 @@ def generate_test_data():
 def example_cartpole_rl():
     sacred_ex_name = "train_rl"
     run_name = "example-cartpole"
-    n_seeds = 2
+    repeat = 2
     search_space = {
         "config_updates": {
             "rl": {
                 "rl_kwargs": {
-                    "learning_rate": tune.grid_search(np.logspace(3e-6, 1e-1, num=3)),
-                    "nminibatches": tune.grid_search([16, 32, 64]),
+                    "learning_rate": tune.choice(np.logspace(3e-6, 1e-1, num=3)),
+                    "nminibatches": tune.choice([16, 32, 64]),
                 },
             },
         },
     }
     base_named_configs = ["cartpole"]
     resources_per_trial = dict(cpu=4)
-
-
-EASY_ENVS = ["cartpole", "pendulum", "mountain_car"]
-
-
-@parallel_ex.named_config
-def example_rl_easy():
-    sacred_ex_name = "train_rl"
-    run_name = "example-rl-easy"
-    n_seeds = 2
-    search_space = {
-        "named_configs": tune.grid_search([[env] for env in EASY_ENVS]),
-        "config_updates": {
-            "rl": {
-                "rl_kwargs": {
-                    "learning_rate": tune.grid_search(np.logspace(3e-6, 1e-1, num=3)),
-                    "nminibatches": tune.grid_search([16, 32, 64]),
-                },
-            },
-        },
-    }
-    resources_per_trial = dict(cpu=4)
-
-
-@parallel_ex.named_config
-def example_gail_easy():
-    sacred_ex_name = "train_adversarial"
-    run_name = "example-gail-easy"
-    n_seeds = 1
-    search_space = {
-        "named_configs": tune.grid_search([[env] for env in EASY_ENVS]),
-        "config_updates": {
-            "init_trainer_kwargs": {
-                "rl": {
-                    "rl_kwargs": {
-                        "learning_rate": tune.grid_search(
-                            np.logspace(3e-6, 1e-1, num=3),
-                        ),
-                        "nminibatches": tune.grid_search([16, 32, 64]),
-                    },
-                },
-            },
-        },
-    }
-    search_space = {
-        "command_name": "gail",
-    }

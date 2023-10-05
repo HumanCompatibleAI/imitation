@@ -2,7 +2,7 @@
 import abc
 import dataclasses
 import logging
-from typing import Callable, Iterable, Iterator, Mapping, Optional, Type, overload
+from typing import Callable, Iterable, Iterator, List, Mapping, Optional, Type, overload
 
 import numpy as np
 import torch as th
@@ -10,7 +10,9 @@ import torch.utils.tensorboard as thboard
 import tqdm
 from stable_baselines3.common import (
     base_class,
+    callbacks,
     distributions,
+    off_policy_algorithm,
     on_policy_algorithm,
     policies,
     vec_env,
@@ -20,6 +22,7 @@ from torch.nn import functional as F
 
 from imitation.algorithms import base
 from imitation.data import buffer, rollout, types, wrappers
+from imitation.policies import replay_buffer_wrapper
 from imitation.rewards import reward_nets, reward_wrapper
 from imitation.util import logger, networks, util
 
@@ -90,6 +93,55 @@ def compute_train_stats(
         "n_expert": float(n_expert),
         "n_generated": float(n_generated),
     }
+
+
+class TrainDiscriminatorCallback(callbacks.BaseCallback):
+    """Callback for training discriminator after collecting rollouts."""
+
+    def __init__(self, adversarial_trainer, *args, **kwargs):
+        """Builds TrainDiscriminatorCallback.
+
+        Args:
+            adversarial_trainer: The AdversarialTrainer instance in which
+                this callback will be called.
+            *args: Passed through to `callbacks.BaseCallback`.
+            **kwargs: Passed through to `callbacks.BaseCallback`.
+        """
+        self.adversarial_trainer = adversarial_trainer
+        self.gen_ctx_manager = None
+        super().__init__(*args, **kwargs)
+
+    def _on_step(self) -> bool:
+        return True
+
+    def _on_rollout_end(self) -> None:
+        if self.gen_ctx_manager is not None:
+            self.exit_gen_ctx_manager()
+        gen_trajs, ep_lens = self.adversarial_trainer.venv_buffering.pop_trajectories()
+        self.adversarial_trainer._check_fixed_horizon(ep_lens)
+        gen_samples = rollout.flatten_trajectories_with_rew(gen_trajs)
+        self.adversarial_trainer._gen_replay_buffer.store(gen_samples)
+
+        for _ in range(self.adversarial_trainer.n_disc_updates_per_round):
+            with networks.training(self.adversarial_trainer.reward_train):
+                # switch to training mode (affects dropout, normalization)
+                self.adversarial_trainer.train_disc()
+
+        # update the rollouts with the reward of the latest discriminator
+        self.adversarial_trainer.update_rewards_of_rollouts()
+
+        # This is a hacky way to enable logger.accumulate_means for generator
+        # This is done to avoid nested loggers of discriminator and generator
+        self.gen_ctx_manager = self.adversarial_trainer.logger.accumulate_means("gen")
+        self.gen_ctx_manager.__enter__()
+
+    def exit_gen_ctx_manager(self) -> None:
+        assert self.gen_ctx_manager is not None
+        self.gen_ctx_manager.__exit__(None, None, None)
+        self.gen_ctx_manager = None
+
+    def _on_training_end(self) -> None:
+        self.exit_gen_ctx_manager()
 
 
 class AdversarialTrainer(base.DemonstrationAlgorithm[types.Transitions]):
@@ -228,16 +280,22 @@ class AdversarialTrainer(base.DemonstrationAlgorithm[types.Transitions]):
 
         self.venv_buffering = wrappers.BufferingWrapper(self.venv)
 
+        self.disc_trainer_callback = TrainDiscriminatorCallback(self)
         if debug_use_ground_truth:
             # Would use an identity reward fn here, but RewardFns can't see rewards.
             self.venv_wrapped = self.venv_buffering
-            self.gen_callback = None
+            self.gen_callback: List[callbacks.BaseCallback] = [
+                self.disc_trainer_callback,
+            ]
         else:
             self.venv_wrapped = reward_wrapper.RewardVecEnvWrapper(
                 self.venv_buffering,
                 reward_fn=self.reward_train.predict_processed,
             )
-            self.gen_callback = self.venv_wrapped.make_log_callback()
+            self.gen_callback = [
+                self.venv_wrapped.make_log_callback(),
+                self.disc_trainer_callback,
+            ]
         self.venv_train = self.venv_wrapped
 
         self.gen_algo.set_env(self.venv_train)
@@ -314,6 +372,35 @@ class AdversarialTrainer(base.DemonstrationAlgorithm[types.Transitions]):
         assert self._endless_expert_iterator is not None
         return next(self._endless_expert_iterator)
 
+    def update_rewards_of_rollouts(self) -> None:
+        """Updates the rewards of the rollouts using the latest discriminator."""
+        if isinstance(self.gen_algo, on_policy_algorithm.OnPolicyAlgorithm):
+            buffer = self.gen_algo.rollout_buffer
+            assert buffer is not None
+            reward_fn_inputs = replay_buffer_wrapper._rollout_buffer_to_reward_fn_input(
+                self.gen_algo.rollout_buffer,
+            )
+            rewards = self._reward_net.predict(**reward_fn_inputs)
+            rewards = rewards.reshape(buffer.rewards.shape)
+            last_values = buffer.advantages[-1] - buffer.rewards[-1] + buffer.values[-1]
+            last_values = last_values / buffer.gamma
+            # here we assume that the actual last_values cannot exactly be 0.0 and so if
+            # last_values is 0.0 then we know that the episode terminated
+            last_dones = last_values == 0.0
+            self.gen_algo.rollout_buffer.rewards[:] = rewards
+            self.gen_algo.rollout_buffer.compute_returns_and_advantage(
+                th.tensor(last_values),
+                last_dones,
+            )
+        elif isinstance(self.gen_algo, off_policy_algorithm.OffPolicyAlgorithm):
+            buffer = self.gen_algo.replay_buffer
+            assert buffer is not None
+            reward_fn_inputs = replay_buffer_wrapper._replay_buffer_to_reward_fn_input(
+                buffer,
+            )
+            rewards = self._reward_net.predict(**reward_fn_inputs)
+            buffer.rewards[:] = rewards.reshape(buffer.rewards.shape)
+
     def train_disc(
         self,
         *,
@@ -388,13 +475,15 @@ class AdversarialTrainer(base.DemonstrationAlgorithm[types.Transitions]):
 
         return train_stats
 
-    def train_gen(
+    def train_gen_with_disc(
         self,
         total_timesteps: Optional[int] = None,
         learn_kwargs: Optional[Mapping] = None,
     ) -> None:
         """Trains the generator to maximize the discriminator loss.
 
+        The discriminator is also trained after the rollouts are collected and before
+        the generator is trained.
         After the end of training populates the generator replay buffer (used in
         discriminator training) with `self.disc_batch_size` transitions.
 
@@ -410,19 +499,13 @@ class AdversarialTrainer(base.DemonstrationAlgorithm[types.Transitions]):
         if learn_kwargs is None:
             learn_kwargs = {}
 
-        with self.logger.accumulate_means("gen"):
-            self.gen_algo.learn(
-                total_timesteps=total_timesteps,
-                reset_num_timesteps=False,
-                callback=self.gen_callback,
-                **learn_kwargs,
-            )
-            self._global_step += 1
-
-        gen_trajs, ep_lens = self.venv_buffering.pop_trajectories()
-        self._check_fixed_horizon(ep_lens)
-        gen_samples = rollout.flatten_trajectories_with_rew(gen_trajs)
-        self._gen_replay_buffer.store(gen_samples)
+        self.gen_algo.learn(
+            total_timesteps=total_timesteps,
+            reset_num_timesteps=False,
+            callback=self.gen_callback,
+            **learn_kwargs,
+        )
+        self._global_step += 1
 
     def train(
         self,
@@ -431,8 +514,8 @@ class AdversarialTrainer(base.DemonstrationAlgorithm[types.Transitions]):
     ) -> None:
         """Alternates between training the generator and discriminator.
 
-        Every "round" consists of a call to `train_gen(self.gen_train_timesteps)`,
-        a call to `train_disc`, and finally a call to `callback(round)`.
+        Every "round" consists of a call to
+        `train_gen_with_disc(self.gen_train_timesteps)` and a call to `callback(round)`.
 
         Training ends once an additional "round" would cause the number of transitions
         sampled from the environment to exceed `total_timesteps`.
@@ -451,11 +534,7 @@ class AdversarialTrainer(base.DemonstrationAlgorithm[types.Transitions]):
             f"total_timesteps={total_timesteps})!"
         )
         for r in tqdm.tqdm(range(0, n_rounds), desc="round"):
-            self.train_gen(self.gen_train_timesteps)
-            for _ in range(self.n_disc_updates_per_round):
-                with networks.training(self.reward_train):
-                    # switch to training mode (affects dropout, normalization)
-                    self.train_disc()
+            self.train_gen_with_disc(self.gen_train_timesteps)
             if callback:
                 callback(r)
             self.logger.dump(self._global_step)
@@ -547,7 +626,8 @@ class AdversarialTrainer(base.DemonstrationAlgorithm[types.Transitions]):
         if gen_samples is None:
             if self._gen_replay_buffer.size() == 0:
                 raise RuntimeError(
-                    "No generator samples for training. " "Call `train_gen()` first.",
+                    "No generator samples for training. "
+                    "Call `train_gen_with_disc()` first.",
                 )
             gen_samples_dataclass = self._gen_replay_buffer.sample(batch_size)
             gen_samples = types.dataclass_quick_asdict(gen_samples_dataclass)

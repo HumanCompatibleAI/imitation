@@ -824,10 +824,10 @@ PARALLEL_CONFIG_UPDATES = [
     dict(
         sacred_ex_name="train_rl",
         base_named_configs=["seals_cartpole"] + ALGO_FAST_CONFIGS["rl"],
-        n_seeds=2,
+        repeat=2,
         search_space={
             "config_updates": {
-                "rl": {"rl_kwargs": {"learning_rate": tune.grid_search([3e-4, 1e-4])}},
+                "rl": {"rl_kwargs": {"learning_rate": tune.choice([3e-4, 1e-4])}},
             },
             "meta_info": {"asdf": "I exist for coverage purposes"},
         },
@@ -840,7 +840,8 @@ PARALLEL_CONFIG_UPDATES = [
             "demonstrations.path": CARTPOLE_TEST_ROLLOUT_PATH.absolute(),
         },
         search_space={
-            "command_name": tune.grid_search(["gail", "airl"]),
+            "command_name": "airl",
+            "config_updates": {"total_timesteps": tune.choice([5, 10])},
         },
     ),
 ]
@@ -920,13 +921,16 @@ def test_parallel_train_adversarial_custom_env(tmpdir):
 
     config_updates = dict(
         sacred_ex_name="train_adversarial",
-        n_seeds=1,
+        repeat=2,
         base_named_configs=[env_named_config] + ALGO_FAST_CONFIGS["adversarial"],
         base_config_updates=dict(
             logging=dict(log_root=tmpdir),
             demonstrations=dict(path=path),
         ),
-        search_space=dict(command_name="gail"),
+        # specifying repeat=2 uses the optuna search algorithm which
+        # requires the search space to be non-empty. So we provide
+        # the command name using tune.choice.
+        search_space=dict(command_name=tune.choice(["gail"])),
     )
     config_updates.update(PARALLEL_CONFIG_LOW_RESOURCE)
     run = parallel.parallel_ex.run(config_updates=config_updates)
@@ -978,7 +982,7 @@ def test_analyze_imitation(tmpdir: str, run_names: List[str], run_sacred_fn):
             assert run.status == "COMPLETED"
 
     # Check that analyze script finds the correct number of logs.
-    def check(run_name: Optional[str], count: int) -> None:
+    def check(run_name: Optional[str], count: int, table_verbosity=1) -> None:
         run = analyze.analysis_ex.run(
             command_name="analyze_imitation",
             config_updates=dict(
@@ -988,6 +992,7 @@ def test_analyze_imitation(tmpdir: str, run_names: List[str], run_sacred_fn):
                 csv_output_path=tmpdir_path / "analysis.csv",
                 tex_output_path=tmpdir_path / "analysis.tex",
                 print_table=True,
+                table_verbosity=table_verbosity,
             ),
         )
         assert run.status == "COMPLETED"
@@ -997,15 +1002,19 @@ def test_analyze_imitation(tmpdir: str, run_names: List[str], run_sacred_fn):
     for run_name, count in Counter(run_names).items():
         check(run_name, count)
 
-    check(None, len(run_names))  # Check total number of logs.
+    check(None, len(run_names), table_verbosity=3)  # Check total number of logs.
 
 
 def test_analyze_gather_tb(tmpdir: str):
     if os.name == "nt":  # pragma: no cover
         pytest.skip("gather_tb uses symlinks: not supported by Windows")
-
-    config_updates: Dict[str, Any] = dict(local_dir=tmpdir, run_name="test")
+    num_runs = 2
+    config_updates: Dict[str, Any] = dict(
+        tune_run_kwargs=dict(local_dir=tmpdir),
+        run_name="test",
+    )
     config_updates.update(PARALLEL_CONFIG_LOW_RESOURCE)
+    config_updates.update(num_samples=num_runs)
     parallel_run = parallel.parallel_ex.run(
         named_configs=["generate_test_data"],
         config_updates=config_updates,
@@ -1020,7 +1029,7 @@ def test_analyze_gather_tb(tmpdir: str):
     )
     assert run.status == "COMPLETED"
     assert isinstance(run.result, dict)
-    assert run.result["n_tb_dirs"] == 2
+    assert run.result["n_tb_dirs"] == num_runs
 
 
 def test_pickle_fmt_rollout_test_data_is_pickle():

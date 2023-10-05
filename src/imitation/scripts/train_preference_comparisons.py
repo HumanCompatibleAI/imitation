@@ -280,7 +280,7 @@ def train_preference_comparisons(
         # Storing and evaluating policy only useful if we generated trajectory data
         if bool(trajectory_path is None):
             results = dict(results)
-            results["rollout"] = policy_evaluation.eval_policy(agent, venv)
+            results["imit_stats"] = policy_evaluation.eval_policy(agent, venv)
 
     if save_preferences:
         main_trainer.dataset.save(log_dir / "preferences.pkl")

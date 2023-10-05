@@ -1,7 +1,7 @@
 {
   "algorithm_kwargs": {
-    "demo_batch_size": 128,
-    "gen_replay_buffer_capacity": 16384,
+    "demo_batch_size": 2048,
+    "gen_replay_buffer_capacity": 512,
     "n_disc_updates_per_round": 16
   },
   "checkpoint_interval": 0,
@@ -9,12 +9,6 @@
     "source": "huggingface",
     "algo_name": "ppo",
     "n_expert_demos": null
-  },
-  "expert": {
-    "loader_kwargs": {
-      "gym_id": "seals/Swimmer-v0",
-      "organization": "HumanCompatibleAI"
-    }
   },
   "reward": {
     "add_std_alpha": null,
@@ -32,29 +26,28 @@
     }
   },
   "rl": {
-    "batch_size": 16384,
+    "batch_size": 8192,
     "rl_cls": {
       "py/type": "stable_baselines3.ppo.ppo.PPO"
     },
     "rl_kwargs": {
       "batch_size": 64,
       "clip_range": 0.1,
-      "ent_coef": 0.006137718463434523,
+      "ent_coef": 0.0005544771755195421,
       "gae_lambda": 0.95,
-      "gamma": 0.999,
-      "learning_rate": 0.0013390060486393868,
-      "max_grad_norm": 2,
+      "gamma": 0.95,
+      "learning_rate": 0.00047248619386801587,
+      "max_grad_norm": 0.8,
       "n_epochs": 5,
-      "vf_coef": 0.6162112311062333
+      "vf_coef": 0.11483689492120866
     }
   },
   "total_timesteps": 10000000,
   "policy": {
-    "policy_cls": "MlpPolicy",
+    "policy_cls": {
+      "py/type": "imitation.policies.base.FeedForward32Policy"
+    },
     "policy_kwargs": {
-      "activation_fn": {
-        "py/type": "torch.nn.modules.activation.ReLU"
-      },
       "features_extractor_class": {
         "py/type": "imitation.policies.base.NormalizeFeaturesExtractor"
       },
@@ -62,25 +55,13 @@
         "normalize_class": {
           "py/type": "imitation.util.networks.RunningNorm"
         }
-      },
-      "net_arch": [
-        {
-          "pi": [
-            64,
-            64
-          ],
-          "vf": [
-            64,
-            64
-          ]
-        }
-      ]
+      }
     }
   },
   "policy_evaluation": {
     "n_episodes_eval": 50
   },
   "environment": {
-    "gym_id": "seals/Swimmer-v0"
+    "gym_id": "seals/HalfCheetah-v1"
   }
 }

@@ -158,7 +158,8 @@ def train_rl(
             policies_serialize.save_stable_model(output_dir, rl_algo)
 
         # Final evaluation of expert policy.
-        return policy_evaluation.eval_policy(rl_algo, venv)
+        eval_stats = policy_evaluation.eval_policy(rl_algo, venv)
+        return eval_stats
 
 
 def main_console():

@@ -12,7 +12,7 @@
   },
   "expert": {
     "loader_kwargs": {
-      "gym_id": "seals/Walker2d-v0",
+      "gym_id": "seals/Walker2d-v1",
       "organization": "HumanCompatibleAI"
     }
   },
@@ -20,7 +20,7 @@
     "add_std_alpha": null,
     "ensemble_size": null,
     "net_cls": {
-      "py/type": "imitation.rewards.reward_nets.BasicRewardNet"
+      "py/type": "imitation.rewards.reward_nets.BasicShapedRewardNet"
     },
     "net_kwargs": {
       "normalize_input_layer": {
@@ -39,10 +39,10 @@
     "rl_kwargs": {
       "batch_size": 128,
       "clip_range": 0.4,
-      "ent_coef": 0.0007566389899529574,
+      "ent_coef": 0.002003867232707145,
       "gae_lambda": 0.92,
       "gamma": 0.98,
-      "learning_rate": 1.943992487657563e-5,
+      "learning_rate": 3.052170958603811e-5,
       "max_grad_norm": 0.6,
       "n_epochs": 20,
       "vf_coef": 0.6167177795726859
@@ -81,6 +81,6 @@
     "n_episodes_eval": 50
   },
   "environment": {
-    "gym_id": "seals/Walker2d-v0"
+    "gym_id": "seals/Walker2d-v1"
   }
 }
