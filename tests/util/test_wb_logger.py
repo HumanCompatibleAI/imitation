@@ -122,4 +122,4 @@ def test_wandb_module_import_error():
         with pytest.raises(ModuleNotFoundError, match=r"Trying to log data.*"):
             logger.configure(format_strs=["wandb"])
     finally:
-        sys.modules[wandb] = wandb_module
+        sys.modules["wandb"] = wandb_module
