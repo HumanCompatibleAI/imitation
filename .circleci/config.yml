@@ -65,7 +65,7 @@ commands:
       # Download and cache dependencies
       - restore_cache:
           keys:
-            - v8linux-dependencies-{{ checksum "setup.py" }}-{{ checksum "ci/build_and_activate_venv.sh" }}
+            - v9linux-dependencies-{{ checksum "setup.py" }}-{{ checksum "ci/build_and_activate_venv.sh" }}
 
       - run:
           name: install dependencies
@@ -75,7 +75,7 @@ commands:
       - save_cache:
           paths:
             - /venv
-          key: v8linux-dependencies-{{ checksum "setup.py" }}-{{ checksum "ci/build_and_activate_venv.sh" }}
+          key: v9linux-dependencies-{{ checksum "setup.py" }}-{{ checksum "ci/build_and_activate_venv.sh" }}
 
       - run:
           name: install imitation
@@ -96,7 +96,7 @@ commands:
 
       - restore_cache:
           keys:
-            - v7macos-dependencies-{{ checksum "setup.py" }}-{{ checksum "ci/build_and_activate_venv.sh" }}
+            - v8macos-dependencies-{{ checksum "setup.py" }}-{{ checksum "ci/build_and_activate_venv.sh" }}
 
       - run:
           name: install dependencies
@@ -108,7 +108,7 @@ commands:
       - save_cache:
           paths:
             - ~/venv
-          key: v7macos-dependencies-{{ checksum "setup.py" }}-{{ checksum "ci/build_and_activate_venv.sh" }}
+          key: v8macos-dependencies-{{ checksum "setup.py" }}-{{ checksum "ci/build_and_activate_venv.sh" }}
 
       - run:
           name: install imitation
@@ -138,7 +138,7 @@ commands:
       # Download and cache dependencies
       - restore_cache:
           keys:
-            - v10win-dependencies-{{ checksum "setup.py" }}-{{ checksum "ci/build_and_activate_venv.ps1" }}
+            - v11win-dependencies-{{ checksum "setup.py" }}-{{ checksum "ci/build_and_activate_venv.ps1" }}
 
       - run:
           name: install python and binary dependencies
@@ -168,7 +168,7 @@ commands:
       - save_cache:
           paths:
             - .\venv
-          key: v10win-dependencies-{{ checksum "setup.py" }}-{{ checksum "ci/build_and_activate_venv.ps1" }}
+          key: v11win-dependencies-{{ checksum "setup.py" }}-{{ checksum "ci/build_and_activate_venv.ps1" }}
 
       - run:
           name: install imitation
