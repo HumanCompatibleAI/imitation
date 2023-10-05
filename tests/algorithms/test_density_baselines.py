@@ -7,13 +7,11 @@ import gymnasium as gym
 import numpy as np
 import pytest
 import stable_baselines3
-from stable_baselines3.common import envs as sb_envs
 from stable_baselines3.common import policies, vec_env
 
 from imitation.algorithms.density import DensityAlgorithm, DensityType
 from imitation.data import rollout, types
 from imitation.data.types import TrajectoryWithRew
-from imitation.data.wrappers import RolloutInfoWrapper
 from imitation.policies.base import RandomPolicy
 from imitation.testing import reward_improvement
 

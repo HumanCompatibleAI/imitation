@@ -423,50 +423,6 @@ def test_dictionary_observations(rng):
     )
     for traj in trajs:
         assert isinstance(traj.obs, types.DictObs)
-        np.testing.assert_allclose(traj.obs.get("a") / 2, traj.obs.get("b"))
-
-
-class DictObsWrapper(gym.ObservationWrapper):
-    """Simple wrapper that turns the observation into a dictionary.
-
-    The observation is duplicated, with "b" rescaled.
-    """
-
-    def __init__(self, env: gym.Env):
-        """Builds DictObsWrapper.
-
-        Args:
-            env: The wrapped Env.
-        """
-        super().__init__(env)
-        self.observation_space = gym.spaces.Dict(
-            {"a": env.observation_space, "b": env.observation_space},
-        )
-
-    def observation(self, observation):
-        return {"a": observation, "b": observation / 2}
-
-
-def test_dictionary_observations(rng):
-    """Test we can generate a rollout for a dict-type observation environment.
-
-    Args:
-        rng: Random state to use (with fixed seed).
-    """
-    env = gym.make("CartPole-v1")
-    env = monitor.Monitor(env, None)
-    env = DictObsWrapper(env)
-    venv = vec_env.DummyVecEnv([lambda: env])
-
-    policy = serialize.load_policy("zero", venv)
-    trajs = rollout.generate_trajectories(
-        policy,
-        venv,
-        rollout.make_min_episodes(10),
-        rng=rng,
-    )
-    for traj in trajs:
-        assert isinstance(traj.obs, types.DictObs)
         for obs in traj.obs:
             assert venv.observation_space.contains(dict(obs.items()))
         np.testing.assert_allclose(traj.obs.get("a") / 2, traj.obs.get("b"))
