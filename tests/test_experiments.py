@@ -25,7 +25,7 @@ COMMANDS_PY_PATH = EXPERIMENTS_DIR / "commands.py"
 
 EXPECTED_LOCAL_CONFIG_TEMPLATE = f"""python -m imitation.scripts.train_imitation \
 dagger --capture=sys --name=run0 --file_storage={{output_dir}}/sacred/\
-$USER-cmd-run0-dagger-0-72542943 \
+$USER-cmd-run0-dagger-0-152b2005 \
 with {BENCHMARKING_DIR}/fast_dagger_seals_cartpole.json \
 seed=0 logging.log_root={{output_dir}}"""
 
@@ -152,7 +152,7 @@ def test_commands_local_config_with_custom_flags():
     assert len(commands) == 1
     expected = f"""python -m imitation.scripts.train_imitation dagger \
 --capture=sys --name=baz --file_storage=/foo/bar/sacred/\
-$USER-cmd-baz-dagger-1-72542943 \
+$USER-cmd-baz-dagger-1-152b2005 \
 with {BENCHMARKING_DIR}/fast_dagger_seals_cartpole.json \
 seed=1 logging.log_root=/foo/bar"""
     assert commands[0] == expected
@@ -252,7 +252,7 @@ def test_commands_bc_config():
     assert len(commands) == 1
     expected = f"""python -m imitation.scripts.train_imitation bc \
 --capture=sys --name=run0 --file_storage=output/sacred/\
-$USER-cmd-run0-bc-0-47a528c5 \
+$USER-cmd-run0-bc-0-f3ab1f87 \
 with {BENCHMARKING_DIR}/bc_seals_ant_best_hp_eval.json \
 seed=0 logging.log_root=output"""
     assert commands[0] == expected
@@ -266,7 +266,7 @@ def test_commands_dagger_config():
     assert len(commands) == 1
     expected = f"""python -m imitation.scripts.train_imitation dagger \
 --capture=sys --name=run0 --file_storage=output/sacred/\
-$USER-cmd-run0-dagger-0-efa42a6a \
+$USER-cmd-run0-dagger-0-76c1212c \
 with {BENCHMARKING_DIR}/dagger_seals_ant_best_hp_eval.json \
 seed=0 logging.log_root=output"""
     assert commands[0] == expected
@@ -280,7 +280,7 @@ def test_commands_gail_config():
     assert len(commands) == 1
     expected = f"""python -m imitation.scripts.train_adversarial gail \
 --capture=sys --name=run0 --file_storage=output/sacred/\
-$USER-cmd-run0-gail-0-9b83299d \
+$USER-cmd-run0-gail-0-351c205f \
 with {BENCHMARKING_DIR}/gail_seals_ant_best_hp_eval.json \
 seed=0 logging.log_root=output"""
     assert commands[0] == expected
@@ -294,7 +294,7 @@ def test_commands_airl_config():
     assert len(commands) == 1
     expected = f"""python -m imitation.scripts.train_adversarial airl \
 --capture=sys --name=run0 \
---file_storage=output/sacred/$USER-cmd-run0-airl-0-9cc929a8 \
+--file_storage=output/sacred/$USER-cmd-run0-airl-0-3662206a \
 with {BENCHMARKING_DIR}/airl_seals_ant_best_hp_eval.json \
 seed=0 logging.log_root=output"""
     assert commands[0] == expected
