@@ -1,22 +1,22 @@
 # Benchmarking imitation
 
-This directory contains sacred configuration files for benchmarking imitation's algorithms. For v0.3.2, these correspond to the hyperparameters used in the paper [imitation: Clean Imitation Learning Implementations](https://www.rocamonde.com/publication/gleave-imitation-2022/).
+The `src/imitation/scripts/config/tuned_hps` directory provides the tuned hyperparameter configs for benchmarking imitation. For v0.4.0, these correspond to the hyperparameters used in the paper [imitation: Clean Imitation Learning Implementations](https://www.rocamonde.com/publication/gleave-imitation-2022/).
 
-Configuration files can be loaded either from the CLI or from the Python API. The examples below assume that your current working directory is the root of the `imitation` repository. This is not necessarily the case and you should adjust your paths accordingly.
+Configuration files can be loaded either from the CLI or from the Python API.
 
 ## CLI
 
 ```bash
-python -m imitation.scripts.<train_script> <algo> with src/imitation/config/tuned_hps/<config_name>.json
+python -m imitation.scripts.<train_script> <algo> with <algo>_<env>
 ```
-`train_script` can be either 1) `train_imitation` with `algo` as `bc` or `dagger` or 2) `train_adversarial`  with `algo` as `gail` or `airl`.
+`train_script` can be either 1) `train_imitation` with `algo` as `bc` or `dagger` or 2) `train_adversarial`  with `algo` as `gail` or `airl`. The `env` can be either of `seals_ant`, `seals_half_cheetah`, `seals_hopper`, `seals_swimmer`, or `seals_walker`. The hyperparameters for other environments are not tuned yet. You can either the tuned hyperparameter for any of the other environments or tune the hyperparameters using the `tuning` script.
 
 ## Python
 
 ```python
 ...
 from imitation.scripts.<train_script> import <train_ex>
-<train_ex>.run(command_name="<algo>", named_configs=["src/imitation/config/tuned_hps/<config_name>.json"])
+<train_ex>.run(command_name="<algo>", named_configs=["<algo>_<env>"])
 ```
 
 # Tuning Hyperparameters
@@ -31,12 +31,12 @@ The tuning script proceeds in two phases:
 
 To use it with the default search space:
 ```bash
-python src/imitation/scripts/tuning.py with <algo> 'parallel_run_config.base_named_configs=["<env>"]'
+python -m imitation.scripts.tuning with <algo> 'parallel_run_config.base_named_configs=["<env>"]'
 ```
 
 In this command: 
 - `<algo>` provides the default search space and settings for the specific algorithm, which is defined in the `scripts/config/tuning.py`
-- `<env>` sets the environment to tune the algorithm in. They are defined in the algo-specifc `scripts/config/train_[adversarial/imitation/preference_comparisons/rl].py` files.
+- `<env>` sets the environment to tune the algorithm in. They are defined in the algo-specifc `scripts/config/train_[adversarial/imitation/preference_comparisons/rl].py` files. For the already tuned environments, use the `<algo>_<env>` named configs here.
 
 See the documentation of `scripts/tuning.py` and `scripts/parallel.py` for many other arguments that can be
 provided through the command line to change the tuning behavior.
