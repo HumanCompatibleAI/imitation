@@ -544,7 +544,9 @@ class DAggerTrainer(base.BaseImitationAlgorithm):
             of actions.
         """
 
-        def remove_rgb_and_predict(obs: Dict[str, np.ndarray]) -> np.ndarray:
+        def remove_rgb_and_predict(
+            obs: Union[Dict[str, np.ndarray], np.ndarray],
+        ) -> np.ndarray:
             obs_without_rgb = wrappers.remove_rgb_obs(obs)
             assert isinstance(obs_without_rgb, (np.ndarray, type(obs)))
             return self.bc_trainer.policy.predict(obs_without_rgb)[0]
