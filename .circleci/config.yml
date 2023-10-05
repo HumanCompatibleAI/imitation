@@ -138,7 +138,7 @@ commands:
       # Download and cache dependencies
       - restore_cache:
           keys:
-            - v10win-dependencies-{{ checksum "setup.py" }}-{{ checksum "ci/build_and_activate_venv.ps1" }}
+            - v11win-dependencies-{{ checksum "setup.py" }}-{{ checksum "ci/build_and_activate_venv.ps1" }}
 
       - run:
           name: install python and binary dependencies
@@ -168,7 +168,7 @@ commands:
       - save_cache:
           paths:
             - .\venv
-          key: v10win-dependencies-{{ checksum "setup.py" }}-{{ checksum "ci/build_and_activate_venv.ps1" }}
+          key: v11win-dependencies-{{ checksum "setup.py" }}-{{ checksum "ci/build_and_activate_venv.ps1" }}
 
       - run:
           name: install imitation
@@ -176,11 +176,19 @@ commands:
             .\venv\Scripts\activate
             pip install --upgrade --force-reinstall --no-deps .
           shell: powershell.exe
+
       - run:
           name: print installed packages
           command: |
             .\venv\Scripts\activate
             pip freeze --all
+          shell: powershell.exe
+
+      - run:
+          name: enable long path
+          command: |
+            New-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Control\FileSystem" `
+            -Name "LongPathsEnabled" -Value 1 -PropertyType DWORD -Force
           shell: powershell.exe
 
   restore-pytest-cache:
