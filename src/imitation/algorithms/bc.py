@@ -10,6 +10,7 @@ from typing import (
     Any,
     Callable,
     Dict,
+    Dict,
     Iterable,
     Iterator,
     Mapping,
@@ -23,6 +24,7 @@ import gymnasium as gym
 import numpy as np
 import torch as th
 import tqdm
+from stable_baselines3.common import policies, torch_layers, utils, vec_env
 from stable_baselines3.common import policies, torch_layers, utils, vec_env
 
 from imitation.algorithms import base as algo_base

@@ -172,27 +172,12 @@ def test_density_trainer_raises(
         density_trainer.set_demonstrations("foo")  # type: ignore[arg-type]
 
 
-# TODO(GH#794): Remove after https://github.com/DLR-RM/stable-baselines3/pull/1676
-# merged and released.
-class FloatReward(gym.RewardWrapper):
-    """Typecasts reward to a float."""
-
-    def reward(self, reward):
-        return float(reward)
-
-
-def test_dict_space():
-    def make_env():
-        env = sb_envs.SimpleMultiObsEnv(channel_last=False)
-        env = FloatReward(env)
-        return RolloutInfoWrapper(env)
-
-    venv = vec_env.DummyVecEnv([make_env, make_env])
-
+def test_dict_space(multi_obs_venv: vec_env.VecEnv):
     # multi-input policy to accept dict observations
+    assert isinstance(multi_obs_venv.observation_space, gym.spaces.Dict)
     rl_algo = stable_baselines3.PPO(
         policies.MultiInputActorCriticPolicy,
-        venv,
+        multi_obs_venv,
         n_steps=10,  # small value to make test faster
         n_epochs=2,  # small value to make test faster
     )
@@ -202,14 +187,14 @@ def test_dict_space():
     sample_until = rollout.make_min_episodes(15)
     rollouts = rollout.rollout(
         policy=None,
-        venv=venv,
+        venv=multi_obs_venv,
         sample_until=sample_until,
         rng=rng,
     )
     density_trainer = DensityAlgorithm(
         demonstrations=rollouts,
         kernel="gaussian",
-        venv=venv,
+        venv=multi_obs_venv,
         rl_algo=rl_algo,
         kernel_bandwidth=0.2,
         standardise_inputs=True,

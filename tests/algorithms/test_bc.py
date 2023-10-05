@@ -291,27 +291,12 @@ def test_that_policy_reconstruction_preserves_parameters(
         th.testing.assert_close(original, reconstructed)
 
 
-# TODO(GH#794): Remove after https://github.com/DLR-RM/stable-baselines3/pull/1676
-# merged and released.
-class FloatReward(gym.RewardWrapper):
-    """Typecasts reward to a float."""
-
-    def reward(self, reward):
-        return float(reward)
-
-
-def test_dict_space():
-    def make_env():
-        env = sb_envs.SimpleMultiObsEnv(channel_last=False)
-        env = FloatReward(env)
-        return RolloutInfoWrapper(env)
-
-    env = vec_env.DummyVecEnv([make_env, make_env])
-
+def test_dict_space(multi_obs_venv: vec_env.VecEnv):
     # multi-input policy to accept dict observations
+    assert isinstance(multi_obs_venv.observation_space, gym.spaces.Dict)
     policy = sb_policies.MultiInputActorCriticPolicy(
-        env.observation_space,
-        env.action_space,
+        multi_obs_venv.observation_space,
+        multi_obs_venv.action_space,
         lambda _: 0.001,
     )
     rng = np.random.default_rng()
@@ -319,16 +304,16 @@ def test_dict_space():
     # sample random transitions
     rollouts = rollout.rollout(
         policy=None,
-        venv=env,
+        venv=multi_obs_venv,
         sample_until=rollout.make_sample_until(min_timesteps=None, min_episodes=50),
         rng=rng,
         unwrap=True,
     )
     transitions = rollout.flatten_trajectories(rollouts)
     bc_trainer = bc.BC(
-        observation_space=env.observation_space,
+        observation_space=multi_obs_venv.observation_space,
         policy=policy,
-        action_space=env.action_space,
+        action_space=multi_obs_venv.action_space,
         rng=rng,
         demonstrations=transitions,
     )

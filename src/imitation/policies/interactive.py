@@ -65,6 +65,9 @@ class DiscreteInteractivePolicy(base_policies.NonTrainablePolicy, abc.ABC):
         if self.clear_screen_on_query:
             util.clear_screen()
 
+        if isinstance(obs, dict):
+            raise ValueError("Dictionary observations are not supported here")
+
         context = self._render(obs)
         key = self._get_input_key()
         self._clean_up(context)

@@ -102,6 +102,7 @@ def _make_buffering_venv(
     error_on_premature_reset: bool,
 ) -> BufferingWrapper:
     venv = DummyVecEnv([Env] * 2)
+    venv = DummyVecEnv([Env] * 2)
     wrapped_venv = BufferingWrapper(venv, error_on_premature_reset)
     wrapped_venv.reset()
     return wrapped_venv
@@ -172,6 +173,7 @@ def test_pop(
 
     Args:
         Env: Environment class type.
+        Env: Environment class type.
         episode_lengths: The number of timesteps before episode end in each dummy
             environment.
         n_steps: Number of times to call `step()` on the dummy environment.
@@ -195,6 +197,7 @@ def test_pop(
 
     def make_env(ep_len):
         return lambda: Env(episode_length=ep_len)
+        return lambda: Env(episode_length=ep_len)
 
     venv = DummyVecEnv([make_env(ep_len) for ep_len in episode_lengths])
     venv_buffer = BufferingWrapper(venv)
@@ -210,8 +213,13 @@ def test_pop(
         np.testing.assert_array_equal(obs, [0] * venv.num_envs)
     else:
         np.testing.assert_array_equal(obs["t"], [0] * venv.num_envs)
+    if Env == _CountingEnv:
+        np.testing.assert_array_equal(obs, [0] * venv.num_envs)
+    else:
+        np.testing.assert_array_equal(obs["t"], [0] * venv.num_envs)
 
     for t in range(1, n_steps + 1):
+        acts = obs * 2.1 if Env == _CountingEnv else obs["t"] * 2.1
         acts = obs * 2.1 if Env == _CountingEnv else obs["t"] * 2.1
         venv_buffer.step_async(acts)
         obs, *_ = venv_buffer.step_wait()
@@ -243,6 +251,14 @@ def test_pop(
         actual_next_obs = types.DictObs.stack(trans.next_obs).get("t")
     _assert_equal_scrambled_vectors(actual_obs, expect_obs)
     _assert_equal_scrambled_vectors(actual_next_obs, expect_next_obs)
+    if Env == _CountingEnv:
+        actual_obs = types.assert_not_dictobs(trans.obs)
+        actual_next_obs = types.assert_not_dictobs(trans.next_obs)
+    else:
+        actual_obs = types.DictObs.stack(trans.obs).get("t")
+        actual_next_obs = types.DictObs.stack(trans.next_obs).get("t")
+    _assert_equal_scrambled_vectors(actual_obs, expect_obs)
+    _assert_equal_scrambled_vectors(actual_next_obs, expect_next_obs)
     _assert_equal_scrambled_vectors(trans.acts, expect_acts)
     _assert_equal_scrambled_vectors(trans.rews, expect_rews)
 
@@ -252,10 +268,12 @@ def test_reset_error(Env):
     # Resetting before a `step()` is okay.
     for flag in [True, False]:
         venv = _make_buffering_venv(Env, flag)
+        venv = _make_buffering_venv(Env, flag)
         for _ in range(10):
             venv.reset()
 
     # Resetting after a `step()` is not okay if error flag is True.
+    venv = _make_buffering_venv(Env, True)
     venv = _make_buffering_venv(Env, True)
     zeros = np.array([0.0, 0.0], dtype=venv.action_space.dtype)
     venv.step(zeros)
@@ -263,6 +281,7 @@ def test_reset_error(Env):
         venv.reset()
 
     # Same as previous case, but insert a `pop_transitions()` in between.
+    venv = _make_buffering_venv(Env, True)
     venv = _make_buffering_venv(Env, True)
     venv.step(zeros)
     venv.pop_transitions()
@@ -277,6 +296,7 @@ def test_reset_error(Env):
 
     # Resetting after a `step()` is ok if transitions are first collected.
     for flag in [True, False]:
+        venv = _make_buffering_venv(Env, flag)
         venv = _make_buffering_venv(Env, flag)
         venv.step(zeros)
         venv.pop_transitions()
