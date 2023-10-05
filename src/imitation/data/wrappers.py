@@ -294,18 +294,18 @@ class HumanReadableWrapper(gym.Wrapper):
         return self._add_hr_obs(obs), rew, terminated, truncated, info
 
 
-def remove_rgb_ob_space(ob_space: gym.Space) -> gym.Space:
+def remove_rgb_obs_space(obs_space: gym.Space) -> gym.Space:
     """Removes rgb observation space from the observation space."""
-    if not isinstance(ob_space, gym.spaces.Dict):
-        return ob_space
-    if HR_OBS_KEY not in ob_space.spaces:
-        return ob_space
-    if len(ob_space.keys()) == 1:
+    if not isinstance(obs_space, gym.spaces.Dict):
+        return obs_space
+    if HR_OBS_KEY not in obs_space.spaces:
+        return obs_space
+    if len(obs_space.keys()) == 1:
         raise ValueError(
             "Only human readable observation space exists, can't remove it",
         )
-    # keeps the original ob_space unchanged in case it is used elsewhere.
-    new_obs_space = gym.spaces.Dict(ob_space.spaces.copy())
+    # keeps the original obs_space unchanged in case it is used elsewhere.
+    new_obs_space = gym.spaces.Dict(obs_space.spaces.copy())
     del new_obs_space.spaces[HR_OBS_KEY]
     if len(new_obs_space.spaces) == 1:
         # unwrap dictionary structure
@@ -313,22 +313,22 @@ def remove_rgb_ob_space(ob_space: gym.Space) -> gym.Space:
     return new_obs_space
 
 
-def remove_rgb_ob(
-    ob: Union[Dict[str, np.ndarray], Dict[str, th.Tensor], np.ndarray, th.Tensor],
+def remove_rgb_obs(
+    obs: Union[Dict[str, np.ndarray], Dict[str, th.Tensor], np.ndarray, th.Tensor],
 ) -> Union[Dict[str, np.ndarray], Dict[str, th.Tensor], np.ndarray, th.Tensor]:
     """Removes rgb observation from the observation."""
-    if not isinstance(ob, dict):
-        return ob
-    if HR_OBS_KEY not in ob:
-        return ob
-    if len(ob) == 1:
+    if not isinstance(obs, dict):
+        return obs
+    if HR_OBS_KEY not in obs:
+        return obs
+    if len(obs) == 1:
         raise ValueError(
             "Only human readable observation exists, can't remove it",
         )
     # keeps the original observation unchanged in case it is used elsewhere.
-    new_ob = ob.copy()
-    del new_ob[HR_OBS_KEY]
-    if len(new_ob) == 1:
+    new_obs = obs.copy()
+    del new_obs[HR_OBS_KEY]
+    if len(new_obs) == 1:
         # unwrap dictionary structure
-        return next(iter(new_ob.values()))
-    return new_ob
+        return next(iter(new_obs.values()))
+    return new_obs

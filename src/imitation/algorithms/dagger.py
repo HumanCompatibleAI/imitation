@@ -304,7 +304,7 @@ def _check_for_correct_spaces_with_rgb_env(
     """Checks that whether an environment has the same spaces as provided ones."""
     if isinstance(obs_space, spaces.Dict):
         assert wrappers.HR_OBS_KEY not in obs_space.spaces
-    env_obs_space = wrappers.remove_rgb_ob_space(env_might_with_rgb.observation_space)
+    env_obs_space = wrappers.remove_rgb_obs_space(env_might_with_rgb.observation_space)
     if obs_space != env_obs_space:
         raise ValueError(
             f"Observation spaces do not match: obs {obs_space} != env {env_obs_space}",
@@ -535,7 +535,7 @@ class DAggerTrainer(base.BaseImitationAlgorithm):
         """
 
         def remove_rgb_and_predict(obs: Dict[str, np.ndarray]) -> np.ndarray:
-            obs_without_rgb = wrappers.remove_rgb_ob(obs)
+            obs_without_rgb = wrappers.remove_rgb_obs(obs)
             assert isinstance(obs_without_rgb, (np.ndarray, type(obs)))
             return self.bc_trainer.policy.predict(obs_without_rgb)[0]
 
