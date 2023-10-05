@@ -163,7 +163,7 @@ class InteractiveTrajectoryCollector(vec_env.VecEnvWrapper):
     """
 
     traj_accum: Optional[rollout.TrajectoryAccumulator]
-    _last_obs: Optional[Dict[str, np.ndarray]]
+    _last_obs: Optional[Union[Dict[str, np.ndarray], np.ndarray]]
     _last_user_actions: Optional[np.ndarray]
 
     def __init__(
@@ -223,10 +223,9 @@ class InteractiveTrajectoryCollector(vec_env.VecEnvWrapper):
         """
         self.traj_accum = rollout.TrajectoryAccumulator()
         obs = self.venv.reset()
-        assert isinstance(obs, Dict)
-        assert wrappers.HR_OBS_KEY in obs
-        for k, ob in obs.items():
-            self.traj_accum.add_step({"obs": ob}, key=k)
+        dictobs = types.maybe_wrap_in_dictobs(obs)
+        for i, ob in enumerate(dictobs):
+            self.traj_accum.add_step({"obs": ob}, key=i)
         self._last_obs = obs
         self._is_reset = True
         self._last_user_actions = None
@@ -259,7 +258,7 @@ class InteractiveTrajectoryCollector(vec_env.VecEnvWrapper):
 
         mask = self.rng.uniform(0, 1, size=(self.num_envs,)) > self.beta
         if np.sum(mask) != 0:
-            last_obs = types.DictObs(self._last_obs)
+            last_obs = types.maybe_wrap_in_dictobs(self._last_obs)
             obs_for_robot = types.maybe_unwrap_dictobs(last_obs[mask])
             actual_acts[mask] = self.get_robot_acts(obs_for_robot)
 
@@ -277,7 +276,6 @@ class InteractiveTrajectoryCollector(vec_env.VecEnvWrapper):
         next_obs, rews, dones, infos = self.venv.step_wait()
         assert self.traj_accum is not None
         assert self._last_user_actions is not None
-        assert isinstance(next_obs, Dict)
         self._last_obs = next_obs
         fresh_demos = self.traj_accum.add_steps_and_auto_finish(
             obs=next_obs,
