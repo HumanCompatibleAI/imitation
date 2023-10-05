@@ -22,10 +22,9 @@ from stable_baselines3.common.vec_env.base_vec_env import VecEnvStepReturn
 from torch.utils import data as th_data
 
 from imitation.algorithms import base, bc
-from imitation.data import rollout, serialize, types
+from imitation.data import rollout, serialize, types, wrappers
 from imitation.util import logger as imit_logger
 from imitation.util import util
-from imitation.data import wrappers
 
 
 class BetaSchedule(abc.ABC):
@@ -226,7 +225,7 @@ class InteractiveTrajectoryCollector(vec_env.VecEnvWrapper):
         obs = self.venv.reset()
         assert isinstance(obs, Dict)
         assert wrappers.HR_OBS_KEY in obs
-        for k, ob in enumerate(obs.items()):
+        for k, ob in obs.items():
             self.traj_accum.add_step({"obs": ob}, key=k)
         self._last_obs = obs
         self._is_reset = True
@@ -278,6 +277,7 @@ class InteractiveTrajectoryCollector(vec_env.VecEnvWrapper):
         next_obs, rews, dones, infos = self.venv.step_wait()
         assert self.traj_accum is not None
         assert self._last_user_actions is not None
+        assert isinstance(next_obs, Dict)
         self._last_obs = next_obs
         fresh_demos = self.traj_accum.add_steps_and_auto_finish(
             obs=next_obs,
@@ -304,15 +304,15 @@ def _check_for_correct_spaces_with_rgb_env(
     """Checks that whether an environment has the same spaces as provided ones."""
     if isinstance(obs_space, spaces.Dict):
         assert wrappers.HR_OBS_KEY not in obs_space.spaces
-    env_obs_space = wrappers.remove_rgb_obs_space(env_might_with_rgb.observation_space)
+    env_obs_space = wrappers.remove_rgb_ob_space(env_might_with_rgb.observation_space)
     if obs_space != env_obs_space:
         raise ValueError(
-            f"Observation spaces do not match: obs {obs_space} != env {env_obs_space}"
+            f"Observation spaces do not match: obs {obs_space} != env {env_obs_space}",
         )
     env_action_space = env_might_with_rgb.action_space
     if action_space != env_action_space:
         raise ValueError(
-            f"Action spaces do not match: obs {action_space} != env {env_action_space}"
+            f"Action spaces do not match: obs {action_space} != env {env_action_space}",
         )
 
 
@@ -535,8 +535,9 @@ class DAggerTrainer(base.BaseImitationAlgorithm):
         """
 
         def remove_rgb_and_predict(obs: Dict[str, np.ndarray]) -> np.ndarray:
-            obs = wrappers.remove_rgb_obs(obs)
-            return self.bc_trainer.policy.predict(obs)[0]
+            obs_without_rgb = wrappers.remove_rgb_ob(obs)
+            assert isinstance(obs_without_rgb, (np.ndarray, type(obs)))
+            return self.bc_trainer.policy.predict(obs_without_rgb)[0]
 
         return remove_rgb_and_predict
 

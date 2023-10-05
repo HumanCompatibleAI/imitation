@@ -334,7 +334,7 @@ class BC(algo_base.DemonstrationAlgorithm):
         self._bc_logger = BCLogger(self.logger)
 
         self.action_space = action_space
-        ob_space_without_rgb = wrappers.remove_rgb_obs_space(observation_space)
+        ob_space_without_rgb = wrappers.remove_rgb_ob_space(observation_space)
         self.observation_space = ob_space_without_rgb
 
         self.rng = rng
@@ -492,10 +492,12 @@ class BC(algo_base.DemonstrationAlgorithm):
                 lambda x: util.safe_to_tensor(x, device=self.policy.device),
                 types.maybe_unwrap_dictobs(batch["obs"]),
             )
-            obs_tensor_without_rgb = wrappers.remove_rgb_obs(obs_tensor)
+            obs_tensor_without_rgb = wrappers.remove_rgb_ob(obs_tensor)
             acts = util.safe_to_tensor(batch["acts"], device=self.policy.device)
             training_metrics = self.loss_calculator(
-                self.policy, obs_tensor_without_rgb, acts
+                self.policy,
+                obs_tensor_without_rgb,
+                acts,
             )
 
             # Renormalise the loss to be averaged over the whole

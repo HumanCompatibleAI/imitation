@@ -1,17 +1,20 @@
 """Tests for `imitation.data.wrappers`."""
 
-from typing import List, Sequence, Type, Dict, Optional
+from typing import Dict, List, Optional, Sequence
 
 import gymnasium as gym
 import numpy as np
 import pytest
+import torch as th
 from stable_baselines3.common.vec_env import DummyVecEnv
 
 from imitation.data import types
 from imitation.data.wrappers import (
+    HR_OBS_KEY,
     BufferingWrapper,
     HumanReadableWrapper,
-    HR_OBS_KEY,
+    remove_rgb_ob,
+    remove_rgb_ob_space,
 )
 
 
@@ -56,7 +59,7 @@ class _CountingEnv(gym.Env):  # pragma: no cover
         done = t == self.episode_length
         return t, t * 10, done, False, {}
 
-    def render(self) -> np.ndarray:
+    def render(self):
         if self._render_mode != "rgb_array":
             raise ValueError(f"Invalid render mode {self._render_mode}")
         return np.array([self.timestep] * 10)
@@ -95,7 +98,7 @@ Envs = [_CountingEnv, _CountingDictEnv]
 
 
 def _make_buffering_venv(
-    Env: _CountingEnv,
+    Env,
     error_on_premature_reset: bool,
 ) -> BufferingWrapper:
     venv = DummyVecEnv([Env] * 2)
@@ -138,7 +141,7 @@ def _join_transitions(
 @pytest.mark.parametrize("n_steps", [1, 2, 20, 21])
 @pytest.mark.parametrize("extra_pop_timesteps", [(), (1,), (4, 8)])
 def test_pop(
-    Env: _CountingEnv,
+    Env,
     episode_lengths: Sequence[int],
     n_steps: int,
     extra_pop_timesteps: Sequence[int],
@@ -281,7 +284,7 @@ def test_reset_error(Env: _CountingEnv):
 
 
 @pytest.mark.parametrize("Env", Envs)
-def test_n_transitions_and_empty_error(Env: _CountingEnv):
+def test_n_transitions_and_empty_error(Env):
     venv = _make_buffering_venv(Env, True)
     trajs, ep_lens = venv.pop_trajectories()
     assert trajs == []
@@ -297,14 +300,48 @@ def test_n_transitions_and_empty_error(Env: _CountingEnv):
         venv.pop_transitions()
 
 
+def _check_ob_or_space_equal(got, expected):
+    assert type(got) is type(expected)
+    if isinstance(got, (Dict, gym.spaces.Dict)):
+        assert len(got.keys()) == len(expected.keys())
+        for k, v in got.items():
+            assert v == expected[k]
+    else:
+        assert got == expected
+
+
 @pytest.mark.parametrize("Env", Envs)
 @pytest.mark.parametrize("original_obs_key", ["k1", "k2"])
-def test_human_readable_wrapper(Env: _CountingEnv, original_obs_key: str):
-    num_obs_key_expected = 2 if Env == _CountingEnv else 3
-    origin_obs_key = original_obs_key if Env == _CountingEnv else "t"
+def test_human_readable_wrapper(Env, original_obs_key):
+    num_obs_key_expected = 2 if Env is _CountingEnv else 3
+    origin_obs_key = original_obs_key if Env is _CountingEnv else "t"
     env = HumanReadableWrapper(
-        Env(render_mode="rgb_array"), original_obs_key=original_obs_key
+        Env(render_mode="rgb_array"),
+        original_obs_key=original_obs_key,
     )
+    expected_hr_space = gym.spaces.Box(
+        low=0,
+        high=255,
+        shape=(10,),
+        dtype=np.uint8,
+    )
+    if Env == _CountingEnv:
+        expected_ob_space = gym.spaces.Dict(
+            {
+                original_obs_key: gym.spaces.Box(low=0, high=np.inf, shape=()),
+                HR_OBS_KEY: expected_hr_space,
+            },
+        )
+    else:
+        expected_ob_space = gym.spaces.Dict(
+            {
+                "2t": gym.spaces.Box(low=0, high=np.inf, shape=()),
+                "t": gym.spaces.Box(low=0, high=np.inf, shape=()),
+                HR_OBS_KEY: expected_hr_space,
+            },
+        )
+    assert isinstance(env.observation_space, gym.spaces.Dict)
+    _check_ob_or_space_equal(env.observation_space, expected_ob_space)
 
     obs, _ = env.reset()
     assert isinstance(obs, Dict)
@@ -319,3 +356,135 @@ def test_human_readable_wrapper(Env: _CountingEnv, original_obs_key: str):
     assert len(next_obs) == num_obs_key_expected
     assert next_obs[origin_obs_key] == 1
     _assert_equal_scrambled_vectors(next_obs[HR_OBS_KEY], np.array([2] * 10))
+
+
+@pytest.mark.parametrize(
+    ("testname", "ob_space", "expected_ob_space"),
+    [
+        (
+            "Box",
+            gym.spaces.Box(low=0, high=np.inf, shape=()),
+            gym.spaces.Box(low=0, high=np.inf, shape=()),
+        ),
+        (
+            "Dict with no rgb",
+            gym.spaces.Dict(
+                {
+                    "a": gym.spaces.Box(low=0, high=np.inf, shape=()),
+                },
+            ),
+            gym.spaces.Dict(
+                {
+                    "a": gym.spaces.Box(low=0, high=np.inf, shape=()),
+                },
+            ),
+        ),
+        (
+            "Dict rgb removed successfully and got unwrapped from dict",
+            gym.spaces.Dict(
+                {
+                    "a": gym.spaces.Box(low=0, high=np.inf, shape=()),
+                    HR_OBS_KEY: gym.spaces.Box(low=0, high=np.inf, shape=()),
+                },
+            ),
+            gym.spaces.Box(low=0, high=np.inf, shape=()),
+        ),
+        (
+            "Dict rgb removed successfully and got Dict",
+            gym.spaces.Dict(
+                {
+                    "a": gym.spaces.Box(low=0, high=np.inf, shape=()),
+                    "b": gym.spaces.Box(low=0, high=np.inf, shape=()),
+                    HR_OBS_KEY: gym.spaces.Box(low=0, high=np.inf, shape=()),
+                },
+            ),
+            gym.spaces.Dict(
+                {
+                    "a": gym.spaces.Box(low=0, high=np.inf, shape=()),
+                    "b": gym.spaces.Box(low=0, high=np.inf, shape=()),
+                },
+            ),
+        ),
+    ],
+)
+def test_remove_rgb_ob_space(testname, ob_space, expected_ob_space):
+    _check_ob_or_space_equal(remove_rgb_ob_space(ob_space), expected_ob_space)
+
+
+def test_remove_rgb_ob_space_failure():
+    ob_space = gym.spaces.Dict(
+        {HR_OBS_KEY: gym.spaces.Box(low=0, high=np.inf, shape=())},
+    )
+    with pytest.raises(ValueError, match="Only human readable observation space*"):
+        remove_rgb_ob_space(ob_space)
+
+
+def test_remove_rgb_ob_space_still_keep_origin_space_rgb():
+    ob_space = gym.spaces.Dict(
+        {
+            "a": gym.spaces.Box(low=0, high=np.inf, shape=()),
+            HR_OBS_KEY: gym.spaces.Box(low=0, high=np.inf, shape=()),
+        },
+    )
+    remove_rgb_ob_space(ob_space)
+    assert HR_OBS_KEY in ob_space.spaces
+
+
+@pytest.mark.parametrize(
+    ("testname", "ob", "expected_ob"),
+    [
+        (
+            "np.ndarray",
+            np.array([1]),
+            np.array([1]),
+        ),
+        (
+            "torch tensor",
+            th.Tensor(np.array([1])),
+            th.Tensor(np.array([1])),
+        ),
+        (
+            "dict with np.ndarray",
+            {"a": np.array([1])},
+            {"a": np.array([1])},
+        ),
+        (
+            "dict with torch tensor",
+            {"a": th.Tensor(np.array([1]))},
+            {"a": th.Tensor(np.array([1]))},
+        ),
+        (
+            "dict rgb removed successfully and got unwrapped from dict",
+            {
+                "a": np.array([1]),
+                HR_OBS_KEY: np.array([3]),
+            },
+            np.array([1]),
+        ),
+        (
+            "dict rgb removed successfully and got dict",
+            {
+                "a": np.array([1]),
+                "b": np.array([2]),
+                HR_OBS_KEY: np.array([3]),
+            },
+            {
+                "a": np.array([1]),
+                "b": np.array([2]),
+            },
+        ),
+    ],
+)
+def test_remove_rgb_ob(testname, ob, expected_ob):
+    _check_ob_or_space_equal(remove_rgb_ob(ob), expected_ob)
+
+
+def test_remove_rgb_ob_failure():
+    with pytest.raises(ValueError, match="Only human readable observation*"):
+        remove_rgb_ob({HR_OBS_KEY: np.array([1])})
+
+
+def test_remove_rgb_ob_still_keep_origin_space_rgb():
+    ob = {"a": np.array([1]), HR_OBS_KEY: np.array([2])}
+    remove_rgb_ob_space(ob)
+    assert HR_OBS_KEY in ob

@@ -85,7 +85,10 @@ class DiscreteInteractivePolicy(base_policies.NonTrainablePolicy, abc.ABC):
         return key
 
     @abc.abstractmethod
-    def _render(self, obs: np.ndarray) -> Optional[object]:
+    def _render(
+        self,
+        obs: Union[np.ndarray, Dict[str, np.ndarray]],
+    ) -> Optional[object]:
         """Renders an observation, optionally returns a context for later cleanup."""
 
     def _clean_up(self, context: object) -> None:
@@ -95,7 +98,7 @@ class DiscreteInteractivePolicy(base_policies.NonTrainablePolicy, abc.ABC):
 class ImageObsDiscreteInteractivePolicy(DiscreteInteractivePolicy):
     """DiscreteInteractivePolicy that renders image observations."""
 
-    def _render(self, obs: np.ndarray) -> plt.Figure:
+    def _render(self, obs: Union[np.ndarray, Dict[str, np.ndarray]]) -> plt.Figure:
         img = self._prepare_obs_image(obs)
 
         fig, ax = plt.subplots()
@@ -109,7 +112,8 @@ class ImageObsDiscreteInteractivePolicy(DiscreteInteractivePolicy):
         plt.close(context)
 
     def _prepare_obs_image(
-        self, obs: Union[np.ndarray, Dict[str, np.ndarray]]
+        self,
+        obs: Union[np.ndarray, Dict[str, np.ndarray]],
     ) -> np.ndarray:
         """Applies any required observation processing to get an image to show."""
         if not isinstance(obs, Dict):

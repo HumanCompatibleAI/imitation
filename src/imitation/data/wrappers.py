@@ -1,13 +1,13 @@
 """Environment wrappers for collecting rollouts."""
 
-from typing import List, Optional, Sequence, Tuple, Dict, Union
+from typing import Dict, List, Optional, Sequence, Tuple, Union
 
 import gymnasium as gym
-from gymnasium.core import Env
 import numpy as np
 import numpy.typing as npt
-from stable_baselines3.common.vec_env import VecEnv, VecEnvWrapper
 import torch as th
+from gymnasium.core import Env
+from stable_baselines3.common.vec_env import VecEnv, VecEnvWrapper
 
 from imitation.data import rollout, types
 
@@ -217,7 +217,7 @@ class HumanReadableWrapper(gym.Wrapper):
     """Adds human-readable observation to `obs` at every step."""
 
     def __init__(self, env: Env, original_obs_key: str = "ORI_OBS"):
-        """Builds HumanReadableWrapper
+        """Builds HumanReadableWrapper.
 
         Args:
             env: Environment to wrap.
@@ -231,7 +231,7 @@ class HumanReadableWrapper(gym.Wrapper):
         if env.render_mode != "rgb_array":
             raise ValueError(
                 "HumanReadableWrapper requires render_mode='rgb_array', "
-                f"got {env.render_mode!r}"
+                f"got {env.render_mode!r}",
             )
         self._original_obs_key = original_obs_key
         super().__init__(env)
@@ -242,7 +242,10 @@ class HumanReadableWrapper(gym.Wrapper):
         self.env.reset()
         example_rgb_obs = self.env.render()
         new_rgb_space = gym.spaces.Box(
-            low=0, high=255, shape=example_rgb_obs.shape, dtype=np.uint8
+            low=0,
+            high=255,
+            shape=example_rgb_obs.shape,
+            dtype=np.uint8,
         )
         curr_sapce = self.observation_space
         if isinstance(curr_sapce, gym.spaces.Dict):
@@ -252,11 +255,12 @@ class HumanReadableWrapper(gym.Wrapper):
                 {
                     HR_OBS_KEY: new_rgb_space,
                     self._original_obs_key: curr_sapce,
-                }
+                },
             )
 
     def _add_hr_obs(
-        self, obs: Union[np.ndarray, Dict[str, np.ndarray]]
+        self,
+        obs: Union[np.ndarray, Dict[str, np.ndarray]],
     ) -> Dict[str, np.ndarray]:
         """Adds human-readable observation to obs.
 
@@ -267,19 +271,18 @@ class HumanReadableWrapper(gym.Wrapper):
             obs: Observation from environment.
 
         Returns:
-            Observation dictionary with the human-readable data
+            Observation dictionary with the human-readable data.
 
         Raises:
             KeyError: When the key HR_OBS_KEY already exists in the observation
                 dictionary.
         """
-        hr_obs = self.env.render()
         if not isinstance(obs, Dict):
             obs = {self._original_obs_key: obs}
 
         if HR_OBS_KEY in obs:
             raise KeyError(f"{HR_OBS_KEY!r} already exists in observation dict")
-        obs[HR_OBS_KEY] = hr_obs
+        obs[HR_OBS_KEY] = self.env.render()  # type: ignore[assignment]
         return obs
 
     def reset(self, **kwargs):
@@ -291,30 +294,41 @@ class HumanReadableWrapper(gym.Wrapper):
         return self._add_hr_obs(obs), rew, terminated, truncated, info
 
 
-def remove_rgb_obs_space(obs_space: gym.Space) -> gym.Space:
+def remove_rgb_ob_space(ob_space: gym.Space) -> gym.Space:
     """Removes rgb observation space from the observation space."""
-    if not isinstance(obs_space, gym.spaces.Dict):
-        return obs_space
-    if HR_OBS_KEY not in obs_space.spaces:
-        return obs_space
-    new_obs_space = gym.spaces.Dict(obs_space.spaces.copy())
+    if not isinstance(ob_space, gym.spaces.Dict):
+        return ob_space
+    if HR_OBS_KEY not in ob_space.spaces:
+        return ob_space
+    if len(ob_space.keys()) == 1:
+        raise ValueError(
+            "Only human readable observation space exists, can't remove it",
+        )
+    # keeps the original ob_space unchanged in case it is used elsewhere.
+    new_obs_space = gym.spaces.Dict(ob_space.spaces.copy())
     del new_obs_space.spaces[HR_OBS_KEY]
     if len(new_obs_space.spaces) == 1:
         # unwrap dictionary structure
-        return list(new_obs_space.values())[0]
+        return next(iter(new_obs_space.values()))
     return new_obs_space
 
 
-def remove_rgb_obs(
-    obs: Union[Dict[str, np.ndarray | th.Tensor], np.ndarray, th.Tensor]
-) -> Union[np.ndarray, Dict[str, np.ndarray]]:
+def remove_rgb_ob(
+    ob: Union[Dict[str, np.ndarray], Dict[str, th.Tensor], np.ndarray, th.Tensor],
+) -> Union[Dict[str, np.ndarray], Dict[str, th.Tensor], np.ndarray, th.Tensor]:
     """Removes rgb observation from the observation."""
-    if not isinstance(obs, dict):
-        return obs
-    if HR_OBS_KEY not in obs:
-        return obs
-    del obs[HR_OBS_KEY]
-    if len(obs) == 1:
+    if not isinstance(ob, dict):
+        return ob
+    if HR_OBS_KEY not in ob:
+        return ob
+    if len(ob) == 1:
+        raise ValueError(
+            "Only human readable observation exists, can't remove it",
+        )
+    # keeps the original observation unchanged in case it is used elsewhere.
+    new_ob = ob.copy()
+    del new_ob[HR_OBS_KEY]
+    if len(new_ob) == 1:
         # unwrap dictionary structure
-        return list(obs.values())[0]
-    return obs
+        return next(iter(new_ob.values()))
+    return new_ob

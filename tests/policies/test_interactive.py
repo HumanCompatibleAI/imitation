@@ -1,7 +1,7 @@
 """Tests interactive policies."""
 
 import collections
-from typing import cast
+from typing import cast, Dict, Union
 from unittest import mock
 
 import gymnasium as gym
@@ -23,7 +23,7 @@ ATARI_ENVS = [
 class NoRenderingDiscreteInteractivePolicy(interactive.DiscreteInteractivePolicy):
     """DiscreteInteractivePolicy with no rendering."""
 
-    def _render(self, obs: np.ndarray) -> None:
+    def _render(self, obs: Union[np.ndarray, Dict[str, np.ndarray]]) -> None:
         pass
 
 
