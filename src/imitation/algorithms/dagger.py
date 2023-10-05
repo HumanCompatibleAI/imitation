@@ -548,8 +548,10 @@ class DAggerTrainer(base.BaseImitationAlgorithm):
             obs: Union[Dict[str, np.ndarray], np.ndarray],
         ) -> np.ndarray:
             obs_without_rgb = wrappers.remove_rgb_obs(obs)
-            assert isinstance(obs_without_rgb, (np.ndarray, type(obs)))
-            return self.bc_trainer.policy.predict(obs_without_rgb)[0]
+            assert isinstance(obs_without_rgb, (np.ndarray, dict))
+            fn = self.bc_trainer.policy.predict
+            # the Dict[str, Tensor] type seems hard to exclude from type annotation.
+            return fn(obs_without_rgb)[0]  # type: ignore[arg-type]
 
         return remove_rgb_and_predict
 
