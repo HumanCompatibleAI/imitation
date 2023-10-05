@@ -169,7 +169,10 @@ class InteractiveTrajectoryCollector(vec_env.VecEnvWrapper):
     def __init__(
         self,
         venv: vec_env.VecEnv,
-        get_robot_acts: Callable[[Dict[str, np.ndarray]], np.ndarray],
+        get_robot_acts: Callable[
+            [Union[Dict[str, np.ndarray], np.ndarray]],
+            np.ndarray,
+        ],
         beta: float,
         save_dir: types.AnyPath,
         rng: np.random.Generator,
@@ -215,7 +218,7 @@ class InteractiveTrajectoryCollector(vec_env.VecEnvWrapper):
         self.rng = np.random.default_rng(seed=seed)
         return list(self.venv.seed(seed))
 
-    def reset(self) -> Dict[str, np.ndarray]:
+    def reset(self) -> Union[np.ndarray, Dict[str, np.ndarray]]:
         """Resets the environment.
 
         Returns:
@@ -223,6 +226,10 @@ class InteractiveTrajectoryCollector(vec_env.VecEnvWrapper):
         """
         self.traj_accum = rollout.TrajectoryAccumulator()
         obs = self.venv.reset()
+        assert isinstance(
+            obs,
+            (np.ndarray, dict),
+        ), "Tuple observations are not supported."
         dictobs = types.maybe_wrap_in_dictobs(obs)
         for i, ob in enumerate(dictobs):
             self.traj_accum.add_step({"obs": ob}, key=i)
@@ -276,6 +283,11 @@ class InteractiveTrajectoryCollector(vec_env.VecEnvWrapper):
         next_obs, rews, dones, infos = self.venv.step_wait()
         assert self.traj_accum is not None
         assert self._last_user_actions is not None
+        assert isinstance(
+            next_obs,
+            (np.ndarray, dict),
+        ), "Tuple observations are not supported."
+
         self._last_obs = next_obs
         fresh_demos = self.traj_accum.add_steps_and_auto_finish(
             obs=next_obs,

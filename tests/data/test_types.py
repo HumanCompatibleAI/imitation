@@ -520,3 +520,10 @@ def test_dict_obs():
 
     with pytest.raises(TypeError):
         types.DictObs({"a": "not an array"})  # type: ignore[wrong-arg-types]
+
+
+def test_dict_obs_indexing_bool():
+    # boolean indexing requires the same length in the indexing dimension.
+    A, B = np.random.rand(4, 3), np.random.rand(4, 2)
+    d = types.DictObs({"a": A, "b": B})
+    np.testing.assert_equal(d[np.array([True, False, False, False])].get("a"), A[[0]])

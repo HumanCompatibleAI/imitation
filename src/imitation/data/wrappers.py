@@ -330,5 +330,5 @@ def remove_rgb_obs(
     del new_obs[HR_OBS_KEY]
     if len(new_obs) == 1:
         # unwrap dictionary structure
-        return next(iter(new_obs.values()))
+        return next(iter(new_obs.values()))  # type: ignore[return-value]
     return new_obs

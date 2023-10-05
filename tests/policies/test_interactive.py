@@ -1,7 +1,7 @@
 """Tests interactive policies."""
 
 import collections
-from typing import cast, Dict, Union
+from typing import Dict, Union, cast
 from unittest import mock
 
 import gymnasium as gym
