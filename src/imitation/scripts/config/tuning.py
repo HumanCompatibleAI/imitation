@@ -49,24 +49,24 @@ def bc():
         search_space={
             "config_updates": {
                 "bc": dict(
-                    batch_size=tune.choice([8]),
+                    batch_size=tune.choice([8, 16, 32, 64]),
                     l2_weight=tune.loguniform(1e-6, 1e-2),  # L2 regularization weight
                     optimizer_kwargs=dict(
                         lr=tune.loguniform(1e-5, 1e-2),
                     ),
                     train_kwargs=dict(
-                        n_epochs=tune.choice([1]),
+                        n_epochs=tune.choice([1, 5, 10, 20]),
                     ),
                 ),
             },
             "command_name": "bc",
         },
-        num_samples=2,
-        repeat=2,
+        num_samples=64,
+        repeat=3,
         resources_per_trial=dict(cpu=1),
     )
 
-    num_eval_seeds = 1
+    num_eval_seeds = 5
     eval_best_trial_resource_multiplier = 1
 
 
