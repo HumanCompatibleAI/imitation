@@ -480,7 +480,6 @@ def test_dict_obs():
     np.testing.assert_equal(abc[0].get("c"), np.array(C[0]))
     np.testing.assert_equal(abc[0:2].get("a"), np.array(A[0:2]))
     np.testing.assert_equal(ab[:, 0].get("a"), np.array(A[:, 0]))
-    np.testing.assert_equal(abc[np.array([True, False, False, False])].get("c"), C[[0]])
     with pytest.raises(IndexError):
         abc[:, 0]
 

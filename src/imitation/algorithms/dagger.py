@@ -533,7 +533,7 @@ class DAggerTrainer(base.BaseImitationAlgorithm):
 
     def _get_trainable_predict_fn(
         self,
-    ) -> Callable[[Dict[str, np.ndarray]], np.ndarray]:
+    ) -> Callable[[Union[Dict[str, np.ndarray], np.ndarray]], np.ndarray]:
         """Returns a function that uses `bc_trainer.policy` to predict observations.
 
         Since bc_trainer.policy doesn't accept RGB observations, this function removes
