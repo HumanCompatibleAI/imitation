@@ -12,8 +12,6 @@ build:
 
 python:
   install:
-    # TODO(GH#707): remove docs/requirements.txt once Gym upgraded
-    - requirements: docs/requirements.txt
     - method: pip
       path: .
       extra_requirements:
