@@ -248,7 +248,7 @@ def test_pop(
 
 
 @pytest.mark.parametrize("Env", Envs)
-def test_reset_error(Env: _CountingEnv):
+def test_reset_error(Env):
     # Resetting before a `step()` is okay.
     for flag in [True, False]:
         venv = _make_buffering_venv(Env, flag)
