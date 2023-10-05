@@ -48,6 +48,7 @@ TESTS_REQUIRE = (
         "pytest~=7.1.2",
         "pytest-cov~=3.0.0",
         "pytest-notebook==0.8.0",
+        "pytest-timeout~=2.1.0",
         "pytest-xdist~=2.5.0",
         "scipy~=1.9.0",
         "wandb==0.12.21",
