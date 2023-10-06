@@ -531,30 +531,6 @@ class DAggerTrainer(base.BaseImitationAlgorithm):
         logging.info(f"New round number is {self.round_num}")
         return self.round_num
 
-    def _get_trainable_predict_fn(
-        self,
-    ) -> Callable[[Union[Dict[str, np.ndarray], np.ndarray]], np.ndarray]:
-        """Returns a function that uses `bc_trainer.policy` to predict observations.
-
-        Since bc_trainer.policy doesn't accept RGB observations, this function removes
-        The RGB observation part, if any, before passing the observation to prediction.
-
-        Returns:
-            A function that accepts a dictionary observation and returns a numpy array
-            of actions.
-        """
-
-        def remove_rgb_and_predict(
-            obs: Union[Dict[str, np.ndarray], np.ndarray],
-        ) -> np.ndarray:
-            obs_without_rgb = wrappers.remove_rgb_obs(obs)
-            assert isinstance(obs_without_rgb, (np.ndarray, dict))
-            fn = self.bc_trainer.policy.predict
-            # the Dict[str, Tensor] type seems hard to exclude from type annotation.
-            return fn(obs_without_rgb)[0]  # type: ignore[arg-type]
-
-        return remove_rgb_and_predict
-
     def create_trajectory_collector(self) -> InteractiveTrajectoryCollector:
         """Create trajectory collector to extend current round's demonstration set.
 
@@ -567,7 +543,7 @@ class DAggerTrainer(base.BaseImitationAlgorithm):
         beta = self.beta_schedule(self.round_num)
         collector = InteractiveTrajectoryCollector(
             venv=self.venv,
-            get_robot_acts=self._get_trainable_predict_fn(),
+            get_robot_acts=lambda obs: self.bc_trainer.policy.predict(obs)[0],
             beta=beta,
             save_dir=save_dir,
             rng=self.rng,

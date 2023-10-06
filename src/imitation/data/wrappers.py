@@ -5,7 +5,6 @@ from typing import Dict, List, Optional, Sequence, Tuple, Union
 import gymnasium as gym
 import numpy as np
 import numpy.typing as npt
-import torch as th
 from gymnasium.core import Env
 from stable_baselines3.common.vec_env import VecEnv, VecEnvWrapper
 
@@ -311,24 +310,3 @@ def remove_rgb_obs_space(obs_space: gym.Space) -> gym.Space:
         # unwrap dictionary structure
         return next(iter(new_obs_space.values()))
     return new_obs_space
-
-
-def remove_rgb_obs(
-    obs: Union[Dict[str, np.ndarray], Dict[str, th.Tensor], np.ndarray, th.Tensor],
-) -> Union[Dict[str, np.ndarray], Dict[str, th.Tensor], np.ndarray, th.Tensor]:
-    """Removes rgb observation from the observation."""
-    if not isinstance(obs, dict):
-        return obs
-    if HR_OBS_KEY not in obs:
-        return obs
-    if len(obs) == 1:
-        raise ValueError(
-            "Only human readable observation exists, can't remove it",
-        )
-    # keeps the original observation unchanged in case it is used elsewhere.
-    new_obs = obs.copy()
-    del new_obs[HR_OBS_KEY]
-    if len(new_obs) == 1:
-        # unwrap dictionary structure
-        return next(iter(new_obs.values()))  # type: ignore[return-value]
-    return new_obs
