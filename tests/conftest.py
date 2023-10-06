@@ -1,7 +1,5 @@
 """Fixtures common across tests."""
-from typing import Dict
 
-import gymnasium as gym
 import numpy as np
 import pytest
 import seals  # noqa: F401
@@ -48,14 +46,3 @@ def custom_logger(tmpdir: str) -> logger.HierarchicalLogger:
 @pytest.fixture()
 def rng() -> np.random.Generator:
     return np.random.default_rng(seed=0)
-
-
-@pytest.fixture()
-def check_obs_or_space_equal(got, expected):
-    assert type(got) is type(expected)
-    if isinstance(got, (Dict, gym.spaces.Dict)):
-        assert len(got.keys()) == len(expected.keys())
-        for k, v in got.items():
-            assert v == expected[k]
-    else:
-        assert got == expected

@@ -1,4 +1,4 @@
-"""Tests for `imitation.policies.obs_filter_wrapper`."""
+"""Tests for `imitation.policies.obs_update_wrapper`."""
 
 from typing import Dict
 
@@ -12,9 +12,10 @@ from imitation.policies import base as policy_base
 from imitation.policies.obs_update_wrapper import RemoveHR, _remove_hr_obs
 
 
-def test_remove_hr():
+@pytest.mark.parametrize("use_hr_wrapper", [True, False])
+def test_remove_hr(use_hr_wrapper: bool):
     env = gym.make("PongNoFrameskip-v4", render_mode="rgb_array")
-    hr_env = HumanReadableWrapper(env)
+    new_env = HumanReadableWrapper(env) if use_hr_wrapper else env
     policy = policy_base.FeedForward32Policy(
         observation_space=env.observation_space,
         action_space=env.action_space,
@@ -27,8 +28,8 @@ def test_remove_hr():
     obs, _ = env.reset(seed=0)
     pred_action, _ = wrapped_policy.predict(obs, deterministic=True)
 
-    obs_with_hr, _ = hr_env.reset(seed=0)
-    pred_action_with_hr, _ = wrapped_policy.predict(obs_with_hr, deterministic=True)
+    new_obs, _ = new_env.reset(seed=0)
+    pred_action_with_hr, _ = wrapped_policy.predict(new_obs, deterministic=True)
     assert np.equal(pred_action, pred_action_with_hr).all()
 
 
