@@ -56,7 +56,7 @@ if __name__ == "__main__":
             rng=rng,
         )
         dagger_trainer.train(
-            total_timesteps=1,
+            total_timesteps=20,
             rollout_round_min_episodes=1,
-            rollout_round_min_timesteps=1,
+            rollout_round_min_timesteps=10,
         )
