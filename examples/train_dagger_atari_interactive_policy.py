@@ -12,8 +12,8 @@ from stable_baselines3.common import torch_layers, vec_env
 
 from imitation.algorithms import bc, dagger
 from imitation.data import wrappers as data_wrappers
-from imitation.policies import base as policy_base, obs_update_wrapper
-from imitation.policies import interactive
+from imitation.policies import base as policy_base
+from imitation.policies import interactive, obs_update_wrapper
 
 
 def lr_schedule(_: float):

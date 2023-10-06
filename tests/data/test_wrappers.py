@@ -8,12 +8,7 @@ import pytest
 from stable_baselines3.common.vec_env import DummyVecEnv
 
 from imitation.data import types
-from imitation.data.wrappers import (
-    HR_OBS_KEY,
-    BufferingWrapper,
-    HumanReadableWrapper,
-    remove_hr_obs,
-)
+from imitation.data.wrappers import HR_OBS_KEY, BufferingWrapper, HumanReadableWrapper
 
 
 class _CountingEnv(gym.Env):  # pragma: no cover
@@ -318,16 +313,6 @@ def test_n_transitions_and_empty_error(Env):
         venv.pop_transitions()
 
 
-def _check_obs_or_space_equal(got, expected):
-    assert type(got) is type(expected)
-    if isinstance(got, (Dict, gym.spaces.Dict)):
-        assert len(got.keys()) == len(expected.keys())
-        for k, v in got.items():
-            assert v == expected[k]
-    else:
-        assert got == expected
-
-
 @pytest.mark.parametrize("Env", Envs)
 @pytest.mark.parametrize("original_obs_key", ["k1", "k2"])
 def test_human_readable_wrapper(Env, original_obs_key):
@@ -338,7 +323,7 @@ def test_human_readable_wrapper(Env, original_obs_key):
         ori_env,
         original_obs_key=original_obs_key,
     )
-    _check_obs_or_space_equal(hr_env.observation_space, ori_env.observation_space)
+    assert hr_env.observation_space == ori_env.observation_space
 
     obs, _ = hr_env.reset()
     assert isinstance(obs, Dict)
@@ -353,53 +338,3 @@ def test_human_readable_wrapper(Env, original_obs_key):
     assert len(next_obs) == num_obs_key_expected
     assert next_obs[origin_obs_key] == 1
     _assert_equal_scrambled_vectors(next_obs[HR_OBS_KEY], np.array([2] * 10))
-
-
-@pytest.mark.parametrize(
-    ("testname", "obs", "expected_obs"),
-    [
-        (
-            "np.ndarray",
-            np.array([1]),
-            np.array([1]),
-        ),
-        (
-            "dict with np.ndarray",
-            {"a": np.array([1])},
-            {"a": np.array([1])},
-        ),
-        (
-            "dict rgb removed successfully and got unwrapped from dict",
-            {
-                "a": np.array([1]),
-                HR_OBS_KEY: np.array([3]),
-            },
-            np.array([1]),
-        ),
-        (
-            "dict rgb removed successfully and got dict",
-            {
-                "a": np.array([1]),
-                "b": np.array([2]),
-                HR_OBS_KEY: np.array([3]),
-            },
-            {
-                "a": np.array([1]),
-                "b": np.array([2]),
-            },
-        ),
-    ],
-)
-def test_remove_rgb_ob(testname, obs, expected_obs):
-    _check_obs_or_space_equal(remove_hr_obs(obs), expected_obs)
-
-
-def test_remove_rgb_obs_failure():
-    with pytest.raises(ValueError, match="Only human readable observation*"):
-        remove_hr_obs({HR_OBS_KEY: np.array([1])})
-
-
-def test_remove_rgb_obs_still_keep_origin_space_rgb():
-    obs = {"a": np.array([1]), HR_OBS_KEY: np.array([2])}
-    remove_hr_obs(obs)
-    assert HR_OBS_KEY in obs

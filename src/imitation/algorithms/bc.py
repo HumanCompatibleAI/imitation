@@ -294,7 +294,7 @@ class BC(algo_base.DemonstrationAlgorithm):
             observation_space: the observation space of the environment.
             action_space: the action space of the environment.
             rng: the random state to use for the random number generator.
-            policy: a Stable Baselines3 policy for learning; if unspecified,
+            policy: a Stable Baselines3 policy; if unspecified,
                 defaults to `FeedForward32Policy`.
             demonstrations: Demonstrations from an expert (optional). Transitions
                 expressed directly as a `types.TransitionsMinimal` object, a sequence
