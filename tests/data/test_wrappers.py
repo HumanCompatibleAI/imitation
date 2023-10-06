@@ -5,7 +5,6 @@ from typing import Dict, List, Optional, Sequence
 import gymnasium as gym
 import numpy as np
 import pytest
-import torch as th
 from stable_baselines3.common.vec_env import DummyVecEnv
 
 from imitation.data import types
@@ -13,8 +12,8 @@ from imitation.data.wrappers import (
     HR_OBS_KEY,
     BufferingWrapper,
     HumanReadableWrapper,
-    remove_rgb_obs,
-    remove_rgb_obs_space,
+    remove_hr_obs,
+    remove_hr_obs_space,
 )
 
 
@@ -428,7 +427,7 @@ def test_human_readable_wrapper(Env, original_obs_key):
     ],
 )
 def test_remove_rgb_obs_space(testname, obs_space, expected_obs_space):
-    _check_obs_or_space_equal(remove_rgb_obs_space(obs_space), expected_obs_space)
+    _check_obs_or_space_equal(remove_hr_obs_space(obs_space), expected_obs_space)
 
 
 def test_remove_rgb_obs_space_failure():
@@ -436,7 +435,7 @@ def test_remove_rgb_obs_space_failure():
         {HR_OBS_KEY: gym.spaces.Box(low=0, high=np.inf, shape=())},
     )
     with pytest.raises(ValueError, match="Only human readable observation space*"):
-        remove_rgb_obs_space(obs_space)
+        remove_hr_obs_space(obs_space)
 
 
 def test_remove_rgb_obs_space_still_keep_origin_space_rgb():
@@ -446,7 +445,7 @@ def test_remove_rgb_obs_space_still_keep_origin_space_rgb():
             HR_OBS_KEY: gym.spaces.Box(low=0, high=np.inf, shape=()),
         },
     )
-    remove_rgb_obs_space(obs_space)
+    remove_hr_obs_space(obs_space)
     assert HR_OBS_KEY in obs_space.spaces
 
 
@@ -459,19 +458,9 @@ def test_remove_rgb_obs_space_still_keep_origin_space_rgb():
             np.array([1]),
         ),
         (
-            "torch tensor",
-            th.Tensor(np.array([1])),
-            th.Tensor(np.array([1])),
-        ),
-        (
             "dict with np.ndarray",
             {"a": np.array([1])},
             {"a": np.array([1])},
-        ),
-        (
-            "dict with torch tensor",
-            {"a": th.Tensor(np.array([1]))},
-            {"a": th.Tensor(np.array([1]))},
         ),
         (
             "dict rgb removed successfully and got unwrapped from dict",
@@ -496,15 +485,15 @@ def test_remove_rgb_obs_space_still_keep_origin_space_rgb():
     ],
 )
 def test_remove_rgb_ob(testname, obs, expected_obs):
-    _check_obs_or_space_equal(remove_rgb_obs(obs), expected_obs)
+    _check_obs_or_space_equal(remove_hr_obs(obs), expected_obs)
 
 
 def test_remove_rgb_obs_failure():
     with pytest.raises(ValueError, match="Only human readable observation*"):
-        remove_rgb_obs({HR_OBS_KEY: np.array([1])})
+        remove_hr_obs({HR_OBS_KEY: np.array([1])})
 
 
 def test_remove_rgb_obs_still_keep_origin_space_rgb():
     obs = {"a": np.array([1]), HR_OBS_KEY: np.array([2])}
-    remove_rgb_obs(obs)
+    remove_hr_obs(obs)
     assert HR_OBS_KEY in obs

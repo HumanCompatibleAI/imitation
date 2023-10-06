@@ -3,6 +3,7 @@
 from typing import Dict, List, Optional, Sequence, Tuple, Union
 
 import gymnasium as gym
+import torch as th
 import numpy as np
 import numpy.typing as npt
 from gymnasium.core import Env
@@ -293,7 +294,7 @@ class HumanReadableWrapper(gym.Wrapper):
         return self._add_hr_obs(obs), rew, terminated, truncated, info
 
 
-def remove_rgb_obs_space(obs_space: gym.Space) -> gym.Space:
+def remove_hr_obs_space(obs_space: gym.Space) -> gym.Space:
     """Removes rgb observation space from the observation space."""
     if not isinstance(obs_space, gym.spaces.Dict):
         return obs_space
@@ -310,3 +311,24 @@ def remove_rgb_obs_space(obs_space: gym.Space) -> gym.Space:
         # unwrap dictionary structure
         return next(iter(new_obs_space.values()))
     return new_obs_space
+
+
+def remove_hr_obs(
+    obs: Union[np.ndarray, Dict[str, np.ndarray]],
+) -> Union[np.ndarray, Dict[str, np.ndarray]]:
+    """Removes rgb observation from the observation."""
+    if not isinstance(obs, dict):
+        return obs
+    if HR_OBS_KEY not in obs:
+        return obs
+    if len(obs) == 1:
+        raise ValueError(
+            "Only human readable observation exists, can't remove it",
+        )
+    # keeps the original observation unchanged in case it is used elsewhere.
+    new_obs = obs.copy()
+    del new_obs[HR_OBS_KEY]
+    if len(new_obs) == 1:
+        # unwrap dictionary structure
+        return next(iter(new_obs.values()))  # type: ignore[return-value]
+    return new_obs

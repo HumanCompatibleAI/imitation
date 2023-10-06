@@ -13,8 +13,14 @@ from stable_baselines3.common import torch_layers, vec_env
 from imitation.algorithms import bc, dagger
 from imitation.data import wrappers as data_wrappers
 from imitation.policies import interactive
-from imitation.policies import wrappers as policy_wrappers
+from imitation.policies import obs_filter_wrapper
 from imitation.policies import base as policy_base
+
+
+def lr_schedule(_: float):
+    # Set lr_schedule to max value to force error if policy.optimizer
+    # is used by mistake (should use self.optimizer instead).
+    return th.finfo(th.float32).max
 
 
 if __name__ == "__main__":
@@ -29,12 +35,11 @@ if __name__ == "__main__":
     policy = policy_base.FeedForward32Policy(
         observation_space=env.observation_space,
         action_space=env.action_space,
-        # Set lr_schedule to max value to force error if policy.optimizer
-        # is used by mistake (should use self.optimizer instead).
-        lr_schedule=lambda _: th.finfo(th.float32).max,
+        lr_schedule=lr_schedule,
         features_extractor_class=torch_layers.FlattenExtractor,
     )
-    wrapped_policy = policy_wrappers.ExcludeHRWrapper(policy)
+    wrapped_policy = obs_filter_wrapper.RemoveHR(policy, lr_schedule=lr_schedule)
+    print(wrapped_policy.net_arch)
 
     bc_trainer = bc.BC(
         observation_space=env.observation_space,
@@ -52,7 +57,7 @@ if __name__ == "__main__":
             rng=rng,
         )
         dagger_trainer.train(
-            total_timesteps=20,
+            total_timesteps=1,
             rollout_round_min_episodes=1,
-            rollout_round_min_timesteps=10,
+            rollout_round_min_timesteps=1,
         )
