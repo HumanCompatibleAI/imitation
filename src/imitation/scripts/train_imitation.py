@@ -3,7 +3,7 @@
 import logging
 import os.path as osp
 import pathlib
-from typing import Any, Dict, Mapping, Optional, Sequence, Type, cast
+from typing import Any, Dict, Mapping, Optional, Sequence, cast
 
 import numpy as np
 from sacred.observers import FileStorageObserver
@@ -15,7 +15,7 @@ from imitation.scripts.config.train_imitation import train_imitation_ex
 from imitation.scripts.ingredients import bc as bc_ingredient
 from imitation.scripts.ingredients import demonstrations, environment, expert
 from imitation.scripts.ingredients import logging as logging_ingredient
-from imitation.scripts.ingredients import policy_evaluation, reward
+from imitation.scripts.ingredients import policy_evaluation
 from imitation.util import util
 
 logger = logging.getLogger(__name__)
