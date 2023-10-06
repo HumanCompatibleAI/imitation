@@ -103,7 +103,7 @@ class RemoveHR(Base):
 def _remove_hr_obs(
     obs: Union[np.ndarray, Dict[str, np.ndarray]],
 ) -> Union[np.ndarray, Dict[str, np.ndarray]]:
-    """Removes rgb observation from the observation."""
+    """Removes the human readable observation if any."""
     if not isinstance(obs, dict):
         return obs
     if data_wrappers.HR_OBS_KEY not in obs:
