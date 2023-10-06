@@ -961,11 +961,12 @@ class PreferenceGatherer(abc.ABC):
         # pass in a seed in training scripts (without worrying about whether
         # the PreferenceGatherer we use needs one).
         del rng
+        self.querent = PreferenceQuerent()
         self.logger = custom_logger or imit_logger.configure()
         self.pending_queries: Dict = {}
 
     @abc.abstractmethod
-    def __call__(self) -> Tuple[Sequence[TrajectoryWithRewPair], np.ndarray]:
+    def gather(self) -> Tuple[Sequence[TrajectoryWithRewPair], np.ndarray]:
         """Gathers the probabilities that fragment 1 is preferred in `queries`.
 
         Returns:
@@ -980,7 +981,11 @@ class PreferenceGatherer(abc.ABC):
             probabilities.
         """  # noqa: DAR202
 
-    def add(self, new_queries: Dict[str, TrajectoryWithRewPair]) -> None:
+    def query(self, queries: Sequence[TrajectoryWithRewPair]) -> None:
+        identified_queries = self.querent(queries)
+        self._add(identified_queries)
+
+    def _add(self, new_queries: Dict[str, TrajectoryWithRewPair]) -> None:
         """Adds queries to pending queries.
 
         Args:
@@ -1036,7 +1041,7 @@ class SyntheticGatherer(PreferenceGatherer):
         if self.sample and self.rng is None:
             raise ValueError("If `sample` is True, then `rng` must be provided.")
 
-    def __call__(self) -> Tuple[Sequence[TrajectoryWithRewPair], np.ndarray]:
+    def gather(self) -> Tuple[Sequence[TrajectoryWithRewPair], np.ndarray]:
         """Computes probability fragment 1 is preferred over fragment 2."""
         returns1, returns2 = self._reward_sums(self.pending_queries.values())
 
@@ -1111,7 +1116,7 @@ class SynchronousHumanGatherer(PreferenceGatherer):
         self.video_height = video_height
         self.frames_per_second = frames_per_second
 
-    def __call__(self) -> Tuple[Sequence[TrajectoryWithRewPair], np.ndarray]:
+    def gather(self) -> Tuple[Sequence[TrajectoryWithRewPair], np.ndarray]:
         """Displays each pair of fragments and asks for a preference.
 
         It iteratively requests user feedback for each pair of fragments. If in the
@@ -1314,11 +1319,12 @@ class PrefCollectGatherer(PreferenceGatherer):
             custom_logger: Where to log to; if None (default), creates a new logger.
         """
         super().__init__(rng, custom_logger)
+        self.querent = PrefCollectQuerent(pref_collect_address, "videos")
         self.query_endpoint = pref_collect_address + "/preferences/query/"
         self.pending_queries = {}
         self.wait_for_user = wait_for_user
 
-    def __call__(self) -> Tuple[Sequence[TrajectoryWithRewPair], np.ndarray]:
+    def gather(self) -> Tuple[Sequence[TrajectoryWithRewPair], np.ndarray]:
 
         # TODO: create user-independent (automated) waiting policy
         if self.wait_for_user:
@@ -1940,7 +1946,6 @@ class PreferenceComparisons(base.BaseImitationAlgorithm):
         reward_model: reward_nets.RewardNet,
         num_iterations: int,
         fragmenter: Optional[Fragmenter] = None,
-        preference_querent: Optional[PreferenceQuerent] = None,
         preference_gatherer: Optional[PreferenceGatherer] = None,
         reward_trainer: Optional[RewardTrainer] = None,
         comparison_queue_size: Optional[int] = None,
@@ -1969,7 +1974,6 @@ class PreferenceComparisons(base.BaseImitationAlgorithm):
                 for which preferences will be gathered. These fragments could be random,
                 or they could be selected more deliberately (active learning).
                 Default is a random fragmenter.
-            preference_querent: queries preferences between trajectory fragments.
             preference_gatherer: gathers preferences between trajectory fragments.
                 Default (and currently the only option) is to use synthetic preferences
                 based on ground-truth rewards. Human preferences could be implemented
@@ -2038,7 +2042,6 @@ class PreferenceComparisons(base.BaseImitationAlgorithm):
 
         # are any of the optional args that require a rng None?
         has_any_rng_args_none = None in (
-            preference_querent,
             preference_gatherer,
             fragmenter,
             reward_trainer,
@@ -2048,14 +2051,14 @@ class PreferenceComparisons(base.BaseImitationAlgorithm):
         if self.rng is None and has_any_rng_args_none:
             raise ValueError(
                 "If you don't provide a random state, you must provide your own "
-                "seeded fragmenter, preference gatherer, preference querent, "
+                "seeded fragmenter, preference gatherer, "
                 "and reward_trainer. "
                 "You can initialize a random state with `np.random.default_rng(seed)`.",
             )
         elif self.rng is not None and not has_any_rng_args_none:
             raise ValueError(
                 "If you provide your own fragmenter, preference gatherer, "
-                "preference querent, and reward trainer, "
+                "and reward trainer, "
                 "you don't need to provide a random state.",
             )
 
@@ -2086,13 +2089,6 @@ class PreferenceComparisons(base.BaseImitationAlgorithm):
                 rng=self.rng,
             )
         self.fragmenter.logger = self.logger
-        if preference_querent:
-            self.preference_querent = preference_querent
-        else:
-            assert self.rng is not None
-            self.preference_querent = PreferenceQuerent(
-                custom_logger=self.logger,
-            )
         if preference_gatherer:
             self.preference_gatherer = preference_gatherer
         else:
@@ -2172,13 +2168,12 @@ class PreferenceComparisons(base.BaseImitationAlgorithm):
 
             queries = self.fragmenter(trajectories, self.fragment_length, num_queries)
 
-            identified_queries = self.preference_querent(queries)
-            self.preference_gatherer.add(identified_queries)
+            self.preference_gatherer.query(queries)
 
             with self.logger.accumulate_means("preferences"):
                 self.logger.log("Gathering preferences")
                 # Gather fragment pairs for which preferences have been provided
-                queries, preferences = self.preference_gatherer()
+                queries, preferences = self.preference_gatherer.gather()
 
             # Free up RAM or disk space from keeping rendered images
             remove_rendered_images(trajectories)

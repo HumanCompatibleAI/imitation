@@ -1242,26 +1242,26 @@ def test_sends_put_request_for_each_query(requests_mock):
 class ConcretePreferenceGatherer(PreferenceGatherer):
     """A concrete preference gatherer for unit testing purposes only."""
 
-    def __call__(self) -> Tuple[Sequence[TrajectoryWithRewPair], np.ndarray]:
+    def gather(self) -> Tuple[Sequence[TrajectoryWithRewPair], np.ndarray]:
         pass
 
 
 def test_adds_queries_to_pending_queries():
     gatherer = ConcretePreferenceGatherer()
-    query_id = "id"
-    queries = {query_id: Mock()}
+    query = Mock()
+    queries = [query]
 
-    gatherer.add(new_queries=queries)
-    assert query_id in list(gatherer.pending_queries.keys())
+    gatherer.query(queries)
+    assert query in list(gatherer.pending_queries.values())
 
 
 def test_clears_pending_queries(trajectory_with_rew):
     gatherer = SyntheticGatherer(sample=False)
 
-    queries = {"id": (trajectory_with_rew, trajectory_with_rew)}
-    gatherer.add(new_queries=queries)
+    queries = [(trajectory_with_rew, trajectory_with_rew)]
+    gatherer.query(queries)
 
-    gatherer()
+    gatherer.gather()
 
     assert len(gatherer.pending_queries) == 0
 
