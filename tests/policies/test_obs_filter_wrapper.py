@@ -5,8 +5,8 @@ import numpy as np
 from stable_baselines3.common import torch_layers
 
 from imitation.data.wrappers import HumanReadableWrapper
-from imitation.policies.obs_filter_wrapper import RemoveHR
 from imitation.policies import base as policy_base
+from imitation.policies.obs_update_wrapper import RemoveHR
 
 
 def test_remove_hr():

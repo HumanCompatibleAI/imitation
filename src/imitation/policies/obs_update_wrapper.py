@@ -1,7 +1,7 @@
-"""Class to filter human readable observation for the policy to use."""
+"""Updates observation for the policy to use."""
 
 import abc
-from typing import Dict, Union, Tuple
+from typing import Dict, Tuple, Union
 
 import numpy as np
 import torch as th
@@ -12,9 +12,22 @@ from imitation.data import wrappers as data_wrappers
 
 
 class Base(ActorCriticPolicy, abc.ABC):
+    """Updates the observation for the policy to use."""
+
     def __init__(self, policy: ActorCriticPolicy, lr_schedule: Schedule):
-        full_std = policy.dist_kwargs["use_sde"] if policy.use_sde else True
-        use_expln = policy.dist_kwargs["use_expln"] if policy.use_sde else False
+        """Builds the wrapper base and initializes the policy.
+
+        Args:
+            policy: The policy to wrap.
+            lr_schedule: The learning rate schedule.
+        """
+        if policy.use_sde:
+            assert policy.dist_kwargs is not None
+            full_std = policy.dist_kwargs["use_sde"]
+            use_expln = policy.dist_kwargs["use_expln"]
+        else:
+            full_std = True
+            use_expln = False
         super().__init__(
             observation_space=policy.observation_space,
             action_space=policy.action_space,
@@ -36,39 +49,53 @@ class Base(ActorCriticPolicy, abc.ABC):
         )
 
     @abc.abstractmethod
-    def _ob_filter(
+    def _update_ob(
         self,
         obs: Union[np.ndarray, Dict[str, np.ndarray]],
     ) -> Union[np.ndarray, Dict[str, np.ndarray]]:
-        """Filters observation for the policy to use."""
+        """Updates the observation for the policy to use."""
 
     def _predict(
-        self, observation: th.Tensor, deterministic: bool = False
+        self,
+        observation: th.Tensor,
+        deterministic: bool = False,
     ) -> th.Tensor:
+        """Gets the action according to the policy for a given observation."""
         return super()._predict(observation, deterministic)
 
     def is_vectorized_observation(
-        self, observation: Union[np.ndarray, Dict[str, np.ndarray]]
+        self,
+        observation: Union[np.ndarray, Dict[str, np.ndarray]],
     ) -> bool:
-        observation = self._ob_filter(observation)
+        """Checks whether or not the observation is vectorized."""
+        observation = self._update_ob(observation)
         return super().is_vectorized_observation(observation)
 
     def obs_to_tensor(
-        self, observation: Union[np.ndarray, Dict[str, np.ndarray]]
+        self,
+        observation: Union[np.ndarray, Dict[str, np.ndarray]],
     ) -> Tuple[th.Tensor, bool]:
-        observation = self._ob_filter(observation)
+        """Converts an observation to a PyTorch tensor that can be fed to a model."""
+        observation = self._update_ob(observation)
         return super().obs_to_tensor(observation)
 
 
 class RemoveHR(Base):
-    """Removes human readable observation for the policy."""
+    """Removes human readable observation for the policy to use."""
 
     def __init__(self, policy: ActorCriticPolicy, lr_schedule: Schedule):
+        """Builds the wrapper that removes human readable observation for the policy.
+
+        Args:
+            policy: The policy to wrap.
+            lr_schedule: The learning rate schedule.
+        """
         super().__init__(policy, lr_schedule)
 
-    def _ob_filter(
+    def _update_ob(
         self,
         obs: Union[np.ndarray, Dict[str, np.ndarray]],
     ) -> Union[np.ndarray, Dict[str, np.ndarray]]:
+        """Removes the human readable observation if any."""
         obs = data_wrappers.remove_hr_obs(obs)
         return obs

@@ -15,14 +15,12 @@ from typing import Any, Callable, Dict, List, Mapping, Optional, Sequence, Tuple
 
 import numpy as np
 import torch as th
-from gymnasium import spaces
 from stable_baselines3.common import policies, utils, vec_env
-from stable_baselines3.common.type_aliases import GymEnv
 from stable_baselines3.common.vec_env.base_vec_env import VecEnvStepReturn
 from torch.utils import data as th_data
 
 from imitation.algorithms import base, bc
-from imitation.data import rollout, serialize, types, wrappers
+from imitation.data import rollout, serialize, types
 from imitation.util import logger as imit_logger
 from imitation.util import util
 

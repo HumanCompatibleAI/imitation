@@ -12,9 +12,8 @@ from stable_baselines3.common import torch_layers, vec_env
 
 from imitation.algorithms import bc, dagger
 from imitation.data import wrappers as data_wrappers
+from imitation.policies import base as policy_base, obs_update_wrapper
 from imitation.policies import interactive
-from imitation.policies import obs_filter_wrapper
-from imitation.policies import base as policy_base
 
 
 def lr_schedule(_: float):
@@ -38,7 +37,7 @@ if __name__ == "__main__":
         lr_schedule=lr_schedule,
         features_extractor_class=torch_layers.FlattenExtractor,
     )
-    wrapped_policy = obs_filter_wrapper.RemoveHR(policy, lr_schedule=lr_schedule)
+    wrapped_policy = obs_update_wrapper.RemoveHR(policy, lr_schedule=lr_schedule)
     print(wrapped_policy.net_arch)
 
     bc_trainer = bc.BC(
