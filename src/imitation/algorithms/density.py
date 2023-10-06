@@ -134,9 +134,9 @@ class DensityAlgorithm(base.DemonstrationAlgorithm):
 
     def _get_demo_from_batch(
         self,
-        obs_b: np.ndarray,
+        obs_b: types.Observation,
         act_b: np.ndarray,
-        next_obs_b: Optional[np.ndarray],
+        next_obs_b: Optional[types.Observation],
     ) -> Dict[Optional[int], List[np.ndarray]]:
         if next_obs_b is None and self.density_type == DensityType.STATE_STATE_DENSITY:
             raise ValueError(
@@ -145,11 +145,18 @@ class DensityAlgorithm(base.DemonstrationAlgorithm):
             )
 
         assert act_b.shape[1:] == self.venv.action_space.shape
-        assert obs_b.shape[1:] == self.venv.observation_space.shape
+        ob_space = self.venv.observation_space
+        if isinstance(obs_b, types.DictObs):
+            exp_shape = {
+                k: v.shape for k, v in ob_space.items()  # type: ignore[attr-defined]
+            }
+            obs_shape = {k: v.shape[1:] for k, v in obs_b.items()}
+            assert exp_shape == obs_shape, f"Expected {exp_shape}, got {obs_shape}"
+        else:
+            assert obs_b.shape[1:] == ob_space.shape
         assert len(act_b) == len(obs_b)
         if next_obs_b is not None:
-            assert next_obs_b.shape[1:] == self.venv.observation_space.shape
-            assert len(next_obs_b) == len(obs_b)
+            assert next_obs_b.shape == obs_b.shape
 
         if next_obs_b is not None:
             next_obs_b_iterator: Iterable = next_obs_b
@@ -200,14 +207,17 @@ class DensityAlgorithm(base.DemonstrationAlgorithm):
                 # analogous to cast above.
                 demonstrations = cast(Iterable[types.TransitionMapping], demonstrations)
 
+                def to_np_maybe_dictobs(x):
+                    if isinstance(x, types.DictObs):
+                        return x
+                    else:
+                        return util.safe_to_numpy(x, warn=True)
+
                 for batch in demonstrations:
-                    transitions.update(
-                        self._get_demo_from_batch(
-                            util.safe_to_numpy(batch["obs"], warn=True),
-                            util.safe_to_numpy(batch["acts"], warn=True),
-                            util.safe_to_numpy(batch.get("next_obs"), warn=True),
-                        ),
-                    )
+                    obs = to_np_maybe_dictobs(batch["obs"])
+                    acts = util.safe_to_numpy(batch["acts"], warn=True)
+                    next_obs = to_np_maybe_dictobs(batch.get("next_obs"))
+                    transitions.update(self._get_demo_from_batch(obs, acts, next_obs))
             else:
                 raise TypeError(
                     f"Unsupported demonstration type {type(demonstrations)}",
@@ -253,65 +263,40 @@ class DensityAlgorithm(base.DemonstrationAlgorithm):
 
     def _preprocess_transition(
         self,
-        obs: np.ndarray,
+        obs: types.Observation,
         act: np.ndarray,
-        next_obs: Optional[np.ndarray],
+        next_obs: Optional[types.Observation],
     ) -> np.ndarray:
         """Compute flattened transition on subset specified by `self.density_type`."""
+        flattened_obs = space_utils.flatten(
+            self.venv.observation_space,
+            types.maybe_unwrap_dictobs(obs),
+        )
+        flattened_obs = _check_data_is_np_array(flattened_obs, "observation")
         if self.density_type == DensityType.STATE_DENSITY:
-            flat_observations = space_utils.flatten(self.venv.observation_space, obs)
-            if not isinstance(flat_observations, np.ndarray):
-                raise ValueError(
-                    "The density estimator only supports spaces that "
-                    "flatten to a numpy array but the observation space "
-                    f"flattens to {type(flat_observations)}",
-                )
-
-            return flat_observations
+            return flattened_obs
         elif self.density_type == DensityType.STATE_ACTION_DENSITY:
-            flat_observation = space_utils.flatten(self.venv.observation_space, obs)
-            flat_action = space_utils.flatten(self.venv.action_space, act)
-
-            if not isinstance(flat_observation, np.ndarray):
-                raise ValueError(
-                    "The density estimator only supports spaces that "
-                    "flatten to a numpy array but the observation space "
-                    f"flattens to {type(flat_observation)}",
-                )
-            if not isinstance(flat_action, np.ndarray):
-                raise ValueError(
-                    "The density estimator only supports spaces that "
-                    "flatten to a numpy array but the action space "
-                    f"flattens to {type(flat_action)}",
-                )
-
-            return np.concatenate([flat_observation, flat_action])
+            flattened_action = space_utils.flatten(self.venv.action_space, act)
+            flattened_action = _check_data_is_np_array(flattened_action, "action")
+            return np.concatenate([flattened_obs, flattened_action])
         elif self.density_type == DensityType.STATE_STATE_DENSITY:
             assert next_obs is not None
-            flat_observation = space_utils.flatten(self.venv.observation_space, obs)
-            flat_next_observation = space_utils.flatten(
+            flat_next_obs = space_utils.flatten(
                 self.venv.observation_space,
-                next_obs,
+                types.maybe_unwrap_dictobs(next_obs),
             )
+            flat_next_obs = _check_data_is_np_array(flat_next_obs, "observation")
+            assert type(flattened_obs) is type(flat_next_obs)
 
-            if not isinstance(flat_observation, np.ndarray):
-                raise ValueError(
-                    "The density estimator only supports spaces that "
-                    "flatten to a numpy array but the observation space "
-                    f"flattens to {type(flat_observation)}",
-                )
-
-            assert type(flat_observation) is type(flat_next_observation)
-
-            return np.concatenate([flat_observation, flat_next_observation])
+            return np.concatenate([flattened_obs, flat_next_obs])
         else:
             raise ValueError(f"Unknown density type {self.density_type}")
 
     def __call__(
         self,
-        state: np.ndarray,
+        state: types.Observation,
         action: np.ndarray,
-        next_state: np.ndarray,
+        next_state: types.Observation,
         done: np.ndarray,
         steps: Optional[np.ndarray] = None,
     ) -> np.ndarray:
@@ -347,6 +332,8 @@ class DensityAlgorithm(base.DemonstrationAlgorithm):
 
         rew_list = []
         assert len(state) == len(action) and len(state) == len(next_state)
+        state = types.maybe_wrap_in_dictobs(state)
+        next_state = types.maybe_wrap_in_dictobs(next_state)
         for idx, (obs, act, next_obs) in enumerate(zip(state, action, next_state)):
             flat_trans = self._preprocess_transition(obs, act, next_obs)
             assert self._scaler is not None
@@ -424,3 +411,13 @@ class DensityAlgorithm(base.DemonstrationAlgorithm):
         assert self.rl_algo is not None
         assert self.rl_algo.policy is not None
         return self.rl_algo.policy
+
+
+def _check_data_is_np_array(data: space_utils.FlatType, name: str) -> np.ndarray:
+    """Raises error if the flattened data is not a numpy array."""
+    assert isinstance(data, np.ndarray), (
+        "The density estimator only supports spaces that "
+        f"flatten to a numpy array but the {name} space "
+        f"flattens to {type(data)}",
+    )
+    return data

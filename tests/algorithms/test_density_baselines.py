@@ -1,12 +1,13 @@
 """Tests for `imitation.algorithms.density_baselines`."""
 
 from dataclasses import asdict
-from typing import Sequence
+from typing import Sequence, cast
 
+import gymnasium as gym
 import numpy as np
 import pytest
 import stable_baselines3
-from stable_baselines3.common import policies
+from stable_baselines3.common import policies, vec_env
 
 from imitation.algorithms.density import DensityAlgorithm, DensityType
 from imitation.data import rollout, types
@@ -31,7 +32,8 @@ def score_trajectories(
         dones = np.zeros(len(traj), dtype=bool)
         dones[-1] = True
         steps = np.arange(0, len(traj.acts))
-        rewards = density_reward(traj.obs[:-1], traj.acts, traj.obs[1:], dones, steps)
+        obs = types.assert_not_dictobs(traj.obs)
+        rewards = density_reward(obs[:-1], traj.acts, obs[1:], dones, steps)
         ret = np.sum(rewards)
         returns.append(ret)
     return returns
@@ -118,15 +120,7 @@ def test_density_with_other_trajectory_types(
     )
     rollouts = pendulum_expert_trajectories[:2]
     transitions = rollout.flatten_trajectories_with_rew(rollouts)
-    transitions_mappings = [
-        asdict(transitions),
-    ]
-
-    minimal_transitions = types.TransitionsMinimal(
-        obs=transitions.obs,
-        acts=transitions.acts,
-        infos=transitions.infos,
-    )
+    transitions_mappings = [cast(types.TransitionMapping, asdict(transitions))]
     d = DensityAlgorithm(
         demonstrations=transitions_mappings,
         venv=pendulum_venv,
@@ -137,6 +131,11 @@ def test_density_with_other_trajectory_types(
     d.train_policy(n_timesteps=2)
     d.test_policy(n_trajectories=2)
 
+    minimal_transitions = types.TransitionsMinimal(
+        obs=transitions.obs,
+        acts=transitions.acts,
+        infos=transitions.infos,
+    )
     d = DensityAlgorithm(
         demonstrations=minimal_transitions,
         venv=pendulum_venv,
@@ -169,3 +168,39 @@ def test_density_trainer_raises(
 
     with pytest.raises(TypeError, match="Unsupported demonstration type"):
         density_trainer.set_demonstrations("foo")  # type: ignore[arg-type]
+
+
+def test_dict_space(multi_obs_venv: vec_env.VecEnv):
+    # multi-input policy to accept dict observations
+    assert isinstance(multi_obs_venv.observation_space, gym.spaces.Dict)
+    rl_algo = stable_baselines3.PPO(
+        policies.MultiInputActorCriticPolicy,
+        multi_obs_venv,
+        n_steps=10,  # small value to make test faster
+        n_epochs=2,  # small value to make test faster
+    )
+    rng = np.random.default_rng()
+
+    # sample random transitions
+    sample_until = rollout.make_min_episodes(15)
+    rollouts = rollout.rollout(
+        policy=None,
+        venv=multi_obs_venv,
+        sample_until=sample_until,
+        rng=rng,
+    )
+    density_trainer = DensityAlgorithm(
+        demonstrations=rollouts,
+        kernel="gaussian",
+        venv=multi_obs_venv,
+        rl_algo=rl_algo,
+        kernel_bandwidth=0.2,
+        standardise_inputs=True,
+        rng=rng,
+        # SimpleMultiObsEnv has early stop (issue #40)
+        allow_variable_horizon=True,
+    )
+    # confirm that training works
+    density_trainer.train()
+    density_trainer.train_policy(n_timesteps=2)
+    density_trainer.test_policy(n_trajectories=2)
