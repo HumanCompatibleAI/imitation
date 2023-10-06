@@ -354,7 +354,7 @@ class BC(algo_base.DemonstrationAlgorithm):
             )
         self._policy = policy.to(utils.get_device(device))
         # TODO(adam): make policy mandatory and delete observation/action space params?
-        assert self.policy.observation_space == observation_space
+        assert self.policy.observation_space == self.observation_space
         assert self.policy.action_space == self.action_space
 
         if optimizer_kwargs:
@@ -492,11 +492,7 @@ class BC(algo_base.DemonstrationAlgorithm):
                 types.maybe_unwrap_dictobs(batch["obs"]),
             )
             acts = util.safe_to_tensor(batch["acts"], device=self.policy.device)
-            training_metrics = self.loss_calculator(
-                self.policy,
-                obs_tensor,
-                acts,
-            )
+            training_metrics = self.loss_calculator(self.policy, obs_tensor, acts)
 
             # Renormalise the loss to be averaged over the whole
             # batch size instead of the minibatch size.
