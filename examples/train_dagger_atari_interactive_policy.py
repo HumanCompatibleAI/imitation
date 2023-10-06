@@ -38,7 +38,6 @@ if __name__ == "__main__":
         features_extractor_class=torch_layers.FlattenExtractor,
     )
     wrapped_policy = obs_update_wrapper.RemoveHR(policy, lr_schedule=lr_schedule)
-    print(wrapped_policy.net_arch)
 
     bc_trainer = bc.BC(
         observation_space=env.observation_space,
