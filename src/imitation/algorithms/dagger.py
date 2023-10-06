@@ -306,26 +306,6 @@ class NeedsDemosException(Exception):
     """Signals demos need to be collected for current round before continuing."""
 
 
-def _check_for_correct_spaces_with_rgb_env(
-    env_might_with_rgb: GymEnv,
-    obs_space: spaces.Space,
-    action_space: spaces.Space,
-) -> None:
-    """Checks that whether an environment has the same spaces as provided ones."""
-    if isinstance(obs_space, spaces.Dict):
-        assert wrappers.HR_OBS_KEY not in obs_space.spaces
-    env_obs_space = wrappers.remove_rgb_obs_space(env_might_with_rgb.observation_space)
-    if obs_space != env_obs_space:
-        raise ValueError(
-            f"Observation spaces do not match: obs {obs_space} != env {env_obs_space}",
-        )
-    env_action_space = env_might_with_rgb.action_space
-    if action_space != env_action_space:
-        raise ValueError(
-            f"Action spaces do not match: obs {action_space} != env {env_action_space}",
-        )
-
-
 class DAggerTrainer(base.BaseImitationAlgorithm):
     """DAgger training class with low-level API suitable for interactive human feedback.
 
@@ -396,7 +376,7 @@ class DAggerTrainer(base.BaseImitationAlgorithm):
         self._all_demos = []
         self.rng = rng
 
-        _check_for_correct_spaces_with_rgb_env(
+        utils.check_for_correct_spaces(
             self.venv,
             bc_trainer.observation_space,
             bc_trainer.action_space,

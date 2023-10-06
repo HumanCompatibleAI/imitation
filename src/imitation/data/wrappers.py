@@ -3,7 +3,6 @@
 from typing import Dict, List, Optional, Sequence, Tuple, Union
 
 import gymnasium as gym
-import torch as th
 import numpy as np
 import numpy.typing as npt
 from gymnasium.core import Env
@@ -213,7 +212,7 @@ class RolloutInfoWrapper(gym.Wrapper):
         return obs, rew, terminated, truncated, info
 
 
-class HumanReadableWrapper(gym.Wrapper):
+class HumanReadableWrapper(gym.ObservationWrapper):
     """Adds human-readable observation to `obs` at every step."""
 
     def __init__(self, env: Env, original_obs_key: str = "ORI_OBS"):
@@ -235,30 +234,8 @@ class HumanReadableWrapper(gym.Wrapper):
             )
         self._original_obs_key = original_obs_key
         super().__init__(env)
-        self._update_obs_space()
 
-    def _update_obs_space(self):
-        # need to reset before render.
-        self.env.reset()
-        example_rgb_obs = self.env.render()
-        new_rgb_space = gym.spaces.Box(
-            low=0,
-            high=255,
-            shape=example_rgb_obs.shape,
-            dtype=np.uint8,
-        )
-        curr_sapce = self.observation_space
-        if isinstance(curr_sapce, gym.spaces.Dict):
-            curr_sapce.spaces[HR_OBS_KEY] = new_rgb_space
-        else:
-            self.observation_space = gym.spaces.Dict(
-                {
-                    HR_OBS_KEY: new_rgb_space,
-                    self._original_obs_key: curr_sapce,
-                },
-            )
-
-    def _add_hr_obs(
+    def observation(
         self,
         obs: Union[np.ndarray, Dict[str, np.ndarray]],
     ) -> Dict[str, np.ndarray]:
@@ -284,33 +261,6 @@ class HumanReadableWrapper(gym.Wrapper):
             raise KeyError(f"{HR_OBS_KEY!r} already exists in observation dict")
         obs[HR_OBS_KEY] = self.env.render()  # type: ignore[assignment]
         return obs
-
-    def reset(self, **kwargs):
-        obs, info = super().reset(**kwargs)
-        return self._add_hr_obs(obs), info
-
-    def step(self, action):
-        obs, rew, terminated, truncated, info = self.env.step(action)
-        return self._add_hr_obs(obs), rew, terminated, truncated, info
-
-
-def remove_hr_obs_space(obs_space: gym.Space) -> gym.Space:
-    """Removes rgb observation space from the observation space."""
-    if not isinstance(obs_space, gym.spaces.Dict):
-        return obs_space
-    if HR_OBS_KEY not in obs_space.spaces:
-        return obs_space
-    if len(obs_space.keys()) == 1:
-        raise ValueError(
-            "Only human readable observation space exists, can't remove it",
-        )
-    # keeps the original obs_space unchanged in case it is used elsewhere.
-    new_obs_space = gym.spaces.Dict(obs_space.spaces.copy())
-    del new_obs_space.spaces[HR_OBS_KEY]
-    if len(new_obs_space.spaces) == 1:
-        # unwrap dictionary structure
-        return next(iter(new_obs_space.values()))
-    return new_obs_space
 
 
 def remove_hr_obs(

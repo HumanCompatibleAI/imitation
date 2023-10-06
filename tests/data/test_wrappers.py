@@ -13,7 +13,6 @@ from imitation.data.wrappers import (
     BufferingWrapper,
     HumanReadableWrapper,
     remove_hr_obs,
-    remove_hr_obs_space,
 )
 
 
@@ -334,119 +333,26 @@ def _check_obs_or_space_equal(got, expected):
 def test_human_readable_wrapper(Env, original_obs_key):
     num_obs_key_expected = 2 if Env is _CountingEnv else 3
     origin_obs_key = original_obs_key if Env is _CountingEnv else "t"
-    env = HumanReadableWrapper(
-        Env(render_mode="rgb_array"),
+    ori_env = Env(render_mode="rgb_array")
+    hr_env = HumanReadableWrapper(
+        ori_env,
         original_obs_key=original_obs_key,
     )
-    expected_hr_space = gym.spaces.Box(
-        low=0,
-        high=255,
-        shape=(10,),
-        dtype=np.uint8,
-    )
-    if Env == _CountingEnv:
-        expected_obs_space = gym.spaces.Dict(
-            {
-                original_obs_key: gym.spaces.Box(low=0, high=np.inf, shape=()),
-                HR_OBS_KEY: expected_hr_space,
-            },
-        )
-    else:
-        expected_obs_space = gym.spaces.Dict(
-            {
-                "2t": gym.spaces.Box(low=0, high=np.inf, shape=()),
-                "t": gym.spaces.Box(low=0, high=np.inf, shape=()),
-                HR_OBS_KEY: expected_hr_space,
-            },
-        )
-    assert isinstance(env.observation_space, gym.spaces.Dict)
-    _check_obs_or_space_equal(env.observation_space, expected_obs_space)
+    _check_obs_or_space_equal(hr_env.observation_space, ori_env.observation_space)
 
-    obs, _ = env.reset()
+    obs, _ = hr_env.reset()
     assert isinstance(obs, Dict)
     assert HR_OBS_KEY in obs
     assert len(obs) == num_obs_key_expected
     assert obs[origin_obs_key] == 0
     _assert_equal_scrambled_vectors(obs[HR_OBS_KEY], np.array([1] * 10))
 
-    next_obs, *_ = env.step(env.action_space.sample())
+    next_obs, *_ = hr_env.step(hr_env.action_space.sample())
     assert isinstance(next_obs, Dict)
     assert HR_OBS_KEY in next_obs
     assert len(next_obs) == num_obs_key_expected
     assert next_obs[origin_obs_key] == 1
     _assert_equal_scrambled_vectors(next_obs[HR_OBS_KEY], np.array([2] * 10))
-
-
-@pytest.mark.parametrize(
-    ("testname", "obs_space", "expected_obs_space"),
-    [
-        (
-            "Box",
-            gym.spaces.Box(low=0, high=np.inf, shape=()),
-            gym.spaces.Box(low=0, high=np.inf, shape=()),
-        ),
-        (
-            "Dict with no rgb",
-            gym.spaces.Dict(
-                {
-                    "a": gym.spaces.Box(low=0, high=np.inf, shape=()),
-                },
-            ),
-            gym.spaces.Dict(
-                {
-                    "a": gym.spaces.Box(low=0, high=np.inf, shape=()),
-                },
-            ),
-        ),
-        (
-            "Dict rgb removed successfully and got unwrapped from dict",
-            gym.spaces.Dict(
-                {
-                    "a": gym.spaces.Box(low=0, high=np.inf, shape=()),
-                    HR_OBS_KEY: gym.spaces.Box(low=0, high=np.inf, shape=()),
-                },
-            ),
-            gym.spaces.Box(low=0, high=np.inf, shape=()),
-        ),
-        (
-            "Dict rgb removed successfully and got Dict",
-            gym.spaces.Dict(
-                {
-                    "a": gym.spaces.Box(low=0, high=np.inf, shape=()),
-                    "b": gym.spaces.Box(low=0, high=np.inf, shape=()),
-                    HR_OBS_KEY: gym.spaces.Box(low=0, high=np.inf, shape=()),
-                },
-            ),
-            gym.spaces.Dict(
-                {
-                    "a": gym.spaces.Box(low=0, high=np.inf, shape=()),
-                    "b": gym.spaces.Box(low=0, high=np.inf, shape=()),
-                },
-            ),
-        ),
-    ],
-)
-def test_remove_rgb_obs_space(testname, obs_space, expected_obs_space):
-    _check_obs_or_space_equal(remove_hr_obs_space(obs_space), expected_obs_space)
-
-
-def test_remove_rgb_obs_space_failure():
-    obs_space = gym.spaces.Dict(
-        {HR_OBS_KEY: gym.spaces.Box(low=0, high=np.inf, shape=())},
-    )
-    with pytest.raises(ValueError, match="Only human readable observation space*"):
-        remove_hr_obs_space(obs_space)
-
-
-def test_remove_rgb_obs_space_still_keep_origin_space_rgb():
-    obs_space = gym.spaces.Dict(
-        {
-            "a": gym.spaces.Box(low=0, high=np.inf, shape=()),
-            HR_OBS_KEY: gym.spaces.Box(low=0, high=np.inf, shape=()),
-        },
-    )
-    remove_hr_obs_space(obs_space)
-    assert HR_OBS_KEY in obs_space.spaces
 
 
 @pytest.mark.parametrize(
