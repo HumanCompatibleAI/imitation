@@ -52,7 +52,6 @@ class VideoWrapper(gym.Wrapper):
         self.video_recorder = None
         self.single_video = single_video
         self.delete_on_close = delete_on_close
-        self.current_video_path: Optional[pathlib.Path] = None
 
         self.directory = directory
         self.directory.mkdir(parents=True, exist_ok=True)
@@ -77,7 +76,6 @@ class VideoWrapper(gym.Wrapper):
                 base_path=str(self.directory / f"video.{self.episode_id:06}"),
                 metadata={"episode_id": self.episode_id},
             )
-            self.current_video_path = pathlib.Path(self.video_recorder.path)
 
     def reset(
         self,
