@@ -95,7 +95,11 @@ def eval_policy(
     log_dir = logging_ingredient.make_log_dir()
     sample_until = rollout.make_sample_until(eval_n_timesteps, eval_n_episodes)
     post_wrappers = [video_wrapper_factory(log_dir, **video_kwargs)] if videos else None
-    with environment.make_venv(post_wrappers=post_wrappers) as venv:
+    render_mode = "rgb_array" if videos else None
+    with environment.make_venv(
+        post_wrappers=post_wrappers,
+        env_make_kwargs=dict(render_mode=render_mode),
+    ) as venv:
         if render:
             venv = InteractiveRender(venv, render_fps)
 
