@@ -100,7 +100,7 @@ def train_rl(
 
     post_wrappers = [lambda env, idx: wrappers.RolloutInfoWrapper(env)]
     with environment.make_venv(  # type: ignore[wrong-keyword-args]
-        post_wrappers=post_wrappers
+        post_wrappers=post_wrappers,
     ) as venv:
         callback_objs = []
         if reward_type is not None:
