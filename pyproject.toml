@@ -14,3 +14,12 @@ build-backend = "setuptools.build_meta"
 
 [tool.black]
 target-version = ["py38"]
+
+[tool.pytype]
+inputs = [
+  "src/",
+  "tests/",
+  "experiments/",
+  "setup.py"
+]
+python_version = "3.8"
