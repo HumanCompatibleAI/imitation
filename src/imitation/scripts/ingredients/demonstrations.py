@@ -146,7 +146,7 @@ def _generate_expert_trajs(
     with environment.make_rollout_venv() as env:  # type: ignore[wrong-arg-count]
         return rollout.rollout(
             expert.get_expert_policy(env),
-            rollout_env,
+            env,
             rollout.make_sample_until(min_episodes=n_expert_demos),
             rng=_rnd,
         )
