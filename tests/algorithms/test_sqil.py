@@ -246,18 +246,22 @@ def test_sqil_performance_continuous(
     pendulum_single_venv: vec_env.VecEnv,
     rl_algo_class: Type[off_policy_algorithm.OffPolicyAlgorithm],
 ):
+    rl_kwargs = dict(
+        learning_starts=500,
+        learning_rate=0.001,
+        gamma=0.95,
+        seed=42,
+    )
+    if rl_algo_class == ddpg.DDPG:
+        rl_kwargs["gamma"] = 0.99
+        rl_kwargs["learning_starts"] = 100
     _test_sqil_performance(
         rng,
         pytestconfig,
         pendulum_single_venv,
         "Pendulum-v1",
         rl_algo_class=rl_algo_class,
-        rl_kwargs=dict(
-            learning_starts=500,
-            learning_rate=0.001,
-            gamma=0.95,
-            seed=42,
-        ),
+        rl_kwargs=rl_kwargs,
     )
 
 

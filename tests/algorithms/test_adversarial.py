@@ -393,9 +393,9 @@ def test_logits_expert_is_high_log_policy_act_prob(
     )
 
     obs, acts, next_obs, dones = trainer_diverse_env.reward_train.preprocess(
-        trans.obs,
+        types.assert_not_dictobs(trans.obs),
         trans.acts,
-        trans.next_obs,
+        types.assert_not_dictobs(trans.next_obs),
         trans.dones,
     )
     log_act_prob_non_none = np.log(0.1 + 0.9 * np.random.rand(n_timesteps))

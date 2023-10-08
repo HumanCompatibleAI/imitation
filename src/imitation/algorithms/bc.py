@@ -9,6 +9,7 @@ import itertools
 from typing import (
     Any,
     Callable,
+    Dict,
     Iterable,
     Iterator,
     Mapping,
@@ -22,7 +23,7 @@ import gymnasium as gym
 import numpy as np
 import torch as th
 import tqdm
-from stable_baselines3.common import policies, utils, vec_env
+from stable_baselines3.common import policies, torch_layers, utils, vec_env
 
 from imitation.algorithms import base as algo_base
 from imitation.data import rollout, types
@@ -99,7 +100,12 @@ class BehaviorCloningLossCalculator:
     def __call__(
         self,
         policy: policies.ActorCriticPolicy,
-        obs: Union[th.Tensor, np.ndarray],
+        obs: Union[
+            types.AnyTensor,
+            types.DictObs,
+            Dict[str, np.ndarray],
+            Dict[str, th.Tensor],
+        ],
         acts: Union[th.Tensor, np.ndarray],
     ) -> BCTrainingMetrics:
         """Calculate the supervised learning loss used to train the behavioral clone.
@@ -113,9 +119,18 @@ class BehaviorCloningLossCalculator:
             A BCTrainingMetrics object with the loss and all the components it
             consists of.
         """
-        obs = util.safe_to_tensor(obs)
+        tensor_obs = types.map_maybe_dict(
+            util.safe_to_tensor,
+            types.maybe_unwrap_dictobs(obs),
+        )
         acts = util.safe_to_tensor(acts)
-        _, log_prob, entropy = policy.evaluate_actions(obs, acts)
+
+        # policy.evaluate_actions's type signatures are incorrect.
+        # See https://github.com/DLR-RM/stable-baselines3/issues/1679
+        (_, log_prob, entropy) = policy.evaluate_actions(
+            tensor_obs,  # type: ignore[arg-type]
+            acts,
+        )
         prob_true_act = th.exp(log_prob).mean()
         log_prob = log_prob.mean()
         entropy = entropy.mean() if entropy is not None else None
@@ -324,12 +339,18 @@ class BC(algo_base.DemonstrationAlgorithm):
         self.rng = rng
 
         if policy is None:
+            extractor = (
+                torch_layers.CombinedExtractor
+                if isinstance(observation_space, gym.spaces.Dict)
+                else torch_layers.FlattenExtractor
+            )
             policy = policy_base.FeedForward32Policy(
                 observation_space=observation_space,
                 action_space=action_space,
                 # Set lr_schedule to max value to force error if policy.optimizer
                 # is used by mistake (should use self.optimizer instead).
                 lr_schedule=lambda _: th.finfo(th.float32).max,
+                features_extractor_class=extractor,
             )
         self._policy = policy.to(utils.get_device(device))
         # TODO(adam): make policy mandatory and delete observation/action space params?
@@ -464,9 +485,14 @@ class BC(algo_base.DemonstrationAlgorithm):
             minibatch_size,
             num_samples_so_far,
         ), batch in batches_with_stats:
-            obs = th.as_tensor(batch["obs"], device=self.policy.device).detach()
-            acts = th.as_tensor(batch["acts"], device=self.policy.device).detach()
-            training_metrics = self.loss_calculator(self.policy, obs, acts)
+            obs_tensor: Union[th.Tensor, Dict[str, th.Tensor]]
+            # unwraps the observation if it's a dictobs and converts arrays to tensors
+            obs_tensor = types.map_maybe_dict(
+                lambda x: util.safe_to_tensor(x, device=self.policy.device),
+                types.maybe_unwrap_dictobs(batch["obs"]),
+            )
+            acts = util.safe_to_tensor(batch["acts"], device=self.policy.device)
+            training_metrics = self.loss_calculator(self.policy, obs_tensor, acts)
 
             # Renormalise the loss to be averaged over the whole
             # batch size instead of the minibatch size.

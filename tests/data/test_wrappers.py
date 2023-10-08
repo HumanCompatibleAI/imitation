@@ -1,6 +1,6 @@
 """Tests for `imitation.data.wrappers`."""
 
-from typing import List, Sequence
+from typing import List, Sequence, Type
 
 import gymnasium as gym
 import numpy as np
@@ -48,10 +48,40 @@ class _CountingEnv(gym.Env):  # pragma: no cover
         return t, t * 10, done, False, {}
 
 
+class _CountingDictEnv(_CountingEnv):  # pragma: no cover
+    """Similar to _CountingEnv, but with Dict observation."""
+
+    def __init__(self, episode_length=5):
+        super().__init__(episode_length)
+        self.observation_space = gym.spaces.Dict(
+            spaces={"t": gym.spaces.Box(low=0, high=np.inf, shape=())},
+        )
+
+    def reset(self, seed=None):
+        t, self.timestep = 0.0, 1.0
+        return {"t": t}, {}
+
+    def step(self, action):
+        if self.timestep is None:
+            raise RuntimeError("Need to reset before first step().")
+        if self.timestep > self.episode_length:
+            raise RuntimeError("Episode is over. Need to step().")
+        if np.array(action) not in self.action_space:
+            raise ValueError(f"Invalid action {action}")
+
+        t, self.timestep = self.timestep, self.timestep + 1
+        done = t == self.episode_length
+        return {"t": t}, t * 10, done, False, {}
+
+
+Envs = [_CountingEnv, _CountingDictEnv]
+
+
 def _make_buffering_venv(
+    Env: Type[gym.Env],
     error_on_premature_reset: bool,
 ) -> BufferingWrapper:
-    venv = DummyVecEnv([_CountingEnv] * 2)
+    venv = DummyVecEnv([Env] * 2)
     wrapped_venv = BufferingWrapper(venv, error_on_premature_reset)
     wrapped_venv.reset()
     return wrapped_venv
@@ -86,10 +116,12 @@ def _join_transitions(
     )
 
 
+@pytest.mark.parametrize("Env", Envs)
 @pytest.mark.parametrize("episode_lengths", [(1,), (6, 5, 1, 2), (2, 2)])
 @pytest.mark.parametrize("n_steps", [1, 2, 20, 21])
 @pytest.mark.parametrize("extra_pop_timesteps", [(), (1,), (4, 8)])
 def test_pop(
+    Env: Type[gym.Env],
     episode_lengths: Sequence[int],
     n_steps: int,
     extra_pop_timesteps: Sequence[int],
@@ -119,6 +151,7 @@ def test_pop(
     ```
 
     Args:
+        Env: Environment class type.
         episode_lengths: The number of timesteps before episode end in each dummy
             environment.
         n_steps: Number of times to call `step()` on the dummy environment.
@@ -141,7 +174,7 @@ def test_pop(
             pytest.skip("pop timesteps out of bounds for this test case")
 
     def make_env(ep_len):
-        return lambda: _CountingEnv(episode_length=ep_len)
+        return lambda: Env(episode_length=ep_len)
 
     venv = DummyVecEnv([make_env(ep_len) for ep_len in episode_lengths])
     venv_buffer = BufferingWrapper(venv)
@@ -153,10 +186,13 @@ def test_pop(
 
     # Initial observation (only matters for pop_transitions()).
     obs = venv_buffer.reset()
-    np.testing.assert_array_equal(obs, [0] * venv.num_envs)
+    if Env == _CountingEnv:
+        np.testing.assert_array_equal(obs, [0] * venv.num_envs)
+    else:
+        np.testing.assert_array_equal(obs["t"], [0] * venv.num_envs)
 
     for t in range(1, n_steps + 1):
-        acts = obs * 2.1
+        acts = obs * 2.1 if Env == _CountingEnv else obs["t"] * 2.1
         venv_buffer.step_async(acts)
         obs, *_ = venv_buffer.step_wait()
 
@@ -179,29 +215,35 @@ def test_pop(
 
     # Check `pop_transitions()`
     trans = _join_transitions(transitions_list)
-
-    _assert_equal_scrambled_vectors(trans.obs, expect_obs)
-    _assert_equal_scrambled_vectors(trans.next_obs, expect_next_obs)
+    if Env == _CountingEnv:
+        actual_obs = types.assert_not_dictobs(trans.obs)
+        actual_next_obs = types.assert_not_dictobs(trans.next_obs)
+    else:
+        actual_obs = types.DictObs.stack(trans.obs).get("t")
+        actual_next_obs = types.DictObs.stack(trans.next_obs).get("t")
+    _assert_equal_scrambled_vectors(actual_obs, expect_obs)
+    _assert_equal_scrambled_vectors(actual_next_obs, expect_next_obs)
     _assert_equal_scrambled_vectors(trans.acts, expect_acts)
     _assert_equal_scrambled_vectors(trans.rews, expect_rews)
 
 
-def test_reset_error():
+@pytest.mark.parametrize("Env", Envs)
+def test_reset_error(Env: Type[gym.Env]):
     # Resetting before a `step()` is okay.
     for flag in [True, False]:
-        venv = _make_buffering_venv(flag)
+        venv = _make_buffering_venv(Env, flag)
         for _ in range(10):
             venv.reset()
 
     # Resetting after a `step()` is not okay if error flag is True.
-    venv = _make_buffering_venv(True)
+    venv = _make_buffering_venv(Env, True)
     zeros = np.array([0.0, 0.0], dtype=venv.action_space.dtype)
     venv.step(zeros)
     with pytest.raises(RuntimeError, match="before samples were accessed"):
         venv.reset()
 
     # Same as previous case, but insert a `pop_transitions()` in between.
-    venv = _make_buffering_venv(True)
+    venv = _make_buffering_venv(Env, True)
     venv.step(zeros)
     venv.pop_transitions()
     venv.step(zeros)
@@ -209,20 +251,21 @@ def test_reset_error():
         venv.reset()
 
     # Resetting after a `step()` is ok if error flag is False.
-    venv = _make_buffering_venv(False)
+    venv = _make_buffering_venv(Env, False)
     venv.step(zeros)
     venv.reset()
 
     # Resetting after a `step()` is ok if transitions are first collected.
     for flag in [True, False]:
-        venv = _make_buffering_venv(flag)
+        venv = _make_buffering_venv(Env, flag)
         venv.step(zeros)
         venv.pop_transitions()
         venv.reset()
 
 
-def test_n_transitions_and_empty_error():
-    venv = _make_buffering_venv(True)
+@pytest.mark.parametrize("Env", Envs)
+def test_n_transitions_and_empty_error(Env: Type[gym.Env]):
+    venv = _make_buffering_venv(Env, True)
     trajs, ep_lens = venv.pop_trajectories()
     assert trajs == []
     assert ep_lens == []

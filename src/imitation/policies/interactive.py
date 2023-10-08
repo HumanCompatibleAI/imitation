@@ -2,7 +2,7 @@
 
 import abc
 import collections
-from typing import Optional, Union
+from typing import Dict, Optional, Union
 
 import gymnasium as gym
 import matplotlib.pyplot as plt
@@ -57,9 +57,15 @@ class DiscreteInteractivePolicy(base_policies.NonTrainablePolicy, abc.ABC):
         }
         self.clear_screen_on_query = clear_screen_on_query
 
-    def _choose_action(self, obs: np.ndarray) -> np.ndarray:
+    def _choose_action(
+        self,
+        obs: Union[np.ndarray, Dict[str, np.ndarray]],
+    ) -> np.ndarray:
         if self.clear_screen_on_query:
             util.clear_screen()
+
+        if isinstance(obs, dict):
+            raise ValueError("Dictionary observations are not supported here")
 
         context = self._render(obs)
         key = self._get_input_key()

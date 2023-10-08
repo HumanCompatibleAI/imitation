@@ -24,7 +24,7 @@ from imitation.util.util import tensor_iter_norm
 
 def rollouts(env, n=10, seed=None):
     rv = []
-    for i in range(n):
+    for _ in range(n):
         done = False
         # if a seed is given, then we use the same seed each time (should
         # give same trajectory each time)

@@ -41,7 +41,10 @@ def test_check_fixed_horizon_flag(custom_logger):
 
 
 def _make_and_iterate_loader(*args, **kwargs):
-    loader = base.make_data_loader(*args, **kwargs)
+    # our pytype version doesn't understand optional arguments in TypedDict
+    # this is fixed in 2023.04.11, but we require 2022.7.26
+    # See https://github.com/google/pytype/issues/1195
+    loader = base.make_data_loader(*args, **kwargs)  # pytype: disable=wrong-arg-types
     for batch in loader:
         pass
 

@@ -48,6 +48,7 @@ TESTS_REQUIRE = (
         "pytest~=7.1.2",
         "pytest-cov~=3.0.0",
         "pytest-notebook==0.8.0",
+        "pytest-timeout~=2.1.0",
         "pytest-xdist~=2.5.0",
         "scipy~=1.9.0",
         "wandb==0.12.21",
@@ -187,7 +188,7 @@ setup(
     #   encode only known incompatibilities here. This prevents nasty dependency issues
     #   for our users.
     install_requires=[
-        "gymnasium[classic-control]~=0.28.1",
+        "gymnasium[classic-control]~=0.29",
         "matplotlib",
         "numpy>=1.15",
         "torch>=1.4.0",
@@ -219,7 +220,7 @@ setup(
         "docs": DOCS_REQUIRE,
         "parallel": PARALLEL_REQUIRE,
         "mujoco": [
-            "gymnasium[classic-control,mujoco]~=0.28.1",
+            "gymnasium[classic-control,mujoco]~=0.29",
         ],
         "atari": ATARI_REQUIRE,
     },

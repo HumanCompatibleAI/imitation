@@ -7,7 +7,18 @@ Follows the description in chapters 9 and 10 of Brian Ziebart's `PhD thesis`_.
 """
 import collections
 import warnings
-from typing import Any, Iterable, List, Mapping, NoReturn, Optional, Tuple, Type, Union
+from typing import (
+    Any,
+    Dict,
+    Iterable,
+    List,
+    Mapping,
+    NoReturn,
+    Optional,
+    Tuple,
+    Type,
+    Union,
+)
 
 import gymnasium as gym
 import numpy as np
@@ -347,7 +358,7 @@ class MCEIRL(base.DemonstrationAlgorithm[types.TransitionsMinimal]):
         num_demos = 0
         for traj in trajs:
             cum_discount = 1.0
-            for obs in traj.obs:
+            for obs in types.assert_not_dictobs(traj.obs):
                 self.demo_state_om[obs] += cum_discount
                 cum_discount *= self.discount
             num_demos += 1
@@ -411,23 +422,32 @@ class MCEIRL(base.DemonstrationAlgorithm[types.TransitionsMinimal]):
 
         if isinstance(demonstrations, types.Transitions):
             self._set_demo_from_obs(
-                demonstrations.obs,
+                types.assert_not_dictobs(demonstrations.obs),
                 demonstrations.dones,
-                demonstrations.next_obs,
+                types.assert_not_dictobs(demonstrations.next_obs),
             )
         elif isinstance(demonstrations, types.TransitionsMinimal):
-            self._set_demo_from_obs(demonstrations.obs, None, None)
+            self._set_demo_from_obs(
+                types.assert_not_dictobs(demonstrations.obs),
+                None,
+                None,
+            )
         elif isinstance(demonstrations, Iterable):
             # Demonstrations are a Torch DataLoader or other Mapping iterable
             # Collect them together into one big NumPy array. This is inefficient,
             # we could compute the running statistics instead, but in practice do
             # not expect large dataset sizes together with MCE IRL.
-            collated_list = collections.defaultdict(list)
+            collated_list: Dict[
+                str,
+                List[types.AnyTensor],
+            ] = collections.defaultdict(list)
             for batch in demonstrations:
                 assert isinstance(batch, Mapping)
                 for k in ("obs", "dones", "next_obs"):
-                    if k in batch:
-                        collated_list[k].append(batch[k])
+                    x = batch.get(k)
+                    if x is not None:
+                        assert isinstance(x, (np.ndarray, th.Tensor))
+                        collated_list[k].append(x)
             collated = {k: np.concatenate(v) for k, v in collated_list.items()}
 
             assert "obs" in collated

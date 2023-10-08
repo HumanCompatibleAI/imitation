@@ -22,7 +22,11 @@ SPACES = [
     gym.spaces.Box(-1, 1, shape=(2,)),
     gym.spaces.Box(-np.inf, np.inf, shape=(2,)),
 ]
-OBS_SPACES = SPACES
+DICT_SPACE = gym.spaces.Dict(
+    {"a": gym.spaces.Discrete(3), "b": gym.spaces.Box(-1, 1, shape=(2,))},
+)
+
+OBS_SPACES = SPACES + [DICT_SPACE]
 ACT_SPACES = SPACES
 LENGTHS = [0, 1, 2, 10]
 
@@ -42,7 +46,12 @@ def trajectory(
     """Fixture to generate trajectory of length `length` iid sampled from spaces."""
     if length == 0:
         pytest.skip()
-    obs = np.array([obs_space.sample() for _ in range(length + 1)])
+
+    raw_obs = [obs_space.sample() for _ in range(length + 1)]
+    if isinstance(obs_space, gym.spaces.Dict):
+        obs: types.Observation = types.DictObs.from_obs_list(raw_obs)
+    else:
+        obs = np.array(raw_obs)
     acts = np.array([act_space.sample() for _ in range(length)])
     infos = np.array([{f"key{i}": i} for i in range(length)])
     return types.Trajectory(obs=obs, acts=acts, infos=infos, terminal=True)
@@ -52,7 +61,10 @@ def trajectory(
 def trajectory_rew(trajectory: types.Trajectory) -> types.TrajectoryWithRew:
     """Like `trajectory` but with reward randomly sampled from a Gaussian."""
     rews = np.random.randn(len(trajectory))
-    return types.TrajectoryWithRew(**dataclasses.asdict(trajectory), rews=rews)
+    return types.TrajectoryWithRew(
+        **types.dataclass_quick_asdict(trajectory),
+        rews=rews,
+    )
 
 
 @pytest.fixture
@@ -77,7 +89,7 @@ def transitions(
     next_obs = np.array([obs_space.sample() for _ in range(length)])
     dones = np.zeros(length, dtype=bool)
     return types.Transitions(
-        **dataclasses.asdict(transitions_min),
+        **types.dataclass_quick_asdict(transitions_min),
         next_obs=next_obs,
         dones=dones,
     )
@@ -90,7 +102,10 @@ def transitions_rew(
 ) -> types.TransitionsWithRew:
     """Like `transitions` but with reward randomly sampled from a Gaussian."""
     rews = np.random.randn(length)
-    return types.TransitionsWithRew(**dataclasses.asdict(transitions), rews=rews)
+    return types.TransitionsWithRew(
+        **types.dataclass_quick_asdict(transitions),
+        rews=rews,
+    )
 
 
 def _check_transitions_get_item(trans, key):
@@ -179,20 +194,24 @@ class TestData:
             assert trajectory != types.Trajectory(
                 obs=trajectory.obs[: new_length + 1],
                 acts=trajectory.acts[:new_length],
-                infos=trajectory.obs[:new_length],
+                infos=trajectory.infos[:new_length]
+                if trajectory.infos is not None
+                else None,
                 terminal=trajectory.terminal,
             )
 
         # Or with contents changed
         for t in [trajectory, trajectory_rew]:
-            as_dict = dataclasses.asdict(t)
+            as_dict = types.dataclass_quick_asdict(t)
             for k in as_dict.keys():
                 perturbed = dict(as_dict)
                 if k == "infos":
                     perturbed["infos"] = [{"foo": 42}] * len(as_dict["infos"])
+                elif isinstance(as_dict[k], types.DictObs):
+                    perturbed[k] = as_dict[k].map_arrays(lambda x: x + 1)
                 else:
                     perturbed[k] = as_dict[k] + 1
-                assert trajectory != type(t)(**perturbed)
+                assert t != type(t)(**perturbed)
 
     @pytest.mark.parametrize("type_safe", [False, True])
     @pytest.mark.parametrize("use_pickle", [False, True])
@@ -208,6 +227,9 @@ class TestData:
         use_rewards,
         type_safe,
     ):
+        if isinstance(trajectory.obs, types.DictObs):
+            pytest.xfail("Saving/loading dictobs trajectories not yet supported")
+
         chdir_context: contextlib.AbstractContextManager
         """Check that trajectories are properly saved."""
         if use_chdir:
@@ -434,3 +456,66 @@ def test_parse_path():
     # Parse optional path. Works the same way but passes None down the line.
     assert util.parse_optional_path(None) is None
     assert util.parse_optional_path("/foo/bar") == util.parse_path("/foo/bar")
+
+
+def test_dict_obs():
+    A = np.random.rand(3, 4)
+    B = np.random.rand(3, 7, 1)
+    C = np.random.rand(4)
+
+    ab = types.DictObs({"a": A, "b": B})
+    abc = types.DictObs({"a": A, "b": B, "c": C})
+
+    # len
+    assert len(ab) == 3
+    with pytest.raises(RuntimeError):
+        len(abc)
+    with pytest.raises(RuntimeError):
+        len(types.DictObs({}))
+
+    assert abc.dict_len == 3
+
+    # slicing
+    np.testing.assert_equal(abc[0].get("a"), A[0])
+    np.testing.assert_equal(abc[0].get("c"), np.array(C[0]))
+    np.testing.assert_equal(abc[0:2].get("a"), np.array(A[0:2]))
+    np.testing.assert_equal(ab[:, 0].get("a"), np.array(A[:, 0]))
+    with pytest.raises(IndexError):
+        abc[:, 0]
+
+    # iter
+    for i, a_row in enumerate(A):
+        np.testing.assert_equal(a_row, ab[i].get("a"))
+    assert ab[0] == next(iter(ab))
+
+    # eq
+    assert abc == types.DictObs({"a": A, "b": B, "c": C})
+    assert abc == types.DictObs({"a": np.array(A), "b": np.array(B), "c": np.array(C)})
+    assert abc != types.DictObs({"a": A, "c": B, "b": C})  # diff keys
+    assert abc != types.DictObs({"a": A, "b": B + 1, "c": C})  # diff values
+    assert abc != {"a": A, "b": B + 1, "c": C}  # diff type
+    assert abc != ab  # diff keys
+
+    # shape / dtype
+    assert abc.shape == {"a": A.shape, "b": B.shape, "c": C.shape}
+    assert abc.dtype == {"a": A.dtype, "b": B.dtype, "c": C.dtype}
+
+    # wrap
+    assert types.maybe_wrap_in_dictobs({"a": A, "b": B, "c": C}) == abc
+    assert abc.unwrap() == {"a": A, "b": B, "c": C}
+
+    # map, stack, concat
+    assert abc.map_arrays(lambda arr: arr + 1) == types.DictObs(
+        {"a": A + 1, "b": B + 1, "c": C + 1},
+    )
+    assert types.DictObs.stack(list(iter(ab))) == ab
+    np.testing.assert_equal(
+        types.DictObs.concatenate([abc, abc]).get("a"),
+        np.concatenate([A, A]),
+    )
+
+    with pytest.raises(AssertionError):
+        types.assert_not_dictobs(abc)
+
+    with pytest.raises(TypeError):
+        types.DictObs({"a": "not an array"})  # type: ignore[wrong-arg-types]

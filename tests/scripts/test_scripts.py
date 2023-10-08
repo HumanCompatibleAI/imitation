@@ -853,6 +853,7 @@ PARALLEL_CONFIG_LOW_RESOURCE = {
 }
 
 
+@pytest.mark.skipif(sys.platform.startswith("win"), reason="Ray is buggy on windows.")
 @pytest.mark.parametrize("config_updates", PARALLEL_CONFIG_UPDATES)
 def test_parallel(config_updates, tmpdir):
     """Hyperparam tuning smoke test."""
