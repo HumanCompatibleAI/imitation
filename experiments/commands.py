@@ -124,7 +124,7 @@ def main(args: argparse.Namespace) -> None:
         else:
             cfg_path = os.path.join(args.remote_cfg_dir, cfg_file)
 
-        cfg_id = _get_cfg_id(cfg_path)
+        cfg_id = _get_cfg_id(cfg_file)
 
         for seed in args.seeds:
             cmd_id = _CMD_ID_TEMPLATE.format(
