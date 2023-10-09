@@ -157,7 +157,7 @@ def test_sqil_few_demonstrations_discrete(
         cartpole_venv,
         "seals/CartPole-v0",
         rl_algo_class=dqn.DQN,
-        rl_kwargs=dict(learning_starts=10),
+        rl_kwargs=dict(learning_starts=10, seed=42),
     )
 
 
@@ -174,6 +174,7 @@ def test_sqil_few_demonstrations_continuous(
         pendulum_single_venv,
         "Pendulum-v1",
         rl_algo_class=rl_algo_class,
+        rl_kwargs=dict(seed=42),
     )
 
 
