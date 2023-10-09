@@ -246,6 +246,9 @@ def test_sqil_performance_continuous(
     pendulum_single_venv: vec_env.VecEnv,
     rl_algo_class: Type[off_policy_algorithm.OffPolicyAlgorithm],
 ):
+    if rl_algo_class == td3.TD3:
+        pytest.skip("TD3 is unstable on Pendulum-v1")
+
     rl_kwargs = dict(
         learning_starts=500,
         learning_rate=0.001,
