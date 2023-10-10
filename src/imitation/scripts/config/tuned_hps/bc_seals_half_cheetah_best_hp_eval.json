@@ -1,12 +1,12 @@
 {
   "bc": {
-    "batch_size": 32,
-    "l2_weight": 0.0014680228143404998,
+    "batch_size": 64,
+    "l2_weight": 0.005728455628518169,
     "optimizer_cls": {
       "py/type": "torch.optim.adam.Adam"
     },
     "optimizer_kwargs": {
-      "lr": 0.0003034620018780926
+      "lr": 0.008056922426724927
     },
     "train_kwargs": {
       "log_interval": 500,
@@ -16,7 +16,7 @@
   },
   "dagger": {
     "rollout_round_min_episodes": null,
-    "total_timesteps": 100000,
+    "total_timesteps": 60000,
     "use_offline_rollouts": false
   },
   "demonstrations": {
@@ -43,6 +43,6 @@
     "n_episodes_eval": 50
   },
   "environment": {
-    "gym_id": "seals/Walker2d-v0"
+    "gym_id": "seals/HalfCheetah-v1"
   }
 }

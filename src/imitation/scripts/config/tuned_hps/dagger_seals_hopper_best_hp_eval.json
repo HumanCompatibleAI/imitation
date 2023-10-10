@@ -16,10 +16,10 @@
   },
   "dagger": {
     "beta_schedule": {
-      "py/object": "imitation.algorithms.dagger.LinearBetaSchedule",
-      "rampdown_rounds": 15
+      "decay_probability": 0.7,
+      "py/object": "imitation.algorithms.dagger.ExponentialBetaSchedule"
     },
-    "rollout_round_min_episodes": 3,
+    "rollout_round_min_episodes": 10,
     "total_timesteps": 100000,
     "use_offline_rollouts": false
   },
@@ -47,6 +47,6 @@
     "n_episodes_eval": 50
   },
   "environment": {
-    "gym_id": "seals/Swimmer-v0"
+    "gym_id": "seals/Hopper-v1"
   }
 }

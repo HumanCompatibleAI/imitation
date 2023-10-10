@@ -11,16 +11,16 @@
     "train_kwargs": {
       "log_interval": 500,
       "n_batches": null,
-      "n_epochs": 10
+      "n_epochs": 5
     }
   },
   "dagger": {
     "beta_schedule": {
-      "py/object": "imitation.algorithms.dagger.LinearBetaSchedule",
-      "rampdown_rounds": 15
+      "decay_probability": 0.7,
+      "py/object": "imitation.algorithms.dagger.ExponentialBetaSchedule"
     },
     "rollout_round_min_episodes": 5,
-    "total_timesteps": 100000,
+    "total_timesteps": 60000,
     "use_offline_rollouts": false
   },
   "demonstrations": {
@@ -47,6 +47,6 @@
     "n_episodes_eval": 50
   },
   "environment": {
-    "gym_id": "seals/Ant-v0"
+    "gym_id": "seals/HalfCheetah-v1"
   }
 }

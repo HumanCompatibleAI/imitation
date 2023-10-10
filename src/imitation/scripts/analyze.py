@@ -262,38 +262,47 @@ def analyze_imitation(
         csv_output_path: If provided, then save a CSV output file to this path.
         tex_output_path: If provided, then save a LaTeX-format table to this path.
         print_table: If True, then print the dataframe to stdout.
-        table_verbosity: Increasing levels of verbosity, from 0 to 2, increase the
-            number of columns in the table.
+        table_verbosity: Increasing levels of verbosity, from 0 to 3, increase the
+            number of columns in the table. Level 3 prints all of the columns available.
 
     Returns:
         The DataFrame generated from the Sacred logs.
     """
-    table_entry_fns_subset = _get_table_entry_fns_subset(table_verbosity)
+    # Get column names for which we have get value using make_entry_fn
+    # These are same across Level 2 & 3. In Level 3, we additionally add remaining
+    #  config columns.
+    table_entry_fns_subset = _get_table_entry_fns_subset(min(table_verbosity, 2))
 
-    rows = []
+    output_table = pd.DataFrame()
     for sd in _gather_sacred_dicts():
-        row = {}
+        if table_verbosity == 3:
+            # gets all config columns
+            row = pd.json_normalize(sd.config)
+        else:
+            # create an empty dataframe with a single row
+            row = pd.DataFrame(index=[0])
+
         for col_name, make_entry_fn in table_entry_fns_subset.items():
             row[col_name] = make_entry_fn(sd)
-        rows.append(row)
 
-    df = pd.DataFrame(rows)
-    if len(df) > 0:
-        df.sort_values(by=["algo", "env_name"], inplace=True)
+        output_table = pd.concat([output_table, row])
 
-    display_options = dict(index=False)
+    if len(output_table) > 0:
+        output_table.sort_values(by=["algo", "env_name"], inplace=True)
+
+    display_options: Mapping[str, Any] = dict(index=False)
     if csv_output_path is not None:
-        df.to_csv(csv_output_path, **display_options)
+        output_table.to_csv(csv_output_path, **display_options)
         print(f"Wrote CSV file to {csv_output_path}")
     if tex_output_path is not None:
-        s: str = df.to_latex(**display_options)
+        s: str = output_table.to_latex(**display_options)
         with open(tex_output_path, "w") as f:
             f.write(s)
         print(f"Wrote TeX file to {tex_output_path}")
 
     if print_table:
-        print(df.to_string(**display_options))
-    return df
+        print(output_table.to_string(**display_options))
+    return output_table
 
 
 def _make_return_summary(stats: dict, prefix="") -> str:
