@@ -425,6 +425,12 @@ def test_train_bc_warmstart(tmpdir):
     assert isinstance(run_warmstart.result, dict)
 
 
+def test_train_mceirl_main(mceirl_config):
+    run = train_imitation.train_imitation_ex.run(**mceirl_config)
+    assert run.status == "COMPLETED"
+    assert isinstance(run.result, dict)
+
+
 def test_train_sqil_main(sqil_config):
     # NOTE: Having four different expert types as in bc might be overkill for sqil
     run = train_imitation.train_imitation_ex.run(**sqil_config)
