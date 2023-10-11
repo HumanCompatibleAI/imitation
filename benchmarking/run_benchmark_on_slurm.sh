@@ -4,8 +4,9 @@
 #SBATCH --output=slurm/%A_%a.out
 #SBATCH --cpus-per-task=8
 #SBATCH --gpus=0
-#SBATCH --mem=2gb
+#SBATCH --mem=8gb
 #SBATCH --time=70:00:00
+#SBATCH --qos=scavenger
 
 # This script will run an imitation algorithm on an environment for 10 seeds.
 
