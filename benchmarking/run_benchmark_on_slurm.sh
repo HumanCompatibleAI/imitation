@@ -21,4 +21,4 @@
 
 cd /nas/ucb/$(whoami)/imitation
 source venv/bin/activate
-srun python -m imitation.scripts.$1 $2 with $2_$3 seed=$SLURM_ARRAY_TASK_ID -F benchmark_runs
+srun python -m imitation.scripts.$1 $2 with $2_$3 seed=$SLURM_ARRAY_TASK_ID
