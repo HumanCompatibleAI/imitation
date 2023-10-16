@@ -1,11 +1,17 @@
 """Configuration for imitation.scripts.train_adversarial."""
 
+import pathlib
+
 import sacred
 
 from imitation.rewards import reward_nets
 from imitation.scripts.ingredients import demonstrations, environment, expert
 from imitation.scripts.ingredients import logging as logging_ingredient
 from imitation.scripts.ingredients import policy_evaluation, reward, rl
+
+# Note: All the hyperparameter configs in the file are of the tuned
+# hyperparameters of the RL algorithm of the respective environment.
+# Taken from imitation/scripts/config/train_rl.py
 
 train_adversarial_ex = sacred.Experiment(
     "train_adversarial",
@@ -96,13 +102,6 @@ def pendulum():
 # Standard MuJoCo Gym environment named configs
 
 
-@train_adversarial_ex.named_config
-def seals_ant():
-    locals().update(**MUJOCO_SHARED_LOCALS)
-    locals().update(**ANT_SHARED_LOCALS)
-    environment = dict(gym_id="seals/Ant-v0")
-
-
 CHEETAH_SHARED_LOCALS = dict(
     MUJOCO_SHARED_LOCALS,
     rl=dict(batch_size=16384, rl_kwargs=dict(batch_size=1024)),
@@ -138,18 +137,6 @@ def half_cheetah():
 
 
 @train_adversarial_ex.named_config
-def seals_half_cheetah():
-    locals().update(**CHEETAH_SHARED_LOCALS)
-    environment = dict(gym_id="seals/HalfCheetah-v0")
-
-
-@train_adversarial_ex.named_config
-def seals_hopper():
-    locals().update(**MUJOCO_SHARED_LOCALS)
-    environment = dict(gym_id="seals/Hopper-v0")
-
-
-@train_adversarial_ex.named_config
 def seals_humanoid():
     locals().update(**MUJOCO_SHARED_LOCALS)
     environment = dict(gym_id="seals/Humanoid-v0")
@@ -160,19 +147,6 @@ def seals_humanoid():
 def reacher():
     environment = dict(gym_id="Reacher-v2")
     algorithm_kwargs = {"allow_variable_horizon": True}
-
-
-@train_adversarial_ex.named_config
-def seals_swimmer():
-    locals().update(**MUJOCO_SHARED_LOCALS)
-    environment = dict(gym_id="seals/Swimmer-v0")
-    total_timesteps = int(2e6)
-
-
-@train_adversarial_ex.named_config
-def seals_walker():
-    locals().update(**MUJOCO_SHARED_LOCALS)
-    environment = dict(gym_id="seals/Walker2d-v0")
 
 
 # Debug configs
@@ -189,3 +163,23 @@ def fast():
         demo_batch_size=1,
         n_disc_updates_per_round=4,
     )
+
+
+hyperparam_dir = pathlib.Path(__file__).absolute().parent / "tuned_hps"
+tuned_alg_envs = [
+    "airl_seals_ant",
+    "airl_seals_half_cheetah",
+    "airl_seals_hopper",
+    "airl_seals_swimmer",
+    "airl_seals_walker",
+    "gail_seals_ant",
+    "gail_seals_half_cheetah",
+    "gail_seals_hopper",
+    "gail_seals_swimmer",
+    "gail_seals_walker",
+]
+
+for tuned_alg_env in tuned_alg_envs:
+    config_file = hyperparam_dir / f"{tuned_alg_env}_best_hp_eval.json"
+    assert config_file.is_file(), f"{config_file} does not exist"
+    train_adversarial_ex.add_named_config(tuned_alg_env, str(config_file))

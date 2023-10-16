@@ -7,7 +7,7 @@ import os
 from typing import List, Optional, Sequence
 from unittest import mock
 
-import gym
+import gymnasium as gym
 import numpy as np
 import pytest
 import torch.random
@@ -114,7 +114,7 @@ def test_traj_collector(tmpdir, pendulum_venv, rng):
     for info in infos:
         assert isinstance(info, dict)
     # roll out 5 * venv.num_envs episodes (Pendulum-v1 has 200 timestep episodes)
-    for i in range(1000):
+    for _ in range(1000):
         _, _, dones, _ = collector.step(zero_acts)
         num_episodes += np.sum(dones)
 
@@ -163,7 +163,7 @@ def test_traj_collector_reproducible(tmpdir, pendulum_venv):
                 (pendulum_venv.num_envs,) + pendulum_venv.action_space.shape,
                 dtype=pendulum_venv.action_space.dtype,
             )
-            for i in range(1000):
+            for _ in range(1000):
                 _, _, dones, _ = collector.step(zero_acts)
 
             # Get the observations from all the collected trajectories.
@@ -377,7 +377,7 @@ def test_trainer_makes_progress(init_trainer_fn, pendulum_venv, pendulum_expert_
         assert np.mean(novice_rewards) < -1000
         # Train for 5 iterations. (4 or fewer causes test to fail on some configs.)
         # see https://github.com/HumanCompatibleAI/imitation/issues/580 for details
-        for i in range(5):
+        for _ in range(5):
             # roll out a few trajectories for dataset, then train for a few steps
             collector = trainer.create_trajectory_collector()
             for _ in range(4):
@@ -447,7 +447,7 @@ def test_trainer_reproducible(
                 rng,
             )
 
-            for i in range(2):
+            for _ in range(2):
                 collector = trainer.create_trajectory_collector()
                 obs = collector.reset()
                 dones = [False] * pendulum_venv.num_envs
@@ -520,7 +520,7 @@ def test_simple_dagger_trainer_train(
 def test_policy_save_reload(tmpdir, trainer):
     # just make sure the methods run; we already test them in test_bc.py
     policy_path = os.path.join(tmpdir, "policy.pt")
-    trainer.save_policy(policy_path)
+    util.save_policy(trainer.policy, policy_path)
     pol = bc.reconstruct_policy(policy_path)
     assert isinstance(pol, policies.BasePolicy)
 

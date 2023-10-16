@@ -211,7 +211,7 @@ class InteractiveTrajectoryCollector(vec_env.VecEnvWrapper):
             elements may be None, if the env does not return anything when seeded.
         """
         self.rng = np.random.default_rng(seed=seed)
-        return self.venv.seed(seed)
+        return list(self.venv.seed(seed))
 
     def reset(self) -> np.ndarray:
         """Resets the environment.
@@ -544,17 +544,9 @@ class DAggerTrainer(base.BaseImitationAlgorithm):
             self.scratch_dir / "policy-latest.pt",
         ]
         for policy_path in policy_paths:
-            self.save_policy(policy_path)
+            util.save_policy(self.policy, policy_path)
 
         return checkpoint_paths[0], policy_paths[0]
-
-    def save_policy(self, policy_path: types.AnyPath) -> None:
-        """Save the current policy only (and not the rest of the trainer).
-
-        Args:
-            policy_path: path to save policy to.
-        """
-        self.bc_trainer.save_policy(policy_path)
 
 
 class SimpleDAggerTrainer(DAggerTrainer):
@@ -647,7 +639,7 @@ class SimpleDAggerTrainer(DAggerTrainer):
         Args:
             total_timesteps: The number of timesteps to train inside the environment.
                 In practice this is a lower bound, because the number of timesteps is
-                rounded up to finish the minimum number of episdoes or timesteps in the
+                rounded up to finish the minimum number of episodes or timesteps in the
                 last DAgger training round, and the environment timesteps are executed
                 in multiples of `self.venv.num_envs`.
             rollout_round_min_episodes: The number of episodes the must be completed

@@ -1,11 +1,12 @@
 """Tests for `imitation.data.rollout`."""
 
 import functools
-from typing import Mapping, Sequence
+from typing import Any, Dict, Mapping, Optional, Sequence, SupportsFloat, Tuple
 
-import gym
+import gymnasium as gym
 import numpy as np
 import pytest
+from gymnasium.core import WrapperActType, WrapperObsType
 from stable_baselines3 import A2C
 from stable_baselines3.common import monitor, vec_env
 from stable_baselines3.common.env_util import make_atari_env
@@ -27,16 +28,16 @@ class TerminalSentinelEnv(gym.Env):
         self.action_space = gym.spaces.Discrete(1)
         self.observation_space = gym.spaces.Box(np.array([0]), np.array([1]))
 
-    def reset(self):
+    def reset(self, seed=None):
         self.current_step = 0
-        return np.array([0])
+        return np.array([0]), {}
 
     def step(self, action):
         self.current_step += 1
         done = self.current_step >= self.max_acts
         observation = np.array([1 if done else 0])
         rew = 0.0
-        return observation, rew, done, {}
+        return observation, rew, done, False, {}
 
 
 def _sample_fixed_length_trajectories(
@@ -181,13 +182,21 @@ def test_seed_trajectories():
 class ObsRewHalveWrapper(gym.Wrapper):
     """Simple wrapper that scales every reward and observation feature by 0.5."""
 
-    def reset(self, **kwargs):
-        obs = self.env.reset(**kwargs) / 2
-        return obs
+    def reset(
+        self,
+        *,
+        seed: Optional[int] = None,
+        options: Optional[Dict[str, Any]] = None,
+    ) -> Tuple[WrapperObsType, Dict[str, Any]]:
+        obs, info = super().reset(seed=seed, options=options)
+        return obs / 2.0, info
 
-    def step(self, action):
-        obs, rew, done, info = self.env.step(action)
-        return obs / 2, rew / 2, done, info
+    def step(
+        self,
+        action: WrapperActType,
+    ) -> Tuple[WrapperObsType, SupportsFloat, bool, bool, Dict[str, Any]]:
+        obs, rew, terminated, truncated, info = super().step(action)
+        return obs / 2, float(rew) / 2, terminated, truncated, info
 
 
 def test_rollout_stats(rng):
@@ -371,3 +380,49 @@ def test_rollout_normal_error_for_other_shape_mismatch(rng):
                 rollout.make_sample_until(min_timesteps=None, min_episodes=2),
                 rng=rng,
             )
+
+
+class DictObsWrapper(gym.ObservationWrapper):
+    """Simple wrapper that turns the observation into a dictionary.
+
+    The observation is duplicated, with "b" rescaled.
+    """
+
+    def __init__(self, env: gym.Env):
+        """Builds DictObsWrapper.
+
+        Args:
+            env: The wrapped Env.
+        """
+        super().__init__(env)
+        self.observation_space = gym.spaces.Dict(
+            {"a": env.observation_space, "b": env.observation_space},
+        )
+
+    def observation(self, observation):
+        return {"a": observation, "b": observation / 2}
+
+
+def test_dictionary_observations(rng):
+    """Test we can generate a rollout for a dict-type observation environment.
+
+    Args:
+        rng: Random state to use (with fixed seed).
+    """
+    env = gym.make("CartPole-v1")
+    env = monitor.Monitor(env, None)
+    env = DictObsWrapper(env)
+    venv = vec_env.DummyVecEnv([lambda: env])
+
+    policy = serialize.load_policy("zero", venv)
+    trajs = rollout.generate_trajectories(
+        policy,
+        venv,
+        rollout.make_min_episodes(10),
+        rng=rng,
+    )
+    for traj in trajs:
+        assert isinstance(traj.obs, types.DictObs)
+        for obs in traj.obs:
+            assert venv.observation_space.contains(dict(obs.items()))
+        np.testing.assert_allclose(traj.obs.get("a") / 2, traj.obs.get("b"))

@@ -1,9 +1,11 @@
 """Fixtures common across algorithm tests."""
 from typing import Sequence
 
+import gymnasium as gym
 import pytest
+from stable_baselines3.common import envs
 from stable_baselines3.common.policies import BasePolicy
-from stable_baselines3.common.vec_env import VecEnv
+from stable_baselines3.common.vec_env import DummyVecEnv, VecEnv
 
 from imitation.algorithms import bc
 from imitation.data.types import TrajectoryWithRew
@@ -99,3 +101,32 @@ def pendulum_venv(rng) -> VecEnv:
         post_wrappers=[lambda env, _: RolloutInfoWrapper(env)],
         rng=rng,
     )
+
+
+@pytest.fixture
+def pendulum_single_venv(rng) -> VecEnv:
+    return util.make_vec_env(
+        PENDULUM_ENV_NAME,
+        n_envs=1,
+        post_wrappers=[lambda env, _: RolloutInfoWrapper(env)],
+        rng=rng,
+    )
+
+
+# TODO(GH#794): Remove after https://github.com/DLR-RM/stable-baselines3/pull/1676
+# merged and released.
+class FloatReward(gym.RewardWrapper):
+    """Typecasts reward to a float."""
+
+    def reward(self, reward):
+        return float(reward)
+
+
+@pytest.fixture
+def multi_obs_venv() -> VecEnv:
+    def make_env():
+        env = envs.SimpleMultiObsEnv(channel_last=False)
+        env = FloatReward(env)
+        return RolloutInfoWrapper(env)
+
+    return DummyVecEnv([make_env, make_env])

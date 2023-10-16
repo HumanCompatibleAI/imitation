@@ -1,4 +1,4 @@
-"""Common configuration elements for reward network training."""
+"""This ingredient provides a reward network."""
 
 import logging
 import typing
@@ -44,6 +44,11 @@ def normalize_output_disable():
 @reward_ingredient.named_config
 def normalize_output_running():
     normalize_output_layer = networks.RunningNorm  # noqa: F841
+
+
+@reward_ingredient.named_config
+def normalize_output_ema():
+    normalize_output_layer = networks.EMANorm  # noqa: F841
 
 
 @reward_ingredient.named_config

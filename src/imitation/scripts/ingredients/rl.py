@@ -1,4 +1,7 @@
-"""Common configuration elements for reinforcement learning."""
+"""This ingredient provides a reinforcement learning algorithm from stable-baselines3.
+
+The algorithm instance is either freshly constructed or loaded from a file.
+"""
 
 import logging
 import warnings
@@ -37,10 +40,22 @@ def config():
 
 @rl_ingredient.config_hook
 def config_hook(config, command_name, logger):
-    """Sets defaults equivalent to sb3.PPO default hyperparameters."""
-    del command_name, logger
+    """Sets defaults equivalent to sb3.PPO default hyperparameters.
+
+    This hook is a no-op if command_name is "sqil" (used only in train_imitation),
+    which has its own config hook.
+
+    Args:
+        config: Sacred config dict.
+        command_name: Sacred command name.
+        logger: Sacred logger.
+
+    Returns:
+        config: Updated Sacred config dict.
+    """
+    del logger
     res = {}
-    if config["rl"]["rl_cls"] is None or config["rl"]["rl_cls"] == sb3.PPO:
+    if config["rl"]["rl_cls"] is None and command_name != "sqil":
         res["rl_cls"] = sb3.PPO
         res["batch_size"] = 2048  # rl_kwargs["n_steps"] = batch_size // venv.num_envs
         res["rl_kwargs"] = dict(

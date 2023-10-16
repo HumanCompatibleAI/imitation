@@ -1,40 +1,54 @@
 """Custom policy classes and convenience methods."""
 
 import abc
-from typing import Type
+from typing import Dict, Type, Union
 
-import gym
+import gymnasium as gym
 import numpy as np
 import torch as th
 from stable_baselines3.common import policies, torch_layers
 from stable_baselines3.sac import policies as sac_policies
 from torch import nn
 
+from imitation.data import types
 from imitation.util import networks
 
 
-class HardCodedPolicy(policies.BasePolicy, abc.ABC):
-    """Abstract class for hard-coded (non-trainable) policies."""
+class NonTrainablePolicy(policies.BasePolicy, abc.ABC):
+    """Abstract class for non-trainable (e.g. hard-coded or interactive) policies."""
 
     def __init__(self, observation_space: gym.Space, action_space: gym.Space):
-        """Builds HardcodedPolicy with specified observation and action space."""
+        """Builds NonTrainablePolicy with specified observation and action space."""
         super().__init__(
             observation_space=observation_space,
             action_space=action_space,
         )
 
-    def _predict(self, obs: th.Tensor, deterministic: bool = False):
+    def _predict(
+        self,
+        obs: Union[th.Tensor, Dict[str, th.Tensor]],
+        deterministic: bool = False,
+    ):
         np_actions = []
-        np_obs = obs.detach().cpu().numpy()
+        if isinstance(obs, dict):
+            np_obs = types.DictObs(
+                {k: v.detach().cpu().numpy() for k, v in obs.items()},
+            )
+        else:
+            np_obs = obs.detach().cpu().numpy()
         for np_ob in np_obs:
-            assert self.observation_space.contains(np_ob)
-            np_actions.append(self._choose_action(np_ob))
+            np_ob_unwrapped = types.maybe_unwrap_dictobs(np_ob)
+            assert self.observation_space.contains(np_ob_unwrapped)
+            np_actions.append(self._choose_action(np_ob_unwrapped))
         np_actions = np.stack(np_actions, axis=0)
         th_actions = th.as_tensor(np_actions, device=self.device)
         return th_actions
 
     @abc.abstractmethod
-    def _choose_action(self, obs: np.ndarray) -> np.ndarray:
+    def _choose_action(
+        self,
+        obs: Union[np.ndarray, Dict[str, np.ndarray]],
+    ) -> np.ndarray:
         """Chooses an action, optionally based on observation obs."""
 
     def forward(self, *args):
@@ -43,18 +57,36 @@ class HardCodedPolicy(policies.BasePolicy, abc.ABC):
         raise NotImplementedError  # pragma: no cover
 
 
-class RandomPolicy(HardCodedPolicy):
+class RandomPolicy(NonTrainablePolicy):
     """Returns random actions."""
 
-    def _choose_action(self, obs: np.ndarray) -> np.ndarray:
+    def _choose_action(
+        self,
+        obs: Union[np.ndarray, Dict[str, np.ndarray]],
+    ) -> np.ndarray:
         return self.action_space.sample()
 
 
-class ZeroPolicy(HardCodedPolicy):
+class ZeroPolicy(NonTrainablePolicy):
     """Returns constant zero action."""
 
-    def _choose_action(self, obs: np.ndarray) -> np.ndarray:
-        return np.zeros(self.action_space.shape, dtype=self.action_space.dtype)
+    def __init__(self, observation_space: gym.Space, action_space: gym.Space):
+        """Builds ZeroPolicy with specified observation and action space."""
+        super().__init__(observation_space, action_space)
+        self._zero_action = np.zeros_like(
+            action_space.sample(),
+            dtype=action_space.dtype,
+        )
+        if self._zero_action not in action_space:
+            raise ValueError(
+                f"Zero action {self._zero_action} not in action space {action_space}",
+            )
+
+    def _choose_action(
+        self,
+        obs: Union[np.ndarray, Dict[str, np.ndarray]],
+    ) -> np.ndarray:
+        return self._zero_action
 
 
 class FeedForward32Policy(policies.ActorCriticPolicy):

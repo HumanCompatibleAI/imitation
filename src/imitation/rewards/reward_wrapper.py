@@ -8,6 +8,7 @@ from stable_baselines3.common import callbacks
 from stable_baselines3.common import logger as sb_logger
 from stable_baselines3.common import vec_env
 
+from imitation.data import types
 from imitation.rewards import reward_function
 
 
@@ -95,14 +96,23 @@ class RewardVecEnvWrapper(vec_env.VecEnvWrapper):
         # encounter a `done`, in which case the last observation corresponding to
         # the `done` is dropped. We're going to pull it back out of the info dict!
         obs_fixed = []
+        obs = types.maybe_wrap_in_dictobs(obs)
         for single_obs, single_done, single_infos in zip(obs, dones, infos):
             if single_done:
                 single_obs = single_infos["terminal_observation"]
 
-            obs_fixed.append(single_obs)
-        obs_fixed = np.stack(obs_fixed)
-
-        rews = self.reward_fn(self._old_obs, self._actions, obs_fixed, np.array(dones))
+            obs_fixed.append(types.maybe_wrap_in_dictobs(single_obs))
+        obs_fixed = (
+            types.DictObs.stack(obs_fixed)
+            if isinstance(obs, types.DictObs)
+            else np.stack(obs_fixed)
+        )
+        rews = self.reward_fn(
+            self._old_obs,
+            self._actions,
+            types.maybe_unwrap_dictobs(obs_fixed),
+            np.array(dones),
+        )
         assert len(rews) == len(obs), "must return one rew for each env"
         done_mask = np.asarray(dones, dtype="bool").reshape((len(dones),))
 
@@ -116,6 +126,7 @@ class RewardVecEnvWrapper(vec_env.VecEnvWrapper):
         # we can just use obs instead of obs_fixed because on the next iteration
         # after a reset we DO want to access the first observation of the new
         # trajectory, not the last observation of the old trajectory
+        obs = types.maybe_unwrap_dictobs(obs)
         self._old_obs = obs
         for info_dict, old_rew in zip(infos, old_rews):
             info_dict["original_env_rew"] = old_rew

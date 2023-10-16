@@ -1,0 +1,86 @@
+{
+  "algorithm_kwargs": {
+    "demo_batch_size": 32,
+    "gen_replay_buffer_capacity": 4096,
+    "n_disc_updates_per_round": 16
+  },
+  "checkpoint_interval": 0,
+  "demonstrations": {
+    "source": "huggingface",
+    "algo_name": "ppo",
+    "n_expert_demos": null
+  },
+  "expert": {
+    "loader_kwargs": {
+      "gym_id": "seals/Swimmer-v1",
+      "organization": "HumanCompatibleAI"
+    }
+  },
+  "reward": {
+    "add_std_alpha": null,
+    "ensemble_size": null,
+    "net_cls": {
+      "py/type": "imitation.rewards.reward_nets.BasicRewardNet"
+    },
+    "net_kwargs": {
+      "normalize_input_layer": {
+        "py/type": "imitation.util.networks.RunningNorm"
+      }
+    },
+    "normalize_output_layer": {
+      "py/type": "imitation.util.networks.RunningNorm"
+    }
+  },
+  "rl": {
+    "batch_size": 4096,
+    "rl_cls": {
+      "py/type": "stable_baselines3.ppo.ppo.PPO"
+    },
+    "rl_kwargs": {
+      "batch_size": 64,
+      "clip_range": 0.1,
+      "ent_coef": 2.257758693006348e-6,
+      "gae_lambda": 0.95,
+      "gamma": 0.999,
+      "learning_rate": 2.0190030388504567e-5,
+      "max_grad_norm": 2,
+      "n_epochs": 5,
+      "vf_coef": 0.6162112311062333
+    }
+  },
+  "total_timesteps": 10000000,
+  "policy": {
+    "policy_cls": "MlpPolicy",
+    "policy_kwargs": {
+      "activation_fn": {
+        "py/type": "torch.nn.modules.activation.ReLU"
+      },
+      "features_extractor_class": {
+        "py/type": "imitation.policies.base.NormalizeFeaturesExtractor"
+      },
+      "features_extractor_kwargs": {
+        "normalize_class": {
+          "py/type": "imitation.util.networks.RunningNorm"
+        }
+      },
+      "net_arch": [
+        {
+          "pi": [
+            64,
+            64
+          ],
+          "vf": [
+            64,
+            64
+          ]
+        }
+      ]
+    }
+  },
+  "policy_evaluation": {
+    "n_episodes_eval": 50
+  },
+  "environment": {
+    "gym_id": "seals/Swimmer-v1"
+  }
+}

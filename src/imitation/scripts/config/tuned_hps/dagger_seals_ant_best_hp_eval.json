@@ -1,0 +1,52 @@
+{
+  "bc": {
+    "batch_size": 16,
+    "l2_weight": 0.0001,
+    "optimizer_cls": {
+      "py/type": "torch.optim.adam.Adam"
+    },
+    "optimizer_kwargs": {
+      "lr": 0.001
+    },
+    "train_kwargs": {
+      "log_interval": 500,
+      "n_batches": null,
+      "n_epochs": 10
+    }
+  },
+  "dagger": {
+    "beta_schedule": {
+      "py/object": "imitation.algorithms.dagger.LinearBetaSchedule",
+      "rampdown_rounds": 15
+    },
+    "rollout_round_min_episodes": 5,
+    "total_timesteps": 100000,
+    "use_offline_rollouts": false
+  },
+  "demonstrations": {
+    "source": "huggingface",
+    "algo_name": "ppo",
+    "n_expert_demos": null
+  },
+  "policy": {
+    "policy_cls": {
+      "py/type": "imitation.policies.base.FeedForward32Policy"
+    },
+    "policy_kwargs": {
+      "features_extractor_class": {
+        "py/type": "imitation.policies.base.NormalizeFeaturesExtractor"
+      },
+      "features_extractor_kwargs": {
+        "normalize_class": {
+          "py/type": "imitation.util.networks.RunningNorm"
+        }
+      }
+    }
+  },
+  "policy_evaluation": {
+    "n_episodes_eval": 50
+  },
+  "environment": {
+    "gym_id": "seals/Ant-v1"
+  }
+}

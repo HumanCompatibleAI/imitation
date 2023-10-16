@@ -1,6 +1,5 @@
 """Buffers to store NumPy arrays and transitions in."""
 
-import dataclasses
 from typing import Any, Mapping, Optional, Tuple
 
 import numpy as np
@@ -273,14 +272,37 @@ class ReplayBuffer:
         """
         params = (obs_shape, act_shape, obs_dtype, act_dtype)
         if venv is not None:
-            if not all(x is None for x in params):
-                raise ValueError(
-                    "Cannot specify both shape/dtype and also environment.",
-                )
-            obs_shape = tuple(venv.observation_space.shape)
-            act_shape = tuple(venv.action_space.shape)
-            obs_dtype = venv.observation_space.dtype
-            act_dtype = venv.action_space.dtype
+            if venv.observation_space.shape is not None:
+                if obs_shape is not None:
+                    raise ValueError(
+                        "Cannot specify both observation shape and also environment "
+                        "with an observation space that has a shape.",
+                    )
+                obs_shape = tuple(venv.observation_space.shape)
+
+            if venv.observation_space.dtype is not None:
+                if obs_dtype is not None:
+                    raise ValueError(
+                        "Cannot specify both observation dtype and also environment "
+                        "with an observation space that has a dtype.",
+                    )
+                obs_dtype = venv.observation_space.dtype
+
+            if venv.action_space.shape is not None:
+                if act_shape is not None:
+                    raise ValueError(
+                        "Cannot specify both action shape and also environment "
+                        "with an action space that has a shape.",
+                    )
+                act_shape = tuple(venv.action_space.shape)
+
+            if venv.action_space.dtype is not None:
+                if act_dtype is not None:
+                    raise ValueError(
+                        "Cannot specify both action dtype and also environment "
+                        "with an action space that has a dtype.",
+                    )
+                act_dtype = venv.action_space.dtype
         else:
             if any(x is None for x in params):
                 raise ValueError("Shape or dtype missing and no environment specified.")
@@ -345,15 +367,16 @@ class ReplayBuffer:
         Returns:
             A new ReplayBuffer.
         """
-        obs_shape = transitions.obs.shape[1:]
+        obs = types.assert_not_dictobs(transitions.obs)
+        obs_shape = obs.shape[1:]
         act_shape = transitions.acts.shape[1:]
         if capacity is None:
-            capacity = transitions.obs.shape[0]
+            capacity = obs.shape[0]
         instance = cls(
             capacity=capacity,
             obs_shape=obs_shape,
             act_shape=act_shape,
-            obs_dtype=transitions.obs.dtype,
+            obs_dtype=obs.dtype,
             act_dtype=transitions.acts.dtype,
         )
         instance.store(transitions, truncate_ok=truncate_ok)
@@ -383,7 +406,7 @@ class ReplayBuffer:
         Raises:
             ValueError: The arguments didn't have the same length.
         """  # noqa: DAR402
-        trans_dict = dataclasses.asdict(transitions)
+        trans_dict = types.dataclass_quick_asdict(transitions)
         # Remove unnecessary fields
         trans_dict = {k: trans_dict[k] for k in self._buffer.sample_shapes.keys()}
         self._buffer.store(trans_dict, truncate_ok=truncate_ok)

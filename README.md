@@ -17,6 +17,7 @@ Currently, we have implementations of the algorithms below. 'Discrete' and 'Cont
 | [Adversarial Inverse Reinforcement Learning](https://arxiv.org/abs/1710.11248)                                                    | [`algoritms.airl`](https://imitation.readthedocs.io/en/latest/algorithms/airl.html)                                      | ✅        | ✅          |
 | [Generative Adversarial Imitation Learning](https://arxiv.org/abs/1606.03476)                                                     | [`algorithms.gail`](https://imitation.readthedocs.io/en/latest/algorithms/gail.html)                                     | ✅        | ✅          |
 | [Deep RL from Human Preferences](https://arxiv.org/abs/1706.03741)                                                                | [`algorithms.preference_comparisons`](https://imitation.readthedocs.io/en/latest/algorithms/preference_comparisons.html) | ✅        | ✅          |
+| [Soft Q Imitation Learning](https://arxiv.org/abs/1905.11108)                                                                     | [`algorithms.sqil`](https://imitation.readthedocs.io/en/latest/algorithms/sqil.html)                                     | ✅        | ❌          |
 
 
 You can find [the documentation here](https://imitation.readthedocs.io/en/latest/).
@@ -74,10 +75,10 @@ From [examples/quickstart.sh:](examples/quickstart.sh)
 python -m imitation.scripts.train_rl with pendulum environment.fast policy_evaluation.fast rl.fast fast logging.log_dir=quickstart/rl/
 
 # Train GAIL from demonstrations. Tensorboard logs saved in output/ (default log directory).
-python -m imitation.scripts.train_adversarial gail with pendulum environment.fast demonstrations.fast policy_evaluation.fast rl.fast fast demonstrations.rollout_path=quickstart/rl/rollouts/final.npz
+python -m imitation.scripts.train_adversarial gail with pendulum environment.fast demonstrations.fast policy_evaluation.fast rl.fast fast demonstrations.path=quickstart/rl/rollouts/final.npz demonstrations.source=local
 
 # Train AIRL from demonstrations. Tensorboard logs saved in output/ (default log directory).
-python -m imitation.scripts.train_adversarial airl with pendulum environment.fast demonstrations.fast policy_evaluation.fast rl.fast fast demonstrations.rollout_path=quickstart/rl/rollouts/final.npz
+python -m imitation.scripts.train_adversarial airl with pendulum environment.fast demonstrations.fast policy_evaluation.fast rl.fast fast demonstrations.path=quickstart/rl/rollouts/final.npz demonstrations.source=local
 ```
 
 Tips:

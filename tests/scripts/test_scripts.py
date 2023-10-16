@@ -200,7 +200,7 @@ def test_train_preference_comparisons_sac(tmpdir):
 
     # Make sure rl.sac named_config is called after rl.fast to overwrite
     # rl_kwargs.batch_size to None
-    with pytest.raises(Exception, match=".*set 'batch_size' at top-level.*"):
+    with pytest.raises(Exception, match="set 'batch_size' at top-level"):
         train_preference_comparisons.train_preference_comparisons_ex.run(
             named_configs=["pendulum"]
             + RL_SAC_NAMED_CONFIGS
@@ -234,9 +234,9 @@ def test_train_preference_comparisons_sac_reward_relabel(tmpdir):
     assert run.status == "COMPLETED"
     del run
 
-    with pytest.raises(AssertionError, match=".*only ReplayBuffer is supported.*"):
+    with pytest.raises(AssertionError, match="only ReplayBuffer is supported"):
         _run_reward_relabel_sac_preference_comparisons(buffers.DictReplayBuffer)
-    with pytest.raises(AssertionError, match=".*only ReplayBuffer is supported.*"):
+    with pytest.raises(AssertionError, match="only ReplayBuffer is supported"):
         _run_reward_relabel_sac_preference_comparisons(HerReplayBuffer)
 
 
@@ -273,7 +273,7 @@ def test_train_dagger_main(tmpdir):
             named_configs=["seals_cartpole"] + ALGO_FAST_CONFIGS["imitation"],
             config_updates=dict(
                 logging=dict(log_root=tmpdir),
-                demonstrations=dict(rollout_path=CARTPOLE_TEST_ROLLOUT_PATH),
+                demonstrations=dict(path=CARTPOLE_TEST_ROLLOUT_PATH),
             ),
         )
     for warning in record:
@@ -293,7 +293,7 @@ def test_train_dagger_warmstart(tmpdir):
         named_configs=["seals_cartpole"] + ALGO_FAST_CONFIGS["imitation"],
         config_updates=dict(
             logging=dict(log_root=tmpdir),
-            demonstrations=dict(rollout_path=CARTPOLE_TEST_ROLLOUT_PATH),
+            demonstrations=dict(path=CARTPOLE_TEST_ROLLOUT_PATH),
         ),
     )
     assert run.status == "COMPLETED"
@@ -305,7 +305,7 @@ def test_train_dagger_warmstart(tmpdir):
         named_configs=["seals_cartpole"] + ALGO_FAST_CONFIGS["imitation"],
         config_updates=dict(
             logging=dict(log_root=tmpdir),
-            demonstrations=dict(rollout_path=CARTPOLE_TEST_ROLLOUT_PATH),
+            demonstrations=dict(path=CARTPOLE_TEST_ROLLOUT_PATH),
             bc=dict(agent_path=policy_path),
         ),
     )
@@ -314,7 +314,7 @@ def test_train_dagger_warmstart(tmpdir):
 
 
 def test_train_bc_main_with_none_demonstrations_raises_value_error(tmpdir):
-    with pytest.raises(ValueError, match=".*n_expert_demos.*rollout_path.*"):
+    with pytest.raises(ValueError, match="n_expert_demos must be specified"):
         train_imitation.train_imitation_ex.run(
             command_name="bc",
             named_configs=["seals_cartpole"] + ALGO_FAST_CONFIGS["imitation"],
@@ -331,46 +331,41 @@ def test_train_bc_main_with_demonstrations_from_huggingface(tmpdir):
         named_configs=["seals_cartpole"] + ALGO_FAST_CONFIGS["imitation"],
         config_updates=dict(
             logging=dict(log_root=tmpdir),
-            demonstrations=dict(rollout_type="ppo-huggingface"),
+            demonstrations=dict(
+                source="huggingface",
+                algo_name="ppo",
+            ),
         ),
     )
 
 
-def test_train_bc_main_with_demonstrations_raises_error_on_wrong_huggingface_format(
-    tmpdir,
-):
-    with pytest.raises(
-        ValueError,
-        match="`rollout_type` can either be `local` or of the form .*-huggingface.S*",
-    ):
-        train_imitation.train_imitation_ex.run(
-            command_name="bc",
-            named_configs=["seals_cartpole"] + ALGO_FAST_CONFIGS["imitation"],
-            config_updates=dict(
-                logging=dict(log_root=tmpdir),
-                demonstrations=dict(rollout_type="huggingface-ppo"),
-            ),
-        )
+def generate_imitation_config(tmpdir, request, command_name: str) -> Dict:
+    environment_named_config = "seals_cartpole"
 
-
-def test_train_bc_main_with_demonstrations_warns_setting_rollout_type(
-    tmpdir,
-):
-    with pytest.warns(
-        RuntimeWarning,
-        match="Ignoring `rollout_path` .*",
-    ):
-        train_imitation.train_imitation_ex.run(
-            command_name="bc",
-            named_configs=["seals_cartpole"] + ALGO_FAST_CONFIGS["imitation"],
-            config_updates=dict(
-                logging=dict(log_root=tmpdir),
-                demonstrations=dict(
-                    rollout_type="ppo-huggingface",
-                    rollout_path="path",
-                ),
-            ),
+    if request.param == "expert_from_path":
+        expert_config = dict(
+            policy_type="ppo",
+            loader_kwargs=dict(path=CARTPOLE_TEST_POLICY_PATH / "model.zip"),
         )
+        # Note: we don't have a seals_cartpole expert in our testdata folder,
+        # so we use the cartpole environment in this case.
+        environment_named_config = "cartpole"
+    elif request.param == "expert_from_huggingface":
+        expert_config = dict(policy_type="ppo-huggingface")
+    elif request.param == "random_expert":
+        expert_config = dict(policy_type="random")
+    elif request.param == "zero_expert":
+        expert_config = dict(policy_type="zero")
+
+    return dict(
+        command_name=command_name,
+        named_configs=[environment_named_config] + ALGO_FAST_CONFIGS["imitation"],
+        config_updates=dict(
+            logging=dict(log_root=tmpdir),
+            expert=expert_config,
+            demonstrations=dict(path=CARTPOLE_TEST_ROLLOUT_PATH),
+        ),
+    )
 
 
 @pytest.fixture(
@@ -382,24 +377,19 @@ def test_train_bc_main_with_demonstrations_warns_setting_rollout_type(
     ],
 )
 def bc_config(tmpdir, request):
-    expert_config = dict(
-        expert_from_path=dict(
-            policy_type="ppo",
-            loader_kwargs=dict(path=CARTPOLE_TEST_POLICY_PATH / "model.zip"),
-        ),
-        expert_from_huggingface=dict(policy_type="ppo-huggingface"),
-        random_expert=dict(policy_type="random"),
-        zero_expert=dict(policy_type="zero"),
-    )[request.param]
-    return dict(
-        command_name="bc",
-        named_configs=["seals_cartpole"] + ALGO_FAST_CONFIGS["imitation"],
-        config_updates=dict(
-            logging=dict(log_root=tmpdir),
-            expert=expert_config,
-            demonstrations=dict(rollout_path=CARTPOLE_TEST_ROLLOUT_PATH),
-        ),
-    )
+    return generate_imitation_config(tmpdir, request, "bc")
+
+
+@pytest.fixture(
+    params=[
+        "expert_from_path",
+        "expert_from_huggingface",
+        "random_expert",
+        "zero_expert",
+    ],
+)
+def sqil_config(tmpdir, request):
+    return generate_imitation_config(tmpdir, request, "sqil")
 
 
 def test_train_bc_main(bc_config):
@@ -414,7 +404,7 @@ def test_train_bc_warmstart(tmpdir):
         named_configs=["seals_cartpole"] + ALGO_FAST_CONFIGS["imitation"],
         config_updates=dict(
             logging=dict(log_root=tmpdir),
-            demonstrations=dict(rollout_path=CARTPOLE_TEST_ROLLOUT_PATH),
+            demonstrations=dict(path=CARTPOLE_TEST_ROLLOUT_PATH),
             expert=dict(policy_type="ppo-huggingface"),
         ),
     )
@@ -427,13 +417,34 @@ def test_train_bc_warmstart(tmpdir):
         named_configs=["seals_cartpole"] + ALGO_FAST_CONFIGS["imitation"],
         config_updates=dict(
             logging=dict(log_root=tmpdir),
-            demonstrations=dict(rollout_path=CARTPOLE_TEST_ROLLOUT_PATH),
+            demonstrations=dict(path=CARTPOLE_TEST_ROLLOUT_PATH),
             bc=dict(agent_path=policy_path),
         ),
     )
 
     assert run_warmstart.status == "COMPLETED"
     assert isinstance(run_warmstart.result, dict)
+
+
+def test_train_sqil_main(sqil_config):
+    # NOTE: Having four different expert types as in bc might be overkill for sqil
+    run = train_imitation.train_imitation_ex.run(**sqil_config)
+    assert run.status == "COMPLETED"
+    assert isinstance(run.result, dict)
+
+
+def test_train_sqil_main_with_demonstrations_from_huggingface(tmpdir):
+    train_imitation.train_imitation_ex.run(
+        command_name="sqil",
+        named_configs=["seals_cartpole"] + ALGO_FAST_CONFIGS["imitation"],
+        config_updates=dict(
+            logging=dict(log_root=tmpdir),
+            demonstrations=dict(
+                source="huggingface",
+                algo_name="ppo",
+            ),
+        ),
+    )
 
 
 @pytest.fixture(params=["cold_start", "warm_start"])
@@ -462,7 +473,7 @@ def test_train_rl_main(tmpdir, rl_train_ppo_config):
 
 def test_train_rl_wb_logging(tmpdir):
     """Smoke test for imitation.scripts.ingredients.logging.wandb_logging."""
-    with pytest.raises(Exception, match=".*api_key not configured.*"):
+    with pytest.raises(Exception, match="api_key not configured"):
         train_rl.train_rl_ex.run(
             named_configs=["cartpole"]
             + ALGO_FAST_CONFIGS["rl"]
@@ -558,7 +569,7 @@ def test_train_adversarial(tmpdir, named_configs, command):
     )
     config_updates = {
         "logging": dict(log_root=tmpdir),
-        "demonstrations": dict(rollout_path=CARTPOLE_TEST_ROLLOUT_PATH),
+        "demonstrations": dict(path=CARTPOLE_TEST_ROLLOUT_PATH),
         # TensorBoard logs to get extra coverage
         "algorithm_kwargs": dict(init_tensorboard=True),
     }
@@ -576,7 +587,7 @@ def test_train_adversarial_warmstart(tmpdir, command):
     named_configs = ["cartpole"] + ALGO_FAST_CONFIGS["adversarial"]
     config_updates = {
         "logging": dict(log_root=tmpdir),
-        "demonstrations": dict(rollout_path=CARTPOLE_TEST_ROLLOUT_PATH),
+        "demonstrations": dict(path=CARTPOLE_TEST_ROLLOUT_PATH, source="local"),
     }
     run = train_adversarial.train_adversarial_ex.run(
         command_name=command,
@@ -610,7 +621,7 @@ def test_train_adversarial_sac(tmpdir, command):
     )
     config_updates = {
         "logging": dict(log_root=tmpdir),
-        "demonstrations": dict(rollout_path=PENDULUM_TEST_ROLLOUT_PATH),
+        "demonstrations": dict(path=PENDULUM_TEST_ROLLOUT_PATH),
     }
     run = train_adversarial.train_adversarial_ex.run(
         command_name=command,
@@ -628,11 +639,11 @@ def test_train_adversarial_algorithm_value_error(tmpdir):
     base_config_updates = collections.ChainMap(
         {
             "logging": dict(log_root=tmpdir),
-            "demonstrations": dict(rollout_path=CARTPOLE_TEST_ROLLOUT_PATH),
+            "demonstrations": dict(path=CARTPOLE_TEST_ROLLOUT_PATH, source="local"),
         },
     )
 
-    with pytest.raises(TypeError, match=".*BAD_VALUE.*"):
+    with pytest.raises(TypeError, match="BAD_VALUE"):
         train_adversarial.train_adversarial_ex.run(
             command_name="gail",
             named_configs=base_named_configs,
@@ -641,17 +652,17 @@ def test_train_adversarial_algorithm_value_error(tmpdir):
             ),
         )
 
-    with pytest.raises(FileNotFoundError, match=".*BAD_VALUE.*"):
+    with pytest.raises(FileNotFoundError, match="BAD_VALUE"):
         train_adversarial.train_adversarial_ex.run(
             command_name="gail",
             named_configs=base_named_configs,
             config_updates=base_config_updates.new_child(
-                {"demonstrations.rollout_path": "path/BAD_VALUE"},
+                {"demonstrations.path": "path/BAD_VALUE"},
             ),
         )
 
     n_traj = 1234567
-    with pytest.raises(ValueError, match=f".*{n_traj}.*"):
+    with pytest.raises(ValueError, match=f"{n_traj}"):
         train_adversarial.train_adversarial_ex.run(
             command_name="gail",
             named_configs=base_named_configs,
@@ -676,7 +687,7 @@ def test_transfer_learning(tmpdir: str) -> None:
         named_configs=["seals_cartpole"] + ALGO_FAST_CONFIGS["adversarial"],
         config_updates=dict(
             logging=dict(log_dir=log_dir_train),
-            demonstrations=dict(rollout_path=CARTPOLE_TEST_ROLLOUT_PATH),
+            demonstrations=dict(path=CARTPOLE_TEST_ROLLOUT_PATH),
         ),
     )
     assert run.status == "COMPLETED"
@@ -773,7 +784,7 @@ def test_train_rl_double_normalization(tmpdir: str, rng):
     log_dir_data = os.path.join(tmpdir, "train_rl")
     with pytest.warns(
         RuntimeWarning,
-        match=r"Applying normalization to already normalized reward function.*",
+        match=r"Applying normalization to already normalized reward function",
     ):
         train_rl.train_rl_ex.run(
             named_configs=["cartpole"] + ALGO_FAST_CONFIGS["rl"],
@@ -814,10 +825,10 @@ PARALLEL_CONFIG_UPDATES = [
     dict(
         sacred_ex_name="train_rl",
         base_named_configs=["seals_cartpole"] + ALGO_FAST_CONFIGS["rl"],
-        n_seeds=2,
+        repeat=2,
         search_space={
             "config_updates": {
-                "rl": {"rl_kwargs": {"learning_rate": tune.grid_search([3e-4, 1e-4])}},
+                "rl": {"rl_kwargs": {"learning_rate": tune.choice([3e-4, 1e-4])}},
             },
             "meta_info": {"asdf": "I exist for coverage purposes"},
         },
@@ -827,10 +838,11 @@ PARALLEL_CONFIG_UPDATES = [
         base_named_configs=["seals_cartpole"] + ALGO_FAST_CONFIGS["adversarial"],
         base_config_updates={
             # Need absolute path because raylet runs in different working directory.
-            "demonstrations.rollout_path": CARTPOLE_TEST_ROLLOUT_PATH.absolute(),
+            "demonstrations.path": CARTPOLE_TEST_ROLLOUT_PATH.absolute(),
         },
         search_space={
-            "command_name": tune.grid_search(["gail", "airl"]),
+            "command_name": "airl",
+            "config_updates": {"total_timesteps": tune.choice([5, 10])},
         },
     ),
 ]
@@ -843,6 +855,7 @@ PARALLEL_CONFIG_LOW_RESOURCE = {
 }
 
 
+@pytest.mark.skipif(sys.platform.startswith("win"), reason="Ray is buggy on windows.")
 @pytest.mark.parametrize("config_updates", PARALLEL_CONFIG_UPDATES)
 def test_parallel(config_updates, tmpdir):
     """Hyperparam tuning smoke test."""
@@ -860,24 +873,24 @@ def test_parallel_arg_errors(tmpdir):
     config_updates.setdefault("base_config_updates", {})["logging.log_root"] = tmpdir
     config_updates = collections.ChainMap(config_updates)
 
-    with pytest.raises(TypeError, match=".*Sequence.*"):
+    with pytest.raises(TypeError, match="Sequence"):
         parallel.parallel_ex.run(
             config_updates=config_updates.new_child(dict(base_named_configs={})),
         )
 
-    with pytest.raises(TypeError, match=".*Mapping.*"):
+    with pytest.raises(TypeError, match="Mapping"):
         parallel.parallel_ex.run(
             config_updates=config_updates.new_child(dict(base_config_updates=())),
         )
 
-    with pytest.raises(TypeError, match=".*Sequence.*"):
+    with pytest.raises(TypeError, match="Sequence"):
         parallel.parallel_ex.run(
             config_updates=config_updates.new_child(
                 dict(search_space={"named_configs": {}}),
             ),
         )
 
-    with pytest.raises(TypeError, match=".*Mapping.*"):
+    with pytest.raises(TypeError, match="Mapping"):
         parallel.parallel_ex.run(
             config_updates=config_updates.new_child(
                 dict(search_space={"config_updates": ()}),
@@ -893,8 +906,8 @@ def _generate_test_rollouts(tmpdir: str, env_named_config: str) -> pathlib.Path:
             logging=dict(log_dir=tmpdir),
         ),
     )
-    rollout_path = tmpdir_path / "rollouts/final.npz"
-    return rollout_path.absolute()
+    path = tmpdir_path / "rollouts/final.npz"
+    return path.absolute()
 
 
 def test_parallel_train_adversarial_custom_env(tmpdir):
@@ -905,17 +918,20 @@ def test_parallel_train_adversarial_custom_env(tmpdir):
         )
 
     env_named_config = "pendulum"
-    rollout_path = _generate_test_rollouts(tmpdir, env_named_config)
+    path = _generate_test_rollouts(tmpdir, env_named_config)
 
     config_updates = dict(
         sacred_ex_name="train_adversarial",
-        n_seeds=1,
+        repeat=2,
         base_named_configs=[env_named_config] + ALGO_FAST_CONFIGS["adversarial"],
         base_config_updates=dict(
             logging=dict(log_root=tmpdir),
-            demonstrations=dict(rollout_path=rollout_path),
+            demonstrations=dict(path=path),
         ),
-        search_space=dict(command_name="gail"),
+        # specifying repeat=2 uses the optuna search algorithm which
+        # requires the search space to be non-empty. So we provide
+        # the command name using tune.choice.
+        search_space=dict(command_name=tune.choice(["gail"])),
     )
     config_updates.update(PARALLEL_CONFIG_LOW_RESOURCE)
     run = parallel.parallel_ex.run(config_updates=config_updates)
@@ -928,7 +944,7 @@ def _run_train_adv_for_test_analyze_imit(run_name, sacred_logs_dir, log_dir):
         named_configs=["seals_cartpole"] + ALGO_FAST_CONFIGS["adversarial"],
         config_updates=dict(
             logging=dict(log_root=log_dir),
-            demonstrations=dict(rollout_path=CARTPOLE_TEST_ROLLOUT_PATH),
+            demonstrations=dict(path=CARTPOLE_TEST_ROLLOUT_PATH),
             checkpoint_interval=-1,
         ),
         options={"--name": run_name, "--file_storage": sacred_logs_dir},
@@ -942,7 +958,7 @@ def _run_train_bc_for_test_analyze_imit(run_name, sacred_logs_dir, log_dir):
         named_configs=["seals_cartpole"] + ALGO_FAST_CONFIGS["imitation"],
         config_updates=dict(
             logging=dict(log_dir=log_dir),
-            demonstrations=dict(rollout_path=CARTPOLE_TEST_ROLLOUT_PATH),
+            demonstrations=dict(path=CARTPOLE_TEST_ROLLOUT_PATH),
         ),
         options={"--name": run_name, "--file_storage": sacred_logs_dir},
     )
@@ -967,7 +983,7 @@ def test_analyze_imitation(tmpdir: str, run_names: List[str], run_sacred_fn):
             assert run.status == "COMPLETED"
 
     # Check that analyze script finds the correct number of logs.
-    def check(run_name: Optional[str], count: int) -> None:
+    def check(run_name: Optional[str], count: int, table_verbosity: int = 1) -> None:
         run = analyze.analysis_ex.run(
             command_name="analyze_imitation",
             config_updates=dict(
@@ -977,6 +993,7 @@ def test_analyze_imitation(tmpdir: str, run_names: List[str], run_sacred_fn):
                 csv_output_path=tmpdir_path / "analysis.csv",
                 tex_output_path=tmpdir_path / "analysis.tex",
                 print_table=True,
+                table_verbosity=table_verbosity,
             ),
         )
         assert run.status == "COMPLETED"
@@ -986,15 +1003,19 @@ def test_analyze_imitation(tmpdir: str, run_names: List[str], run_sacred_fn):
     for run_name, count in Counter(run_names).items():
         check(run_name, count)
 
-    check(None, len(run_names))  # Check total number of logs.
+    check(None, len(run_names), table_verbosity=3)  # Check total number of logs.
 
 
 def test_analyze_gather_tb(tmpdir: str):
     if os.name == "nt":  # pragma: no cover
         pytest.skip("gather_tb uses symlinks: not supported by Windows")
-
-    config_updates: Dict[str, Any] = dict(local_dir=tmpdir, run_name="test")
+    num_runs = 2
+    config_updates: Dict[str, Any] = dict(
+        tune_run_kwargs=dict(local_dir=tmpdir),
+        run_name="test",
+    )
     config_updates.update(PARALLEL_CONFIG_LOW_RESOURCE)
+    config_updates.update(num_samples=num_runs)
     parallel_run = parallel.parallel_ex.run(
         named_configs=["generate_test_data"],
         config_updates=config_updates,
@@ -1009,7 +1030,7 @@ def test_analyze_gather_tb(tmpdir: str):
     )
     assert run.status == "COMPLETED"
     assert isinstance(run.result, dict)
-    assert run.result["n_tb_dirs"] == 2
+    assert run.result["n_tb_dirs"] == num_runs
 
 
 def test_pickle_fmt_rollout_test_data_is_pickle():
