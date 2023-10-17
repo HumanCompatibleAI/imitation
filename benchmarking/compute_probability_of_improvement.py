@@ -75,9 +75,9 @@ def compute_probability_of_improvement(
          - number of samples per env
          - number of baseline samples per env
     """
-    envs = runs_by_env.keys()
-    baseline_envs = baseline_runs_by_env.keys()
-    comparison_envs = sorted(set(envs).intersection(set(baseline_envs)))
+    envs = set(runs_by_env.keys())
+    baseline_envs = set(baseline_runs_by_env.keys())
+    comparison_envs = sorted(envs & baseline_envs)
 
     # We need to arrange the scores in a matrix of shape (n_samples, n_envs).
     # When we do not have the same number of samples for each environment,
@@ -228,10 +228,10 @@ def main():
             "This is probably not what you want.",
         )
 
-        envs = runs_by_algo_and_env[args.algo].keys()
-        baseline_envs = baseline_runs_by_algo_and_env[args.baseline_algo].keys()
+    envs = set(runs_by_algo_and_env[args.algo].keys())
+    baseline_envs = set(baseline_runs_by_algo_and_env[args.baseline_algo].keys())
 
-        comparison_envs = set(envs).intersection(set(baseline_envs))
+    comparison_envs = envs & baseline_envs
 
         if len(comparison_envs) == 0:
             raise ValueError(
