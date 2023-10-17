@@ -233,14 +233,14 @@ def main():
 
     comparison_envs = envs & baseline_envs
 
-        if len(comparison_envs) == 0:
-            raise ValueError(
-                f"The baseline runs are for the environments "
-                f"[{', '.join(baseline_envs)}], while the runs are for the "
-                f"environments [{', '.join(envs)}]. "
-                f"There is no overlap in the environments of the two run sets, so no "
-                f"comparison can be made",
-            )
+    if len(comparison_envs) == 0:
+        raise ValueError(
+            f"The baseline runs are for the environments "
+            f"[{', '.join(baseline_envs)}], while the runs are for the "
+            f"environments [{', '.join(envs)}]. "
+            f"There is no overlap in the environments of the two run sets, so no "
+            f"comparison can be made",
+        )
 
     if envs != baseline_envs:
         warnings.warn(
@@ -280,7 +280,7 @@ def main():
     print(
         f"{probability_of_improvement:.3f} "
         f"({error_interval[0]:.3f}, {error_interval[1]:.3f}, "
-        f"reps={args.bootstrap_reps})",
+        f"reps={args.bootstrap_reps:,})",
     )
 
 
