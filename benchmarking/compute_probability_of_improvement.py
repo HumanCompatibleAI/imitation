@@ -1,7 +1,6 @@
 """Compute the probability that one algorithm improved over another."""
 import argparse
 import pathlib
-import sys
 import warnings
 from typing import Dict, List, Optional
 
@@ -113,12 +112,46 @@ def compute_probability_of_improvement(
 
 
 def main():
-    parser = argparse.ArgumentParser()
-    parser.add_argument("runs_dir", type=pathlib.Path)
-    parser.add_argument("baseline_runs_dir", nargs="?", default=None, type=pathlib.Path)
-    parser.add_argument("--baseline-algo", type=str)
-    parser.add_argument("--algo", type=str)
-    parser.add_argument("--bootstrap-reps", type=int, default=2000)
+    parser = argparse.ArgumentParser(
+        description="Compute the probability of improvement of one algorithm over "
+        "another by comparing its runs to some baseline runs.",
+    )
+    parser.add_argument(
+        "runs_dir",
+        type=pathlib.Path,
+        help="A directory containing sacred output directories with runs for the "
+        "algorithm that should have improved.",
+    )
+    parser.add_argument(
+        "baseline_runs_dir",
+        nargs="?",
+        default=None,
+        type=pathlib.Path,
+        help="A directory containing sacred output directories with runs for the "
+        "algorithm to compare against. If not specified, the runs_dir will be "
+        "used. In that case make sure to specify the --baseline-algo option."
+        "Otherwise you just compare an algorithm to itself.",
+    )
+    parser.add_argument(
+        "--algo",
+        type=str,
+        help="The algorithm to compare. Only needs to be specified when the runs_dir "
+        "contains runs from more than one algorithm.",
+    )
+    parser.add_argument(
+        "--baseline-algo",
+        type=str,
+        help="The algorithm to compare against. By default, either the single "
+        "algorithm in the baseline_runs_dir is used, or the same algorithm as "
+        "specified by the --algo option is used.",
+    )
+    parser.add_argument(
+        "--bootstrap-reps",
+        type=int,
+        default=2000,
+        help="The number of bootstrap repetitions to use to compute the stratified "
+        "confidence intervals.",
+    )
 
     args = parser.parse_args()
 
@@ -134,64 +167,66 @@ def main():
         only_completed_runs=True,
     )
 
-    algos = sorted(runs_by_algo_and_env.keys())
-    baseline_algos = sorted(baseline_runs_by_algo_and_env.keys())
+    algos_in_run_dir = sorted(runs_by_algo_and_env.keys())
+    algos_in_baseline_dir = sorted(baseline_runs_by_algo_and_env.keys())
 
-    try:
-        if len(algos) == 0:
-            raise ValueError(f"The run directory [{args.runs_dir}] contains no runs.")
+    if len(algos_in_run_dir) == 0:
+        raise ValueError(f"The run directory [{args.runs_dir}] contains no runs.")
 
-        if len(baseline_algos) == 0:
+    if len(algos_in_baseline_dir) == 0:
+        raise ValueError(
+            f"The baseline run directory [{args.baseline_runs_dir}] "
+            f"contains no runs.",
+        )
+
+    if args.algo is None:
+        if len(algos_in_run_dir) == 1:
+            args.algo = algos_in_run_dir[0]
+        else:
             raise ValueError(
-                f"The baseline run directory [{args.baseline_runs_dir}] "
-                f"contains no runs.",
+                f"The run directory [{args.runs_dir}] contains runs for the "
+                f"algorithms [{', '.join(algos_in_run_dir)}]. Please use the --algo "
+                f"option to specify which algorithms runs to compare.",
             )
 
-        if "algo" not in args is None:
-            if len(algos) == 1:
-                args.algo = algos[0]
-            else:
-                raise ValueError(
-                    f"The run directory [{args.runs_dir}] contains runs for the "
-                    f"algorithms [{', '.join(algos)}]. Please use the --algo option "
-                    f" to specify which algorithms runs to compare.",
-                )
-
-        if args.baseline_algo is None:
-            if len(baseline_algos) == 1:
-                args.baseline_algo = baseline_algos[0]
-            elif args.algo in baseline_algos:
-                args.baseline_algo = args.algo
-            else:
-                raise ValueError(
-                    f"The baseline run directory [{args.baseline_runs_dir}] contains "
-                    f"runs for the algorithms [{', '.join(baseline_algos)}]. "
-                    f"Please use the --baseline-algo option specify which one to "
-                    f"compare to.",
-                )
-
-        if args.algo not in algos:
+    if args.baseline_algo is None:
+        if len(algos_in_baseline_dir) == 1:
+            # If the baseline algo is not specified and the baseline run dir contains
+            # only one algo, we assume that the user wants to compare to that algo.
+            args.baseline_algo = algos_in_baseline_dir[0]
+        elif args.algo in algos_in_baseline_dir:
+            # If the baseline algo is not specified and there is more than one option
+            # to pick from, and the algo is in the baseline run dir, we assume that
+            # the user wants to compare to the same algo between the two run dirs.
+            args.baseline_algo = args.algo
+        else:
             raise ValueError(
-                f"The run directory [{args.runs_dir}] contains runs for the algorithms"
-                f" [{', '.join(algos)}]. You specified [{args.algo}], for which no"
-                f" runs can be found in the run directory",
+                f"The baseline run directory [{args.baseline_runs_dir}] contains "
+                f"runs for the algorithms [{', '.join(algos_in_baseline_dir)}]. "
+                f"Please use the --baseline-algo option specify which one to "
+                f"compare to.",
             )
 
-        if args.baseline_algo not in baseline_algos:
-            raise ValueError(
-                f"The baseline run directory [{args.baseline_runs_dir}] contains runs "
-                f"for the algorithms [{', '.join(baseline_algos)}]. "
-                f"You specified [{args.baseline_algo}], for which no runs can be found"
-                f" in the baseline run directory",
-            )
+    if args.algo not in algos_in_run_dir:
+        raise ValueError(
+            f"The run directory [{args.runs_dir}] contains runs for the algorithms"
+            f" [{', '.join(algos_in_run_dir)}]. You specified [{args.algo}], for which "
+            f"no runs can be found in the run directory",
+        )
 
-        if (args.algo == args.baseline_algo) and (
-            args.runs_dir == args.baseline_runs_dir
-        ):
-            warnings.warn(
-                "You are comparing two equal sets of runs. "
-                "This is probably not what you want.",
-            )
+    if args.baseline_algo not in algos_in_baseline_dir:
+        raise ValueError(
+            f"The baseline run directory [{args.baseline_runs_dir}] contains runs "
+            f"for the algorithms [{', '.join(algos_in_baseline_dir)}]. "
+            f"You specified [{args.baseline_algo}], for which no runs can be found"
+            f" in the baseline run directory",
+        )
+
+    if (args.algo == args.baseline_algo) and (args.runs_dir == args.baseline_runs_dir):
+        warnings.warn(
+            "You are comparing two equal sets of runs. "
+            "This is probably not what you want.",
+        )
 
         envs = runs_by_algo_and_env[args.algo].keys()
         baseline_envs = baseline_runs_by_algo_and_env[args.baseline_algo].keys()
