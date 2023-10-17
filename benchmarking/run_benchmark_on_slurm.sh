@@ -19,6 +19,6 @@
 #  The env can be any of 'seals_ant', 'seals_half_cheetah', 'seals_hopper',
 #  'seals_swimmer',  'seals_walker'
 
-cd /nas/ucb/$(whoami)/imitation
+cd "/nas/ucb/$(whoami)/imitation" || exit
 source venv/bin/activate
-srun python -m imitation.scripts.$1 $2 with $2_$3 seed=$SLURM_ARRAY_TASK_ID
+srun python -m "imitation.scripts.$1" "$2" with "$2_$3" "seed=$SLURM_ARRAY_TASK_ID"
