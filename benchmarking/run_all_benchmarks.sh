@@ -1,3 +1,4 @@
+#!/bin/bash
 python -m imitation.scripts.train_imitation bc with bc_seals_ant seed=1
 python -m imitation.scripts.train_imitation bc with bc_seals_ant seed=2
 python -m imitation.scripts.train_imitation bc with bc_seals_ant seed=3
