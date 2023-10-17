@@ -242,20 +242,14 @@ def main():
                 f"comparison can be made",
             )
 
-        ignoring_some_envs = len(comparison_envs) < len(envs)
-        ignoring_some_baseline_envs = len(comparison_envs) < len(baseline_envs)
-        if ignoring_some_envs or ignoring_some_baseline_envs:
-            warnings.warn(
-                f"The baseline runs are for the environments "
-                f"[{', '.join(baseline_envs)}], "
-                f"while the runs are for the environments [{', '.join(envs)}]. "
-                f"The comparison will only be made for the environments "
-                f"[{', '.join(comparison_envs)}].",
-            )
-
-    except ValueError as e:
-        print(e)
-        sys.exit(1)
+    if envs != baseline_envs:
+        warnings.warn(
+            f"The baseline runs are for the environments "
+            f"[{', '.join(baseline_envs)}], "
+            f"while the runs are for the environments [{', '.join(envs)}]. "
+            f"The comparison will only be made for the environments "
+            f"[{', '.join(comparison_envs)}].",
+        )
 
     (
         probability_of_improvement,
