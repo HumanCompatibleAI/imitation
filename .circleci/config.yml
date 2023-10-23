@@ -143,7 +143,7 @@ commands:
       - run:
           name: install python and binary dependencies
           command: |
-            choco install --side-by-side -y python --version=3.8.10
+            choco install --allow-downgrade -y python --version=3.8.10
             choco install -y ffmpeg
             choco install -y openssl
           shell: powershell.exe
