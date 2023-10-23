@@ -23,7 +23,7 @@ There are two different `train_scripts`: `train_imitation` and `train_adversaria
 
 There are five environment configurations for which we have tuned hyperparameters:
 
-| enviroment         |
+| environment        |
 |--------------------|
 | seals_ant          |
 | seals_half_cheetah |
