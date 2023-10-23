@@ -283,8 +283,8 @@ def main():
     )
 
     print(
-        f"Comparison based on {probability_of_improvement_result.n_samples} samples per "
-        f"environment for {algo_str} and "
+        f"Comparison based on {probability_of_improvement_result.n_samples} samples "
+        f"per environment for {algo_str} and "
         f"{probability_of_improvement_result.n_baseline_samples} samples per "
         f"environment for {baseline_algo_str}.",
     )
