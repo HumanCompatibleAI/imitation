@@ -1,7 +1,7 @@
 # Benchmarking imitation
 
 The imitation library is benchmarked by running the algorithms BC, DAgger, AIRL and GAIL
-on five different environments from the 
+on five different environments from the
 [seals environment suite](https://github.com/HumanCompatibleAI/seals)
 each with 10 different random seeds.
 
@@ -47,7 +47,7 @@ For v0.4.0, they correspond to the hyperparameters used in the paper
 [imitation: Clean Imitation Learning Implementations](https://arxiv.org/abs/2211.11972).
 You may be able to get reasonable performance by using hyperparameters tuned for a similar environment.
 
-The experts and expert demonstrations are loaded from the HuggingFace model hub and 
+The experts and expert demonstrations are loaded from the HuggingFace model hub and
 are grouped under the [HumanCompatibleAI Organization](https://huggingface.co/HumanCompatibleAI).
 
 ### Outputs
@@ -78,9 +78,9 @@ output
         └── _sources
 ```
 
-In the `sacred` folder all runs are grouped by the training script, and each gets a 
+In the `sacred` folder all runs are grouped by the training script, and each gets a
 folder with their run id.
-That run folder contains 
+That run folder contains
 - a `config.json` file with the hyperparameters used for that run
 - a `run.json` file with run information with the final score and expert score
 - a `cout.txt` file with the stdout of the run
@@ -91,7 +91,7 @@ corresponding sacred run folder.
 
 Important entries in the json files are:
 - `run.json`
-  - `command`: The name of the algorithm 
+  - `command`: The name of the algorithm
   - `result.imit_stats.monitor_return_mean`: the score of a run
   - `result.expert_stats.monitor_return_mean`: the score of the expert policy that was used for a run
 - `config.json`
@@ -99,11 +99,11 @@ Important entries in the json files are:
 
 ## Running the Complete Benchmark Suite
 
-To execute the entire benchmarking suite with 10 seeds for each configuration, 
-you can utilize the `run_all_benchmarks.sh` script. 
-This script will consecutively run all configurations. 
-To optimize the process, consider parallelization options. 
-You can either send all commands to GNU Parallel, 
+To execute the entire benchmarking suite with 10 seeds for each configuration,
+you can utilize the `run_all_benchmarks.sh` script.
+This script will consecutively run all configurations.
+To optimize the process, consider parallelization options.
+You can either send all commands to GNU Parallel,
 use SLURM by invoking `run_all_benchmarks_on_slurm.sh` or
 split up the lines in multiple scripts to run on multiple machines manually.
 
@@ -126,8 +126,8 @@ airl, seals/Walker2d-v1, 310.4065185178571, 2502.8930135576925
 ...
 ```
 
-For a more comprehensive summary that includes aggregate statistics such as 
-mean, standard deviation, IQM (Inter Quartile Mean) with confidence intervals, 
+For a more comprehensive summary that includes aggregate statistics such as
+mean, standard deviation, IQM (Inter Quartile Mean) with confidence intervals,
 as recommended by the 'rliable' library, use the following command:
 
 ```shell
@@ -139,10 +139,10 @@ This will produce a markdown summary file named `summary.md`.
 
 
 **Hint:**
-If you have multiple output folders, because you ran different parts of the 
-benchmark on different machines, you can copy the output folders into a common root 
-folder. 
-The above scripts will search all nested directories for folders with 
+If you have multiple output folders, because you ran different parts of the
+benchmark on different machines, you can copy the output folders into a common root
+folder.
+The above scripts will search all nested directories for folders with
 a `run.json` and a `config.json` file.
 For example, calling `python sacred_output_to_csv.py benchmark_runs/ > summary.csv`
 on an output folder structured like this:
@@ -169,7 +169,7 @@ to compare it to the benchmark runs to see if there is a significant improvement
 
 If your algorithm has the same file output format as described above, you can use the
 `compute_probability_of_improvement.py` script to do the comparison.
-It uses the "Probability of Improvement" metric as recommended by the 
+It uses the "Probability of Improvement" metric as recommended by the
 [rliable library](https://github.com/google-research/rliable).
 
 ```shell
@@ -181,7 +181,7 @@ where:
 - `baseline_runs_dir` is the directory containing runs for a known algorithm. Hint: you do not need to re-run our benchmarks. We provide our run folders as release artifacts.
 - `algo` is the algorithm you want to compare against
 
-If `your_runs_dir` contains runs for more than one algorithm, you will have to 
+If `your_runs_dir` contains runs for more than one algorithm, you will have to
 disambiguate using the `--algo` option.
 
 # Tuning Hyperparameters

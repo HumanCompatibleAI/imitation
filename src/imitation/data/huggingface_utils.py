@@ -20,8 +20,10 @@ class TrajectoryDatasetSequence(Sequence[types.Trajectory]):
         def numpy_transform(batch):
             # No need to convert infos to a numpy array.
             # This speeds up the conversion quite a lot
-            return {key: np.asarray(val) if key != "infos" else val
-                    for key, val in batch.items()}
+            return {
+                key: np.asarray(val) if key != "infos" else val
+                for key, val in batch.items()
+            }
 
         # TODO: this is just a temporary workaround for
         #  https://github.com/huggingface/datasets/issues/5517
