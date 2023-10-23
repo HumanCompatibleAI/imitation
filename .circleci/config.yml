@@ -141,11 +141,13 @@ commands:
             - v11win-dependencies-{{ checksum "setup.py" }}-{{ checksum "ci/build_and_activate_venv.ps1" }}
 
       - run:
-          name: install python and binary dependencies
-          command: |
-            choco install --allow-downgrade -y python --version=3.8.10
-            choco install -y ffmpeg
-            choco install -y openssl
+          name: install python
+          command: choco install --allow-downgrade -y python --version=3.8.10
+          shell: powershell.exe
+
+      - run:
+          name: install openssl and ffmpeg
+          command: choco install -y ffmpeg openssl
           shell: powershell.exe
 
       - run:
