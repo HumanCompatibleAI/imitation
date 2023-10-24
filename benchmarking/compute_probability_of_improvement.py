@@ -12,7 +12,7 @@ from rliable import metrics
 from imitation.util.sacred_file_parsing import SacredRun, group_runs_by_algo_and_env
 
 
-def make_sample_matrix_from_runs_by_env(
+def make_score_matrix_from_runs_by_env(
     runs_by_env: Dict[str, List[SacredRun]],
     envs: Optional[List[str]] = None,
 ) -> np.ndarray:
@@ -99,10 +99,10 @@ def compute_probability_of_improvement(
     # We need to arrange the scores in a matrix of shape (n_samples, n_envs).
     # When we do not have the same number of samples for each environment,
     # the samples are truncated to the minimum sample count.
-    run_scores = make_sample_matrix_from_runs_by_env(runs_by_env, comparison_envs)
+    run_scores = make_score_matrix_from_runs_by_env(runs_by_env, comparison_envs)
     assert run_scores.shape[0] >= 1
     assert run_scores.shape[1] == len(comparison_envs)
-    baseline_run_scores = make_sample_matrix_from_runs_by_env(
+    baseline_run_scores = make_score_matrix_from_runs_by_env(
         baseline_runs_by_env,
         comparison_envs,
     )
