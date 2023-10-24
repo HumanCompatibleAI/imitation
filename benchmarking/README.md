@@ -4,14 +4,25 @@ The `src/imitation/scripts/config/tuned_hps` directory provides the tuned hyperp
 
 Configuration files can be loaded either from the CLI or from the Python API.
 
-## CLI
+## Single benchmark
+
+To run a single benchmark from the command line:
 
 ```bash
 python -m imitation.scripts.<train_script> <algo> with <algo>_<env>
 ```
 `train_script` can be either 1) `train_imitation` with `algo` as `bc` or `dagger` or 2) `train_adversarial`  with `algo` as `gail` or `airl`. The `env` can be either of `seals_ant`, `seals_half_cheetah`, `seals_hopper`, `seals_swimmer`, or `seals_walker`. The hyperparameters for other environments are not tuned yet. You may be able to get reasonable performance by using hyperparameters tuned for a similar environment; alternatively, you can tune the hyperparameters using the `tuning` script.
 
-## Python
+To view the results:
+
+```bash
+python -m imitation.scripts.analyze analyze_imitation with \
+    source_dir_str="output/sacred" table_verbosity=0  \
+    csv_output_path=results.csv \
+    run_name="<name>"
+```
+
+To run a single benchmark from Python add the config to your Sacred experiment `ex`:
 
 ```python
 ...
@@ -19,6 +30,72 @@ from imitation.scripts.<train_script> import <train_ex>
 <train_ex>.run(command_name="<algo>", named_configs=["<algo>_<env>"])
 ```
 
+## Entire benchmark suite
+
+### Running locally
+
+To generate the commands to run the entire benchmarking suite with multiple random seeds:
+
+```bash
+python experiments/commands.py \
+  --name=<name> \
+  --cfg_pattern "benchmarking/example_*.json" \
+  --seeds 0 1 2 \
+  --output_dir=output
+```
+
+To run those commands in parallel:
+
+```bash
+python experiments/commands.py \
+  --name=<name> \
+  --cfg_pattern "benchmarking/example_*.json" \
+  --seeds 0 1 2 \
+  --output_dir=output | parallel -j 8
+```
+
+(You may need to `brew install parallel` to get this to work on Mac.)
+
+### Running on Hofvarpnir
+
+To generate the commands for the Hofvarpnir cluster:
+
+```bash
+python experiments/commands.py \
+  --name=<name> \
+  --cfg_pattern "benchmarking/example_*.json" \
+  --seeds 0 1 2 \
+  --output_dir=/data/output \
+  --remote
+```
+
+To run those commands pipe them into bash:
+
+```bash
+python experiments/commands.py \
+  --name <name> \
+  --cfg_pattern "benchmarking/example_*.json" \
+  --seeds 0 1 2 \
+  --output_dir /data/output \
+  --remote | bash
+```
+
+### Results
+
+To produce a table with all the results:
+
+```bash
+python -m imitation.scripts.analyze analyze_imitation with \
+    source_dir_str="output/sacred" table_verbosity=0  \
+    csv_output_path=results.csv \
+    run_name="<name>"
+```
+
+To compute a p-value to test whether the differences from the paper are statistically significant:
+
+```bash
+python -m imitation.scripts.compare_to_baseline results.csv
+```
 # Tuning Hyperparameters
 
 The hyperparameters of any algorithm in imitation can be tuned using `src/imitation/scripts/tuning.py`.

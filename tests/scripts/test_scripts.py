@@ -33,6 +33,7 @@ from imitation.data import serialize
 from imitation.rewards import reward_nets
 from imitation.scripts import (
     analyze,
+    compare_to_baseline,
     convert_trajs,
     eval_policy,
     parallel,
@@ -1096,3 +1097,42 @@ def test_convert_trajs_from_current_format_is_idempotent(
     assert (
         filecmp.dircmp(converted_path, original_path).diff_files == []
     ), "convert_trajs not idempotent"
+
+
+@pytest.mark.parametrize(
+    "imit_returns,p_value",
+    [
+        (
+            [2000, 1900, 2100],
+            0.8,
+        ),
+        (
+            [1000, 900, 1100],
+            0.05,
+        ),
+    ],
+)
+def test_compare_to_baseline_p_values(
+    tmpdir: str,
+    imit_returns: List[float],
+    p_value: float,
+):
+    comparison = pd.DataFrame.from_records(
+        [
+            {
+                "algo": "BC",
+                "env_name": "seals/Ant-v0",
+                "imit_return_summary": f"{imit_return} +/- 0.0",
+            }
+            for imit_return in imit_returns
+        ],
+    )
+    tmpfile = pathlib.Path(tmpdir) / "comparison.csv"
+    comparison.to_csv(tmpfile)
+
+    assert (
+        compare_to_baseline.compare_results_to_baseline(results_filename=tmpfile)[
+            "pvalue"
+        ][0]
+        < p_value
+    )

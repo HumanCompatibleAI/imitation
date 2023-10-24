@@ -152,16 +152,20 @@ def _get_exp_command(sd: sacred_util.SacredDicts) -> str:
 def _get_algo_name(sd: sacred_util.SacredDicts) -> str:
     exp_command = _get_exp_command(sd)
 
-    if exp_command == "gail":
-        return "GAIL"
-    elif exp_command == "airl":
-        return "AIRL"
-    elif exp_command == "train_bc":
-        return "BC"
-    elif exp_command == "train_dagger":
-        return "DAgger"
+    COMMAND_TO_ALGO = {
+        "train_bc": "BC",
+        "bc": "BC",
+        "train_dagger": "DAgger",
+        "dagger": "DAgger",
+        "gail": "GAIL",
+        "airl": "AIRL",
+        "preference_comparisons": "Preference Comparisons",
+    }
+
+    if exp_command.lower() in COMMAND_TO_ALGO.keys():
+        return COMMAND_TO_ALGO[exp_command.lower()]
     else:
-        return f"??exp_command={exp_command}"
+        raise ValueError(f"Unknown command: {exp_command}")
 
 
 def _return_summaries(sd: sacred_util.SacredDicts) -> dict:
