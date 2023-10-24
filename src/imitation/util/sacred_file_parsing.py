@@ -40,7 +40,7 @@ def find_sacred_runs(
                 continue
             conf = json.loads(config_path.read_text())
             yield conf, run
-        else:
+        else:  # pragma: no cover
             warnings.warn(f"Run {config_path.parent} has no run.json")
 
 
