@@ -128,7 +128,8 @@ airl, seals/Walker2d-v1, 310.4065185178571, 2502.8930135576925
 
 For a more comprehensive summary that includes aggregate statistics such as
 mean, standard deviation, IQM (Inter Quartile Mean) with confidence intervals,
-as recommended by the 'rliable' library, use the following command:
+as recommended by the [rliable library](https://github.com/google-research/rliable),
+use the following command:
 
 ```shell
 python sacred_output_to_markdown_summary output/sacred --output summary.md
