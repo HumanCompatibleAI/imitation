@@ -274,13 +274,14 @@ def main():
         reps=args.bootstrap_reps,
     )
 
-    show_path = args.algo == args.baseline_algo
-    algo_str = f"{args.algo} ({args.runs_dir})" if show_path else args.algo
-    baseline_algo_str = (
-        f"{args.baseline_algo} ({args.baseline_runs_dir})"
-        if show_path
-        else args.baseline_algo
-    )
+    algo_str = args.algo
+    baseline_algo_str = args.baseline_algo
+    if args.algo == args.baseline_algo:
+        # Only print the run directories if we have to disambiguate the two algorithms
+        # When we have to different algorithms we can assume the user knows which
+        # runs_dir and baseline_runs_dir they are using.
+        algo_str += f" ({args.runs_dir})"
+        baseline_algo_str += f" ({args.baseline_runs_dir})"
 
     print(
         f"Comparison based on {probability_of_improvement_result.n_samples} samples "
