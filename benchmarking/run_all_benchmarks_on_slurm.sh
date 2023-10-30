@@ -1,0 +1,21 @@
+#!/bin/bash
+sbatch --job-name=bc_seals_ant run_benchmark_on_slurm.sh train_imitation bc seals_ant
+sbatch --job-name=dagger_seals_ant run_benchmark_on_slurm.sh train_imitation dagger seals_ant
+sbatch --job-name=airl_seals_ant run_benchmark_on_slurm.sh train_adversarial airl seals_ant
+sbatch --job-name=gail_seals_ant run_benchmark_on_slurm.sh train_adversarial gail seals_ant
+sbatch --job-name=bc_seals_half_cheetah run_benchmark_on_slurm.sh train_imitation bc seals_half_cheetah
+sbatch --job-name=dagger_seals_half_cheetah run_benchmark_on_slurm.sh train_imitation dagger seals_half_cheetah
+sbatch --job-name=airl_seals_half_cheetah run_benchmark_on_slurm.sh train_adversarial airl seals_half_cheetah
+sbatch --job-name=gail_seals_half_cheetah run_benchmark_on_slurm.sh train_adversarial gail seals_half_cheetah
+sbatch --job-name=bc_seals_hopper run_benchmark_on_slurm.sh train_imitation bc seals_hopper
+sbatch --job-name=dagger_seals_hopper run_benchmark_on_slurm.sh train_imitation dagger seals_hopper
+sbatch --job-name=airl_seals_hopper run_benchmark_on_slurm.sh train_adversarial airl seals_hopper
+sbatch --job-name=gail_seals_hopper run_benchmark_on_slurm.sh train_adversarial gail seals_hopper
+sbatch --job-name=bc_seals_swimmer run_benchmark_on_slurm.sh train_imitation bc seals_swimmer
+sbatch --job-name=dagger_seals_swimmer run_benchmark_on_slurm.sh train_imitation dagger seals_swimmer
+sbatch --job-name=airl_seals_swimmer run_benchmark_on_slurm.sh train_adversarial airl seals_swimmer
+sbatch --job-name=gail_seals_swimmer run_benchmark_on_slurm.sh train_adversarial gail seals_swimmer
+sbatch --job-name=bc_seals_walker run_benchmark_on_slurm.sh train_imitation bc seals_walker
+sbatch --job-name=dagger_seals_walker run_benchmark_on_slurm.sh train_imitation dagger seals_walker
+sbatch --job-name=airl_seals_walker run_benchmark_on_slurm.sh train_adversarial airl seals_walker
+sbatch --job-name=gail_seals_walker run_benchmark_on_slurm.sh train_adversarial gail seals_walker
