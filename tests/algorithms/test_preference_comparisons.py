@@ -266,27 +266,19 @@ def test_preference_comparisons_raises(
         rng=rng,
     )
 
-    querent = preference_comparisons.PreferenceQuerent(rng=rng)
     gatherer = preference_comparisons.SyntheticGatherer(rng=rng)
     no_rng_msg = (
         ".*don't provide.*random state.*provide.*fragmenter"
-        ".*preference gatherer.*preference querent.*reward_trainer.*"
+        ".*preference gatherer.*reward_trainer.*"
     )
 
-    def build_preference_comparisons(
-        gatherer,
-        querent,
-        reward_trainer,
-        fragmenter,
-        rng,
-    ):
+    def build_preference_comparisons(gatherer, reward_trainer, fragmenter, rng):
         preference_comparisons.PreferenceComparisons(
             agent_trainer,
             reward_net,
             num_iterations=2,
             transition_oversampling=2,
             reward_trainer=reward_trainer,
-            preference_querent=querent,
             preference_gatherer=gatherer,
             fragmenter=fragmenter,
             custom_logger=custom_logger,
@@ -295,47 +287,31 @@ def test_preference_comparisons_raises(
         )
 
     with pytest.raises(ValueError, match=no_rng_msg):
-        build_preference_comparisons(gatherer, None, None, None, rng=None)
+        build_preference_comparisons(gatherer, None, None, rng=None)
 
     with pytest.raises(ValueError, match=no_rng_msg):
-        build_preference_comparisons(None, None, reward_trainer, None, rng=None)
+        build_preference_comparisons(None, reward_trainer, None, rng=None)
 
     with pytest.raises(ValueError, match=no_rng_msg):
-        build_preference_comparisons(None, None, None, random_fragmenter, rng=None)
-
-    with pytest.raises(ValueError, match=no_rng_msg):
-        build_preference_comparisons(None, querent, None, None, rng=None)
+        build_preference_comparisons(None, None, random_fragmenter, rng=None)
 
     # This should not raise
-    build_preference_comparisons(
-        gatherer,
-        querent,
-        reward_trainer,
-        random_fragmenter,
-        rng=None,
-    )
+    build_preference_comparisons(gatherer, reward_trainer, random_fragmenter, rng=None)
 
     # if providing fragmenter, preference gatherer, reward trainer, does not need rng.
     with_rng_msg = (
-        "provide.*fragmenter.*preference gatherer.*preference querent.*reward trainer"
+        "provide.*fragmenter.*preference gatherer.*reward trainer"
         ".*don't need.*random state.*"
     )
 
     with pytest.raises(ValueError, match=with_rng_msg):
-        build_preference_comparisons(
-            gatherer,
-            querent,
-            reward_trainer,
-            random_fragmenter,
-            rng=rng,
-        )
+        build_preference_comparisons(gatherer, reward_trainer, random_fragmenter, rng=rng)
 
     # This should not raise
-    build_preference_comparisons(None, None, None, None, rng=rng)
-    build_preference_comparisons(gatherer, None, None, None, rng=rng)
-    build_preference_comparisons(None, querent, None, None, rng=rng)
-    build_preference_comparisons(None, None, reward_trainer, None, rng=rng)
-    build_preference_comparisons(None, None, None, random_fragmenter, rng=rng)
+    build_preference_comparisons(None, None, None, rng=rng)
+    build_preference_comparisons(gatherer, None, None, rng=rng)
+    build_preference_comparisons(None, reward_trainer, None, rng=rng)
+    build_preference_comparisons(None, None, random_fragmenter, rng=rng)
 
 
 @patch("builtins.input")
@@ -382,14 +358,15 @@ def test_synchronous_human_gatherer(mock_display, mock_input):
             ),
         ),
     ]
-    identified_queries = querent(trajectory_pairs)
-    gatherer.add(identified_queries)
+    gatherer.query(trajectory_pairs)
+
     # this is the actual test
     mock_input.return_value = "1"
-    assert gatherer()[1] == np.array([1.0])
-    gatherer.add(identified_queries)
+    assert gatherer.gather()[1] == np.array([1.0])
+
+    gatherer.query(trajectory_pairs)
     mock_input.return_value = "2"
-    assert gatherer()[1] == np.array([0.0])
+    assert gatherer.gather()[1] == np.array([0.0])
 
 
 @pytest.mark.parametrize(
@@ -1338,7 +1315,7 @@ def test_gathers_valid_preference():
     query = Mock()
     gatherer.pending_queries = {"1234": query}
 
-    gathered_queries, gathered_preferences = gatherer()
+    gathered_queries, gathered_preferences = gatherer.gather()
 
     assert gathered_preferences[0] == preference
     assert gathered_queries[0] == query
@@ -1353,7 +1330,7 @@ def test_ignores_incomparable_answer():
     gatherer._gather_preference = MagicMock(return_value=-1.0)
     gatherer.pending_queries = {"1234": Mock()}
 
-    gathered_queries, gathered_preferences = gatherer()
+    gathered_queries, gathered_preferences = gatherer.gather()
 
     assert len(gathered_preferences) == 0
     assert len(gathered_queries) == 0
