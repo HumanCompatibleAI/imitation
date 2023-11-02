@@ -3,7 +3,7 @@ import contextlib
 import functools
 from typing import Any, Callable, Generator, Mapping
 
-import gym
+import gymnasium as gym
 import numpy as np
 import sacred
 from stable_baselines3.common import vec_env
