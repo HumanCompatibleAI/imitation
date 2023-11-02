@@ -1043,10 +1043,13 @@ class SyntheticGatherer(PreferenceGatherer):
 
     def gather(self) -> Tuple[Sequence[TrajectoryWithRewPair], np.ndarray]:
         """Computes probability fragment 1 is preferred over fragment 2."""
-        returns1, returns2 = self._reward_sums(self.pending_queries.values())
+        queries = list(self.pending_queries.values())
+        self.pending_queries.clear() # Clear pending queries because the oracle will have answered all
+
+        returns1, returns2 = self._reward_sums(queries)
 
         if self.temperature == 0:
-            return (np.sign(returns1 - returns2) + 1) / 2
+            return queries, (np.sign(returns1 - returns2) + 1) / 2
 
         returns1 /= self.temperature
         returns2 /= self.temperature
@@ -1065,13 +1068,10 @@ class SyntheticGatherer(PreferenceGatherer):
         ).mean()
         self.logger.record("entropy", entropy)
 
-        # Clear pending queries because the oracle has answered all
-        queries = list(self.pending_queries.values())
-        self.pending_queries.clear()
-
         if self.sample:
             assert self.rng is not None
             return queries, self.rng.binomial(n=1, p=choice_probs).astype(np.float32)
+
         return queries, choice_probs
 
     def _reward_sums(self, fragment_pairs) -> Tuple[np.ndarray, np.ndarray]:
