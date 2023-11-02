@@ -123,7 +123,10 @@ def _check_trajs_equal(
 ):
     assert len(trajs1) == len(trajs2)
     for traj1, traj2 in zip(trajs1, trajs2):
-        assert np.array_equal(traj1.obs, traj2.obs)
+        assert np.array_equal(
+            types.assert_not_dictobs(traj1.obs),
+            types.assert_not_dictobs(traj2.obs),
+        )
         assert np.array_equal(traj1.acts, traj2.acts)
         assert np.array_equal(traj1.rews, traj2.rews)
         assert traj1.infos is not None
@@ -1149,7 +1152,7 @@ def test_that_trainer_improves(
     novice_agent_rewards, _ = evaluation.evaluate_policy(
         agent_trainer.algorithm.policy,
         action_is_reward_venv,
-        25,
+        50,
         return_episode_rewards=True,
     )
 
@@ -1158,7 +1161,7 @@ def test_that_trainer_improves(
     # after this training, and thus `later_rewards` should have lower loss.
     first_reward_network_stats = main_trainer.train(20, 20)
 
-    later_reward_network_stats = main_trainer.train(50, 20)
+    later_reward_network_stats = main_trainer.train(100, 40)
     assert (
         first_reward_network_stats["reward_loss"]
         > later_reward_network_stats["reward_loss"]
@@ -1168,7 +1171,7 @@ def test_that_trainer_improves(
     trained_agent_rewards, _ = evaluation.evaluate_policy(
         agent_trainer.algorithm.policy,
         action_is_reward_venv,
-        25,
+        50,
         return_episode_rewards=True,
     )
 

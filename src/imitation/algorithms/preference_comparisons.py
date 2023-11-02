@@ -470,9 +470,9 @@ class PreferenceModel(nn.Module):
             Shape - (num_transitions, ) for Single reward network and
             (num_transitions, num_networks) for ensemble of networks.
         """
-        state = transitions.obs
+        state = types.assert_not_dictobs(transitions.obs)
         action = transitions.acts
-        next_state = transitions.next_obs
+        next_state = types.assert_not_dictobs(transitions.next_obs)
         done = transitions.dones
         if self.ensemble_model is not None:
             rews_np = self.ensemble_model.predict_processed_all(

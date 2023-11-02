@@ -1,8 +1,8 @@
 {
   "algorithm_kwargs": {
     "demo_batch_size": 128,
-    "gen_replay_buffer_capacity": 4096,
-    "n_disc_updates_per_round": 8
+    "gen_replay_buffer_capacity": 16384,
+    "n_disc_updates_per_round": 16
   },
   "checkpoint_interval": 0,
   "demonstrations": {
@@ -10,11 +10,17 @@
     "algo_name": "ppo",
     "n_expert_demos": null
   },
+  "expert": {
+    "loader_kwargs": {
+      "gym_id": "seals/Swimmer-v1",
+      "organization": "HumanCompatibleAI"
+    }
+  },
   "reward": {
     "add_std_alpha": null,
     "ensemble_size": null,
     "net_cls": {
-      "py/type": "imitation.rewards.reward_nets.BasicRewardNet"
+      "py/type": "imitation.rewards.reward_nets.BasicShapedRewardNet"
     },
     "net_kwargs": {
       "normalize_input_layer": {
@@ -26,20 +32,20 @@
     }
   },
   "rl": {
-    "batch_size": 4096,
+    "batch_size": 16384,
     "rl_cls": {
       "py/type": "stable_baselines3.ppo.ppo.PPO"
     },
     "rl_kwargs": {
-      "batch_size": 512,
+      "batch_size": 64,
       "clip_range": 0.1,
-      "ent_coef": 0.001255299425412744,
-      "gae_lambda": 0.98,
-      "gamma": 0.995,
-      "learning_rate": 4.3984856156897565e-5,
-      "max_grad_norm": 0.9,
-      "n_epochs": 20,
-      "vf_coef": 0.20315938606555833
+      "ent_coef": 0.006137718463434523,
+      "gae_lambda": 0.95,
+      "gamma": 0.999,
+      "learning_rate": 0.0013390060486393868,
+      "max_grad_norm": 2,
+      "n_epochs": 5,
+      "vf_coef": 0.6162112311062333
     }
   },
   "total_timesteps": 10000000,
@@ -75,6 +81,6 @@
     "n_episodes_eval": 50
   },
   "environment": {
-    "gym_id": "seals/Hopper-v0"
+    "gym_id": "seals/Swimmer-v1"
   }
 }

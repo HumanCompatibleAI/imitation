@@ -1,12 +1,17 @@
 """Configuration for imitation.scripts.train_preference_comparisons."""
 
 import sacred
+from torch import nn
 
 from imitation.algorithms import preference_comparisons
 from imitation.data.wrappers import RenderImageInfoWrapper
 from imitation.scripts.ingredients import environment
 from imitation.scripts.ingredients import logging as logging_ingredient
 from imitation.scripts.ingredients import policy_evaluation, reward, rl
+
+# Note: All the hyperparameter configs in the file are of the tuned
+# hyperparameters of the RL algorithm of the respective environment.
+# Taken from imitation/scripts/config/train_rl.py
 
 train_preference_comparisons_ex = sacred.Experiment(
     "train_preference_comparisons",
@@ -125,9 +130,22 @@ def cartpole():
 
 @train_preference_comparisons_ex.named_config
 def seals_ant():
-    locals().update(**MUJOCO_SHARED_LOCALS)
-    locals().update(**ANT_SHARED_LOCALS)
     environment = dict(gym_id="seals/Ant-v0")
+    rl = dict(
+        batch_size=2048,
+        rl_kwargs=dict(
+            batch_size=16,
+            clip_range=0.3,
+            ent_coef=3.1441389214159857e-06,
+            gae_lambda=0.8,
+            gamma=0.995,
+            learning_rate=0.00017959211641976886,
+            max_grad_norm=0.9,
+            n_epochs=10,
+            # policy_kwargs are same as the defaults
+            vf_coef=0.4351450387648799,
+        ),
+    )
 
 
 @train_preference_comparisons_ex.named_config
@@ -138,9 +156,104 @@ def half_cheetah():
 
 
 @train_preference_comparisons_ex.named_config
+def seals_half_cheetah():
+    environment = dict(gym_id="seals/HalfCheetah-v0")
+    rl = dict(
+        batch_size=512,
+        rl_kwargs=dict(
+            batch_size=64,
+            clip_range=0.1,
+            ent_coef=3.794797423594763e-06,
+            gae_lambda=0.95,
+            gamma=0.95,
+            learning_rate=0.0003286871805949382,
+            max_grad_norm=0.8,
+            n_epochs=5,
+            vf_coef=0.11483689492120866,
+        ),
+    )
+    num_iterations = 50
+    total_timesteps = 20000000
+
+
+@train_preference_comparisons_ex.named_config
 def seals_hopper():
-    locals().update(**MUJOCO_SHARED_LOCALS)
     environment = dict(gym_id="seals/Hopper-v0")
+    policy = dict(
+        policy_cls="MlpPolicy",
+        policy_kwargs=dict(
+            activation_fn=nn.ReLU,
+            net_arch=[dict(pi=[64, 64], vf=[64, 64])],
+        ),
+    )
+    rl = dict(
+        batch_size=2048,
+        rl_kwargs=dict(
+            batch_size=512,
+            clip_range=0.1,
+            ent_coef=0.0010159833764878474,
+            gae_lambda=0.98,
+            gamma=0.995,
+            learning_rate=0.0003904770450788824,
+            max_grad_norm=0.9,
+            n_epochs=20,
+            vf_coef=0.20315938606555833,
+        ),
+    )
+
+
+@train_preference_comparisons_ex.named_config
+def seals_swimmer():
+    environment = dict(gym_id="seals/Swimmer-v0")
+    policy = dict(
+        policy_cls="MlpPolicy",
+        policy_kwargs=dict(
+            activation_fn=nn.ReLU,
+            net_arch=[dict(pi=[64, 64], vf=[64, 64])],
+        ),
+    )
+    rl = dict(
+        batch_size=2048,
+        rl_kwargs=dict(
+            batch_size=64,
+            clip_range=0.1,
+            ent_coef=5.167107294612664e-08,
+            gae_lambda=0.95,
+            gamma=0.999,
+            learning_rate=0.000414936134792374,
+            max_grad_norm=2,
+            n_epochs=5,
+            # policy_kwargs are same as the defaults
+            vf_coef=0.6162112311062333,
+        ),
+    )
+
+
+@train_preference_comparisons_ex.named_config
+def seals_walker():
+    environment = dict(gym_id="seals/Walker2d-v0")
+    policy = dict(
+        policy_cls="MlpPolicy",
+        policy_kwargs=dict(
+            activation_fn=nn.ReLU,
+            net_arch=[dict(pi=[64, 64], vf=[64, 64])],
+        ),
+    )
+    rl = dict(
+        batch_size=8192,
+        rl_kwargs=dict(
+            batch_size=128,
+            clip_range=0.4,
+            ent_coef=0.00013057334805552262,
+            gae_lambda=0.92,
+            gamma=0.98,
+            learning_rate=0.000138575372312869,
+            max_grad_norm=0.6,
+            n_epochs=20,
+            # policy_kwargs are same as the defaults
+            vf_coef=0.6167177795726859,
+        ),
+    )
 
 
 @train_preference_comparisons_ex.named_config

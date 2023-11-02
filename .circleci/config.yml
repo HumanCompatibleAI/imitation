@@ -138,14 +138,16 @@ commands:
       # Download and cache dependencies
       - restore_cache:
           keys:
-            - v10win-dependencies-{{ checksum "setup.py" }}-{{ checksum "ci/build_and_activate_venv.ps1" }}
+            - v11win-dependencies-{{ checksum "setup.py" }}-{{ checksum "ci/build_and_activate_venv.ps1" }}
 
       - run:
-          name: install python and binary dependencies
-          command: |
-            choco install --side-by-side -y python --version=3.8.10
-            choco install -y ffmpeg
-            choco install -y openssl
+          name: install python
+          command: choco install --allow-downgrade -y python --version=3.8.10
+          shell: powershell.exe
+
+      - run:
+          name: install openssl and ffmpeg
+          command: choco install -y ffmpeg openssl
           shell: powershell.exe
 
       - run:
@@ -168,7 +170,7 @@ commands:
       - save_cache:
           paths:
             - .\venv
-          key: v10win-dependencies-{{ checksum "setup.py" }}-{{ checksum "ci/build_and_activate_venv.ps1" }}
+          key: v11win-dependencies-{{ checksum "setup.py" }}-{{ checksum "ci/build_and_activate_venv.ps1" }}
 
       - run:
           name: install imitation
@@ -176,11 +178,19 @@ commands:
             .\venv\Scripts\activate
             pip install --upgrade --force-reinstall --no-deps .
           shell: powershell.exe
+
       - run:
           name: print installed packages
           command: |
             .\venv\Scripts\activate
             pip freeze --all
+          shell: powershell.exe
+
+      - run:
+          name: enable long path
+          command: |
+            New-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Control\FileSystem" `
+            -Name "LongPathsEnabled" -Value 1 -PropertyType DWORD -Force
           shell: powershell.exe
 
   restore-pytest-cache:
@@ -350,7 +360,10 @@ jobs:
           name: run tests
           command: |
             source ~/venv/bin/activate
-            TESTFILES=$(circleci tests glob tests/**/test*.py | circleci tests split --split-by=timings)
+            ALL_TESTFILES=$(circleci tests glob "tests/**/test*.py")
+            echo "All testfiles: ${ALL_TESTFILES}"
+            TESTFILES=$(circleci tests glob "tests/**/test*.py" | circleci tests split --split-by=timings)
+            echo "This shard testing: ${TESTFILES}"
             pytest -n auto --junitxml=/tmp/test-reports/junit.xml -vv $TESTFILES
 
       - save-pytest-cache

@@ -11,13 +11,13 @@
     "train_kwargs": {
       "log_interval": 500,
       "n_batches": null,
-      "n_epochs": 5
+      "n_epochs": 10
     }
   },
   "dagger": {
     "beta_schedule": {
-      "decay_probability": 0.7,
-      "py/object": "imitation.algorithms.dagger.ExponentialBetaSchedule"
+      "py/object": "imitation.algorithms.dagger.LinearBetaSchedule",
+      "rampdown_rounds": 15
     },
     "rollout_round_min_episodes": 5,
     "total_timesteps": 100000,
@@ -47,6 +47,6 @@
     "n_episodes_eval": 50
   },
   "environment": {
-    "gym_id": "seals/Walker2d-v0"
+    "gym_id": "seals/Ant-v1"
   }
 }

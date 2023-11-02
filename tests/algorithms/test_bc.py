@@ -4,12 +4,15 @@ import dataclasses
 import os
 from typing import Any, Callable, Optional, Sequence
 
+import gymnasium as gym
 import hypothesis
 import hypothesis.strategies as st
 import numpy as np
 import pytest
 import torch as th
-from stable_baselines3.common import evaluation, vec_env
+from stable_baselines3.common import evaluation
+from stable_baselines3.common import policies as sb_policies
+from stable_baselines3.common import vec_env
 
 from imitation.algorithms import bc
 from imitation.data import rollout, types
@@ -285,6 +288,36 @@ def test_that_policy_reconstruction_preserves_parameters(
     assert len(original_parameters) == len(reconstructed_parameters)
     for original, reconstructed in zip(original_parameters, reconstructed_parameters):
         th.testing.assert_close(original, reconstructed)
+
+
+def test_dict_space(multi_obs_venv: vec_env.VecEnv):
+    # multi-input policy to accept dict observations
+    assert isinstance(multi_obs_venv.observation_space, gym.spaces.Dict)
+    policy = sb_policies.MultiInputActorCriticPolicy(
+        multi_obs_venv.observation_space,
+        multi_obs_venv.action_space,
+        lambda _: 0.001,
+    )
+    rng = np.random.default_rng()
+
+    # sample random transitions
+    rollouts = rollout.rollout(
+        policy=None,
+        venv=multi_obs_venv,
+        sample_until=rollout.make_sample_until(min_timesteps=None, min_episodes=50),
+        rng=rng,
+        unwrap=True,
+    )
+    transitions = rollout.flatten_trajectories(rollouts)
+    bc_trainer = bc.BC(
+        observation_space=multi_obs_venv.observation_space,
+        policy=policy,
+        action_space=multi_obs_venv.action_space,
+        rng=rng,
+        demonstrations=transitions,
+    )
+    # confirm that training works
+    bc_trainer.train(n_epochs=1)
 
 
 #############################################

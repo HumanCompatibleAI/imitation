@@ -12,9 +12,10 @@ using multiple random seeds.
 
 For example, we can run:
 
+TUNED_HPS_DIR=../src/imitation/scripts/config/tuned_hps
 python commands.py \
     --name=run0 \
-    --cfg_pattern=../benchmarking/*ai*_seals_walker_*.json \
+    --cfg_pattern=$TUNED_HPS_DIR/*ai*_seals_walker_*.json \
     --output_dir=output
 
 And get the following commands printed out:
@@ -22,13 +23,13 @@ And get the following commands printed out:
 python -m imitation.scripts.train_adversarial airl \
     --capture=sys --name=run0 \
     --file_storage=output/sacred/$USER-cmd-run0-airl-0-a3531726 \
-    with ../benchmarking/example_airl_seals_walker_best_hp_eval.json \
+    with ../src/imitation/scripts/config/tuned_hps/airl_seals_walker_best_hp_eval.json \
     seed=0 logging.log_root=output
 
 python -m imitation.scripts.train_adversarial gail \
     --capture=sys --name=run0 \
     --file_storage=output/sacred/$USER-cmd-run0-gail-0-a1ec171b \
-    with ../benchmarking/example_gail_seals_walker_best_hp_eval.json \
+    with $TUNED_HPS_DIR/gail_seals_walker_best_hp_eval.json \
     seed=0 logging.log_root=output
 
 We can execute commands in parallel by piping them to GNU parallel:
@@ -40,9 +41,10 @@ to run training scripts in containers on the Hofvarpnir cluster.
 
 For example, we can run:
 
+TUNED_HPS_DIR=../src/imitation/scripts/config/tuned_hps
 python commands.py \
     --name=run0 \
-    --cfg_pattern=../benchmarking/example_bc_seals_half_cheetah_best_hp_eval.json \
+    --cfg_pattern=$TUNED_HPS_DIR/bc_seals_half_cheetah_best_hp_eval.json \
     --output_dir=/data/output \
     --remote
 
@@ -51,8 +53,9 @@ And get the following command printed out:
 ctl job run --name $USER-cmd-run0-bc-0-72cb1df3 \
     --command "python -m imitation.scripts.train_imitation bc \
     --capture=sys --name=run0 \
-    --file_storage=/data/output/sacred/$USER-cmd-run0-bc-0-72cb1df3 \
-    with /data/imitation/benchmarking/example_bc_seals_half_cheetah_best_hp_eval.json \
+    --file_storage=/data/output/sacred/$USER-cmd-run0-bc-0-72cb1df3 with \
+    /data/imitation/src/imitation/scripts/config/tuned_hps/
+    bc_seals_half_cheetah_best_hp_eval.json \
     seed=0 logging.log_root=/data/output" \
     --container hacobe/devbox:imitation \
     --login --force-pull --never-restart --gpu 0 --shared-host-dir-mount /data
@@ -85,7 +88,7 @@ def _get_algo_name(cfg_file: str) -> str:
     """Get the algorithm name from the given config filename."""
     algo_names = set()
     for key in _ALGO_NAME_TO_SCRIPT_NAME:
-        if cfg_file.find("_" + key + "_") != -1:
+        if cfg_file.find(key + "_") != -1:
             algo_names.add(key)
 
     if len(algo_names) == 0:
@@ -121,7 +124,7 @@ def main(args: argparse.Namespace) -> None:
         else:
             cfg_path = os.path.join(args.remote_cfg_dir, cfg_file)
 
-        cfg_id = _get_cfg_id(cfg_path)
+        cfg_id = _get_cfg_id(cfg_file)
 
         for seed in args.seeds:
             cmd_id = _CMD_ID_TEMPLATE.format(
@@ -177,19 +180,19 @@ cluster job name.""",
     parser.add_argument(
         "--cfg_pattern",
         type=str,
-        default="example_bc_seals_half_cheetah_best_hp_eval.json",
+        default="bc_seals_half_cheetah_best_hp_eval.json",
         help="""Generate a command for every file that matches this glob pattern. \
 Each matching file should be a config file that has its algorithm name \
 (bc, dagger, airl or gail) bookended by underscores in the filename. \
 If the --remote flag is enabled, then generate a command for every file in the \
 --remote_cfg_dir directory that has the same filename as a file that matches this \
 glob pattern. E.g., suppose the current, local working directory is 'foo' and \
-the subdirectory 'foo/bar' contains the config files 'example_bc_best.json' and \
-'example_dagger_best.json'. If the pattern 'bar/*.json' is supplied, then globbing \
-will return ['bar/example_bc_best.json', 'bar/example_dagger_best.json']. \
+the subdirectory 'foo/bar' contains the config files 'bc_best.json' and \
+'dagger_best.json'. If the pattern 'bar/*.json' is supplied, then globbing \
+will return ['bar/bc_best.json', 'bar/dagger_best.json']. \
 If the --remote flag is enabled, 'bar' will be replaced with `remote_cfg_dir` and \
 commands will be created for the following configs: \
-[`remote_cfg_dir`/example_bc_best.json, `remote_cfg_dir`/example_dagger_best.json] \
+[`remote_cfg_dir`/bc_best.json, `remote_cfg_dir`/dagger_best.json] \
 Why not just supply the pattern '`remote_cfg_dir`/*.json' directly? \
 Because the `remote_cfg_dir` directory may not exist on the local machine.""",
     )
@@ -220,7 +223,7 @@ in containers on the Hofvarpnir cluster.""",
     parser.add_argument(
         "--remote_cfg_dir",
         type=str,
-        default="/data/imitation/benchmarking",
+        default="/data/imitation/src/imitation/scripts/config/tuned_hps",
         help="""Path to a directory storing config files \
 accessible from each container. """,
     )

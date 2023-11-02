@@ -1,8 +1,8 @@
 {
   "algorithm_kwargs": {
-    "demo_batch_size": 2048,
+    "demo_batch_size": 8192,
     "gen_replay_buffer_capacity": 512,
-    "n_disc_updates_per_round": 16
+    "n_disc_updates_per_round": 8
   },
   "checkpoint_interval": 0,
   "demonstrations": {
@@ -14,7 +14,7 @@
     "add_std_alpha": null,
     "ensemble_size": null,
     "net_cls": {
-      "py/type": "imitation.rewards.reward_nets.BasicShapedRewardNet"
+      "py/type": "imitation.rewards.reward_nets.BasicRewardNet"
     },
     "net_kwargs": {
       "normalize_input_layer": {
@@ -26,17 +26,17 @@
     }
   },
   "rl": {
-    "batch_size": 8192,
+    "batch_size": 4096,
     "rl_cls": {
       "py/type": "stable_baselines3.ppo.ppo.PPO"
     },
     "rl_kwargs": {
       "batch_size": 64,
       "clip_range": 0.1,
-      "ent_coef": 0.0005544771755195421,
+      "ent_coef": 3.992371122209408e-6,
       "gae_lambda": 0.95,
       "gamma": 0.95,
-      "learning_rate": 0.00047248619386801587,
+      "learning_rate": 0.00026250519057717037,
       "max_grad_norm": 0.8,
       "n_epochs": 5,
       "vf_coef": 0.11483689492120866
@@ -62,6 +62,6 @@
     "n_episodes_eval": 50
   },
   "environment": {
-    "gym_id": "seals/HalfCheetah-v0"
+    "gym_id": "seals/HalfCheetah-v1"
   }
 }

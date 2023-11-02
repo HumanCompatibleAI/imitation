@@ -73,7 +73,7 @@ def bc(
     custom_logger, log_dir = logging_ingredient.setup_logging()
 
     expert_trajs = demonstrations.get_expert_trajectories()
-    with environment.make_venv() as venv:
+    with environment.make_venv() as venv:  # type: ignore[wrong-arg-count]
         bc_trainer = bc_ingredient.make_bc(venv, expert_trajs, custom_logger)
 
         bc_train_kwargs = dict(log_rollouts_venv=venv, **bc["train_kwargs"])
@@ -115,7 +115,7 @@ def dagger(
     if dagger["use_offline_rollouts"]:
         expert_trajs = demonstrations.get_expert_trajectories()
 
-    with environment.make_venv() as venv:
+    with environment.make_venv() as venv:  # type: ignore[wrong-arg-count]
         bc_trainer = bc_ingredient.make_bc(venv, expert_trajs, custom_logger)
 
         bc_train_kwargs = dict(log_rollouts_venv=venv, **bc["train_kwargs"])
@@ -131,6 +131,7 @@ def dagger(
             expert_policy=expert_policy,
             custom_logger=custom_logger,
             bc_trainer=bc_trainer,
+            beta_schedule=dagger["beta_schedule"],
             rng=_rnd,
         )
 
@@ -161,7 +162,7 @@ def sqil(
     custom_logger, log_dir = logging_ingredient.setup_logging()
     expert_trajs = demonstrations.get_expert_trajectories()
 
-    with environment.make_venv() as venv:
+    with environment.make_venv() as venv:  # type: ignore[wrong-arg-count]
         sqil_trainer = sqil_algorithm.SQIL(
             venv=venv,
             demonstrations=expert_trajs,

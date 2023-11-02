@@ -135,28 +135,33 @@ def test_replay_buffer(capacity, chunk_len, obs_shape, act_shape, dtype):
         sample = buf.sample(100)
         info_vals = np.array([info["a"] for info in sample.infos])
 
-        assert sample.obs.shape == sample.next_obs.shape == (100,) + obs_shape
+        # dictobs not supported for buffers, or by current code in
+        # this test file (eg `_get_fill_from_chunk`)
+        obs = types.assert_not_dictobs(sample.obs)
+        next_obs = types.assert_not_dictobs(sample.next_obs)
+
+        assert obs.shape == next_obs.shape == (100,) + obs_shape
         assert sample.acts.shape == (100,) + act_shape
         assert sample.dones.shape == (100,)
         assert info_vals.shape == (100,)
 
         # Are samples right data type?
-        assert sample.obs.dtype == dtype
+        assert obs.dtype == dtype
         assert sample.acts.dtype == dtype
-        assert sample.next_obs.dtype == dtype
+        assert next_obs.dtype == dtype
         assert info_vals.dtype == dtype
         assert sample.dones.dtype == bool
         assert sample.infos.dtype == object
 
         # Are samples in range?
-        _check_bound(i + chunk_len, capacity, sample.obs)
-        _check_bound(i + chunk_len, capacity, sample.next_obs, 3 * capacity)
+        _check_bound(i + chunk_len, capacity, obs)
+        _check_bound(i + chunk_len, capacity, next_obs, 3 * capacity)
         _check_bound(i + chunk_len, capacity, sample.acts, 6 * capacity)
         _check_bound(i + chunk_len, capacity, info_vals, 9 * capacity)
 
         # Are samples in-order?
-        obs_fill = _get_fill_from_chunk(sample.obs)
-        next_obs_fill = _get_fill_from_chunk(sample.next_obs)
+        obs_fill = _get_fill_from_chunk(obs)
+        next_obs_fill = _get_fill_from_chunk(next_obs)
         act_fill = _get_fill_from_chunk(sample.acts)
         info_vals_fill = _get_fill_from_chunk(info_vals)
 
@@ -171,7 +176,7 @@ def test_replay_buffer(capacity, chunk_len, obs_shape, act_shape, dtype):
 @pytest.mark.parametrize("sample_shape", [(), (1,), (5, 2)])
 def test_buffer_store_errors(sample_shape):
     capacity = 11
-    dtype = "float32"
+    dtype = np.float32
 
     def buf():
         return Buffer(capacity, {"k": sample_shape}, {"k": dtype})
@@ -203,14 +208,14 @@ def test_buffer_store_errors(sample_shape):
 
 
 def test_buffer_sample_errors():
-    b = Buffer(10, {"k": (2, 1)}, dtypes={"k": bool})
+    b = Buffer(10, {"k": (2, 1)}, dtypes={"k": np.bool_})
     with pytest.raises(ValueError):
         b.sample(5)
 
 
 def test_buffer_init_errors():
     with pytest.raises(KeyError, match=r"sample_shape and dtypes.*"):
-        Buffer(10, dict(a=(2, 1), b=(3,)), dtypes=dict(a="float32", c=bool))
+        Buffer(10, dict(a=(2, 1), b=(3,)), dtypes=dict(a=np.float32, c=np.bool_))
 
 
 def test_replay_buffer_init_errors():
@@ -220,13 +225,13 @@ def test_replay_buffer_init_errors():
     ):
         ReplayBuffer(15, venv=gym.make("CartPole-v1"), obs_shape=(10, 10))
     with pytest.raises(ValueError, match=r"Shape or dtype missing.*"):
-        ReplayBuffer(15, obs_shape=(10, 10), act_shape=(15,), obs_dtype=bool)
+        ReplayBuffer(15, obs_shape=(10, 10), act_shape=(15,), obs_dtype=np.bool_)
     with pytest.raises(ValueError, match=r"Shape or dtype missing.*"):
-        ReplayBuffer(15, obs_shape=(10, 10), obs_dtype=bool, act_dtype=bool)
+        ReplayBuffer(15, obs_shape=(10, 10), obs_dtype=np.bool_, act_dtype=np.bool_)
 
 
 def test_buffer_from_data():
-    data = np.ndarray([50, 30], dtype=bool)
+    data = np.ndarray([50, 30], dtype=np.bool_)
     buf = Buffer.from_data({"k": data})
     assert buf._arrays["k"] is not data
     assert data.dtype == buf._arrays["k"].dtype

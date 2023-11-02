@@ -1,8 +1,8 @@
 {
   "algorithm_kwargs": {
-    "demo_batch_size": 2048,
-    "gen_replay_buffer_capacity": 8192,
-    "n_disc_updates_per_round": 16
+    "demo_batch_size": 128,
+    "gen_replay_buffer_capacity": 4096,
+    "n_disc_updates_per_round": 8
   },
   "checkpoint_interval": 0,
   "demonstrations": {
@@ -14,7 +14,7 @@
     "add_std_alpha": null,
     "ensemble_size": null,
     "net_cls": {
-      "py/type": "imitation.rewards.reward_nets.BasicShapedRewardNet"
+      "py/type": "imitation.rewards.reward_nets.BasicRewardNet"
     },
     "net_kwargs": {
       "normalize_input_layer": {
@@ -26,17 +26,17 @@
     }
   },
   "rl": {
-    "batch_size": 8192,
+    "batch_size": 4096,
     "rl_cls": {
       "py/type": "stable_baselines3.ppo.ppo.PPO"
     },
     "rl_kwargs": {
       "batch_size": 512,
       "clip_range": 0.1,
-      "ent_coef": 0.009709494745755033,
+      "ent_coef": 0.001255299425412744,
       "gae_lambda": 0.98,
       "gamma": 0.995,
-      "learning_rate": 0.0005807211840258373,
+      "learning_rate": 4.3984856156897565e-5,
       "max_grad_norm": 0.9,
       "n_epochs": 20,
       "vf_coef": 0.20315938606555833
@@ -75,6 +75,6 @@
     "n_episodes_eval": 50
   },
   "environment": {
-    "gym_id": "seals/Hopper-v0"
+    "gym_id": "seals/Hopper-v1"
   }
 }

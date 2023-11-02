@@ -99,7 +99,9 @@ def train_rl(
     policy_dir.mkdir(parents=True, exist_ok=True)
 
     post_wrappers = {"RolloutInfoWrapper": lambda env, idx: wrappers.RolloutInfoWrapper(env)}
-    with environment.make_venv(post_wrappers=post_wrappers) as venv:
+    with environment.make_venv(  # type: ignore[wrong-keyword-args]
+        post_wrappers=post_wrappers,
+    ) as venv:
         callback_objs = []
         if reward_type is not None:
             reward_fn = load_reward(
@@ -158,7 +160,8 @@ def train_rl(
             policies_serialize.save_stable_model(output_dir, rl_algo)
 
         # Final evaluation of expert policy.
-        return policy_evaluation.eval_policy(rl_algo, venv)
+        eval_stats = policy_evaluation.eval_policy(rl_algo, venv)
+        return eval_stats
 
 
 def main_console():

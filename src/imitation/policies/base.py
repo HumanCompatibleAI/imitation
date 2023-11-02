@@ -1,7 +1,7 @@
 """Custom policy classes and convenience methods."""
 
 import abc
-from typing import Type
+from typing import Dict, Type, Union
 
 import gymnasium as gym
 import numpy as np
@@ -10,6 +10,7 @@ from stable_baselines3.common import policies, torch_layers
 from stable_baselines3.sac import policies as sac_policies
 from torch import nn
 
+from imitation.data import types
 from imitation.util import networks
 
 
@@ -23,18 +24,31 @@ class NonTrainablePolicy(policies.BasePolicy, abc.ABC):
             action_space=action_space,
         )
 
-    def _predict(self, obs: th.Tensor, deterministic: bool = False):
+    def _predict(
+        self,
+        obs: Union[th.Tensor, Dict[str, th.Tensor]],
+        deterministic: bool = False,
+    ):
         np_actions = []
-        np_obs = obs.detach().cpu().numpy()
+        if isinstance(obs, dict):
+            np_obs = types.DictObs(
+                {k: v.detach().cpu().numpy() for k, v in obs.items()},
+            )
+        else:
+            np_obs = obs.detach().cpu().numpy()
         for np_ob in np_obs:
-            assert self.observation_space.contains(np_ob)
-            np_actions.append(self._choose_action(np_ob))
+            np_ob_unwrapped = types.maybe_unwrap_dictobs(np_ob)
+            assert self.observation_space.contains(np_ob_unwrapped)
+            np_actions.append(self._choose_action(np_ob_unwrapped))
         np_actions = np.stack(np_actions, axis=0)
         th_actions = th.as_tensor(np_actions, device=self.device)
         return th_actions
 
     @abc.abstractmethod
-    def _choose_action(self, obs: np.ndarray) -> np.ndarray:
+    def _choose_action(
+        self,
+        obs: Union[np.ndarray, Dict[str, np.ndarray]],
+    ) -> np.ndarray:
         """Chooses an action, optionally based on observation obs."""
 
     def forward(self, *args):
@@ -46,7 +60,10 @@ class NonTrainablePolicy(policies.BasePolicy, abc.ABC):
 class RandomPolicy(NonTrainablePolicy):
     """Returns random actions."""
 
-    def _choose_action(self, obs: np.ndarray) -> np.ndarray:
+    def _choose_action(
+        self,
+        obs: Union[np.ndarray, Dict[str, np.ndarray]],
+    ) -> np.ndarray:
         return self.action_space.sample()
 
 
@@ -65,7 +82,10 @@ class ZeroPolicy(NonTrainablePolicy):
                 f"Zero action {self._zero_action} not in action space {action_space}",
             )
 
-    def _choose_action(self, obs: np.ndarray) -> np.ndarray:
+    def _choose_action(
+        self,
+        obs: Union[np.ndarray, Dict[str, np.ndarray]],
+    ) -> np.ndarray:
         return self._zero_action
 
 

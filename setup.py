@@ -17,7 +17,7 @@ PARALLEL_REQUIRE = ["ray[debug,tune]~=2.0.0"]
 ATARI_REQUIRE = [
     "seals[atari]~=0.2.1",
 ]
-PYTYPE = ["pytype==2022.7.26"] if IS_NOT_WINDOWS else []
+PYTYPE = ["pytype==2023.9.27"] if IS_NOT_WINDOWS else []
 
 # Note: the versions of the test and doc requirements should be tightly pinned to known
 #   working versions to make our CI/CD pipeline as stable as possible.
@@ -48,6 +48,7 @@ TESTS_REQUIRE = (
         "pytest~=7.1.2",
         "pytest-cov~=3.0.0",
         "pytest-notebook==0.8.0",
+        "pytest-timeout~=2.1.0",
         "pytest-xdist~=2.5.0",
         "scipy~=1.9.0",
         "wandb==0.12.21",
@@ -183,13 +184,13 @@ setup(
     python_requires=">=3.8.0",
     packages=find_packages("src"),
     package_dir={"": "src"},
-    package_data={"imitation": ["py.typed", "envs/examples/airl_envs/assets/*.xml"]},
+    package_data={"imitation": ["py.typed", "scripts/config/tuned_hps/*.json"]},
     # Note: while we are strict with our test and doc requirement versions, we try to
     #   impose as little restrictions on the install requirements as possible. Try to
     #   encode only known incompatibilities here. This prevents nasty dependency issues
     #   for our users.
     install_requires=[
-        "gymnasium[classic-control]~=0.28.1",
+        "gymnasium[classic-control]~=0.29",
         "matplotlib",
         "numpy>=1.15",
         "torch>=1.4.0",
@@ -201,6 +202,7 @@ setup(
         "sacred>=0.8.4",
         "tensorboard>=1.14",
         "huggingface_sb3~=3.0",
+        "optuna>=3.0.1",
         "datasets>=2.8.0",
         "opencv-python",  # TODO: specify version
     ],
@@ -222,7 +224,7 @@ setup(
         "docs": DOCS_REQUIRE,
         "parallel": PARALLEL_REQUIRE,
         "mujoco": [
-            "gymnasium[classic-control,mujoco]~=0.28.1",
+            "gymnasium[classic-control,mujoco]~=0.29",
         ],
         "atari": ATARI_REQUIRE,
     },

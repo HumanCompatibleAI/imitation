@@ -1,18 +1,18 @@
 {
   "bc": {
-    "batch_size": 64,
-    "l2_weight": 1.3610189916104634e-6,
+    "batch_size": 16,
+    "l2_weight": 2.350251568550711e-5,
     "optimizer_cls": {
       "py/type": "torch.optim.adam.Adam"
     },
     "optimizer_kwargs": {
-      "lr": 0.0007172435323620212
+      "lr": 0.0017601048183920826
     },
     "train_kwargs": {
       "log_interval": 500,
       "n_batches": null,
-      "n_epochs": 20
-   }
+      "n_epochs": 5
+    }
   },
   "dagger": {
     "rollout_round_min_episodes": null,
@@ -43,6 +43,6 @@
     "n_episodes_eval": 50
   },
   "environment": {
-    "gym_id": "seals/Hopper-v0"
+    "gym_id": "seals/Ant-v1"
   }
 }
