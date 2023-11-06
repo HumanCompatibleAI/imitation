@@ -4,6 +4,8 @@ The imitation library is benchmarked by running the algorithms BC, DAgger, AIRL 
 on five different environments from the
 [seals environment suite](https://github.com/HumanCompatibleAI/seals)
 each with 10 different random seeds.
+You will find the benchmark results in the release artifacts, e.g. for the v1.0 release
+[here](https://github.com/HumanCompatibleAI/imitation/releases/download/v1.0.0/benchmark_runs.zip).
 
 
 ## Running a Single Benchmark
