@@ -38,6 +38,9 @@ class RenderImageInfoWrapper(gym.Wrapper):
             scale_factor: scales rendered images to be stored.
             use_file_cache: whether to save rendered images to disk.
         """
+        assert env.render_mode == "rgb_array", \
+            f'The environment must be in render mode "rgb_array" in order to use this wrapper but render_mode is ' \
+            f'"{env.render_mode}".'
         super().__init__(env)
         self.scale_factor = scale_factor
         self.use_file_cache = use_file_cache
@@ -45,9 +48,9 @@ class RenderImageInfoWrapper(gym.Wrapper):
             self.file_cache = tempfile.mkdtemp("imitation_RenderImageInfoWrapper")
 
     def step(self, action):
-        obs, rew, done, info = self.env.step(action)
+        observation, reward, terminated, truncated, info = self.env.step(action)
 
-        rendered_image = self.render(mode="rgb_array")
+        rendered_image = self.render()
         # Scale the render image
         scaled_size = (
             int(self.scale_factor * rendered_image.shape[0]),
@@ -69,11 +72,7 @@ class RenderImageInfoWrapper(gym.Wrapper):
             np.save(unique_file_path, scaled_rendered_image)
             info["rendered_img"] = unique_file_path
 
-        # Do not show window of classic control envs
-        if self.env.viewer is not None and self.env.viewer.window.visible:
-            self.env.viewer.window.set_visible(False)
-
-        return obs, rew, done, info
+        return observation, reward, terminated, truncated, info
 
     def close(self) -> None:
         if self.use_file_cache:
