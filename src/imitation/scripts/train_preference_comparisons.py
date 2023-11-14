@@ -84,7 +84,6 @@ def train_preference_comparisons(
     allow_variable_horizon: bool,
     checkpoint_interval: int,
     query_schedule: Union[str, type_aliases.Schedule],
-    video_log_dir: Optional[str],
     _rnd: np.random.Generator,
 ) -> Mapping[str, Any]:
     """Train a reward model using preference comparisons.
@@ -145,7 +144,6 @@ def train_preference_comparisons(
             be allocated to each iteration. "hyperbolic" and "inverse_quadratic"
             apportion fewer queries to later iterations when the policy is assumed
             to be better and more stable.
-        video_log_dir: If set, save videos to this directory.
         _rnd: Random number generator provided by Sacred.
 
     Returns:

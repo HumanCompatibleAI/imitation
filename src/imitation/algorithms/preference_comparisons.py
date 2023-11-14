@@ -949,6 +949,7 @@ class PreferenceGatherer(abc.ABC):
         self,
         rng: Optional[np.random.Generator] = None,
         custom_logger: Optional[imit_logger.HierarchicalLogger] = None,
+        querent_kwargs: Optional[Mapping] = None
     ) -> None:
         """Initializes the preference gatherer.
 
@@ -961,7 +962,8 @@ class PreferenceGatherer(abc.ABC):
         # pass in a seed in training scripts (without worrying about whether
         # the PreferenceGatherer we use needs one).
         del rng
-        self.querent = PreferenceQuerent()
+        querent_kwargs = querent_kwargs or {}
+        self.querent = PreferenceQuerent(**querent_kwargs)
         self.logger = custom_logger or imit_logger.configure()
         self.pending_queries: Dict = {}
 
@@ -1309,6 +1311,7 @@ class PrefCollectGatherer(PreferenceGatherer):
         wait_for_user: bool = True,
         rng: Optional[np.random.Generator] = None,
         custom_logger: Optional[imit_logger.HierarchicalLogger] = None,
+        querent_kwargs: Optional[Mapping] = None,
     ) -> None:
         """Initializes the preference gatherer.
 
@@ -1319,7 +1322,8 @@ class PrefCollectGatherer(PreferenceGatherer):
             custom_logger: Where to log to; if None (default), creates a new logger.
         """
         super().__init__(rng, custom_logger)
-        self.querent = PrefCollectQuerent(pref_collect_address, "videos")
+        querent_kwargs = querent_kwargs if querent_kwargs else {}
+        self.querent = PrefCollectQuerent(pref_collect_address=pref_collect_address, **querent_kwargs)
         self.query_endpoint = pref_collect_address + "/preferences/query/"
         self.pending_queries = {}
         self.wait_for_user = wait_for_user

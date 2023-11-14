@@ -55,8 +55,6 @@ def train_defaults():
     gatherer_cls = preference_comparisons.SyntheticGatherer
     # arguments passed on to the PreferenceGatherer specified by gatherer_cls
     gatherer_kwargs = {}
-    querent_cls = preference_comparisons.PreferenceQuerent
-    querent_kwargs = dict()
     active_selection = False
     active_selection_oversampling = 2
     uncertainty_on = "logit"
@@ -70,10 +68,6 @@ def train_defaults():
 
     checkpoint_interval = 0  # Num epochs between saving (<0 disables, =0 final only)
     query_schedule = "hyperbolic"
-
-    # If set, save trajectory videos to this directory. Must be present if gather_cls is
-    # SynchronousCLIGatherer
-    video_log_dir = None
 
 
 @train_preference_comparisons_ex.named_config
@@ -102,12 +96,10 @@ def human_preferences():
     gatherer_kwargs = dict(
         pref_collect_address="http://127.0.0.1:8000",
         wait_for_user=True,
-    )
-    querent_cls = preference_comparisons.PrefCollectQuerent
-    querent_kwargs = dict(
-        pref_collect_address="http://127.0.0.1:8000",
-        video_output_dir="../pref-collect/videofiles",
-        video_fps=20,
+        querent_kwargs=dict(
+            video_output_dir="../pref-collect/videofiles",
+            video_fps=20,
+        ),
     )
     environment = dict(
         post_wrappers=dict(
