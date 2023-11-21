@@ -97,7 +97,7 @@ def human_preferences():
         pref_collect_address="http://127.0.0.1:8000",
         wait_for_user=True,
         querent_kwargs=dict(
-            video_output_dir="../pref-collect/videofiles",
+            video_output_dir="../pref_collect/videofiles",
             video_fps=20,
         ),
     )
@@ -111,6 +111,7 @@ def human_preferences():
         post_wrappers_kwargs=dict(
             RenderImageInfoWrapper=dict(scale_factor=0.5, use_file_cache=True),
         ),
+        env_make_kwargs=dict(render_mode="rgb_array"),
     )
 
 
