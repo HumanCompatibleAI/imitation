@@ -57,6 +57,7 @@ If you use ``imitation`` in your research project, please cite our paper to help
     main-concepts/trajectories
     main-concepts/reward_networks
     main-concepts/variable_horizon
+    main-concepts/benchmarks
 
 
 .. toctree::
