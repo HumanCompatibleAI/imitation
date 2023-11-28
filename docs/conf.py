@@ -132,3 +132,18 @@ def setup(app):
         "autodoc-process-docstring",
         no_namedtuple_attrib_docstring,
     )
+
+
+# -- Download latest benchmark summary -----------------------------------------------
+import urllib.request
+import zipfile
+import io
+
+download_url = "https://github.com/HumanCompatibleAI/imitation/releases/latest/download/benchmark_runs.zip"
+
+# Download the data and run the summarization script
+with urllib.request.urlopen(download_url) as url:
+    with zipfile.ZipFile(io.BytesIO(url.read())) as z:
+        with z.open("benchmark_runs/summary.md") as f:
+            with open("main-concepts/benchmark_summary.md", "wb") as out:
+                out.write(f.read())
