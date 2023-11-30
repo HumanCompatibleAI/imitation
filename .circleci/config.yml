@@ -365,6 +365,10 @@ jobs:
             TESTFILES=$(circleci tests glob "tests/**/test*.py" | circleci tests split --split-by=timings)
             echo "This shard testing: ${TESTFILES}"
             pytest -n auto --junitxml=/tmp/test-reports/junit.xml -vv $TESTFILES
+          environment:
+            # This is needed in newer versions of pygam. See
+            # https://github.com/pygame/pygame/issues/3835#issuecomment-1703717368
+            SDL_VIDEODRIVER: dummy
 
       - save-pytest-cache
       - store-test-output-unix
