@@ -71,9 +71,16 @@ bc_trainer = bc.BC(
     rng=rng,
 )
 
+evaluation_env = make_vec_env(
+    "seals:seals/CartPole-v0",
+    rng=rng,
+    env_make_kwargs={"render_mode": "human"},  # for rendering
+)
+
+print("Evaluating the untrained policy.")
 reward, _ = evaluate_policy(
     bc_trainer.policy,  # type: ignore[arg-type]
-    env,
+    evaluation_env,
     n_eval_episodes=3,
     render=True,  # comment out to speed up
 )
@@ -82,9 +89,10 @@ print(f"Reward before training: {reward}")
 print("Training a policy using Behavior Cloning")
 bc_trainer.train(n_epochs=1)
 
+print("Evaluating the trained policy.")
 reward, _ = evaluate_policy(
     bc_trainer.policy,  # type: ignore[arg-type]
-    env,
+    evaluation_env,
     n_eval_episodes=3,
     render=True,  # comment out to speed up
 )
