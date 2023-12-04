@@ -18,7 +18,10 @@
 
 
 # -- Project information -----------------------------------------------------
+import io
 import os
+import urllib.request
+import zipfile
 from importlib import metadata
 
 project = "imitation"
@@ -132,3 +135,17 @@ def setup(app):
         "autodoc-process-docstring",
         no_namedtuple_attrib_docstring,
     )
+
+
+# -- Download the latest benchmark summary -------------------------------------
+download_url = (
+    "https://github.com/HumanCompatibleAI/imitation/releases/latest/"
+    "download/benchmark_runs.zip"
+)
+
+# Download the benchmark data, extract the summary and place it in the documentation
+with urllib.request.urlopen(download_url) as url:
+    with zipfile.ZipFile(io.BytesIO(url.read())) as z:
+        with z.open("benchmark_runs/summary.md") as f:
+            with open("main-concepts/benchmark_summary.md", "wb") as out:
+                out.write(f.read())

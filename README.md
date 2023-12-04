@@ -22,6 +22,8 @@ Currently, we have implementations of the algorithms below. 'Discrete' and 'Cont
 
 You can find [the documentation here](https://imitation.readthedocs.io/en/latest/).
 
+You can read the latest benchmark results [here](https://imitation.readthedocs.io/en/latest/main-concepts/benchmark_summary.html).
+
 ## Installation
 
 ### Prerequisites
