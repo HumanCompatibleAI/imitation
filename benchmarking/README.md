@@ -1,4 +1,4 @@
-# Benchmarking imitation
+# Benchmarking `imitation`
 
 The imitation library is benchmarked by running the algorithms BC, DAgger, AIRL and GAIL
 on five different environments from the
