@@ -29,8 +29,10 @@ You can read the latest benchmark results [here](https://imitation.readthedocs.i
 ### Prerequisites
 
 - Python 3.8+
-- (Optional) OpenGL (to render Gym environments)
+- (Optional) OpenGL (to render Gymnasium environments)
 - (Optional) FFmpeg (to encode videos of renders)
+
+> Note: `imitation` is only compatible with newer [gymnasium](https://gymnasium.farama.org/) environment API and does not support the older `gym` API.
 
 ### Installing PyPI release
 
