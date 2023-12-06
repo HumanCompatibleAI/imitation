@@ -61,6 +61,10 @@ nb_output_stderr = "remove"
 nb_execution_raise_on_error = True
 nb_execution_show_tb = True
 
+# The default engine ran into memory issues on some notebooks
+# so we use lualatex instead
+latex_engine = "lualatex"
+
 # Enable LaTeX macros in markdown cells
 myst_enable_extensions = [
     "amsmath",
