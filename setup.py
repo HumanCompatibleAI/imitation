@@ -19,6 +19,8 @@ ATARI_REQUIRE = [
 ]
 PYTYPE = ["pytype==2023.9.27"] if IS_NOT_WINDOWS else []
 
+HYPOTHESIS = ["hypothesis~=6.54.1"]
+
 # Note: the versions of the test and doc requirements should be tightly pinned to known
 #   working versions to make our CI/CD pipeline as stable as possible.
 TESTS_REQUIRE = (
@@ -36,7 +38,6 @@ TESTS_REQUIRE = (
         "flake8-debugger~=4.1.2",
         "flake8-docstrings~=1.6.0",
         "flake8-isort~=4.1.2",
-        "hypothesis~=6.54.1",
         "ipykernel~=6.15.1",
         "jupyter~=1.0.0",
         # TODO: upgrade jupyter-client once
@@ -58,18 +59,24 @@ TESTS_REQUIRE = (
     + PARALLEL_REQUIRE
     + ATARI_REQUIRE
     + PYTYPE
+    + HYPOTHESIS
 )
-DOCS_REQUIRE = [
-    "sphinx~=5.1.1",
-    "sphinx-autodoc-typehints~=1.19.1",
-    "sphinx-rtd-theme~=1.0.0",
-    "sphinxcontrib-napoleon==0.7",
-    "furo==2022.6.21",
-    "sphinx-copybutton==0.5.0",
-    "sphinx-github-changelog~=1.2.0",
-    "myst-nb==0.17.2",
-    "ipykernel~=6.15.2",
-] + ATARI_REQUIRE + PARALLEL_REQUIRE
+DOCS_REQUIRE = (
+    [
+        "sphinx~=5.1.1",
+        "sphinx-autodoc-typehints~=1.19.1",
+        "sphinx-rtd-theme~=1.0.0",
+        "sphinxcontrib-napoleon==0.7",
+        "furo==2022.6.21",
+        "sphinx-copybutton==0.5.0",
+        "sphinx-github-changelog~=1.2.0",
+        "myst-nb==0.17.2",
+        "ipykernel~=6.15.2",
+    ]
+    + ATARI_REQUIRE
+    + PARALLEL_REQUIRE
+    + HYPOTHESIS
+)
 
 
 def get_readme() -> str:
