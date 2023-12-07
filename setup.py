@@ -69,7 +69,7 @@ DOCS_REQUIRE = [
     "sphinx-github-changelog~=1.2.0",
     "myst-nb==0.17.2",
     "ipykernel~=6.15.2",
-] + ATARI_REQUIRE
+] + ATARI_REQUIRE + PARALLEL_REQUIRE
 
 
 def get_readme() -> str:
