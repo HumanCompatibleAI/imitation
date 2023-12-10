@@ -78,8 +78,8 @@ Envs = [_CountingEnv, _CountingDictEnv]
 
 
 def _make_buffering_venv(
-        Env: Type[gym.Env],
-        error_on_premature_reset: bool,
+    Env: Type[gym.Env],
+    error_on_premature_reset: bool,
 ) -> BufferingWrapper:
     venv = DummyVecEnv([Env] * 2)
     wrapped_venv = BufferingWrapper(venv, error_on_premature_reset)
@@ -95,7 +95,7 @@ def _assert_equal_scrambled_vectors(a: np.ndarray, b: np.ndarray) -> None:
 
 
 def _join_transitions(
-        trans_list: Sequence[types.TransitionsWithRew],
+    trans_list: Sequence[types.TransitionsWithRew],
 ) -> types.TransitionsWithRew:
     def concat(x):
         return np.concatenate(list(x))
@@ -121,10 +121,10 @@ def _join_transitions(
 @pytest.mark.parametrize("n_steps", [1, 2, 20, 21])
 @pytest.mark.parametrize("extra_pop_timesteps", [(), (1,), (4, 8)])
 def test_pop(
-        Env: Type[gym.Env],
-        episode_lengths: Sequence[int],
-        n_steps: int,
-        extra_pop_timesteps: Sequence[int],
+    Env: Type[gym.Env],
+    episode_lengths: Sequence[int],
+    n_steps: int,
+    extra_pop_timesteps: Sequence[int],
 ) -> None:
     """Check pop_transitions() results for BufferWrapper.
 
@@ -293,8 +293,9 @@ def test_raises_assertion_error_if_env_not_in_correct_render_mode():
     env = gym.make("CartPole-v0", render_mode=wrong_mode)
 
     with pytest.raises(
-            AssertionError,
-            match='The environment must be in render mode "rgb_array" in order to use this wrapper '
-                  f'but render_mode is "{wrong_mode}"'
+        AssertionError,
+        match='The environment must be in render mode "rgb_array" '
+            'in order to use this wrapper '
+            f'but render_mode is "{wrong_mode}"',
     ):
         RenderImageInfoWrapper(env)

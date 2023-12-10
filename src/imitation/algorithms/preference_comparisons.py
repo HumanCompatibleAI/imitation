@@ -3,6 +3,7 @@
 Trains a reward model and optionally a policy based on preferences
 between trajectory fragments.
 """
+
 import abc
 import math
 import os
@@ -31,6 +32,7 @@ import cv2
 import numpy as np
 import requests
 import torch as th
+from moviepy.editor import ImageSequenceClip
 from scipy import special
 from stable_baselines3.common import base_class, type_aliases, utils, vec_env
 from torch import nn
@@ -838,7 +840,7 @@ class PrefCollectQuerent(PreferenceQuerent):
             rng: random number generator, if applicable.
             custom_logger: Where to log to; if None (default), creates a new logger.
         """
-        super().__init__(custom_logger)
+        super().__init__(custom_logger=custom_logger)
         self.rng = rng
         self.query_endpoint = pref_collect_address + "/preferences/query/"
         self.video_output_dir = video_output_dir
@@ -880,66 +882,48 @@ class PrefCollectQuerent(PreferenceQuerent):
         )
 
 
+def add_missing_rgb_channels(frames: np.ndarray) -> np.ndarray:
+    if frames.shape[-1] < 3:
+        missing_channels = 3 - frames.shape[-1]
+        frames = np.concatenate(
+            [frames] + missing_channels * [frames[..., -1][..., None]],
+            axis=-1,
+        )
+    return frames
+
+
 def write_fragment_video(
-    fragment: TrajectoryWithRew, frames_per_second: int, output_path: AnyPath
+    fragment: TrajectoryWithRew,
+    frames_per_second: int,
+    output_path: AnyPath,
+    progress_logger: bool = True,
 ) -> None:
     """Write fragment video clip."""
-    frame_shape = get_frame_shape(fragment)
-    video_writer = cv2.VideoWriter(
-        output_path,
-        cv2.VideoWriter_fourcc(*"VP90"),
-        frames_per_second,
-        frame_shape,
-    )
-
-    # Make videos from rendered observations if available
-    frames: np.ndarray
+    frames_list: List[Union[os.PathLike, np.ndarray]] = []
+    # Create fragment videos from environment's render images if available
     if fragment.infos is not None and "rendered_img" in fragment.infos[0]:
-        frames_list = []
         for i in range(len(fragment.infos)):
-            frame_info = fragment.infos[i]["rendered_img"]
-            # If path is provided load cached image
-            if isinstance(frame_info, (str, bytes, os.PathLike)):
-                frame = np.load(frame_info)
-            elif isinstance(frame_info, np.ndarray):
-                frame = frame_info
+            frame: Union[os.PathLike, np.ndarray] = fragment.infos[i][
+                "rendered_img"
+            ]
+            if isinstance(frame, np.ndarray):
+                frame = add_missing_rgb_channels(frame)
             frames_list.append(frame)
-        frames = np.array(frames_list)
+    # Create fragment video from observations if possible
     else:
-        frames = fragment.obs
-
-    for frame in frames:
-        # Transform to RGB frame if necessary
-        if frame.shape[-1] < 3:
-            missing_channels = 3 - frame.shape[-1]
-            frame = np.concatenate(
-                [frame] + missing_channels * [frame[..., -1][..., None]],
-                axis=-1,
-            )
-        video_writer.write(cv2.cvtColor(frame, cv2.COLOR_RGB2BGR))
-
-    video_writer.release()
-
-
-def get_frame_shape(fragment: TrajectoryWithRew) -> Tuple[int, int]:
-    """Calculate frame shape."""
-    if fragment.infos is not None and "rendered_img" in fragment.infos[0]:
-        rendered_img_info = fragment.infos[0]["rendered_img"]
-        # If path is provided load cached image
-        if isinstance(rendered_img_info, (str, bytes, os.PathLike)):
-            single_frame = np.load(rendered_img_info)
+        if isinstance(fragment.obs, np.ndarray):
+            frames_list = [frame for frame in add_missing_rgb_channels(fragment.obs[1:])]
         else:
-            single_frame = rendered_img_info
-    else:
-        single_frame = np.array(fragment.obs[0])
-        # Check whether observations are image-like
-        if len(single_frame.shape) < 2:
+            # TODO add support for DictObs
             raise ValueError(
-                "Observation must be an image, "
-                f"but shape {single_frame.shape} has too few dimensions!",
+                "Unsupported observation type "
+                f"for writing fragment video: {type(fragment.obs)}",
             )
-    # Swap dimensions, because matrix and image dims are swapped
-    return single_frame.shape[1], single_frame.shape[0]
+    # Note: `ImageSeqeuenceClip` handily accepts both
+    #       lists of image paths or numpy arrays
+    clip = ImageSequenceClip(frames_list, fps=frames_per_second)
+    moviepy_logger = None if not progress_logger else "bar"
+    clip.write_videofile(output_path, logger=moviepy_logger)
 
 
 class PreferenceGatherer(abc.ABC):
@@ -949,13 +933,14 @@ class PreferenceGatherer(abc.ABC):
         self,
         rng: Optional[np.random.Generator] = None,
         custom_logger: Optional[imit_logger.HierarchicalLogger] = None,
-        querent_kwargs: Optional[Mapping] = None
+        querent_kwargs: Optional[Mapping] = None,
     ) -> None:
         """Initializes the preference gatherer.
 
         Args:
             rng: random number generator, if applicable.
             custom_logger: Where to log to; if None (default), creates a new logger.
+            querent_kwargs: Keyword arguments passed to the querent.
         """
         # The random seed isn't used here, but it's useful to have this
         # as an argument nevertheless because that means we can always
@@ -1046,7 +1031,8 @@ class SyntheticGatherer(PreferenceGatherer):
     def gather(self) -> Tuple[Sequence[TrajectoryWithRewPair], np.ndarray]:
         """Computes probability fragment 1 is preferred over fragment 2."""
         queries = list(self.pending_queries.values())
-        self.pending_queries.clear() # Clear pending queries because the oracle will have answered all
+        # Clear pending queries because the oracle will have answered all
+        self.pending_queries.clear()
 
         returns1, returns2 = self._reward_sums(queries)
 
@@ -1132,7 +1118,6 @@ class SynchronousHumanGatherer(PreferenceGatherer):
         """
         preferences = np.zeros(len(self.pending_queries), dtype=np.float32)
         for i, (query_id, query) in enumerate(self.pending_queries.items()):
-
             write_fragment_video(
                 query[0],
                 frames_per_second=self.frames_per_second,
@@ -1320,16 +1305,19 @@ class PrefCollectGatherer(PreferenceGatherer):
             wait_for_user: Waits for user to input their preferences.
             rng: random number generator, if applicable.
             custom_logger: Where to log to; if None (default), creates a new logger.
+            querent_kwargs: Keyword arguments passed to the querent.
         """
         super().__init__(rng, custom_logger)
         querent_kwargs = querent_kwargs if querent_kwargs else {}
-        self.querent = PrefCollectQuerent(pref_collect_address=pref_collect_address, **querent_kwargs)
+        self.querent = PrefCollectQuerent(
+            pref_collect_address=pref_collect_address,
+            **querent_kwargs,
+        )
         self.query_endpoint = pref_collect_address + "/preferences/query/"
         self.pending_queries = {}
         self.wait_for_user = wait_for_user
 
     def gather(self) -> Tuple[Sequence[TrajectoryWithRewPair], np.ndarray]:
-
         # TODO: create user-independent (automated) waiting policy
         if self.wait_for_user:
             print("Waiting for user to provide preferences. Press enter to continue.")

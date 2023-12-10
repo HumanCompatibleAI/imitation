@@ -1,14 +1,17 @@
 """Tests for the preference comparisons reward learning implementation."""
 
-import abc
 import math
+import os
 import pathlib
 import re
+import shutil
+import tempfile
 import uuid
 from typing import Any, Sequence, Tuple
 from unittest.mock import MagicMock, Mock, patch
 
 import gymnasium as gym
+import imageio
 import numpy as np
 import pytest
 import seals  # noqa: F401
@@ -27,6 +30,7 @@ from imitation.algorithms.preference_comparisons import (
     PreferenceGatherer,
     PreferenceQuerent,
     SyntheticGatherer,
+    write_fragment_video,
 )
 from imitation.data import types
 from imitation.data.types import TrajectoryWithRew, TrajectoryWithRewPair
@@ -308,68 +312,15 @@ def test_preference_comparisons_raises(
     )
 
     with pytest.raises(ValueError, match=with_rng_msg):
-        build_preference_comparisons(gatherer, reward_trainer, random_fragmenter, rng=rng)
+        build_preference_comparisons(
+            gatherer, reward_trainer, random_fragmenter, rng=rng,
+        )
 
     # This should not raise
     build_preference_comparisons(None, None, None, rng=rng)
     build_preference_comparisons(gatherer, None, None, rng=rng)
     build_preference_comparisons(None, reward_trainer, None, rng=rng)
     build_preference_comparisons(None, None, random_fragmenter, rng=rng)
-
-
-@patch("builtins.input")
-@patch("IPython.display.display")
-def test_synchronous_human_gatherer(mock_display, mock_input):
-    del mock_display  # unused
-    querent = PreferenceQuerent()
-    gatherer = preference_comparisons.SynchronousHumanGatherer(
-        video_dir=pathlib.Path("."),
-    )
-
-    # these inputs are designed solely to pass the test. they aren't tested for anything
-    trajectory_pairs = [
-        (
-            types.TrajectoryWithRew(
-                np.zeros((2, 200, 200, 3,), np.uint8),
-                np.array([1]),
-                np.array(
-                    [
-                        {
-                            "video_path": pathlib.Path(
-                                "tests/algorithms/test_preference_comparisons.py",
-                            ),
-                        },
-                    ],
-                ),
-                True,
-                np.array([1.0]),
-            ),
-            types.TrajectoryWithRew(
-                np.zeros((2, 200, 200, 3,), np.uint8),
-                np.array([1]), # act
-                np.array(  # info
-                    [
-                        {
-                            "video_path": pathlib.Path(
-                                "tests/algorithms/test_preference_comparisons.py",
-                            ),
-                        },
-                    ],
-                ),
-                True,  # done
-                np.array([1.0]),  # reward
-            ),
-        ),
-    ]
-    gatherer.query(trajectory_pairs)
-
-    # this is the actual test
-    mock_input.return_value = "1"
-    assert gatherer.gather()[1] == np.array([1.0])
-
-    gatherer.query(trajectory_pairs)
-    mock_input.return_value = "2"
-    assert gatherer.gather()[1] == np.array([0.0])
 
 
 @pytest.mark.parametrize(
@@ -1181,6 +1132,7 @@ def test_that_trainer_improves(
     )
 
 
+# PreferenceQuerent
 def test_returns_query_dict_from_query_sequence_with_correct_length():
     querent = PreferenceQuerent()
     query_sequence = [Mock()]
@@ -1199,6 +1151,7 @@ def test_returned_queries_have_uuid():
         pytest.fail()
 
 
+# PrefCollectQuerent
 def test_sends_put_request_for_each_query(requests_mock):
     address = "https://test.de"
     querent = PrefCollectQuerent(pref_collect_address=address, video_output_dir="video")
@@ -1211,11 +1164,60 @@ def test_sends_put_request_for_each_query(requests_mock):
     assert requests_mock.last_request.text == f'{{"uuid": "{query_id}"}}'
 
 
+@pytest.fixture(
+    params=["obs_only", "dictobs", "with_render_images", "with_render_image_paths"],
+)
+def fragment(request):
+    num_frames = 10
+    frame_shape = (200, 200)
+    obs = np.zeros((num_frames, *frame_shape, 3), np.uint8)
+    acts = np.zeros((num_frames - 1,), np.uint8)
+    rews = np.zeros((num_frames - 1,))
+    infos = None
+    if request.param == "dictobs":
+        obs = types.DictObs({"obs": obs})
+    elif request.param == "with_render_images":
+        infos = np.array([{"rendered_img": frame} for frame in obs[1:]])
+    elif request.param == "with_render_image_paths":
+        tmp_dir = tempfile.mkdtemp()
+        infos = []
+        for frame in obs[1:]:
+            unique_file_path = os.path.join(
+                tmp_dir,
+                str(uuid.uuid4()) + ".png",
+            )
+            imageio.imwrite(unique_file_path, frame)
+            infos.append({"rendered_img": unique_file_path})
+        infos = np.array(infos)
+    yield types.TrajectoryWithRew(
+        obs=obs,
+        acts=acts,
+        infos=infos,
+        terminal=True,
+        rews=rews,
+    )
+    if request.param == "with_render_image_paths":
+        shutil.rmtree(tmp_dir)
+
+
+@pytest.mark.parametrize("codec", ["webm", "mp4"])
+def test_write_fragment_video(fragment, codec):
+    video_path = f"video.{codec}"
+    if isinstance(fragment.obs, types.DictObs):
+        with pytest.raises(ValueError):
+            write_fragment_video(fragment, frames_per_second=5, output_path=video_path)
+    else:
+        write_fragment_video(fragment, frames_per_second=5, output_path=video_path)
+        assert os.path.isfile(video_path)
+        os.remove(video_path)
+
+
+# PreferenceGatherer
 class ConcretePreferenceGatherer(PreferenceGatherer):
     """A concrete preference gatherer for unit testing purposes only."""
 
     def gather(self) -> Tuple[Sequence[TrajectoryWithRewPair], np.ndarray]:
-        pass
+        return np.zeros(shape=(1,))
 
 
 def test_adds_queries_to_pending_queries():
@@ -1238,6 +1240,7 @@ def test_clears_pending_queries(trajectory_with_rew):
     assert len(gatherer.pending_queries) == 0
 
 
+# PrefCollectGatherer
 def test_returns_none_for_unanswered_query(requests_mock):
     address = "https://test.de"
     query_id = "1234"
@@ -1329,3 +1332,75 @@ def test_ignores_incomparable_answer():
 
     assert len(gathered_preferences) == 0
     assert len(gathered_queries) == 0
+
+
+# SynchronousHumanGatherer
+@patch("builtins.input")
+@patch("IPython.display.display")
+def test_synchronous_human_gatherer(mock_display, mock_input):
+    del mock_display  # unused
+    querent = PreferenceQuerent()
+    gatherer = preference_comparisons.SynchronousHumanGatherer(
+        video_dir=pathlib.Path("."),
+    )
+
+    # these inputs are designed solely to pass the test. they aren't tested for anything
+    trajectory_pairs = [
+        (
+            types.TrajectoryWithRew(
+                np.zeros(
+                    (
+                        2,
+                        200,
+                        200,
+                        3,
+                    ),
+                    np.uint8,
+                ),
+                np.array([1]),
+                np.array(
+                    [
+                        {
+                            "video_path": pathlib.Path(
+                                "tests/algorithms/test_preference_comparisons.py",
+                            ),
+                        },
+                    ],
+                ),
+                True,
+                np.array([1.0]),
+            ),
+            types.TrajectoryWithRew(
+                np.zeros(
+                    (
+                        2,
+                        200,
+                        200,
+                        3,
+                    ),
+                    np.uint8,
+                ),
+                np.array([1]),  # act
+                np.array(  # info
+                    [
+                        {
+                            "video_path": pathlib.Path(
+                                "tests/algorithms/test_preference_comparisons.py",
+                            ),
+                        },
+                    ],
+                ),
+                True,  # done
+                np.array([1.0]),  # reward
+            ),
+        ),
+    ]
+    gatherer.query(trajectory_pairs)
+
+    # this is the actual test
+    mock_input.return_value = "1"
+    assert gatherer.gather()[1] == np.array([1.0])
+
+    gatherer.query(trajectory_pairs)
+    mock_input.return_value = "2"
+    assert gatherer.gather()[1] == np.array([0.0])

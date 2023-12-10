@@ -6,8 +6,9 @@ import tempfile
 import uuid
 from typing import List, Optional, Sequence, Tuple
 
-import gymnasium as gym
 import cv2
+import gymnasium as gym
+import imageio
 import numpy as np
 import numpy.typing as npt
 from stable_baselines3.common.vec_env import VecEnv, VecEnvWrapper
@@ -38,9 +39,11 @@ class RenderImageInfoWrapper(gym.Wrapper):
             scale_factor: scales rendered images to be stored.
             use_file_cache: whether to save rendered images to disk.
         """
-        assert env.render_mode == "rgb_array", \
-            f'The environment must be in render mode "rgb_array" in order to use this wrapper but render_mode is ' \
-            f'"{env.render_mode}".'
+        assert env.render_mode == "rgb_array", (
+            "The environment must be in render mode 'rgb_array' in order"
+            " to use this wrapper but render_mode is "
+            f"'{env.render_mode}'."
+        )
         super().__init__(env)
         self.scale_factor = scale_factor
         self.use_file_cache = use_file_cache
@@ -67,9 +70,9 @@ class RenderImageInfoWrapper(gym.Wrapper):
         else:
             unique_file_path = os.path.join(
                 self.file_cache,
-                str(uuid.uuid4()) + ".npy",
+                str(uuid.uuid4()) + ".png",
             )
-            np.save(unique_file_path, scaled_rendered_image)
+            imageio.imwrite(unique_file_path, scaled_rendered_image)
             info["rendered_img"] = unique_file_path
 
         return observation, reward, terminated, truncated, info
