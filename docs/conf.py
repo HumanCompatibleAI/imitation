@@ -18,7 +18,10 @@
 
 
 # -- Project information -----------------------------------------------------
+import io
 import os
+import urllib.request
+import zipfile
 from importlib import metadata
 
 project = "imitation"
@@ -57,6 +60,10 @@ nb_merge_streams = True
 nb_output_stderr = "remove"
 nb_execution_raise_on_error = True
 nb_execution_show_tb = True
+
+# The default engine ran into memory issues on some notebooks
+# so we use lualatex instead
+latex_engine = "lualatex"
 
 # Enable LaTeX macros in markdown cells
 myst_enable_extensions = [
@@ -132,3 +139,17 @@ def setup(app):
         "autodoc-process-docstring",
         no_namedtuple_attrib_docstring,
     )
+
+
+# -- Download the latest benchmark summary -------------------------------------
+download_url = (
+    "https://github.com/HumanCompatibleAI/imitation/releases/latest/"
+    "download/benchmark_runs.zip"
+)
+
+# Download the benchmark data, extract the summary and place it in the documentation
+with urllib.request.urlopen(download_url) as url:
+    with zipfile.ZipFile(io.BytesIO(url.read())) as z:
+        with z.open("benchmark_runs/summary.md") as f:
+            with open("main-concepts/benchmark_summary.md", "wb") as out:
+                out.write(f.read())

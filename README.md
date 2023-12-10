@@ -22,14 +22,17 @@ Currently, we have implementations of the algorithms below. 'Discrete' and 'Cont
 
 You can find [the documentation here](https://imitation.readthedocs.io/en/latest/).
 
+You can read the latest benchmark results [here](https://imitation.readthedocs.io/en/latest/main-concepts/benchmark_summary.html).
+
 ## Installation
 
 ### Prerequisites
 
 - Python 3.8+
-- (Optional) OpenGL (to render Gym environments)
+- (Optional) OpenGL (to render Gymnasium environments)
 - (Optional) FFmpeg (to encode videos of renders)
-- (Optional) MuJoCo (follow instructions to install [mujoco_py v1.5 here](https://github.com/openai/mujoco-py/tree/498b451a03fb61e5bdfcb6956d8d7c881b1098b5#install-mujoco))
+
+> Note: `imitation` is only compatible with newer [gymnasium](https://gymnasium.farama.org/) environment API and does not support the older `gym` API.
 
 ### Installing PyPI release
 

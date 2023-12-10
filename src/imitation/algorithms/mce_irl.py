@@ -26,6 +26,7 @@ import scipy.special
 import torch as th
 from seals import base_envs
 from stable_baselines3.common import policies
+from stable_baselines3.common import type_aliases as sb3_types
 
 from imitation.algorithms import base
 from imitation.data import rollout, types
@@ -196,7 +197,7 @@ class TabularPolicy(policies.BasePolicy):
         assert np.all(pi >= 0), "policy has negative probabilities"
         self.pi = pi
 
-    def _predict(self, observation: th.Tensor, deterministic: bool = False):
+    def _predict(self, observation: sb3_types.PyTorchObs, deterministic: bool = False):
         raise NotImplementedError("Should never be called as predict overridden.")
 
     def forward(
