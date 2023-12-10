@@ -295,7 +295,7 @@ def test_raises_assertion_error_if_env_not_in_correct_render_mode():
     with pytest.raises(
         AssertionError,
         match='The environment must be in render mode "rgb_array" '
-            'in order to use this wrapper '
-            f'but render_mode is "{wrong_mode}"',
+        "in order to use this wrapper "
+        f'but render_mode is "{wrong_mode}"',
     ):
         RenderImageInfoWrapper(env)

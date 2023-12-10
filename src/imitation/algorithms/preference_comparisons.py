@@ -903,16 +903,16 @@ def write_fragment_video(
     # Create fragment videos from environment's render images if available
     if fragment.infos is not None and "rendered_img" in fragment.infos[0]:
         for i in range(len(fragment.infos)):
-            frame: Union[os.PathLike, np.ndarray] = fragment.infos[i][
-                "rendered_img"
-            ]
+            frame: Union[os.PathLike, np.ndarray] = fragment.infos[i]["rendered_img"]
             if isinstance(frame, np.ndarray):
                 frame = add_missing_rgb_channels(frame)
             frames_list.append(frame)
     # Create fragment video from observations if possible
     else:
         if isinstance(fragment.obs, np.ndarray):
-            frames_list = [frame for frame in add_missing_rgb_channels(fragment.obs[1:])]
+            frames_list = [
+                frame for frame in add_missing_rgb_channels(fragment.obs[1:])
+            ]
         else:
             # TODO add support for DictObs
             raise ValueError(
