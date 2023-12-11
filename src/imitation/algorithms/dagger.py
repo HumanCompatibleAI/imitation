@@ -100,7 +100,7 @@ def reconstruct_trainer(
     scratch_dir: types.AnyPath,
     venv: vec_env.VecEnv,
     custom_logger: Optional[imit_logger.HierarchicalLogger] = None,
-    device: Union[th.device, str] = "auto",
+    device: Union[th.device, str] = "cpu",
 ) -> "DAggerTrainer":
     """Reconstruct trainer from the latest snapshot in some working directory.
 

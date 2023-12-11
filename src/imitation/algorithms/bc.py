@@ -249,7 +249,7 @@ class BCLogger:
 
 def reconstruct_policy(
     policy_path: str,
-    device: Union[th.device, str] = "auto",
+    device: Union[th.device, str] = "cpu",
 ) -> policies.ActorCriticPolicy:
     """Reconstruct a saved policy.
 
@@ -285,7 +285,7 @@ class BC(algo_base.DemonstrationAlgorithm):
         optimizer_kwargs: Optional[Mapping[str, Any]] = None,
         ent_weight: float = 1e-3,
         l2_weight: float = 0.0,
-        device: Union[str, th.device] = "auto",
+        device: Union[str, th.device] = "cpu",
         custom_logger: Optional[imit_logger.HierarchicalLogger] = None,
     ):
         """Builds BC.

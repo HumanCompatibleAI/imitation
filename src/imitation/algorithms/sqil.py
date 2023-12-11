@@ -119,7 +119,7 @@ class SQILReplayBuffer(buffers.ReplayBuffer):
         observation_space: spaces.Space,
         action_space: spaces.Space,
         demonstrations: algo_base.AnyTransitions,
-        device: Union[th.device, str] = "auto",
+        device: Union[th.device, str] = "cpu",
         n_envs: int = 1,
         optimize_memory_usage: bool = False,
     ):
