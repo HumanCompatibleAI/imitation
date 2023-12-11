@@ -97,7 +97,7 @@ bc_args = st.builds(
     lambda env, minibatch_size, rng, minibatch_fraction: dict(
         observation_space=env.observation_space,
         action_space=env.action_space,
-        batch_size=minibatch_size*minibatch_fraction,
+        batch_size=minibatch_size * minibatch_fraction,
         minibatch_size=minibatch_size,
         rng=rng,
     ),
@@ -155,7 +155,7 @@ def test_smoke_bc_creation(
     deadline=20000,
     max_examples=15,
     # TODO: one day consider removing this. For now we are good.
-    suppress_health_check=[hypothesis.HealthCheck.data_too_large]
+    suppress_health_check=[hypothesis.HealthCheck.data_too_large],
 )
 def test_smoke_bc_training(
     env_name: str,
