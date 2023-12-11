@@ -78,7 +78,6 @@ rollout_envs = st.builds(
     rng=rngs,
 )
 batch_sizes = st.integers(min_value=1, max_value=50)
-loggers = st.sampled_from([None, logger.configure()])
 expert_data_types = st.sampled_from(
     ["data_loader", "ducktyped_data_loader", "transitions"],
 )
@@ -152,7 +151,12 @@ def test_smoke_bc_creation(
     expert_data_type=expert_data_types,
     rng=rngs,
 )
-@hypothesis.settings(deadline=20000, max_examples=15)
+@hypothesis.settings(
+    deadline=20000,
+    max_examples=15,
+    # TODO: one day consider removing this. For now we are good.
+    suppress_health_check=[hypothesis.HealthCheck.data_too_large]
+)
 def test_smoke_bc_training(
     env_name: str,
     bc_args: dict,
@@ -246,7 +250,6 @@ def test_gradient_accumulation(
             action_space=cartpole_venv.action_space,
             batch_size=batch_size,
             demonstrations=demonstrations,
-            custom_logger=None,
             rng=rng,
             **kwargs,
         )
