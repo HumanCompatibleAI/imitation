@@ -94,17 +94,17 @@ bc_train_args = st.builds(
     log_rollouts_venv=st.one_of(rollout_envs, st.just(None)),
 )
 bc_args = st.builds(
-    lambda env, batch_size, custom_logger, rng: dict(
+    lambda env, minibatch_size, rng, minibatch_fraction: dict(
         observation_space=env.observation_space,
         action_space=env.action_space,
-        batch_size=batch_size,
-        custom_logger=custom_logger,
+        batch_size=minibatch_size*minibatch_fraction,
+        minibatch_size=minibatch_size,
         rng=rng,
     ),
     env=envs,
-    batch_size=batch_sizes,
-    custom_logger=loggers,
+    minibatch_size=batch_sizes,
     rng=rngs,
+    minibatch_fraction=st.integers(1, 10),
 )
 
 
@@ -135,7 +135,7 @@ def test_smoke_bc_creation(
         **bc_args,
         demonstrations=make_expert_transition_loader(
             cache_dir=cache.mkdir("experts"),
-            batch_size=bc_args["batch_size"],
+            batch_size=bc_args["minibatch_size"],
             expert_data_type=expert_data_type,
             env_name=env_name,
             rng=rng,
@@ -172,7 +172,7 @@ def test_smoke_bc_training(
         **bc_args,
         demonstrations=make_expert_transition_loader(
             cache_dir=cache.mkdir("experts"),
-            batch_size=bc_args["batch_size"],
+            batch_size=bc_args["minibatch_size"],
             expert_data_type=expert_data_type,
             env_name=env_name,
             rng=rng,
