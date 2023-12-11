@@ -366,7 +366,7 @@ jobs:
             echo "This shard testing: ${TESTFILES}"
             pytest -n auto --junitxml=/tmp/test-reports/junit.xml -vv $TESTFILES
           environment:
-            # This is needed in newer versions of pygam. See
+            # This is needed in newer versions of pygame. See
             # https://github.com/pygame/pygame/issues/3835#issuecomment-1703717368
             SDL_VIDEODRIVER: dummy
 
