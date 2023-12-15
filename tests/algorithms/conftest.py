@@ -1,7 +1,6 @@
 """Fixtures common across algorithm tests."""
 from typing import Sequence
 
-import gymnasium as gym
 import pytest
 from stable_baselines3.common import envs
 from stable_baselines3.common.policies import BasePolicy
