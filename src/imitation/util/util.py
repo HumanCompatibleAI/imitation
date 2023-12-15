@@ -255,10 +255,7 @@ def safe_to_tensor(array: Union[np.ndarray, th.Tensor], **kwargs) -> th.Tensor:
     Returns:
         A PyTorch tensor with the same content as `array`.
     """
-    if isinstance(array, th.Tensor):
-        return array
-
-    if not array.flags.writeable:
+    if isinstance(array, np.ndarray) and not array.flags.writeable:
         array = array.copy()
 
     return th.as_tensor(array, **kwargs)
