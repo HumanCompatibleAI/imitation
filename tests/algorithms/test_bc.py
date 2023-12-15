@@ -155,6 +155,15 @@ def test_smoke_bc_creation(
     deadline=20000,
     max_examples=15,
     # TODO: one day consider removing this. For now we are good.
+    # Note: Hypothesis automatically generates input examples. The "size" of
+    # the examples is determined by the number of decisions it has to make when
+    # generating each example. E.g. a list of 100 random integers has a size of 100 but
+    # choosing between one of three different lists of length 100 has a size of 1.
+    # If the number of choices becomes too large we risk not properly covering the
+    # search space and hypothesis will complain. In this particular case we are not
+    # too concerned with covering the entire search space so we suppress the warning.
+    # Read me for more info:
+    # https://hypothesis.readthedocs.io/en/latest/settings.html#hypothesis.HealthCheck.data_too_large
     suppress_health_check=[hypothesis.HealthCheck.data_too_large],
 )
 def test_smoke_bc_training(
