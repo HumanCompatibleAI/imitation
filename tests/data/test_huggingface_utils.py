@@ -63,6 +63,8 @@ def test_save_load_roundtrip(
 
 
 @hypothesis.given(st.data(), h_strats.trajectories_list)
+# the first run sometimes takes longer, so we give it more time
+@hypothesis.settings(deadline=datetime.timedelta(milliseconds=300))
 def test_sliced_access(data: st.DataObject, trajectories: Sequence[types.Trajectory]):
     """Test that slicing a TrajectoryDatasetSequence behaves as expected."""
     # GIVEN
