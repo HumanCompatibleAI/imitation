@@ -30,6 +30,7 @@ from imitation.algorithms.preference_comparisons import (
     PreferenceGatherer,
     PreferenceQuerent,
     SyntheticGatherer,
+    remove_rendered_images,
     write_fragment_video,
 )
 from imitation.data import types
@@ -1237,6 +1238,12 @@ def test_write_fragment_video(fragment, codec):
         write_fragment_video(fragment, frames_per_second=5, output_path=video_path)
         assert os.path.isfile(video_path)
         os.remove(video_path)
+
+
+def test_remove_rendered_images(fragment):
+    trajs = [fragment]
+    remove_rendered_images(trajs)
+    assert not any("rendered_img" in info for traj in trajs for info in traj.infos)
 
 
 # PreferenceGatherer
