@@ -77,7 +77,7 @@ def cartpole():
 
 @train_preference_comparisons_ex.named_config
 def seals_ant():
-    environment = dict(gym_id="seals/Ant-v0")
+    environment = dict(gym_id="seals/Ant-v1")
     rl = dict(
         batch_size=2048,
         rl_kwargs=dict(
@@ -104,7 +104,7 @@ def half_cheetah():
 
 @train_preference_comparisons_ex.named_config
 def seals_half_cheetah():
-    environment = dict(gym_id="seals/HalfCheetah-v0")
+    environment = dict(gym_id="seals/HalfCheetah-v1")
     rl = dict(
         batch_size=512,
         rl_kwargs=dict(
@@ -125,7 +125,7 @@ def seals_half_cheetah():
 
 @train_preference_comparisons_ex.named_config
 def seals_hopper():
-    environment = dict(gym_id="seals/Hopper-v0")
+    environment = dict(gym_id="seals/Hopper-v1")
     policy = dict(
         policy_cls="MlpPolicy",
         policy_kwargs=dict(
@@ -151,7 +151,7 @@ def seals_hopper():
 
 @train_preference_comparisons_ex.named_config
 def seals_swimmer():
-    environment = dict(gym_id="seals/Swimmer-v0")
+    environment = dict(gym_id="seals/Swimmer-v1")
     policy = dict(
         policy_cls="MlpPolicy",
         policy_kwargs=dict(
@@ -178,7 +178,7 @@ def seals_swimmer():
 
 @train_preference_comparisons_ex.named_config
 def seals_walker():
-    environment = dict(gym_id="seals/Walker2d-v0")
+    environment = dict(gym_id="seals/Walker2d-v1")
     policy = dict(
         policy_cls="MlpPolicy",
         policy_kwargs=dict(
@@ -206,7 +206,7 @@ def seals_walker():
 @train_preference_comparisons_ex.named_config
 def seals_humanoid():
     locals().update(**MUJOCO_SHARED_LOCALS)
-    environment = dict(gym_id="seals/Humanoid-v0")
+    environment = dict(gym_id="seals/Humanoid-v1")
     total_timesteps = int(4e6)
 
 
