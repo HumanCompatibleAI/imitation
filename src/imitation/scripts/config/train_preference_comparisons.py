@@ -42,6 +42,8 @@ def train_defaults():
     transition_oversampling = 1
     # fraction of total_comparisons that will be sampled right at the beginning
     initial_comparison_frac = 0.1
+    # factor by which to oversample the number of epochs in the first iteration
+    initial_epoch_multiplier = 200.0
     # fraction of sampled trajectories that will include some random actions
     exploration_frac = 0.0
     preference_model_kwargs = {}
