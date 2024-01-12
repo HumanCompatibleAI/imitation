@@ -104,7 +104,7 @@ objectives_by_algo = dict(
 
 
 def make_parser() -> argparse.ArgumentParser:
-    example_usage = "python -m imitation.scripts.tune pc seals_swimmer"
+    example_usage = "python tune.py pc seals_swimmer"
     possible_named_configs = "\n".join(
         f"  - {algo}: {', '.join(objective.sacred_ex.named_configs.keys())}"
         for algo, objective in objectives_by_algo.items()
