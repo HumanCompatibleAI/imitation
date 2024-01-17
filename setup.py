@@ -203,7 +203,7 @@ setup(
         "rich",
         "scikit-learn>=0.21.2",
         "seals~=0.2.1",
-        "stable-baselines3~=2.0",
+        "stable-baselines3~=2.2.1",
         "sacred>=0.8.4",
         "tensorboard>=1.14",
         "huggingface_sb3~=3.0",
