@@ -11,7 +11,7 @@ import logging
 import os
 import pathlib
 import uuid
-from typing import Any, Callable, List, Mapping, Optional, Sequence, Tuple, Union
+from typing import Any, Callable, Dict, List, Mapping, Optional, Sequence, Tuple, Union
 
 import numpy as np
 import torch as th
@@ -161,13 +161,16 @@ class InteractiveTrajectoryCollector(vec_env.VecEnvWrapper):
     """
 
     traj_accum: Optional[rollout.TrajectoryAccumulator]
-    _last_obs: Optional[np.ndarray]
+    _last_obs: Optional[Union[Dict[str, np.ndarray], np.ndarray]]
     _last_user_actions: Optional[np.ndarray]
 
     def __init__(
         self,
         venv: vec_env.VecEnv,
-        get_robot_acts: Callable[[np.ndarray], np.ndarray],
+        get_robot_acts: Callable[
+            [Union[Dict[str, np.ndarray], np.ndarray]],
+            np.ndarray,
+        ],
         beta: float,
         save_dir: types.AnyPath,
         rng: np.random.Generator,
@@ -213,7 +216,7 @@ class InteractiveTrajectoryCollector(vec_env.VecEnvWrapper):
         self.rng = np.random.default_rng(seed=seed)
         return list(self.venv.seed(seed))
 
-    def reset(self) -> np.ndarray:
+    def reset(self) -> Union[np.ndarray, Dict[str, np.ndarray]]:
         """Resets the environment.
 
         Returns:
@@ -221,8 +224,12 @@ class InteractiveTrajectoryCollector(vec_env.VecEnvWrapper):
         """
         self.traj_accum = rollout.TrajectoryAccumulator()
         obs = self.venv.reset()
-        assert isinstance(obs, np.ndarray)
-        for i, ob in enumerate(obs):
+        assert isinstance(
+            obs,
+            (np.ndarray, dict),
+        ), "Tuple observations are not supported."
+        dictobs = types.maybe_wrap_in_dictobs(obs)
+        for i, ob in enumerate(dictobs):
             self.traj_accum.add_step({"obs": ob}, key=i)
         self._last_obs = obs
         self._is_reset = True
@@ -256,7 +263,9 @@ class InteractiveTrajectoryCollector(vec_env.VecEnvWrapper):
 
         mask = self.rng.uniform(0, 1, size=(self.num_envs,)) > self.beta
         if np.sum(mask) != 0:
-            actual_acts[mask] = self.get_robot_acts(self._last_obs[mask])
+            last_obs = types.maybe_wrap_in_dictobs(self._last_obs)
+            obs_for_robot = types.maybe_unwrap_dictobs(last_obs[mask])
+            actual_acts[mask] = self.get_robot_acts(obs_for_robot)
 
         self._last_user_actions = actions
         self.venv.step_async(actual_acts)
@@ -270,9 +279,13 @@ class InteractiveTrajectoryCollector(vec_env.VecEnvWrapper):
             Observation, reward, dones (is terminal?) and info dict.
         """
         next_obs, rews, dones, infos = self.venv.step_wait()
-        assert isinstance(next_obs, np.ndarray)
         assert self.traj_accum is not None
         assert self._last_user_actions is not None
+        assert isinstance(
+            next_obs,
+            (np.ndarray, dict),
+        ), "Tuple observations are not supported."
+
         self._last_obs = next_obs
         fresh_demos = self.traj_accum.add_steps_and_auto_finish(
             obs=next_obs,
@@ -508,7 +521,7 @@ class DAggerTrainer(base.BaseImitationAlgorithm):
         beta = self.beta_schedule(self.round_num)
         collector = InteractiveTrajectoryCollector(
             venv=self.venv,
-            get_robot_acts=lambda acts: self.bc_trainer.policy.predict(acts)[0],
+            get_robot_acts=lambda obs: self.bc_trainer.policy.predict(obs)[0],
             beta=beta,
             save_dir=save_dir,
             rng=self.rng,
@@ -550,7 +563,7 @@ class DAggerTrainer(base.BaseImitationAlgorithm):
 
 
 class SimpleDAggerTrainer(DAggerTrainer):
-    """Simpler subclass of DAggerTrainer for training with synthetic feedback."""
+    """Simpler subclass of DAggerTrainer for training with feedback."""
 
     def __init__(
         self,
@@ -571,7 +584,7 @@ class SimpleDAggerTrainer(DAggerTrainer):
                 simultaneously for that timestep.
             scratch_dir: Directory to use to store intermediate training
                 information (e.g. for resuming training).
-            expert_policy: The expert policy used to generate synthetic demonstrations.
+            expert_policy: The expert policy used to generate demonstrations.
             rng: Random state to use for the random number generator.
             expert_trajs: Optional starting dataset that is inserted into the round 0
                 dataset.
