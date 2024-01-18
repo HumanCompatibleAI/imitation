@@ -76,7 +76,7 @@ objectives_by_algo = dict(
         suggest_named_configs=lambda _: ["reward.reward_ensemble"],
         suggest_config_updates=lambda trial: {
             "seed": trial.number,
-            "environment": {"num_vec": 1},
+            "environment": {"num_vec": 8},
             "total_timesteps": 2e7,
             "total_comparisons": 1000,
             "active_selection": True,
