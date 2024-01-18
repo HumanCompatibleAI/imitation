@@ -68,6 +68,7 @@ def train_preference_comparisons(
     fragment_length: int,
     transition_oversampling: float,
     initial_comparison_frac: float,
+    initial_epoch_multiplier: float,
     exploration_frac: float,
     trajectory_path: Optional[str],
     trajectory_generator_kwargs: Mapping[str, Any],
@@ -106,6 +107,9 @@ def train_preference_comparisons(
             sampled before the rest of training begins (using the randomly initialized
             agent). This can be used to pretrain the reward model before the agent
             is trained on the learned reward.
+        initial_epoch_multiplier: before agent training begins, train the reward
+                model for this many more epochs than usual (on fragments sampled from a
+                random agent).
         exploration_frac: fraction of trajectory samples that will be created using
             partially random actions, rather than the current policy. Might be helpful
             if the learned policy explores too little and gets stuck with a wrong
@@ -258,6 +262,7 @@ def train_preference_comparisons(
             fragment_length=fragment_length,
             transition_oversampling=transition_oversampling,
             initial_comparison_frac=initial_comparison_frac,
+            initial_epoch_multiplier=initial_epoch_multiplier,
             custom_logger=custom_logger,
             allow_variable_horizon=allow_variable_horizon,
             query_schedule=query_schedule,
