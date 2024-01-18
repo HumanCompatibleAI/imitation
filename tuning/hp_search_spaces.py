@@ -89,6 +89,7 @@ objectives_by_algo = dict(
                 "discount_factor": trial.suggest_float("gatherer_discount_factor", 0.95, 1.0),
                 "sample": trial.suggest_categorical("gatherer_sample", [True, False]),
             },
+            "initial_epoch_multiplier": trial.suggest_float("initial_epoch_multiplier", 1, 200.0),
             "initial_comparison_frac": trial.suggest_float("initial_comparison_frac", 0.01, 1.0),
             "num_iterations": trial.suggest_int("num_iterations", 1, 51),
             "preference_model_kwargs": {
