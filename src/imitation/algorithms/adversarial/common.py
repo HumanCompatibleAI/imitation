@@ -2,7 +2,7 @@
 import abc
 import dataclasses
 import logging
-from typing import Callable, Iterable, Iterator, Mapping, Optional, Type, overload
+from typing import Iterable, Iterator, List, Mapping, Optional, Type, overload
 
 import numpy as np
 import torch as th
@@ -15,6 +15,8 @@ from stable_baselines3.common import (
     policies,
     vec_env,
 )
+from stable_baselines3.common.callbacks import BaseCallback, ConvertCallback
+from stable_baselines3.common.type_aliases import MaybeCallback
 from stable_baselines3.sac import policies as sac_policies
 from torch.nn import functional as F
 
@@ -392,6 +394,7 @@ class AdversarialTrainer(base.DemonstrationAlgorithm[types.Transitions]):
         self,
         total_timesteps: Optional[int] = None,
         learn_kwargs: Optional[Mapping] = None,
+        callback: MaybeCallback = None,
     ) -> None:
         """Trains the generator to maximize the discriminator loss.
 
@@ -404,17 +407,30 @@ class AdversarialTrainer(base.DemonstrationAlgorithm[types.Transitions]):
                 `self.gen_train_timesteps`.
             learn_kwargs: kwargs for the Stable Baselines `RLModel.learn()`
                 method.
+            callback: additional callback(s) passed to the generator's `learn` method.
         """
         if total_timesteps is None:
             total_timesteps = self.gen_train_timesteps
         if learn_kwargs is None:
             learn_kwargs = {}
 
+        callbacks: List[BaseCallback] = []
+
+        if self.gen_callback:
+            callbacks.append(self.gen_callback)
+
+        if isinstance(callback, list):
+            callbacks.extend(callback)
+        elif isinstance(callback, BaseCallback):
+            callbacks.append(callback)
+        elif callback is not None:
+            callbacks.append(ConvertCallback(callback))
+
         with self.logger.accumulate_means("gen"):
             self.gen_algo.learn(
                 total_timesteps=total_timesteps,
                 reset_num_timesteps=False,
-                callback=self.gen_callback,
+                callback=callbacks,
                 **learn_kwargs,
             )
             self._global_step += 1
@@ -427,12 +443,12 @@ class AdversarialTrainer(base.DemonstrationAlgorithm[types.Transitions]):
     def train(
         self,
         total_timesteps: int,
-        callback: Optional[Callable[[int], None]] = None,
+        callback: MaybeCallback = None,
     ) -> None:
         """Alternates between training the generator and discriminator.
 
-        Every "round" consists of a call to `train_gen(self.gen_train_timesteps)`,
-        a call to `train_disc`, and finally a call to `callback(round)`.
+        Every "round" consists of a call to
+        `train_gen(self.gen_train_timesteps, callback)`, then a call to `train_disc`.
 
         Training ends once an additional "round" would cause the number of transitions
         sampled from the environment to exceed `total_timesteps`.
@@ -440,9 +456,7 @@ class AdversarialTrainer(base.DemonstrationAlgorithm[types.Transitions]):
         Args:
             total_timesteps: An upper bound on the number of transitions to sample
                 from the environment during training.
-            callback: A function called at the end of every round which takes in a
-                single argument, the round number. Round numbers are in
-                `range(total_timesteps // self.gen_train_timesteps)`.
+            callback: callback(s) passed to the generator's `learn` method.
         """
         n_rounds = total_timesteps // self.gen_train_timesteps
         assert n_rounds >= 1, (
@@ -450,14 +464,12 @@ class AdversarialTrainer(base.DemonstrationAlgorithm[types.Transitions]):
             f"{self.gen_train_timesteps} timesteps, have only "
             f"total_timesteps={total_timesteps})!"
         )
-        for r in tqdm.tqdm(range(0, n_rounds), desc="round"):
-            self.train_gen(self.gen_train_timesteps)
+        for _r in tqdm.tqdm(range(0, n_rounds), desc="round"):
+            self.train_gen(self.gen_train_timesteps, callback=callback)
             for _ in range(self.n_disc_updates_per_round):
                 with networks.training(self.reward_train):
                     # switch to training mode (affects dropout, normalization)
                     self.train_disc()
-            if callback:
-                callback(r)
             self.logger.dump(self._global_step)
 
     @overload
