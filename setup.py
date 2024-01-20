@@ -45,6 +45,7 @@ TESTS_REQUIRE = (
         "jupyter-client~=6.1.12",
         "moviepy~=1.0.3",
         "mypy~=0.990",
+        "nbqa~=1.7.0",
         "pandas~=1.4.3",
         "pytest~=7.1.2",
         "pytest-cov~=3.0.0",
