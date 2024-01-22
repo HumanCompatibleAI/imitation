@@ -883,6 +883,17 @@ class PrefCollectQuerent(PreferenceQuerent):
 
 
 def add_missing_rgb_channels(frames: np.ndarray) -> np.ndarray:
+    """Add missing RGB channels if needed.
+    If less than three channels are present, multiplies the last channel
+    until all three channels exist.
+
+    Args:
+        frames: a stack of frames with potentially missing channels;
+            expected shape (batch, height, width, channels).
+
+    Returns:
+        a stack of frames with exactly three channels.
+    """
     if frames.shape[-1] < 3:
         missing_channels = 3 - frames.shape[-1]
         frames = np.concatenate(
@@ -1352,6 +1363,7 @@ def remove_rendered_images(trajectories: Sequence[TrajectoryWithRew]) -> None:
                 rendered_img_info = info["rendered_img"]
                 if isinstance(rendered_img_info, (str, bytes, os.PathLike)):
                     os.remove(rendered_img_info)
+                    del info["rendered_img"]
                 elif isinstance(rendered_img_info, np.ndarray):
                     del info["rendered_img"]
 
