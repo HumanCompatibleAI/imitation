@@ -4,10 +4,13 @@ To add a new search space, add a new entry to the `objectives_by_algo` dict.
 The key should be the name of the algorithm, and the value should be a RunSacredAsTrial
 object that specifies what sacred experiment to run and how to sample hyperparameters.
 
-Note: you could specify multiple search spaces for the same algorithm. Just make sure
-to give them different names, and then specify the name when running the tuning script.
+Note: you could specify multiple search spaces for the same algorithm. Make sure to give
+them different names, and then specify the name when running the tuning script.
 For example, to use different spaces for different classes of environments, you could
 have a "pc-classic-control" and a "pc-mujoco" search space.
+Note: avoid using underscores in the search space names, as they are used to separate
+the algorithm name from the search space name when inferring the algorithm name from
+the study name.
 """
 
 import dataclasses
