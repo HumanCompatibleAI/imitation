@@ -56,8 +56,8 @@ class RenderImageInfoWrapper(gym.Wrapper):
         rendered_image = self.render()
         # Scale the render image
         scaled_size = (
-            int(self.scale_factor * rendered_image.shape[0]),
             int(self.scale_factor * rendered_image.shape[1]),
+            int(self.scale_factor * rendered_image.shape[0]),
         )
         scaled_rendered_image = cv2.resize(
             rendered_image,
