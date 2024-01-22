@@ -1,3 +1,4 @@
+"""Script to tune hyperparameters for imitation learning algorithms using optuna."""
 import argparse
 
 import optuna
