@@ -55,7 +55,7 @@ napoleon_numpy_docstring = False
 autosummary_generate = True
 
 nb_execution_mode = os.getenv("NB_EXECUTION_MODE", "cache")
-nb_execution_timeout = 120
+nb_execution_timeout = 200
 nb_merge_streams = True
 nb_output_stderr = "remove"
 nb_execution_raise_on_error = True

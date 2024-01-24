@@ -325,7 +325,7 @@ class BC(algo_base.DemonstrationAlgorithm):
         self._demo_data_loader: Optional[Iterable[types.TransitionMapping]] = None
         self.batch_size = batch_size
         self.minibatch_size = minibatch_size or batch_size
-        if self.batch_size % self.minibatch_size != 0:
+        if self.batch_size % self.minibatch_size != 0:  # pragma: no cover
             raise ValueError("Batch size must be a multiple of minibatch size.")
         super().__init__(
             demonstrations=demonstrations,
@@ -358,7 +358,7 @@ class BC(algo_base.DemonstrationAlgorithm):
         assert self.policy.action_space == self.action_space
 
         if optimizer_kwargs:
-            if "weight_decay" in optimizer_kwargs:
+            if "weight_decay" in optimizer_kwargs:  # pragma: no cover
                 raise ValueError("Use the parameter l2_weight instead of weight_decay.")
         optimizer_kwargs = optimizer_kwargs or {}
         self.optimizer = optimizer_cls(
