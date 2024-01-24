@@ -39,7 +39,7 @@ Detailed example notebook: :doc:`../tutorials/3_train_gail`
         "seals:seals/CartPole-v0",
         rng=np.random.default_rng(SEED),
         n_envs=8,
-        post_wrappers={"RolloutInfoWrapper": lambda env, _: RolloutInfoWrapper(env)},
+        post_wrappers=[lambda env, _: RolloutInfoWrapper(env)],  # to compute rollouts
     )
     expert = load_policy(
         "ppo-huggingface",
