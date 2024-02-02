@@ -103,6 +103,8 @@ def test_safe_to_numpy():
     numpy = util.safe_to_numpy(tensor)
     assert (numpy == tensor.numpy()).all()
     assert util.safe_to_numpy(None) is None
+    with pytest.warns(UserWarning, match=".*performance.*"):
+        util.safe_to_numpy(tensor, warn=True)
 
 
 def test_tensor_iter_norm():
