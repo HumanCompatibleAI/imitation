@@ -77,7 +77,8 @@ def main():
             run_options={"--name": study.study_name, "--file_storage": "sacred"},
             extra_named_configs=args.named_configs
         ),
-        callbacks=[optuna.study.MaxTrialsCallback(args.num_trials)]
+        callbacks=[optuna.study.MaxTrialsCallback(args.num_trials)],
+        gc_after_trial=True,
     )
 
 
