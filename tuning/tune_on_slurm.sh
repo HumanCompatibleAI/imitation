@@ -1,7 +1,7 @@
 #!/bin/bash
 #SBATCH --array=1-100
 # Avoid cluttering the root directory with log files:
-#SBATCH --output=%A/%a/cout.txt
+#SBATCH --output=%x/%a/cout.txt
 #SBATCH --cpus-per-task=8
 #SBATCH --gpus=0
 #SBATCH --mem=8gb
@@ -36,17 +36,35 @@
 # Run tune.py --help for more information.
 
 # OUTPUT:
-# This script creates a folder with the name of the SLURM job ID and a numbered
-# subfolder for each worker: <SLURM_JOB_ID>/<SLURM_ARRAY_TASK_ID>
-# The main folder contains the optuna journal for synchronizing the workers.
+# This script creates a folder with the name of the SLURM job a numbered subfolder for
+# each worker: <SLURM_JOB_NAME>/<SLURM_ARRAY_TASK_ID>
+# The main folder contains the optuna journal .log for synchronizing the workers.
 # Each worker is executed within it's own subfolder to ensure that their outputs
 # do not conflict with each other. The output of each worker is written to a cout.txt.
 
+# CONTINUING A TUNING RUN:
+# Often it is desirable to continue an existing job or add more workers to it while it
+# is running. Just run run this batch job again but change the --array parameter to
+# ensure that the new workers do not conflict with the old ones. E.g. if you first ran
+# the batch script with --array=1-100 (the default), a subsequent run should be launched
+# with the --array=101-150 (for another 50 workers). For this you do not need to modify
+# this file. You can pass it to sbatch to override.
+
 source "/nas/ucb/$(whoami)/imitation/venv/bin/activate"
 
-# Note: we run each worker in a separate working directory to avoid race
-# conditions when writing sacred outputs to the same folder.
-mkdir -p "$SLURM_ARRAY_JOB_ID"/"$SLURM_ARRAY_TASK_ID"
-cd "$SLURM_ARRAY_JOB_ID"/"$SLURM_ARRAY_TASK_ID" || exit
+mkdir -p "$SLURM_JOB_NAME"
 
-srun python ../../tune.py --num_trials 400 -j ../"$1"_"$2".log "$1" "$2"
+if [ -d "$SLURM_JOB_NAME"/"$SLURM_ARRAY_TASK_ID" ]; then
+  echo "The study folder for $SLURM_JOB_NAME already contains a folder for job $SLURM_ARRAY_TASK_ID!"
+  echo "Are you trying to continue on an existing study? Then adapt the sbatch array range!"
+  echo "E.g. if the highest folder number in $SLURM_JOB_NAME/ is 100 and you want to continue the study with another 50 runners, start this script using `sbatch --job-name=$SLURM_JOB_NAME --array=101-50 tune_on_slurm.sh $1 $2`"
+  exit 1
+else
+  # Note: we run each worker in a separate working directory to avoid race
+  # conditions when writing sacred outputs to the same folder.
+  mkdir "$SLURM_JOB_NAME"/"$SLURM_ARRAY_TASK_ID"
+fi
+
+cd "$SLURM_JOB_NAME"/"$SLURM_ARRAY_TASK_ID" || exit
+
+srun python ../../tune.py --num_trials 400 -j ../optuna_study.log "$1" "$2"
