@@ -30,17 +30,21 @@
 # Run this script with sbatch and pass it the algorithm and the environment
 # named-config. For example, to tune PC on CartPole, run:
 # sbatch --job-name=tuning_pc_on_cartpole tune_on_slurm.sh pc cartpole
-# To change the number of workers, change the --array parameter above.
+# To change the number of workers, change the --array parameter above
+# or pass the --array argument to sbatch.
 # To change the number of trials, change the --num_trials parameter below.
 # Supported are all algorithms and environments that are supported by the tune.py
 # Run tune.py --help for more information.
 
 # OUTPUT:
-# This script creates a folder with the name of the SLURM job a numbered subfolder for
+# This script creates a folder with the name of the SLURM job a numbered sub-folder for
 # each worker: <SLURM_JOB_NAME>/<SLURM_ARRAY_TASK_ID>
 # The main folder contains the optuna journal .log for synchronizing the workers.
-# Each worker is executed within it's own subfolder to ensure that their outputs
-# do not conflict with each other. The output of each worker is written to a cout.txt.
+# It is suitable to place this log on a nfs drive shared among all workers.
+# Each worker is executed within it's own sub-folder to ensure that their outputs
+# do not conflict with each other.
+# The output of each worker is written to a cout.txt.
+# The output of the sbatch command is written to sbatch_cout.txt.
 
 # CONTINUING A TUNING RUN:
 # Often it is desirable to continue an existing job or add more workers to it while it
@@ -68,4 +72,4 @@ fi
 
 cd "$SLURM_JOB_NAME/$SLURM_ARRAY_TASK_ID" || exit
 
-srun --output=%x/%a/cout.txt python ../../tune.py --num_trials 400 -j ../optuna_study.log "$1" "$2"
+srun --output=cout.txt python ../../tune.py --num_trials 400 -j ../optuna_study.log "$1" "$2"
