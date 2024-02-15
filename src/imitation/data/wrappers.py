@@ -1,13 +1,86 @@
 """Environment wrappers for collecting rollouts."""
 
+import os
+import shutil
+import tempfile
+import uuid
 from typing import List, Optional, Sequence, Tuple
 
+import cv2
 import gymnasium as gym
+import imageio
 import numpy as np
 import numpy.typing as npt
 from stable_baselines3.common.vec_env import VecEnv, VecEnvWrapper
 
 from imitation.data import rollout, types
+
+
+class RenderImageInfoWrapper(gym.Wrapper):
+    """Saves render images to `info`.
+
+    Can be very memory intensive for large render images.
+    Use `scale_factor` to reduce render image size.
+    If you need to preserve the resolution and memory
+    runs out, you can activate `use_file_cache` to save
+    rendered images and instead put their path into `info`.
+    """
+
+    def __init__(
+        self,
+        env: gym.Env,
+        scale_factor: float = 1.0,
+        use_file_cache: bool = False,
+    ):
+        """Builds RenderImageInfoWrapper.
+
+        Args:
+            env: Environment to wrap.
+            scale_factor: scales rendered images to be stored.
+            use_file_cache: whether to save rendered images to disk.
+        """
+        assert env.render_mode == "rgb_array", (
+            "The environment must be in render mode 'rgb_array' in order"
+            " to use this wrapper but render_mode is "
+            f"'{env.render_mode}'."
+        )
+        super().__init__(env)
+        self.scale_factor = scale_factor
+        self.use_file_cache = use_file_cache
+        if self.use_file_cache:
+            self.file_cache = tempfile.mkdtemp("imitation_RenderImageInfoWrapper")
+
+    def step(self, action):
+        observation, reward, terminated, truncated, info = self.env.step(action)
+
+        rendered_image = self.render()
+        # Scale the render image
+        scaled_size = (
+            int(self.scale_factor * rendered_image.shape[1]),
+            int(self.scale_factor * rendered_image.shape[0]),
+        )
+        scaled_rendered_image = cv2.resize(
+            rendered_image,
+            scaled_size,
+            interpolation=cv2.INTER_AREA,
+        )
+        # Store the render image
+        if not self.use_file_cache:
+            info["rendered_img"] = scaled_rendered_image
+        else:
+            unique_file_path = os.path.join(
+                self.file_cache,
+                str(uuid.uuid4()) + ".png",
+            )
+            imageio.imwrite(unique_file_path, scaled_rendered_image)
+            info["rendered_img"] = unique_file_path
+
+        return observation, reward, terminated, truncated, info
+
+    def close(self) -> None:
+        if self.use_file_cache:
+            shutil.rmtree(self.file_cache)
+        return super().close()
 
 
 class BufferingWrapper(VecEnvWrapper):

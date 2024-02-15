@@ -11,6 +11,7 @@ import os
 import pathlib
 import pickle
 import platform
+import re
 import shutil
 import sys
 import tempfile
@@ -22,6 +23,7 @@ import numpy as np
 import pandas as pd
 import pytest
 import ray.tune as tune
+import requests_mock
 import sacred
 import sacred.utils
 import stable_baselines3
@@ -164,6 +166,41 @@ def test_train_preference_comparisons_main(tmpdir, preference_comparison_config)
         named_configs=["cartpole"] + ALGO_FAST_CONFIGS["preference_comparison"],
         config_updates=config_updates,
     )
+    assert run.status == "COMPLETED"
+    assert isinstance(run.result, dict)
+
+
+def response_callback(request, context):
+    return {"query_id": request.path.split("/")[0], "label": 1.0}
+
+
+def test_train_preference_comparisons_with_collected_preferences(tmpdir):
+    address = "http://localhost:8000"
+    config_updates = dict(
+        logging=dict(log_root=tmpdir),
+        environment=dict(env_make_kwargs=dict(render_mode="rgb_array")),
+        gatherer_kwargs=dict(
+            wait_for_user=False,
+            querent_kwargs=dict(video_output_dir=tmpdir),
+            pref_collect_address=address,
+        ),
+    )
+
+    with requests_mock.Mocker() as m:
+        request_matcher = re.compile(f"{address}/preferences/query/")
+
+        m.put(url=request_matcher)
+        m.get(
+            url=request_matcher,
+            json=response_callback,
+        )
+
+        run = train_preference_comparisons.train_preference_comparisons_ex.run(
+            named_configs=["cartpole", "human_preferences"]
+            + ALGO_FAST_CONFIGS["preference_comparison"],
+            config_updates=config_updates,
+        )
+
     assert run.status == "COMPLETED"
     assert isinstance(run.result, dict)
 
