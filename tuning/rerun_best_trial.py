@@ -12,7 +12,7 @@ import hp_search_spaces
 def make_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         description=
-        "Re-run the best trials from a previous tuning run.",
+        "Re-run the best trial from a previous tuning run.",
         epilog=f"Example usage:\n"
                f"python rerun_best_trials.py tuning_run.json\n",
         formatter_class=argparse.RawDescriptionHelpFormatter,
@@ -24,12 +24,6 @@ def make_parser() -> argparse.ArgumentParser:
         choices=hp_search_spaces.objectives_by_algo.keys(),
         help="The algorithm that has been tuned. "
              "Can usually be deduced from the study name.",
-    )
-    parser.add_argument(
-        "--top-k",
-        type=int,
-        default=1,
-        help="Chooses the kth best trial to re-run."
     )
     parser.add_argument(
         "journal_log",
@@ -45,7 +39,7 @@ def make_parser() -> argparse.ArgumentParser:
     return parser
 
 
-def infer_algo_name(study: optuna.Study) -> Tuple[str, List[str]]:
+def infer_algo_name(study: optuna.Study) -> str:
     """Infer the algo name from the study name.
 
     Assumes that the study name is of the form "tuning_{algo}_with_{named_configs}".
@@ -53,23 +47,6 @@ def infer_algo_name(study: optuna.Study) -> Tuple[str, List[str]]:
     assert study.study_name.startswith("tuning_")
     assert "_with_" in study.study_name
     return study.study_name[len("tuning_"):].split("_with_")[0]
-
-
-def get_top_k_trial(study: optuna.Study, k: int) -> optuna.trial.Trial:
-    if k <= 0:
-        raise ValueError(f"--top-k must be positive, but is {k}.")
-    finished_trials = [t for t in study.trials if t.state == optuna.trial.TrialState.COMPLETE]
-    if len(finished_trials) == 0:
-        raise ValueError("No trials have completed.")
-    if len(finished_trials) < k:
-        raise ValueError(
-            f"Only {len(finished_trials)} trials have completed, but --top-k is {k}."
-        )
-
-    return sorted(
-        finished_trials,
-        key=lambda t: t.value, reverse=True,
-    )[k-1]
 
 
 def main():
@@ -83,9 +60,7 @@ def main():
         # inferred
         study_name=None,
     )
-    trial = get_top_k_trial(study, args.top_k)
-
-    print(trial.value, trial.params)
+    trial = study.best_trial
 
     algo_name = args.algo or infer_algo_name(study)
     sacred_experiment: sacred.Experiment = hp_search_spaces.objectives_by_algo[algo_name].sacred_ex
