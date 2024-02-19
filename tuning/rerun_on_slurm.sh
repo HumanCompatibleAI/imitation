@@ -45,4 +45,4 @@ fi
 
 cd "$worker_dir" || exit
 
-srun --output="$worker_dir/cout.txt" python ../../../rerun_best_trial.py "$SLURM_JOB_NAME/optuna_study.log" --seed "$SLURM_ARRAY_TASK_ID"
+srun --output="cout.txt" python ../../../rerun_best_trial.py "../../optuna_study.log" --seed "$SLURM_ARRAY_TASK_ID"
