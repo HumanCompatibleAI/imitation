@@ -98,6 +98,12 @@ def sac():
     locals()  # quieten flake8
 
 
+@rl_ingredient.named_config
+def dqn():
+    rl_cls = sb3.DQN
+
+
+
 def _maybe_add_relabel_buffer(
     rl_kwargs: Dict[str, Any],
     relabel_reward_fn: Optional[RewardFn] = None,

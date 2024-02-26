@@ -125,7 +125,7 @@ objectives_by_algo = dict(
     sqil=RunSacredAsTrial(
         sacred_ex=imitation.scripts.train_imitation.train_imitation_ex,
         command_name="sqil",
-        suggest_named_configs=lambda _: [],
+        suggest_named_configs=lambda _: ["rl.dqn"],
         suggest_config_updates=lambda trial: {
             "seed": trial.number,
             "demonstrations": {
@@ -134,12 +134,8 @@ objectives_by_algo = dict(
             },
             "sqil": {
                 "total_timesteps": 1e6,
-                "train_kwargs": {
-
-                }
             },
             "rl": {
-                "rl_cls": sb3.DQN,
                 "rl_kwargs": {
                     "learning_rate": trial.suggest_float("learning_rate", 1e-6, 1e-2, log=True),
                     "buffer_size": trial.suggest_int("buffer_size", 1000, 100000),
