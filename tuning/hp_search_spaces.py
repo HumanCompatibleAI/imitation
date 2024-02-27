@@ -64,6 +64,7 @@ class RunSacredAsTrial:
 
         trial.set_user_attr("config_updates", config_updates)
         trial.set_user_attr("named_configs", named_configs)
+        trial.set_user_attr("command_name", self.command_name)
 
         experiment: sacred.Experiment = self.sacred_ex
         result = experiment.run(
