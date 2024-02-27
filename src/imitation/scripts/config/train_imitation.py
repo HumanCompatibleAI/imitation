@@ -45,6 +45,13 @@ def seals_mountain_car():
     environment = dict(gym_id="seals/MountainCar-v0")
     bc = dict(l2_weight=0.0)
     dagger = dict(total_timesteps=20000)
+    sqil = dict(total_timesteps=1e5)
+
+
+@train_imitation_ex.named_config
+def seals_ant():
+    environment = dict(gym_id="seals/Ant-v1")
+    sqil = dict(total_timesteps=2e6)
 
 
 @train_imitation_ex.named_config
@@ -57,11 +64,13 @@ def cartpole():
 def seals_cartpole():
     environment = dict(gym_id="seals/CartPole-v0")
     dagger = dict(total_timesteps=20000)
+    sqil = dict(total_timesteps=1e5)
 
 
 @train_imitation_ex.named_config
 def pendulum():
     environment = dict(gym_id="Pendulum-v1")
+    sqil = dict(total_timesteps=1e5)
 
 
 @train_imitation_ex.named_config
@@ -77,13 +86,32 @@ def half_cheetah():
 
 
 @train_imitation_ex.named_config
+def seals_half_cheetah():
+    environment = dict(gym_id="seals/HalfCheetah-v1")
+    sqil = dict(total_timesteps=2e6)
+
+
+@train_imitation_ex.named_config
+def seals_hopper():
+    environment = dict(gym_id="seals/Hopper-v1")
+    sqil = dict(total_timesteps=2e6)
+
+
+@train_imitation_ex.named_config
+def seals_walker():
+    environment = dict(gym_id="seals/Walker2d-v1")
+    sqil = dict(total_timesteps=2e6)
+
+
+@train_imitation_ex.named_config
 def humanoid():
     environment = dict(gym_id="Humanoid-v2")
 
 
 @train_imitation_ex.named_config
 def seals_humanoid():
-    environment = dict(gym_id="seals/Humanoid-v0")
+    environment = dict(gym_id="seals/Humanoid-v1")
+    sqil = dict(total_timesteps=2e6)
 
 
 @train_imitation_ex.named_config

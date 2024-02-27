@@ -132,9 +132,6 @@ objectives_by_algo = dict(
                 "n_expert_demos": 100,
                 "source": "generated",
             },
-            "sqil": {
-                "total_timesteps": 1e6,
-            },
             "rl": {
                 "rl_kwargs": {
                     "learning_rate": trial.suggest_float("learning_rate", 1e-6, 1e-2, log=True),
