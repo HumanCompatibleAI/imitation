@@ -10,3 +10,6 @@ sbatch --job-name=tuning_pc_on_seals_humanoid --mem=32gb tune_on_slurm.sh pc sea
 sbatch --job-name=tuning_pc_on_seals_cartpole tune_on_slurm.sh pc seals_cartpole
 sbatch --job-name=tuning_pc_on_pendulum tune_on_slurm.sh pc pendulum
 sbatch --job-name=tuning_pc_on_seals_mountain_car tune_on_slurm.sh pc seals_mountain_car
+
+sbatch --job-name=tuning_sqil_on_seals_mountain_car tune_on_slurm.sh sqil seals_mountain_car
+sbatch --job-name=tuning_sqil_on_seals_cartpole tune_on_slurm.sh sqil seals_cartpole
