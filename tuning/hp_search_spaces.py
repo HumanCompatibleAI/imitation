@@ -135,7 +135,7 @@ objectives_by_algo = dict(
             "active_selection_oversampling": trial.suggest_int("active_selection_oversampling", 1, 11),
             "comparison_queue_size": trial.suggest_int("comparison_queue_size", 1, 1001),  # upper bound determined by total_comparisons=1000
             "exploration_frac": trial.suggest_float("exploration_frac", 0.0, 0.5),
-            "fragment_length": trial.suggest_int("fragment_length", 1, 1001),  # trajectories are 1000 steps long
+            "fragment_length": trial.suggest_int("fragment_length", 1, 201),  # trajectories are 1000 steps long
             "gatherer_kwargs": {
                 "temperature": trial.suggest_float("gatherer_temperature", 0.0, 2.0),
                 "discount_factor": trial.suggest_float("gatherer_discount_factor", 0.95, 1.0),
