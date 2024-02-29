@@ -54,6 +54,14 @@ from imitation.rewards import reward_function, reward_nets, reward_wrapper
 from imitation.util import logger as imit_logger
 from imitation.util import networks, util
 
+from panoptes_client import (
+    Panoptes,
+    Project,
+    Workflow,
+    Classification,
+    SubjectSet,
+    Subject
+)
 
 class TrajectoryGenerator(abc.ABC):
     """Generator of trajectories with optional training logic."""
@@ -882,6 +890,73 @@ class PrefCollectQuerent(PreferenceQuerent):
         )
 
 
+class ZooniverseQuerent(PrefCollectQuerent):
+    """Sends queries to the Zooniverse interface."""
+
+    def __init__(
+        self,
+        pref_collect_address: str,
+        zoo_project_id: int,
+        zoo_workflow_id: int,
+        linked_subject_set_id: int,
+        retired_subject_set_id: int,
+        experiment_id: int,
+        video_output_dir: AnyPath,
+        video_fps: str = 20,
+        rng: Optional[np.random.Generator] = None,
+        custom_logger: Optional[imit_logger.HierarchicalLogger] = None,
+    ):
+        super().__init__(pref_collect_address, video_output_dir, video_fps, rng, custom_logger)
+        self.zoo_project_id = zoo_project_id
+        self.zoo_workflow_id = zoo_workflow_id
+        self.linked_subject_set_id = linked_subject_set_id
+        self.retired_subject_set_id = retired_subject_set_id
+        self.experiment_id = experiment_id
+
+        # Create video directory
+        os.makedirs(self.video_output_dir, exist_ok=True)
+        
+        # Authenticate with Zooniverse
+        panoptes_username = os.environ["PANOPTES_USERNAME"]
+        panoptes_password = os.environ["PANOPTES_PASSWORD"]
+        Panoptes.connect(username=panoptes_username, password=panoptes_password)
+
+    def _query(self, query_id):
+        # Find project and workflow
+        project = Project.find(self.zoo_project_id)
+        workflow = Workflow.find(self.zoo_workflow_id)
+        
+        # Find subject sets
+        linked_subject_set = SubjectSet.find(self.linked_subject_set_id)
+        
+        # Create subject for this query_id
+        subject = Subject()
+        subject.links.project = project
+        
+        output_file_name = os.path.join(
+                self.video_output_dir, f"{query_id}" + "{}.webm"
+            )
+            
+        subject.add_location(open(output_file_name.format("left"), "rb"))
+        subject.add_location(open(output_file_name.format("right"), "rb"))
+        
+        subject.metadata["query_id"] = f"{query_id}"
+        subject.metadata["#left_video"] = output_file_name.format("left")
+        subject.metadata["#right_video"] = output_file_name.format("right")
+        subject.metadata["#video_fps"] = self.video_fps
+        subject.metadata["#zoo_project_id"] = self.zoo_project_id
+        subject.metadata["#zoo_workflow_id"] = self.zoo_workflow_id
+        subject.metadata["#linked_subject_set_id"] = self.linked_subject_set_id
+        subject.metadata["#retired_subject_set_id"] = self.retired_subject_set_id
+        subject.metadata["#linked_subject_set_id"] = self.linked_subject_set_id
+        subject.metadata["#experiment_id"] = self.experiment_id
+        
+        subject.save()
+        
+        # Add the subject to the linked subject set
+        linked_subject_set.add(subject)
+        
+
 def add_missing_rgb_channels(frames: np.ndarray) -> np.ndarray:
     """Add missing RGB channels if needed.
     If less than three channels are present, multiplies the last channel
@@ -1353,6 +1428,111 @@ class PrefCollectGatherer(PreferenceGatherer):
     def _gather_preference(self, query_id: str) -> float:
         answered_query = requests.get(self.query_endpoint + query_id).json()
         return answered_query["label"]
+
+
+class ZooniverseGatherer(PrefCollectGatherer):
+    """Gathers preferences from Zooniverse interface."""
+
+    def __init__(
+        self,
+        pref_collect_address: str,
+        zoo_project_id: int,
+        zoo_workflow_id: int,
+        linked_subject_set_id: int,
+        retired_subject_set_id: int,
+        experiment_id: int,
+        wait_for_user: bool = True,
+        rng: Optional[np.random.Generator] = None,
+        custom_logger: Optional[imit_logger.HierarchicalLogger] = None,
+    ) -> None:
+        """Initializes the preference gatherer.
+
+        Args:
+            pref_collect_address: Network address to PrefCollect instance.
+            wait_for_user: Waits for user to input their preferences.
+            rng: random number generator, if applicable.
+            custom_logger: Where to log to; if None (default), creates a new logger.
+        """
+        super().__init__(pref_collect_address, wait_for_user, rng, custom_logger)
+        self.zoo_project_id = zoo_project_id
+        self.zoo_workflow_id = zoo_workflow_id
+        self.linked_subject_set_id = linked_subject_set_id
+        self.retired_subject_set_id = retired_subject_set_id
+        self.experiment_id = experiment_id
+        
+        # Authenticate with Zooniverse
+        panoptes_username = os.environ["PANOPTES_USERNAME"]
+        panoptes_password = os.environ["PANOPTES_PASSWORD"]
+        Panoptes.connect(username=panoptes_username, password=panoptes_password)
+        
+        self._process_zoo_classifications(self, last_id=0)
+        
+        # Define annotation to label map
+        self.annotation_to_label = {
+            "Left is better.": 1,
+            "Right is better.": 0,
+            "Indifferent.": .5,
+            "Incomparable.": -1
+        }
+        
+    def _process_zoo_classifications(self, last_id=0):
+        
+        # The default last_id is 0 meaning process all classifications the project has
+        # recieved for the specified workflow.
+        # TODO: make last_id trackable to avoid processing all classifications each time
+        # the gatherer is called.
+        
+        # Access classifications from the last_id
+        classifications = Classification.where(last_id=last_id, scope='project',
+                                               project_id=pid, workflow_id=wid)
+        
+        # Find workflow
+        self.workflow = Workflow.find(self.zoo_workflow_id)
+        
+        self.subject_to_query = {}
+        self.subject_to_annotations = {}
+        for c in classifications:
+            d = c.raw
+            # Extract subject id
+            sid = int(d["links"]["subjects"][0])
+            # Get subject status
+            status = self.workflow.subject_workflow_status(sid)
+            # Check that subject is retired
+            if status.raw["retirement_reason"] is not None:
+                label = self.annotation_to_label[d["annotations"][0]["value"]]
+                try:
+                    # Add label for this classification for the subject
+                    self.subject_to_annotations[sid].append(label)
+                except KeyError:
+                    # Get query_id for this subject and add it to map
+                    subject = Subject.find(sid)
+                    self.subject_to_query[sid] = subject.raw["metadata"]["query_id"]
+                    # Create map entry for this subject
+                    self.subject_to_annotations[sid] = [label]
+
+    def _gather_preference(self, query_id: str) -> float:
+        
+        # Find subject sets
+        linked_subject_set = SubjectSet.find(self.linked_subject_set_id)
+        retired_subject_set = SubjectSet.find(self.retired_subject_set_id)
+        
+        # Get subject_id corresponding to query_id
+        subject_id = self.subject_to_query[query_id]
+        
+        # Get reduced_label for subject_id aggregated from each annotation for that subject
+        reduced_label = self._reduce_annotations(self.subject_to_annotations[subject_id])
+        
+        # Remove this subject from the subject set linked to the workflow
+        linked_subject_set.remove([subject_id])
+        
+        # Add subject to the subject set for completed subjects
+        retired_subject_set.add([subject_id])
+        
+        return reduced_label
+    
+    def _reduce_annotations(self, annotations):
+        count = Counter(annotations)
+        return count.most_common(1)[0][0]
 
 
 def remove_rendered_images(trajectories: Sequence[TrajectoryWithRew]) -> None:
