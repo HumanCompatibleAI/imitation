@@ -1,7 +1,6 @@
 """Script to re-run the best trials from a previous hyperparameter tuning run."""
 import argparse
 import random
-from typing import List, Tuple
 
 import hp_search_spaces
 import optuna
@@ -11,7 +10,7 @@ import sacred
 def make_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         description="Re-run the best trial from a previous tuning run.",
-        epilog=f"Example usage:\n" f"python rerun_best_trials.py tuning_run.json\n",
+        epilog="Example usage:\npython rerun_best_trials.py tuning_run.json\n",
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     parser.add_argument(
@@ -40,6 +39,12 @@ def infer_algo_name(study: optuna.Study) -> str:
     """Infer the algo name from the study name.
 
     Assumes that the study name is of the form "tuning_{algo}_with_{named_configs}".
+
+    Args:
+        study: The optuna study.
+
+    Returns:
+        algo name
     """
     assert study.study_name.startswith("tuning_")
     assert "_with_" in study.study_name
@@ -51,7 +56,7 @@ def main():
     args = parser.parse_args()
     study: optuna.Study = optuna.load_study(
         storage=optuna.storages.JournalStorage(
-            optuna.storages.JournalFileStorage(args.journal_log)
+            optuna.storages.JournalFileStorage(args.journal_log),
         ),
         # in our case, we have one journal file per study so the study name can be
         # inferred
@@ -73,7 +78,7 @@ def main():
     )
     if result.status != "COMPLETED":
         raise RuntimeError(
-            f"Trial failed with {result.fail_trace()} and status {result.status}."
+            f"Trial failed with {result.fail_trace()} and status {result.status}.",
         )
 
 

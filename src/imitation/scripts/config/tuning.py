@@ -2,7 +2,6 @@
 
 import ray.tune as tune
 import sacred
-from torch import nn
 
 from imitation.algorithms import dagger as dagger_alg
 from imitation.scripts.parallel import parallel_ex
@@ -200,11 +199,11 @@ def pc():
             "config_updates": {
                 "active_selection_oversampling": tune.randint(1, 11),
                 "comparison_queue_size": tune.randint(
-                    1, 1001
+                    1, 1001,
                 ),  # upper bound determined by total_comparisons=1000
                 "exploration_frac": tune.uniform(0.0, 0.5),
                 "fragment_length": tune.randint(
-                    1, 1001
+                    1, 1001,
                 ),  # trajectories are 1000 steps long
                 "gatherer_kwargs": {
                     "temperature": tune.uniform(0.0, 2.0),
@@ -218,7 +217,7 @@ def pc():
                     "discount_factor": tune.uniform(0.95, 1.0),
                 },
                 "query_schedule": tune.choice(
-                    ["hyperbolic", "constant", "inverse_quadratic"]
+                    ["hyperbolic", "constant", "inverse_quadratic",]
                 ),
                 "trajectory_generator_kwargs": {
                     "switch_prob": tune.uniform(0.1, 1),

@@ -14,7 +14,8 @@ def make_parser() -> argparse.ArgumentParser:
 
     parser = argparse.ArgumentParser(
         description="Tune hyperparameters for imitation learning algorithms.",
-        epilog=f"Example usage:\n{example_usage}\n\nPossible named configs:\n{possible_named_configs}",
+        epilog=f"Example usage:\n{example_usage}\n\n"
+        f"Possible named configs:\n{possible_named_configs}",
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     parser.add_argument(
@@ -33,7 +34,10 @@ def make_parser() -> argparse.ArgumentParser:
         "Use this to select the environment to tune on.",
     )
     parser.add_argument(
-        "--num_trials", type=int, default=100, help="Number of trials to run."
+        "--num_trials",
+        type=int,
+        default=100,
+        help="Number of trials to run.",
     )
     parser.add_argument(
         "-j",
@@ -49,7 +53,7 @@ def make_parser() -> argparse.ArgumentParser:
 def make_study(args: argparse.Namespace) -> optuna.Study:
     if args.journal_log is not None:
         storage = optuna.storages.JournalStorage(
-            optuna.storages.JournalFileStorage(args.journal_log)
+            optuna.storages.JournalFileStorage(args.journal_log),
         )
     else:
         storage = None
