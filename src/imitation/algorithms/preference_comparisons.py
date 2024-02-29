@@ -1444,6 +1444,7 @@ class ZooniverseGatherer(PrefCollectGatherer):
         wait_for_user: bool = True,
         rng: Optional[np.random.Generator] = None,
         custom_logger: Optional[imit_logger.HierarchicalLogger] = None,
+        querent_kwargs: Optional[Mapping] = None
     ) -> None:
         """Initializes the preference gatherer.
 
@@ -1453,7 +1454,7 @@ class ZooniverseGatherer(PrefCollectGatherer):
             rng: random number generator, if applicable.
             custom_logger: Where to log to; if None (default), creates a new logger.
         """
-        super().__init__(pref_collect_address, wait_for_user, rng, custom_logger)
+        super().__init__(pref_collect_address, wait_for_user, rng, custom_logger, querent_kwargs)
         self.zoo_project_id = zoo_project_id
         self.zoo_workflow_id = zoo_workflow_id
         self.linked_subject_set_id = linked_subject_set_id
