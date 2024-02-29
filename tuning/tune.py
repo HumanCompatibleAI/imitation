@@ -2,7 +2,6 @@
 import argparse
 
 import optuna
-
 from hp_search_spaces import objectives_by_algo
 
 
@@ -31,13 +30,10 @@ def make_parser() -> argparse.ArgumentParser:
         nargs="+",
         default=[],
         help="Additional named configs to pass to the sacred experiment. "
-             "Use this to select the environment to tune on.",
+        "Use this to select the environment to tune on.",
     )
     parser.add_argument(
-        "--num_trials",
-        type=int,
-        default=100,
-        help="Number of trials to run."
+        "--num_trials", type=int, default=100, help="Number of trials to run."
     )
     parser.add_argument(
         "-j",
@@ -45,7 +41,7 @@ def make_parser() -> argparse.ArgumentParser:
         type=str,
         default=None,
         help="A journal file to synchronize multiple instances of this script. "
-             "Works on NFS storage."
+        "Works on NFS storage.",
     )
     return parser
 
@@ -75,12 +71,12 @@ def main():
         lambda trial: objectives_by_algo[args.algo](
             trial,
             run_options={"--name": study.study_name, "--file_storage": "sacred"},
-            extra_named_configs=args.named_configs
+            extra_named_configs=args.named_configs,
         ),
         callbacks=[optuna.study.MaxTrialsCallback(args.num_trials)],
         gc_after_trial=True,
     )
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

@@ -1678,7 +1678,9 @@ class PreferenceComparisons(base.BaseImitationAlgorithm):
         unnormalized_probs = vec_schedule(np.linspace(0, 1, self.num_iterations))
         probs = unnormalized_probs / np.sum(unnormalized_probs)
         shares = util.oric(probs * total_comparisons)
-        shares[shares <= 0] = 1  # ensure we at least request one comparison per iteration
+        shares[
+            shares <= 0
+        ] = 1  # ensure we at least request one comparison per iteration
 
         schedule = [initial_comparisons] + shares.tolist()
         print(f"Query schedule: {schedule}")
