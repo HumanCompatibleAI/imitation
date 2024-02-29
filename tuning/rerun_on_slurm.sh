@@ -26,7 +26,7 @@
 # <tune_folder>/reruns/<seed>
 # The output of each worker is written to a cout.txt.
 
-
+# shellcheck disable=SC1090
 source "/nas/ucb/$(whoami)/imitation/venv/bin/activate"
 
 worker_dir="$SLURM_JOB_NAME/reruns/$SLURM_ARRAY_TASK_ID/"

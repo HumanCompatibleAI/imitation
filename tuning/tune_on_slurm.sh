@@ -54,6 +54,7 @@
 # with the --array=101-150 (for another 50 workers). For this you do not need to modify
 # this file. You can pass it to sbatch to override.
 
+# shellcheck disable=SC1090
 source "/nas/ucb/$(whoami)/imitation/venv/bin/activate"
 
 if [ -f "$SLURM_JOB_NAME/$SLURM_ARRAY_TASK_ID/cout.txt" ]; then
@@ -62,7 +63,7 @@ if [ -f "$SLURM_JOB_NAME/$SLURM_ARRAY_TASK_ID/cout.txt" ]; then
   # so it is not very useful information.
   echo "The study folder for $SLURM_JOB_NAME already contains a folder for job $SLURM_ARRAY_TASK_ID!"
   echo "Are you trying to continue on an existing study? Then adapt the sbatch array range!"
-  echo "E.g. if the highest folder number in $SLURM_JOB_NAME/ is 100 and you want to continue the study with another 50 runners, start this script using `sbatch --job-name=$SLURM_JOB_NAME --array=101-50 tune_on_slurm.sh $1 $2`"
+  echo "E.g. if the highest folder number in \"$SLURM_JOB_NAME/\" is 100 and you want to continue the study with another 50 runners, start this script using \"sbatch --job-name=$SLURM_JOB_NAME --array=101-150 tune_on_slurm.sh $1 $2\""
   exit 1
 else
   # Note: we run each worker in a separate working directory to avoid race
