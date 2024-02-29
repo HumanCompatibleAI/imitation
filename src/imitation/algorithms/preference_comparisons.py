@@ -1440,7 +1440,6 @@ class ZooniverseGatherer(PrefCollectGatherer):
         zoo_workflow_id: int,
         linked_subject_set_id: int,
         retired_subject_set_id: int,
-        experiment_id: int,
         wait_for_user: bool = True,
         rng: Optional[np.random.Generator] = None,
         custom_logger: Optional[imit_logger.HierarchicalLogger] = None,
