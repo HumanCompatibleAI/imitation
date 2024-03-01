@@ -1470,7 +1470,7 @@ class ZooniverseGatherer(PrefCollectGatherer):
         panoptes_password = os.environ["PANOPTES_PASSWORD"]
         Panoptes.connect(username=panoptes_username, password=panoptes_password)
         
-        self._process_zoo_classifications(self, last_id=0)
+        self._process_zoo_classifications(last_id=0)
         
         # Define annotation to label map
         self.annotation_to_label = {
