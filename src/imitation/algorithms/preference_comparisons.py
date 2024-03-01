@@ -912,9 +912,6 @@ class ZooniverseQuerent(PrefCollectQuerent):
         self.linked_subject_set_id = linked_subject_set_id
         self.retired_subject_set_id = retired_subject_set_id
         self.experiment_id = experiment_id
-
-        # Create video directory
-        os.makedirs(self.video_output_dir, exist_ok=True)
         
         # Authenticate with Zooniverse
         panoptes_username = os.environ["PANOPTES_USERNAME"]
