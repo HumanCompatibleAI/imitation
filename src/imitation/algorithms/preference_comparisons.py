@@ -1456,6 +1456,7 @@ class ZooniverseGatherer(PrefCollectGatherer):
         #super_querent_kwargs = {"video_output_dir": querent_kwargs["video_output_dir"]}
         super().__init__(pref_collect_address, wait_for_user, rng, custom_logger, **querent_kwargs)
         self.querent = ZooniverseQuerent(
+            pref_collect_address,
             **querent_kwargs
         )
         
