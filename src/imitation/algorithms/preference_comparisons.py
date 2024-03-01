@@ -1454,7 +1454,7 @@ class ZooniverseGatherer(PrefCollectGatherer):
             custom_logger: Where to log to; if None (default), creates a new logger.
         """
         video_output_dir = querent_kwargs["video_output_dir"]
-        super().__init__(pref_collect_address, video_output_dir, wait_for_user, rng, custom_logger, querent_kwargs=None)
+        super().__init__(pref_collect_address, video_output_dir, querent_kwargs=None)
         self.querent = ZooniverseQuerent(
             pref_collect_address,
             **querent_kwargs
