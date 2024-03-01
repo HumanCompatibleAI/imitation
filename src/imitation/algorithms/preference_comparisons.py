@@ -1464,7 +1464,6 @@ class ZooniverseGatherer(PrefCollectGatherer):
         self.zoo_workflow_id = zoo_workflow_id
         self.linked_subject_set_id = linked_subject_set_id
         self.retired_subject_set_id = retired_subject_set_id
-        self.experiment_id = experiment_id
         
         # Authenticate with Zooniverse
         panoptes_username = os.environ["PANOPTES_USERNAME"]
