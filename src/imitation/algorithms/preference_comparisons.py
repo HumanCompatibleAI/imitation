@@ -1453,11 +1453,12 @@ class ZooniverseGatherer(PrefCollectGatherer):
             rng: random number generator, if applicable.
             custom_logger: Where to log to; if None (default), creates a new logger.
         """
-        super_querent_kwargs = {"video_output_dir": querent_kwargs["video_output_dir"]}
-        super().__init__(pref_collect_address, wait_for_user, rng, custom_logger, super_querent_kwargs)
+        #super_querent_kwargs = {"video_output_dir": querent_kwargs["video_output_dir"]}
+        super().__init__(pref_collect_address, wait_for_user, rng, custom_logger, **querent_kwargs)
         self.querent = ZooniverseQuerent(
-            **querent_kwargs,
+            **querent_kwargs
         )
+        
         self.zoo_project_id = zoo_project_id
         self.zoo_workflow_id = zoo_workflow_id
         self.linked_subject_set_id = linked_subject_set_id
