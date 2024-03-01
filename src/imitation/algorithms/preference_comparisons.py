@@ -1488,8 +1488,12 @@ class ZooniverseGatherer(PrefCollectGatherer):
         # the gatherer is called.
         
         # Access classifications from the last_id
-        classifications = Classification.where(last_id=last_id, scope='project',
-                                               project_id=pid, workflow_id=wid)
+        classifications = Classification.where(
+            last_id=last_id,
+            scope='project',
+            project_id=self.zoo_project_id,
+            workflow_id=self.zoo_workflow_id
+        )
         
         # Find workflow
         self.workflow = Workflow.find(self.zoo_workflow_id)
