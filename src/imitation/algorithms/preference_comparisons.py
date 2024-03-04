@@ -1492,10 +1492,10 @@ class ZooniverseGatherer(PrefCollectGatherer):
         
         # Define annotation to label map
         self.annotation_to_label = {
-            "Left is better.": 1,
-            "Right is better.": 0,
-            "Indifferent.": .5,
-            "Incomparable.": -1
+            0: 1,
+            1: 0,
+            2: .5,
+            3: -1
         }
         
         # Authenticate with Zooniverse
@@ -1527,6 +1527,7 @@ class ZooniverseGatherer(PrefCollectGatherer):
         self.subject_to_annotations = {}
         for c in classifications:
             d = c.raw
+            print(d)
             # Extract subject id
             sid = int(d["links"]["subjects"][0])
             # Get subject status
