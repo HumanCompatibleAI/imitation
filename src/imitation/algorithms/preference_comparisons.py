@@ -38,6 +38,7 @@ from stable_baselines3.common import base_class, type_aliases, utils, vec_env
 from torch import nn
 from torch.utils import data as data_th
 from tqdm.auto import tqdm
+from collections import Counter
 
 from imitation.algorithms import base
 from imitation.data import rollout, types, wrappers
@@ -1556,7 +1557,6 @@ class ZooniverseGatherer(PrefCollectGatherer):
         retired_subject_set = SubjectSet.find(self.retired_subject_set_id)
         
         # Get subject_id corresponding to query_id
-        print(self.query_to_subject)
         subject_id = self.query_to_subject[query_id]
         
         # Get reduced_label for subject_id aggregated from each annotation for that subject
