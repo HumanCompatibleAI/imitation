@@ -1523,7 +1523,7 @@ class ZooniverseGatherer(PrefCollectGatherer):
         # Find workflow
         self.workflow = Workflow.find(self.zoo_workflow_id)
         
-        self.subject_to_query = {}
+        self.query_to_subject = {}
         self.subject_to_annotations = {}
         for c in classifications:
             d = c.raw
@@ -1540,7 +1540,7 @@ class ZooniverseGatherer(PrefCollectGatherer):
                 except KeyError:
                     # Get query_id for this subject and add it to map
                     subject = Subject.find(sid)
-                    self.subject_to_query[sid] = subject.raw["metadata"]["query_id"]
+                    self.query_to_subject[subject.raw["metadata"]["query_id"]] = sid
                     # Create map entry for this subject
                     self.subject_to_annotations[sid] = [label]
 
