@@ -919,6 +919,32 @@ class ZooniverseQuerent(PrefCollectQuerent):
         panoptes_password = os.environ["PANOPTES_PASSWORD"]
         Panoptes.connect(username=panoptes_username, password=panoptes_password)
 
+    def __call__(
+        self,
+        queries: Sequence[TrajectoryWithRewPair],
+    ) -> Dict[str, TrajectoryWithRewPair]:
+        identified_queries = super().__call__(queries)
+
+        # Save fragment videos and submit queries
+        for query_id, query in identified_queries.items():
+            output_file_name = os.path.join(
+                self.video_output_dir,
+                f"{query_id}" + "-{}.mp4",
+            )
+            write_fragment_video(
+                query[0],
+                frames_per_second=self.frames_per_second,
+                output_path=output_file_name.format("left"),
+            )
+            write_fragment_video(
+                query[1],
+                frames_per_second=self.frames_per_second,
+                output_path=output_file_name.format("right"),
+            )
+            self._query(query_id)
+
+        return identified_queries
+
     def _query(self, query_id):
         # Find project and workflow
         project = Project.find(self.zoo_project_id)
@@ -932,7 +958,7 @@ class ZooniverseQuerent(PrefCollectQuerent):
         subject.links.project = project
         
         output_file_name = os.path.join(
-                self.video_output_dir, f"{query_id}" + "-{}.webm"
+                self.video_output_dir, f"{query_id}" + "-{}.mp4"
             )
             
         subject.add_location(open(output_file_name.format("left"), "rb"))
