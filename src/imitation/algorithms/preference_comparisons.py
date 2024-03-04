@@ -1551,7 +1551,7 @@ class ZooniverseGatherer(PrefCollectGatherer):
         retired_subject_set = SubjectSet.find(self.retired_subject_set_id)
         
         # Get subject_id corresponding to query_id
-        subject_id = self.subject_to_query[query_id]
+        subject_id = self.query_to_subject[query_id]
         
         # Get reduced_label for subject_id aggregated from each annotation for that subject
         reduced_label = self._reduce_annotations(self.subject_to_annotations[subject_id])
