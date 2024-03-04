@@ -923,7 +923,8 @@ class ZooniverseQuerent(PrefCollectQuerent):
         self,
         queries: Sequence[TrajectoryWithRewPair],
     ) -> Dict[str, TrajectoryWithRewPair]:
-        identified_queries = super().__call__(queries)
+        # Call PreferenceQuerent not PrefCollectQuerent
+        identified_queries = super(PrefCollectQuerent, self).__call__(queries)
 
         # Save fragment videos and submit queries
         for query_id, query in identified_queries.items():
