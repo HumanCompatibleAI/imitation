@@ -1498,12 +1498,12 @@ class ZooniverseGatherer(PrefCollectGatherer):
             3: -1
         }
         
+        self.query_to_subject = None
+        
         # Authenticate with Zooniverse
         panoptes_username = os.environ["PANOPTES_USERNAME"]
         panoptes_password = os.environ["PANOPTES_PASSWORD"]
         Panoptes.connect(username=panoptes_username, password=panoptes_password)
-        
-        self._process_zoo_classifications(last_id=0)
         
     def _process_zoo_classifications(self, last_id=0):
         
@@ -1546,11 +1546,17 @@ class ZooniverseGatherer(PrefCollectGatherer):
 
     def _gather_preference(self, query_id: str) -> float:
         
+        # Without last_id trakcing this must be called each time to ensure latest
+        # classifications are included. This could become time consuming if many
+        # classifications have been submitted to the project.
+        self._process_zoo_classifications(last_id=0)
+        
         # Find subject sets
         linked_subject_set = SubjectSet.find(self.linked_subject_set_id)
         retired_subject_set = SubjectSet.find(self.retired_subject_set_id)
         
         # Get subject_id corresponding to query_id
+        print(self.query_to_subject)
         subject_id = self.query_to_subject[query_id]
         
         # Get reduced_label for subject_id aggregated from each annotation for that subject
