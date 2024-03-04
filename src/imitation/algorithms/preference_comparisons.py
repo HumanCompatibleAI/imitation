@@ -931,7 +931,7 @@ class ZooniverseQuerent(PrefCollectQuerent):
         subject.links.project = project
         
         output_file_name = os.path.join(
-                self.video_output_dir, f"{query_id}" + "{}.webm"
+                self.video_output_dir, f"{query_id}" + "-{}.webm"
             )
             
         subject.add_location(open(output_file_name.format("left"), "rb"))
