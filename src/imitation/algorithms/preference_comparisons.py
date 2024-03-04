@@ -1527,7 +1527,6 @@ class ZooniverseGatherer(PrefCollectGatherer):
         self.subject_to_annotations = {}
         for c in classifications:
             d = c.raw
-            print(d)
             # Extract subject id
             sid = int(d["links"]["subjects"][0])
             # Get subject status
