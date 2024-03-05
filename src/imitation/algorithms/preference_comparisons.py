@@ -1036,7 +1036,7 @@ def write_fragment_video(
     clip = ImageSequenceClip(frames_list, fps=frames_per_second)
     moviepy_logger = None if not progress_logger else "bar"
     if output_path.endswith('.gif'):
-        clip.write_gif(output_path)
+        clip.write_gif(output_path, logger=moviepy_logger)
     else:
         clip.write_videofile(output_path, logger=moviepy_logger)
 
