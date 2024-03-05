@@ -931,7 +931,7 @@ class ZooniverseQuerent(PrefCollectQuerent):
         for query_id, query in identified_queries.items():
             output_file_name = os.path.join(
                 self.video_output_dir,
-                f"{query_id}" + "-{}.mp4",
+                f"{query_id}" + "-{}.gif",
             )
             write_fragment_video(
                 query[0],
@@ -960,7 +960,7 @@ class ZooniverseQuerent(PrefCollectQuerent):
         subject.links.project = project
         
         output_file_name = os.path.join(
-                self.video_output_dir, f"{query_id}" + "-{}.mp4"
+                self.video_output_dir, f"{query_id}" + "-{}.gif"
             )
             
         subject.add_location(open(output_file_name.format("left"), "rb"))
