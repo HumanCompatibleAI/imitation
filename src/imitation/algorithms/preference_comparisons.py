@@ -914,11 +914,6 @@ class ZooniverseQuerent(PrefCollectQuerent):
         self.retired_subject_set_id = retired_subject_set_id
         self.experiment_id = experiment_id
         self.video_fps = video_fps
-        
-        # Authenticate with Zooniverse
-        panoptes_username = os.environ["PANOPTES_USERNAME"]
-        panoptes_password = os.environ["PANOPTES_PASSWORD"]
-        Panoptes.connect(username=panoptes_username, password=panoptes_password)
 
     def __call__(
         self,
@@ -948,6 +943,12 @@ class ZooniverseQuerent(PrefCollectQuerent):
         return identified_queries
 
     def _query(self, query_id):
+    
+        # Authenticate with Zooniverse
+        panoptes_username = os.environ["PANOPTES_USERNAME"]
+        panoptes_password = os.environ["PANOPTES_PASSWORD"]
+        Panoptes.connect(username=panoptes_username, password=panoptes_password)
+        
         # Find project and workflow
         project = Project.find(self.zoo_project_id)
         workflow = Workflow.find(self.zoo_workflow_id)
@@ -1504,11 +1505,6 @@ class ZooniverseGatherer(PrefCollectGatherer):
         
         self.query_to_subject = None
         
-        # Authenticate with Zooniverse
-        panoptes_username = os.environ["PANOPTES_USERNAME"]
-        panoptes_password = os.environ["PANOPTES_PASSWORD"]
-        Panoptes.connect(username=panoptes_username, password=panoptes_password)
-        
     def _process_zoo_classifications(self, last_id=0):
         
         # The default last_id is 0 meaning process all classifications the project has
@@ -1549,6 +1545,11 @@ class ZooniverseGatherer(PrefCollectGatherer):
                     self.subject_to_annotations[sid] = [label]
 
     def _gather_preference(self, query_id: str) -> float:
+                
+        # Authenticate with Zooniverse
+        panoptes_username = os.environ["PANOPTES_USERNAME"]
+        panoptes_password = os.environ["PANOPTES_PASSWORD"]
+        Panoptes.connect(username=panoptes_username, password=panoptes_password)
         
         # Without last_id trakcing this must be called each time to ensure latest
         # classifications are included. This could become time consuming if many
