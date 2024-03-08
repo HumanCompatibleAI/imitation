@@ -1494,7 +1494,8 @@ class ZooniverseGatherer(PrefCollectGatherer):
             0: 1,
             1: 0,
             2: .5,
-            3: -1
+            3: -1,
+            None: None
         }
         
         self.query_to_subject = None
