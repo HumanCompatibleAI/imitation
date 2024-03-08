@@ -900,7 +900,6 @@ class ZooniverseQuerent(PrefCollectQuerent):
         zoo_project_id: int,
         zoo_workflow_id: int,
         linked_subject_set_id: int,
-        retired_subject_set_id: int,
         experiment_id: int,
         video_output_dir: AnyPath,
         video_fps: str = 20,
@@ -911,7 +910,6 @@ class ZooniverseQuerent(PrefCollectQuerent):
         self.zoo_project_id = zoo_project_id
         self.zoo_workflow_id = zoo_workflow_id
         self.linked_subject_set_id = linked_subject_set_id
-        self.retired_subject_set_id = retired_subject_set_id
         self.experiment_id = experiment_id
         self.video_fps = video_fps
 
@@ -973,8 +971,6 @@ class ZooniverseQuerent(PrefCollectQuerent):
         subject.metadata["#video_fps"] = self.video_fps
         subject.metadata["#zoo_project_id"] = self.zoo_project_id
         subject.metadata["#zoo_workflow_id"] = self.zoo_workflow_id
-        subject.metadata["#linked_subject_set_id"] = self.linked_subject_set_id
-        subject.metadata["#retired_subject_set_id"] = self.retired_subject_set_id
         subject.metadata["#linked_subject_set_id"] = self.linked_subject_set_id
         subject.metadata["#experiment_id"] = self.experiment_id
         
@@ -1469,7 +1465,6 @@ class ZooniverseGatherer(PrefCollectGatherer):
         zoo_project_id: int,
         zoo_workflow_id: int,
         linked_subject_set_id: int,
-        retired_subject_set_id: int,
         wait_for_user: bool = True,
         rng: Optional[np.random.Generator] = None,
         custom_logger: Optional[imit_logger.HierarchicalLogger] = None,
@@ -1493,7 +1488,6 @@ class ZooniverseGatherer(PrefCollectGatherer):
         self.zoo_project_id = zoo_project_id
         self.zoo_workflow_id = zoo_workflow_id
         self.linked_subject_set_id = linked_subject_set_id
-        self.retired_subject_set_id = retired_subject_set_id
         
         # Define annotation to label map
         self.annotation_to_label = {
@@ -1556,9 +1550,8 @@ class ZooniverseGatherer(PrefCollectGatherer):
         # classifications have been submitted to the project.
         self._process_zoo_classifications(last_id=0)
         
-        # Find subject sets
+        # Find linked subject set
         linked_subject_set = SubjectSet.find(self.linked_subject_set_id)
-        retired_subject_set = SubjectSet.find(self.retired_subject_set_id)
         
         # Get subject_id corresponding to query_id
         subject_id = self.query_to_subject[query_id]
@@ -1568,9 +1561,6 @@ class ZooniverseGatherer(PrefCollectGatherer):
         
         # Remove this subject from the subject set linked to the workflow
         linked_subject_set.remove([subject_id])
-        
-        # Add subject to the subject set for completed subjects
-        retired_subject_set.add([subject_id])
         
         return reduced_label
     
