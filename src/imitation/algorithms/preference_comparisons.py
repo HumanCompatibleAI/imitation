@@ -1545,7 +1545,7 @@ class ZooniverseGatherer(PrefCollectGatherer):
         # Without last_id trakcing this must be called each time to ensure latest
         # classifications are included. This could become time consuming if many
         # classifications have been submitted to the project.
-        self._process_zoo_classifications(last_id=self.last_id)
+        self._process_zoo_classifications(last_id)
         
         # Find linked subject set
         linked_subject_set = SubjectSet.find(self.linked_subject_set_id)
