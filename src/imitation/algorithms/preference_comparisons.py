@@ -1498,6 +1498,7 @@ class ZooniverseGatherer(PrefCollectGatherer):
             None: None
         }
         
+        self.last_id = 0
         self.query_to_subject = {}
         self.subject_to_annotations = {}
         
