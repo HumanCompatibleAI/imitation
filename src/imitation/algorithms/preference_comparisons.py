@@ -1542,10 +1542,7 @@ class ZooniverseGatherer(PrefCollectGatherer):
         panoptes_password = os.environ["PANOPTES_PASSWORD"]
         Panoptes.connect(username=panoptes_username, password=panoptes_password)
         
-        # Without last_id trakcing this must be called each time to ensure latest
-        # classifications are included. This could become time consuming if many
-        # classifications have been submitted to the project.
-        self._process_zoo_classifications(last_id)
+        self._process_zoo_classifications()
         
         # Find linked subject set
         linked_subject_set = SubjectSet.find(self.linked_subject_set_id)
