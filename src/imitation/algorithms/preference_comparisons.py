@@ -1498,18 +1498,14 @@ class ZooniverseGatherer(PrefCollectGatherer):
             None: None
         }
         
-        self.query_to_subject = None
+        self.query_to_subject = {}
+        self.subject_to_annotations = {}
         
-    def _process_zoo_classifications(self, last_id=0):
-        
-        # The default last_id is 0 meaning process all classifications the project has
-        # recieved for the specified workflow.
-        # TODO: make last_id trackable to avoid processing all classifications each time
-        # the gatherer is called.
+    def _process_zoo_classifications(self):
         
         # Access classifications from the last_id
         classifications = Classification.where(
-            last_id=last_id,
+            last_id=self.last_id,
             scope='project',
             project_id=self.zoo_project_id,
             workflow_id=self.zoo_workflow_id
@@ -1518,8 +1514,6 @@ class ZooniverseGatherer(PrefCollectGatherer):
         # Find workflow
         self.workflow = Workflow.find(self.zoo_workflow_id)
         
-        self.query_to_subject = {}
-        self.subject_to_annotations = {}
         for c in classifications:
             d = c.raw
             # Extract subject id
@@ -1538,6 +1532,7 @@ class ZooniverseGatherer(PrefCollectGatherer):
                     self.query_to_subject[subject.raw["metadata"]["query_id"]] = sid
                     # Create map entry for this subject
                     self.subject_to_annotations[sid] = [label]
+        self.last_id = d['id']
 
     def _gather_preference(self, query_id: str) -> float:
                 
@@ -1549,7 +1544,7 @@ class ZooniverseGatherer(PrefCollectGatherer):
         # Without last_id trakcing this must be called each time to ensure latest
         # classifications are included. This could become time consuming if many
         # classifications have been submitted to the project.
-        self._process_zoo_classifications(last_id=0)
+        self._process_zoo_classifications(last_id=self.last_id)
         
         # Find linked subject set
         linked_subject_set = SubjectSet.find(self.linked_subject_set_id)
@@ -1560,12 +1555,10 @@ class ZooniverseGatherer(PrefCollectGatherer):
         # Get reduced_label for subject_id aggregated from each annotation for that subject
         reduced_label = self._reduce_annotations(self.subject_to_annotations[subject_id])
         
-        # Remove this subject from the subject set linked to the workflow
-        linked_subject_set.remove([subject_id])
-        
         return reduced_label
     
     def _reduce_annotations(self, annotations):
+        # Aggregate Zooniverse classifications
         count = Counter(annotations)
         return count.most_common(1)[0][0]
 
