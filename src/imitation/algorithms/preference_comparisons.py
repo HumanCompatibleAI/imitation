@@ -1533,7 +1533,7 @@ class ZooniverseGatherer(PrefCollectGatherer):
                     self.query_to_subject[subject.raw["metadata"]["query_id"]] = sid
                     # Create map entry for this subject
                     self.subject_to_annotations[sid] = [label]
-        self.last_id = d['id']
+            self.last_id = d['id']
 
     def _gather_preference(self, query_id: str) -> float:
                 
