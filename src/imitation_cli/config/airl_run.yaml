@@ -1,0 +1,19 @@
+defaults:
+  - airl_run_base
+  - environment: cartpole
+  - airl/reward_net: shaped
+  - airl/gen_algo: ppo
+  - evaluation: default_evaluation
+  - airl/demonstrations: generated
+  - airl/demonstrations/expert_policy: random
+#  - environment@airl.reward_net.environment: pendulum  # This is how we inject a different environment
+  - _self_
+
+total_timesteps: 40000
+checkpoint_interval: 1
+
+airl:
+  demo_batch_size: 128
+  demonstrations:
+    total_timesteps: 10
+  allow_variable_horizon: true
