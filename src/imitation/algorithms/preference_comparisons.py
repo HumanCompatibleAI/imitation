@@ -1489,6 +1489,9 @@ class ZooniverseGatherer(PrefCollectGatherer):
         self.zoo_workflow_id = zoo_workflow_id
         self.linked_subject_set_id = linked_subject_set_id
         
+        # Find workflow
+        self.workflow = Workflow.find(self.zoo_workflow_id)
+        
         # Define annotation to label map
         self.annotation_to_label = {
             0: 1,
@@ -1512,17 +1515,18 @@ class ZooniverseGatherer(PrefCollectGatherer):
             workflow_id=self.zoo_workflow_id
         )
         
-        # Find workflow
-        self.workflow = Workflow.find(self.zoo_workflow_id)
+        # get linked subjects and their statuses
+        statuses = self.workflow.subject_workflow_statuses(self.linked_subject_set_id)
+        linked_subject_statuses = {s.raw['links']['subject']: s.raw['retirement_reason'] for s in statuses}
         
         for c in classifications:
             d = c.raw
             # Extract subject id
             sid = int(d["links"]["subjects"][0])
             # Get subject status
-            status = self.workflow.subject_workflow_status(sid)
-            # Check that subject is retired
-            if status.raw["retirement_reason"] is not None:
+            status = linked_subject_statuses[sid]
+            # Check that subject is linked to workflow and retired
+            if sid in set(linked_subjects) and status is not None:
                 label = self.annotation_to_label[d["annotations"][0]["value"]]
                 try:
                     # Add label for this classification for the subject
