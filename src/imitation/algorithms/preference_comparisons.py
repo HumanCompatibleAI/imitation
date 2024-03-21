@@ -1523,20 +1523,22 @@ class ZooniverseGatherer(PrefCollectGatherer):
             d = c.raw
             # Extract subject id
             sid = int(d["links"]["subjects"][0])
-            # Get subject status
-            status = linked_subject_statuses[sid]
-            # Check that subject is linked to workflow and retired
-            if sid in set(linked_subjects) and status is not None:
-                label = self.annotation_to_label[d["annotations"][0]["value"]]
-                try:
-                    # Add label for this classification for the subject
-                    self.subject_to_annotations[sid].append(label)
-                except KeyError:
-                    # Get query_id for this subject and add it to map
-                    subject = Subject.find(sid)
-                    self.query_to_subject[subject.raw["metadata"]["query_id"]] = sid
-                    # Create map entry for this subject
-                    self.subject_to_annotations[sid] = [label]
+            # Check that the subject is linked to workflow
+            if sid in set(linked_subjects):
+                # Get subject status
+                status = linked_subject_statuses[sid]
+                # Check subject isretired
+                if status is not None:
+                    label = self.annotation_to_label[d["annotations"][0]["value"]]
+                    try:
+                        # Add label for this classification for the subject
+                        self.subject_to_annotations[sid].append(label)
+                    except KeyError:
+                        # Get query_id for this subject and add it to map
+                        subject = Subject.find(sid)
+                        self.query_to_subject[subject.raw["metadata"]["query_id"]] = sid
+                        # Create map entry for this subject
+                        self.subject_to_annotations[sid] = [label]
             self.last_id = d['id']
 
     def _gather_preference(self, query_id: str) -> float:
