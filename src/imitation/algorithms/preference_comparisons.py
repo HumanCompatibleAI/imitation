@@ -870,14 +870,11 @@ class VideoBasedQuerent(PreferenceQuerent):
             self.video_output_dir,
             f"{query_id}" + "-{}" + f".{self.video_type}",
         )
-        self._write_fragment_video(
-            query[0],
-            output_path=output_file_name.format("left"),
-        )
-        self._write_fragment_video(
-            query[1],
-            output_path=output_file_name.format("right"),
-        )
+        for i, alternative in enumerate(("left", "right")):
+            self._write_fragment_video(
+                fragment=query[i],
+                output_path=output_file_name.format(alternative),
+            )
 
     def _write_fragment_video(
             self,
@@ -886,37 +883,42 @@ class VideoBasedQuerent(PreferenceQuerent):
             progress_logger: bool = True,
     ) -> None:
         """Write fragment video clip."""
-        frames_list: List[Union[os.PathLike, np.ndarray]] = []
-        # Create fragment videos from environment's render images if available
-        if fragment.infos is not None and "rendered_img" in fragment.infos[0]:
-            for i in range(len(fragment.infos)):
-                frame: Union[os.PathLike, np.ndarray] = fragment.infos[i]["rendered_img"]
-                if isinstance(frame, np.ndarray):
-                    frame = self._add_missing_rgb_channels(frame)
-                frames_list.append(frame)
-        # Create fragment video from observations if possible
-        else:
-            if isinstance(fragment.obs, np.ndarray):
-                frames_list = [
-                    frame for frame in self._add_missing_rgb_channels(fragment.obs[1:])
-                ]
-            else:
-                # TODO add support for DictObs
-                raise ValueError(
-                    "Unsupported observation type "
-                    f"for writing fragment video: {type(fragment.obs)}",
-                )
-        # Note: `ImageSeqeuenceClip` handily accepts both
-        #       lists of image paths or numpy arrays
-        clip = ImageSequenceClip(frames_list, fps=self.frames_per_second)
-        moviepy_logger = None if not progress_logger else "bar"
-        if output_path.endswith('.gif'):
-            clip.write_gif(output_path, program='ffmpeg', logger=moviepy_logger)
-        else:
-            clip.write_videofile(output_path, logger=moviepy_logger)
+        frames = self._get_frames(fragment)
+        self._write(frames, output_path, progress_logger)
+
+    def _get_frames(self, fragment):
+        if self._rendered_image_of_observation_is_available(fragment):
+            return self._get_frames_for_each_observation(fragment)
+        elif self._observation_type_allows_rendering(fragment.obs):
+            return self._render_frames_for_each_observation(fragment)
+        else:  # TODO add support for DictObs
+            raise ValueError(
+                "Unsupported observation type "
+                f"for writing fragment video: {type(fragment.obs)}",
+            )
 
     @staticmethod
-    def _add_missing_rgb_channels(frames: np.ndarray) -> np.ndarray:
+    def _rendered_image_of_observation_is_available(fragment):
+        return fragment.infos is not None and "rendered_img" in fragment.infos[0]
+
+    def _get_frames_for_each_observation(self, fragment):
+        frames: List[Union[os.PathLike, np.ndarray]] = []
+        for i in range(len(fragment.infos)):
+            frame: Union[os.PathLike, np.ndarray] = fragment.infos[i]["rendered_img"]
+            if isinstance(frame, np.ndarray):
+                frame = self._maybe_add_missing_rgb_channels(frame)
+            frames.append(frame)
+        return frames
+
+    @staticmethod
+    def _observation_type_allows_rendering(observation):
+        return isinstance(observation, np.ndarray)
+
+    def _render_frames_for_each_observation(self, fragment):
+        return [frame for frame in self._maybe_add_missing_rgb_channels(fragment.obs[1:])]
+
+    @staticmethod
+    def _maybe_add_missing_rgb_channels(frames: np.ndarray) -> np.ndarray:
         """Add missing RGB channels if needed.
         If less than three channels are present, multiplies the last channel
         until all three channels exist.
@@ -936,7 +938,15 @@ class VideoBasedQuerent(PreferenceQuerent):
                 )
         return frames
 
+    def _write(self, frames: List[Union[os.PathLike, np.ndarray]], output_path, progress_logger):
+        clip = ImageSequenceClip(frames, fps=self.frames_per_second)  # accepts list of image paths and numpy arrays
+        if output_path.endswith('.gif'):
+            clip.write_gif(output_path, program='ffmpeg', logger="bar" if progress_logger else None)
+        else:
+            clip.write_videofile(output_path, logger="bar" if progress_logger else None)
+
     def _query(self, query_id):
+        """Override this method in subclasses to specify query behavior."""
         pass
 
 
