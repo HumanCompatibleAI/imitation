@@ -820,21 +820,17 @@ class PreferenceQuerent:
         return {str(uuid.uuid4()): query for query in queries}
 
 
-class PrefCollectQuerent(PreferenceQuerent):
-    """Sends queries to a preference collection web service via HTTP requests."""
-
+class VideoBasedQuerent(PreferenceQuerent):
     def __init__(
         self,
-        pref_collect_address: str,
         video_output_dir: str,
         video_fps: int = 20,
         rng: Optional[np.random.Generator] = None,
         custom_logger: Optional[imit_logger.HierarchicalLogger] = None,
     ):
-        """Initializes the PrefCollect querent.
+        """Initializes the querent.
 
         Args:
-            pref_collect_address: end point of the PrefCollect web service.
             video_output_dir: path to the video clip directory.
             video_fps: frames per second of the generated videos.
             rng: random number generator, if applicable.
@@ -842,7 +838,6 @@ class PrefCollectQuerent(PreferenceQuerent):
         """
         super().__init__(custom_logger=custom_logger)
         self.rng = rng
-        self.query_endpoint = pref_collect_address + "/preferences/query/"
         self.video_output_dir = video_output_dir
         self.frames_per_second = video_fps
 
@@ -854,87 +849,115 @@ class PrefCollectQuerent(PreferenceQuerent):
         queries: Sequence[TrajectoryWithRewPair],
     ) -> Dict[str, TrajectoryWithRewPair]:
         identified_queries = super().__call__(queries)
-
-        # Save fragment videos and submit queries
         for query_id, query in identified_queries.items():
-            output_file_name = os.path.join(
-                self.video_output_dir,
-                f"{query_id}" + "-{}.webm",
-            )
-            write_fragment_video(
-                query[0],
-                frames_per_second=self.frames_per_second,
-                output_path=output_file_name.format("left"),
-            )
-            write_fragment_video(
-                query[1],
-                frames_per_second=self.frames_per_second,
-                output_path=output_file_name.format("right"),
-            )
-            self._query(query_id)
-
+            self._write_query_videos(query_id, query)
         return identified_queries
+
+    def _write_query_videos(self, query_id, query):
+        output_file_name = os.path.join(
+            self.video_output_dir,
+            f"{query_id}" + "-{}.webm",
+        )
+        self._write_fragment_video(
+            query[0],
+            output_path=output_file_name.format("left"),
+        )
+        self._write_fragment_video(
+            query[1],
+            output_path=output_file_name.format("right"),
+        )
+
+    def _write_fragment_video(
+            self,
+            fragment: TrajectoryWithRew,
+            output_path: AnyPath,
+            progress_logger: bool = True,
+    ) -> None:
+        """Write fragment video clip."""
+        frames_list: List[Union[os.PathLike, np.ndarray]] = []
+        # Create fragment videos from environment's render images if available
+        if fragment.infos is not None and "rendered_img" in fragment.infos[0]:
+            for i in range(len(fragment.infos)):
+                frame: Union[os.PathLike, np.ndarray] = fragment.infos[i]["rendered_img"]
+                if isinstance(frame, np.ndarray):
+                    frame = self._add_missing_rgb_channels(frame)
+                frames_list.append(frame)
+        # Create fragment video from observations if possible
+        else:
+            if isinstance(fragment.obs, np.ndarray):
+                frames_list = [
+                    frame for frame in self._add_missing_rgb_channels(fragment.obs[1:])
+                ]
+            else:
+                # TODO add support for DictObs
+                raise ValueError(
+                    "Unsupported observation type "
+                    f"for writing fragment video: {type(fragment.obs)}",
+                )
+        # Note: `ImageSeqeuenceClip` handily accepts both
+        #       lists of image paths or numpy arrays
+        clip = ImageSequenceClip(frames_list, fps=self.frames_per_second)
+        moviepy_logger = None if not progress_logger else "bar"
+        clip.write_videofile(output_path, logger=moviepy_logger)
+
+    @staticmethod
+    def _add_missing_rgb_channels(frames: np.ndarray) -> np.ndarray:
+        """Add missing RGB channels if needed.
+        If less than three channels are present, multiplies the last channel
+        until all three channels exist.
+
+        Args:
+            frames: a stack of frames with potentially missing channels;
+                expected shape (batch, height, width, channels).
+
+        Returns:
+            a stack of frames with exactly three channels.
+        """
+        if frames.shape[-1] < 3:
+            missing_channels = 3 - frames.shape[-1]
+            frames = np.concatenate(
+                [frames] + missing_channels * [frames[..., -1][..., None]],
+                axis=-1,
+            )
+        return frames
+
+
+class PrefCollectQuerent(VideoBasedQuerent):
+    """Sends queries to a REST web service."""
+
+    def __init__(
+        self,
+        pref_collect_address: str,
+        video_output_dir: str,
+        video_fps: int = 20,
+        rng: Optional[np.random.Generator] = None,
+        custom_logger: Optional[imit_logger.HierarchicalLogger] = None,
+    ):
+        """Initializes the querent.
+
+        Args:
+            pref_collect_address: end point of the PrefCollect web service.
+            video_output_dir: path to the video clip directory.
+            video_fps: frames per second of the generated videos.
+            rng: random number generator, if applicable.
+            custom_logger: Where to log to; if None (default), creates a new logger.
+        """
+        super().__init__(video_output_dir, video_fps, rng, custom_logger)
+        self.query_endpoint = pref_collect_address + "/preferences/query/"
+
+    def __call__(
+        self,
+        queries: Sequence[TrajectoryWithRewPair],
+    ) -> Dict[str, TrajectoryWithRewPair]:
+        identified_queries = super().__call__(queries)
+        for query_id in identified_queries.keys():
+            self._query(query_id)
 
     def _query(self, query_id):
         requests.put(
             self.query_endpoint + query_id,
             json={"uuid": "{}".format(query_id)},
         )
-
-
-def add_missing_rgb_channels(frames: np.ndarray) -> np.ndarray:
-    """Add missing RGB channels if needed.
-    If less than three channels are present, multiplies the last channel
-    until all three channels exist.
-
-    Args:
-        frames: a stack of frames with potentially missing channels;
-            expected shape (batch, height, width, channels).
-
-    Returns:
-        a stack of frames with exactly three channels.
-    """
-    if frames.shape[-1] < 3:
-        missing_channels = 3 - frames.shape[-1]
-        frames = np.concatenate(
-            [frames] + missing_channels * [frames[..., -1][..., None]],
-            axis=-1,
-        )
-    return frames
-
-
-def write_fragment_video(
-    fragment: TrajectoryWithRew,
-    frames_per_second: int,
-    output_path: AnyPath,
-    progress_logger: bool = True,
-) -> None:
-    """Write fragment video clip."""
-    frames_list: List[Union[os.PathLike, np.ndarray]] = []
-    # Create fragment videos from environment's render images if available
-    if fragment.infos is not None and "rendered_img" in fragment.infos[0]:
-        for i in range(len(fragment.infos)):
-            frame: Union[os.PathLike, np.ndarray] = fragment.infos[i]["rendered_img"]
-            if isinstance(frame, np.ndarray):
-                frame = add_missing_rgb_channels(frame)
-            frames_list.append(frame)
-    # Create fragment video from observations if possible
-    else:
-        if isinstance(fragment.obs, np.ndarray):
-            frames_list = [
-                frame for frame in add_missing_rgb_channels(fragment.obs[1:])
-            ]
-        else:
-            # TODO add support for DictObs
-            raise ValueError(
-                "Unsupported observation type "
-                f"for writing fragment video: {type(fragment.obs)}",
-            )
-    # Note: `ImageSeqeuenceClip` handily accepts both
-    #       lists of image paths or numpy arrays
-    clip = ImageSequenceClip(frames_list, fps=frames_per_second)
-    moviepy_logger = None if not progress_logger else "bar"
-    clip.write_videofile(output_path, logger=moviepy_logger)
 
 
 class PreferenceGatherer(abc.ABC):

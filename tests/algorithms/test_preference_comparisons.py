@@ -29,9 +29,9 @@ from imitation.algorithms.preference_comparisons import (
     PrefCollectQuerent,
     PreferenceGatherer,
     PreferenceQuerent,
+    VideoBasedQuerent,
     SyntheticGatherer,
     remove_rendered_images,
-    write_fragment_video,
 )
 from imitation.data import types
 from imitation.data.types import TrajectoryWithRew, TrajectoryWithRewPair
@@ -1230,12 +1230,14 @@ def fragment(request, empty_trajectory_with_rew):
 # utils
 @pytest.mark.parametrize("codec", ["webm", "mp4"])
 def test_write_fragment_video(fragment, codec):
-    video_path = f"video.{codec}"
+    output_dir = "video"
+    video_based_querent = VideoBasedQuerent(video_output_dir=output_dir)
+    video_path = f"{output_dir}.{codec}"
     if isinstance(fragment.obs, types.DictObs):
         with pytest.raises(ValueError):
-            write_fragment_video(fragment, frames_per_second=5, output_path=video_path)
+            video_based_querent._write_fragment_video(fragment, output_path=video_path)
     else:
-        write_fragment_video(fragment, frames_per_second=5, output_path=video_path)
+        video_based_querent._write_fragment_video(fragment, output_path=video_path)
         assert os.path.isfile(video_path)
         os.remove(video_path)
 
