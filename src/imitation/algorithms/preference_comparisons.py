@@ -831,11 +831,12 @@ class PreferenceQuerent:
 
 class VideoBasedQuerent(PreferenceQuerent):
     def __init__(
-        self,
-        video_output_dir: str,
-        video_fps: int = 20,
-        rng: Optional[np.random.Generator] = None,
-        custom_logger: Optional[imit_logger.HierarchicalLogger] = None,
+            self,
+            video_output_dir: str,
+            video_type="webm",
+            video_fps: int = 20,
+            rng: Optional[np.random.Generator] = None,
+            custom_logger: Optional[imit_logger.HierarchicalLogger] = None,
     ):
         """Initializes the querent.
 
@@ -848,6 +849,7 @@ class VideoBasedQuerent(PreferenceQuerent):
         super().__init__(custom_logger=custom_logger)
         self.rng = rng
         self.video_output_dir = video_output_dir
+        self.video_type = video_type
         self.frames_per_second = video_fps
 
         # Create video directory
@@ -865,7 +867,7 @@ class VideoBasedQuerent(PreferenceQuerent):
     def _write_query_videos(self, query_id, query):
         output_file_name = os.path.join(
             self.video_output_dir,
-            f"{query_id}" + "-{}.webm",
+            f"{query_id}" + "-{}" + f".{self.video_type}",
         )
         self._write_fragment_video(
             query[0],
@@ -938,49 +940,35 @@ class ZooniverseQuerent(VideoBasedQuerent):
     """Sends queries to the Zooniverse interface."""
 
     def __init__(
-        self,
-        pref_collect_address: str,
-        zoo_project_id: int,
-        zoo_workflow_id: int,
-        linked_subject_set_id: int,
-        experiment_id: int,
-        video_output_dir: AnyPath,
-        video_fps: str = 20,
-        rng: Optional[np.random.Generator] = None,
-        custom_logger: Optional[imit_logger.HierarchicalLogger] = None,
+            self,
+            zoo_project_id: int,
+            zoo_workflow_id: int,
+            linked_subject_set_id: int,
+            experiment_id: int,
+            video_output_dir: AnyPath,
+            video_fps: str = 20,
+            rng: Optional[np.random.Generator] = None,
+            custom_logger: Optional[imit_logger.HierarchicalLogger] = None,
     ):
-        super().__init__(pref_collect_address, video_output_dir, video_fps, rng, custom_logger)
+        super().__init__(
+            video_output_dir=video_output_dir,
+            video_type="gif",
+            video_fps=video_fps,
+            rng=rng,
+            custom_logger=custom_logger
+        )
         self.zoo_project_id = zoo_project_id
         self.zoo_workflow_id = zoo_workflow_id
         self.linked_subject_set_id = linked_subject_set_id
         self.experiment_id = experiment_id
-        self.video_fps = video_fps
 
     def __call__(
         self,
         queries: Sequence[TrajectoryWithRewPair],
     ) -> Dict[str, TrajectoryWithRewPair]:
-        # Call PreferenceQuerent not PrefCollectQuerent
         identified_queries = super().__call__(queries)
-
-        # Save fragment videos and submit queries
-        for query_id, query in identified_queries.items():
-            output_file_name = os.path.join(
-                self.video_output_dir,
-                f"{query_id}" + "-{}.gif",
-            )
-            write_fragment_video(
-                query[0],
-                frames_per_second=self.frames_per_second,
-                output_path=output_file_name.format("left"),
-            )
-            write_fragment_video(
-                query[1],
-                frames_per_second=self.frames_per_second,
-                output_path=output_file_name.format("right"),
-            )
+        for query_id in identified_queries.keys():
             self._query(query_id)
-
         return identified_queries
 
     def _query(self, query_id):
@@ -1011,7 +999,7 @@ class ZooniverseQuerent(VideoBasedQuerent):
         subject.metadata["query_id"] = f"{query_id}"
         subject.metadata["#left_video"] = output_file_name.format("left")
         subject.metadata["#right_video"] = output_file_name.format("right")
-        subject.metadata["#video_fps"] = self.video_fps
+        subject.metadata["#video_fps"] = self.frames_per_second
         subject.metadata["#zoo_project_id"] = self.zoo_project_id
         subject.metadata["#zoo_workflow_id"] = self.zoo_workflow_id
         subject.metadata["#linked_subject_set_id"] = self.linked_subject_set_id
@@ -1043,7 +1031,7 @@ class RESTQuerent(VideoBasedQuerent):
             rng: random number generator, if applicable.
             custom_logger: Where to log to; if None (default), creates a new logger.
         """
-        super().__init__(video_output_dir, video_fps, rng, custom_logger)
+        super().__init__(video_output_dir, video_fps=video_fps, rng=rng, custom_logger=custom_logger)
         self.query_endpoint = collection_service_address + "/preferences/query/"
 
     def __call__(
@@ -1053,6 +1041,7 @@ class RESTQuerent(VideoBasedQuerent):
         identified_queries = super().__call__(queries)
         for query_id in identified_queries.keys():
             self._query(query_id)
+        return identified_queries
 
     def _query(self, query_id):
         requests.put(
@@ -1486,17 +1475,10 @@ class RESTGatherer(AsynchronousHumanGatherer):
 class ZooniverseGatherer(AsynchronousHumanGatherer):
     """Gathers preferences from Zooniverse interface."""
 
-    def __init__(
-        self,
-        pref_collect_address: str,
-        zoo_project_id: int,
-        zoo_workflow_id: int,
-        linked_subject_set_id: int,
-        wait_for_user: bool = True,
-        rng: Optional[np.random.Generator] = None,
-        custom_logger: Optional[imit_logger.HierarchicalLogger] = None,
-        querent_kwargs: Optional[Mapping] = None
-    ) -> None:
+    def __init__(self, zoo_project_id: int, zoo_workflow_id: int, linked_subject_set_id: int,
+                 wait_for_user: bool = True, rng: Optional[np.random.Generator] = None,
+                 custom_logger: Optional[imit_logger.HierarchicalLogger] = None,
+                 querent_kwargs: Optional[Mapping] = None) -> None:
         """Initializes the preference gatherer.
 
         Args:
@@ -1505,11 +1487,18 @@ class ZooniverseGatherer(AsynchronousHumanGatherer):
             rng: random number generator, if applicable.
             custom_logger: Where to log to; if None (default), creates a new logger.
         """
-        video_output_dir = querent_kwargs["video_output_dir"]
-        super().__init__(pref_collect_address, querent_kwargs={"video_output_dir": querent_kwargs["video_output_dir"]})
+        super().__init__(
+            wait_for_user=wait_for_user,
+            rng=rng,
+            custom_logger=custom_logger,
+        )
         self.querent = ZooniverseQuerent(
-            pref_collect_address,
-            **querent_kwargs
+            zoo_project_id=zoo_project_id,
+            zoo_workflow_id=zoo_workflow_id,
+            linked_subject_set_id=linked_subject_set_id,
+            rng=rng,
+            custom_logger=custom_logger,
+            **querent_kwargs,
         )
 
         self.zoo_project_id = zoo_project_id
