@@ -1132,11 +1132,10 @@ class SynchronousHumanGatherer(PreferenceGatherer):
             rng: random number generator
         """
         super().__init__(custom_logger=custom_logger, rng=rng)
+        self.querent = VideoBasedQuerent(video_output_dir=video_dir, video_fps=frames_per_second)
         self.video_dir = video_dir
-        os.makedirs(video_dir, exist_ok=True)
         self.video_width = video_width
         self.video_height = video_height
-        self.frames_per_second = frames_per_second
 
     def gather(self) -> Tuple[Sequence[TrajectoryWithRewPair], np.ndarray]:
         """Displays each pair of fragments and asks for a preference.
@@ -1150,22 +1149,12 @@ class SynchronousHumanGatherer(PreferenceGatherer):
             A numpy array of 1 if fragment 1 is preferred and 0 otherwise, with shape
             (b, ), where b is the length of `fragment_pairs`
         """
+        queries = []
         preferences = np.zeros(len(self.pending_queries), dtype=np.float32)
         for i, (query_id, query) in enumerate(self.pending_queries.items()):
-            write_fragment_video(
-                query[0],
-                frames_per_second=self.frames_per_second,
-                output_path=os.path.join(self.video_dir, f"{query_id}-left.webm"),
-            )
-            write_fragment_video(
-                query[1],
-                frames_per_second=self.frames_per_second,
-                output_path=os.path.join(self.video_dir, f"{query_id}-right.webm"),
-            )
             if self._display_videos_and_gather_preference(query_id):
+                queries.append(query)
                 preferences[i] = 1
-
-        queries = list(self.pending_queries.values())
         self.pending_queries.clear()
         return queries, preferences
 
