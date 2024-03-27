@@ -38,7 +38,6 @@ from stable_baselines3.common import base_class, type_aliases, utils, vec_env
 from torch import nn
 from torch.utils import data as data_th
 from tqdm.auto import tqdm
-from collections import Counter
 
 from imitation.algorithms import base
 from imitation.data import rollout, types, wrappers
@@ -55,14 +54,6 @@ from imitation.rewards import reward_function, reward_nets, reward_wrapper
 from imitation.util import logger as imit_logger
 from imitation.util import networks, util
 
-from panoptes_client import (
-    Panoptes,
-    Project,
-    Workflow,
-    Classification,
-    SubjectSet,
-    Subject
-)
 
 class TrajectoryGenerator(abc.ABC):
     """Generator of trajectories with optional training logic."""
