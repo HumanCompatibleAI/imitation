@@ -92,7 +92,7 @@ def synch_human_preferences():
 
 @train_preference_comparisons_ex.named_config
 def human_preferences():
-    gatherer_cls = preference_comparisons.PrefCollectGatherer
+    gatherer_cls = preference_comparisons.RESTGatherer
     gatherer_kwargs = dict(
         pref_collect_address="http://127.0.0.1:8000",
         wait_for_user=True,
