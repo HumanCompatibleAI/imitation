@@ -922,12 +922,12 @@ class VideoBasedQuerent(PreferenceQuerent):
         return frames
 
 
-class PrefCollectQuerent(VideoBasedQuerent):
+class RESTQuerent(VideoBasedQuerent):
     """Sends queries to a REST web service."""
 
     def __init__(
         self,
-        pref_collect_address: str,
+        collection_service_address: str,
         video_output_dir: str,
         video_fps: int = 20,
         rng: Optional[np.random.Generator] = None,
@@ -936,14 +936,14 @@ class PrefCollectQuerent(VideoBasedQuerent):
         """Initializes the querent.
 
         Args:
-            pref_collect_address: end point of the PrefCollect web service.
+            collection_service_address: Network address of the collection service's REST interface.
             video_output_dir: path to the video clip directory.
             video_fps: frames per second of the generated videos.
             rng: random number generator, if applicable.
             custom_logger: Where to log to; if None (default), creates a new logger.
         """
         super().__init__(video_output_dir, video_fps, rng, custom_logger)
-        self.query_endpoint = pref_collect_address + "/preferences/query/"
+        self.query_endpoint = collection_service_address + "/preferences/query/"
 
     def __call__(
         self,
@@ -1349,7 +1349,7 @@ class AsynchronousHumanGatherer(PreferenceGatherer, abc.ABC):
         raise NotImplementedError
 
 
-class PrefCollectGatherer(AsynchronousHumanGatherer):
+class RESTGatherer(AsynchronousHumanGatherer):
     """Gathers preferences from a REST interface."""
 
     def __init__(
@@ -1371,8 +1371,8 @@ class PrefCollectGatherer(AsynchronousHumanGatherer):
         """
         super().__init__(wait_for_user, rng, custom_logger)
         querent_kwargs = querent_kwargs if querent_kwargs else {}
-        self.querent = PrefCollectQuerent(
-            pref_collect_address=collection_service_address,
+        self.querent = RESTQuerent(
+            collection_service_address=collection_service_address,
             **querent_kwargs,
         )
         self.query_endpoint = collection_service_address + "/preferences/query/"

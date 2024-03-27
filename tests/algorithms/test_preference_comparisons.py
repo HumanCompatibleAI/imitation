@@ -25,8 +25,8 @@ from stable_baselines3.common.vec_env import DummyVecEnv
 import imitation.testing.reward_nets as testing_reward_nets
 from imitation.algorithms import preference_comparisons
 from imitation.algorithms.preference_comparisons import (
-    PrefCollectGatherer,
-    PrefCollectQuerent,
+    RESTGatherer,
+    RESTQuerent,
     PreferenceGatherer,
     PreferenceQuerent,
     VideoBasedQuerent,
@@ -1158,7 +1158,7 @@ def test_returned_queries_have_uuid():
 # PrefCollectQuerent
 def test_sends_put_request_for_each_query(requests_mock):
     address = "https://test.de"
-    querent = PrefCollectQuerent(pref_collect_address=address, video_output_dir="video")
+    querent = RESTQuerent(collection_service_address=address, video_output_dir="video")
     query_id = "1234"
 
     requests_mock.put(f"{address}/preferences/query/{query_id}")
@@ -1184,7 +1184,7 @@ def empty_trajectory_with_rew():
 def test_prefcollectquerent_call_creates_all_videos(empty_trajectory_with_rew):
     address = "https://test.de"
     queries = [(empty_trajectory_with_rew, empty_trajectory_with_rew)]
-    querent = PrefCollectQuerent(pref_collect_address=address, video_output_dir="video")
+    querent = RESTQuerent(collection_service_address=address, video_output_dir="video")
     identified_queries = querent(queries)
     for query_id, _ in identified_queries.items():
         file = os.path.join(querent.video_output_dir, query_id + "-{}.webm")
@@ -1282,7 +1282,7 @@ def test_returns_none_for_unanswered_query(requests_mock):
     query_id = "1234"
     answer = None
 
-    gatherer = PrefCollectGatherer(
+    gatherer = RESTGatherer(
         collection_service_address=address,
         querent_kwargs={"video_output_dir": "videos"},
     )
@@ -1302,7 +1302,7 @@ def test_returns_preference_for_answered_query(requests_mock):
     query_id = "1234"
     answer = 1.0
 
-    gatherer = PrefCollectGatherer(
+    gatherer = RESTGatherer(
         collection_service_address=address,
         querent_kwargs={"video_output_dir": "videos"},
     )
@@ -1318,7 +1318,7 @@ def test_returns_preference_for_answered_query(requests_mock):
 
 
 def test_keeps_pending_query_for_unanswered_query():
-    gatherer = PrefCollectGatherer(
+    gatherer = RESTGatherer(
         collection_service_address="https://test.de",
         wait_for_user=False,
         querent_kwargs={"video_output_dir": "videos"},
@@ -1333,7 +1333,7 @@ def test_keeps_pending_query_for_unanswered_query():
 
 
 def test_deletes_pending_query_for_answered_query():
-    gatherer = PrefCollectGatherer(
+    gatherer = RESTGatherer(
         collection_service_address="https://test.de",
         wait_for_user=False,
         querent_kwargs={"video_output_dir": "videos"},
@@ -1348,7 +1348,7 @@ def test_deletes_pending_query_for_answered_query():
 
 
 def test_gathers_valid_preference():
-    gatherer = PrefCollectGatherer(
+    gatherer = RESTGatherer(
         collection_service_address="https://test.de",
         wait_for_user=False,
         querent_kwargs={"video_output_dir": "videos"},
@@ -1365,7 +1365,7 @@ def test_gathers_valid_preference():
 
 
 def test_ignores_incomparable_answer():
-    gatherer = PrefCollectGatherer(
+    gatherer = RESTGatherer(
         collection_service_address="https://test.de",
         wait_for_user=False,
         querent_kwargs={"video_output_dir": "videos"},
