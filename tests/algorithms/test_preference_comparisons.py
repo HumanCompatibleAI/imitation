@@ -1283,7 +1283,7 @@ def test_returns_none_for_unanswered_query(requests_mock):
     answer = None
 
     gatherer = PrefCollectGatherer(
-        pref_collect_address=address,
+        collection_service_address=address,
         querent_kwargs={"video_output_dir": "videos"},
     )
 
@@ -1303,7 +1303,7 @@ def test_returns_preference_for_answered_query(requests_mock):
     answer = 1.0
 
     gatherer = PrefCollectGatherer(
-        pref_collect_address=address,
+        collection_service_address=address,
         querent_kwargs={"video_output_dir": "videos"},
     )
 
@@ -1319,7 +1319,7 @@ def test_returns_preference_for_answered_query(requests_mock):
 
 def test_keeps_pending_query_for_unanswered_query():
     gatherer = PrefCollectGatherer(
-        pref_collect_address="https://test.de",
+        collection_service_address="https://test.de",
         wait_for_user=False,
         querent_kwargs={"video_output_dir": "videos"},
     )
@@ -1334,7 +1334,7 @@ def test_keeps_pending_query_for_unanswered_query():
 
 def test_deletes_pending_query_for_answered_query():
     gatherer = PrefCollectGatherer(
-        pref_collect_address="https://test.de",
+        collection_service_address="https://test.de",
         wait_for_user=False,
         querent_kwargs={"video_output_dir": "videos"},
     )
@@ -1349,7 +1349,7 @@ def test_deletes_pending_query_for_answered_query():
 
 def test_gathers_valid_preference():
     gatherer = PrefCollectGatherer(
-        pref_collect_address="https://test.de",
+        collection_service_address="https://test.de",
         wait_for_user=False,
         querent_kwargs={"video_output_dir": "videos"},
     )
@@ -1366,7 +1366,7 @@ def test_gathers_valid_preference():
 
 def test_ignores_incomparable_answer():
     gatherer = PrefCollectGatherer(
-        pref_collect_address="https://test.de",
+        collection_service_address="https://test.de",
         wait_for_user=False,
         querent_kwargs={"video_output_dir": "videos"},
     )

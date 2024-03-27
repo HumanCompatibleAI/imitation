@@ -1321,33 +1321,15 @@ class SynchronousHumanGatherer(PreferenceGatherer):
         return "PYTEST_CURRENT_TEST" in os.environ
 
 
-class PrefCollectGatherer(PreferenceGatherer):
-    """Gathers preferences from PrefCollect interface."""
-
+class AsynchronousHumanGatherer(PreferenceGatherer, abc.ABC):
     def __init__(
-        self,
-        pref_collect_address: str,
-        wait_for_user: bool = True,
-        rng: Optional[np.random.Generator] = None,
-        custom_logger: Optional[imit_logger.HierarchicalLogger] = None,
-        querent_kwargs: Optional[Mapping] = None,
+            self,
+            wait_for_user: bool = True,
+            rng: Optional[np.random.Generator] = None,
+            custom_logger: Optional[imit_logger.HierarchicalLogger] = None,
+            querent_kwargs: Optional[Mapping] = None,
     ) -> None:
-        """Initializes the preference gatherer.
-
-        Args:
-            pref_collect_address: Network address to PrefCollect instance.
-            wait_for_user: Waits for user to input their preferences.
-            rng: random number generator, if applicable.
-            custom_logger: Where to log to; if None (default), creates a new logger.
-            querent_kwargs: Keyword arguments passed to the querent.
-        """
-        super().__init__(rng, custom_logger)
-        querent_kwargs = querent_kwargs if querent_kwargs else {}
-        self.querent = PrefCollectQuerent(
-            pref_collect_address=pref_collect_address,
-            **querent_kwargs,
-        )
-        self.query_endpoint = pref_collect_address + "/preferences/query/"
+        super().__init__(rng, custom_logger, querent_kwargs)
         self.pending_queries = {}
         self.wait_for_user = wait_for_user
 
@@ -1372,6 +1354,39 @@ class PrefCollectGatherer(PreferenceGatherer):
                 del self.pending_queries[query_id]
 
         return gathered_queries, np.array(gathered_preferences, dtype=np.float32)
+
+    @abc.abstractmethod
+    def _gather_preference(self, query_id: str) -> float:
+        raise NotImplementedError
+
+
+class PrefCollectGatherer(AsynchronousHumanGatherer):
+    """Gathers preferences from a REST interface."""
+
+    def __init__(
+            self,
+            collection_service_address: str,
+            wait_for_user: bool = True,
+            rng: Optional[np.random.Generator] = None,
+            custom_logger: Optional[imit_logger.HierarchicalLogger] = None,
+            querent_kwargs: Optional[Mapping] = None,
+    ) -> None:
+        """Initializes the preference gatherer.
+
+        Args:
+            collection_service_address: Network address of the collection service's REST interface.
+            wait_for_user: Waits for user to input their preferences.
+            rng: random number generator, if applicable.
+            custom_logger: Where to log to; if None (default), creates a new logger.
+            querent_kwargs: Keyword arguments passed to the querent.
+        """
+        super().__init__(wait_for_user, rng, custom_logger)
+        querent_kwargs = querent_kwargs if querent_kwargs else {}
+        self.querent = PrefCollectQuerent(
+            pref_collect_address=collection_service_address,
+            **querent_kwargs,
+        )
+        self.query_endpoint = collection_service_address + "/preferences/query/"
 
     def _gather_preference(self, query_id: str) -> float:
         answered_query = requests.get(self.query_endpoint + query_id).json()
