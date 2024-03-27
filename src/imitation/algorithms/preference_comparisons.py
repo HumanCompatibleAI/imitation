@@ -862,6 +862,7 @@ class VideoBasedQuerent(PreferenceQuerent):
         identified_queries = super().__call__(queries)
         for query_id, query in identified_queries.items():
             self._write_query_videos(query_id, query)
+            self._query(query_id)
         return identified_queries
 
     def _write_query_videos(self, query_id, query):
@@ -935,6 +936,9 @@ class VideoBasedQuerent(PreferenceQuerent):
                 )
         return frames
 
+    def _query(self, query_id):
+        pass
+
 
 class RESTQuerent(VideoBasedQuerent):
     """Sends queries to a REST web service."""
@@ -958,15 +962,6 @@ class RESTQuerent(VideoBasedQuerent):
         """
         super().__init__(video_output_dir, video_fps=video_fps, rng=rng, custom_logger=custom_logger)
         self.query_endpoint = collection_service_address + "/preferences/query/"
-
-    def __call__(
-        self,
-        queries: Sequence[TrajectoryWithRewPair],
-    ) -> Dict[str, TrajectoryWithRewPair]:
-        identified_queries = super().__call__(queries)
-        for query_id in identified_queries.keys():
-            self._query(query_id)
-        return identified_queries
 
     def _query(self, query_id):
         requests.put(
