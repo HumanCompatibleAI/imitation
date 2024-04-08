@@ -38,7 +38,6 @@ from stable_baselines3.common import base_class, type_aliases, utils, vec_env
 from torch import nn
 from torch.utils import data as data_th
 from tqdm.auto import tqdm
-from collections import Counter
 
 from imitation.algorithms import base
 from imitation.data import rollout, types, wrappers
@@ -55,14 +54,6 @@ from imitation.rewards import reward_function, reward_nets, reward_wrapper
 from imitation.util import logger as imit_logger
 from imitation.util import networks, util
 
-from panoptes_client import (
-    Panoptes,
-    Project,
-    Workflow,
-    Classification,
-    SubjectSet,
-    Subject
-)
 
 class TrajectoryGenerator(abc.ABC):
     """Generator of trajectories with optional training logic."""
@@ -870,14 +861,11 @@ class VideoBasedQuerent(PreferenceQuerent):
             self.video_output_dir,
             f"{query_id}" + "-{}" + f".{self.video_type}",
         )
-        self._write_fragment_video(
-            query[0],
-            output_path=output_file_name.format("left"),
-        )
-        self._write_fragment_video(
-            query[1],
-            output_path=output_file_name.format("right"),
-        )
+        for i, alternative in enumerate(("left", "right")):
+            self._write_fragment_video(
+                fragment=query[i],
+                output_path=output_file_name.format(alternative),
+            )
 
     def _write_fragment_video(
             self,
@@ -886,57 +874,38 @@ class VideoBasedQuerent(PreferenceQuerent):
             progress_logger: bool = True,
     ) -> None:
         """Write fragment video clip."""
-        frames_list: List[Union[os.PathLike, np.ndarray]] = []
-        # Create fragment videos from environment's render images if available
-        if fragment.infos is not None and "rendered_img" in fragment.infos[0]:
-            for i in range(len(fragment.infos)):
-                frame: Union[os.PathLike, np.ndarray] = fragment.infos[i]["rendered_img"]
-                if isinstance(frame, np.ndarray):
-                    frame = self._add_missing_rgb_channels(frame)
-                frames_list.append(frame)
-        # Create fragment video from observations if possible
+        frames = self._get_frames(fragment)
+        self._write(frames, output_path, progress_logger)
+
+    def _get_frames(self, fragment):
+        if self._rendered_image_of_observation_is_available(fragment):
+            return self._get_frames_for_each_observation(fragment)
         else:
-            if isinstance(fragment.obs, np.ndarray):
-                frames_list = [
-                    frame for frame in self._add_missing_rgb_channels(fragment.obs[1:])
-                ]
-            else:
-                # TODO add support for DictObs
-                raise ValueError(
-                    "Unsupported observation type "
-                    f"for writing fragment video: {type(fragment.obs)}",
-                )
-        # Note: `ImageSeqeuenceClip` handily accepts both
-        #       lists of image paths or numpy arrays
-        clip = ImageSequenceClip(frames_list, fps=self.frames_per_second)
-        moviepy_logger = None if not progress_logger else "bar"
-        if output_path.endswith('.gif'):
-            clip.write_gif(output_path, program='ffmpeg', logger=moviepy_logger)
-        else:
-            clip.write_videofile(output_path, logger=moviepy_logger)
+            raise ValueError(
+                "No rendered images contained in info dict. "
+                "Please apply `RenderImageWrapper` to your environment.",
+            )
 
     @staticmethod
-    def _add_missing_rgb_channels(frames: np.ndarray) -> np.ndarray:
-        """Add missing RGB channels if needed.
-        If less than three channels are present, multiplies the last channel
-        until all three channels exist.
+    def _rendered_image_of_observation_is_available(fragment):
+        return fragment.infos is not None and "rendered_img" in fragment.infos[0]
 
-        Args:
-            frames: a stack of frames with potentially missing channels;
-                expected shape (batch, height, width, channels).
-
-        Returns:
-            a stack of frames with exactly three channels.
-        """
-        if frames.shape[-1] < 3:
-            missing_channels = 3 - frames.shape[-1]
-            frames = np.concatenate(
-                [frames] + missing_channels * [frames[..., -1][..., None]],
-                axis=-1,
-                )
+    def _get_frames_for_each_observation(self, fragment):
+        frames: List[Union[os.PathLike, np.ndarray]] = []
+        for i in range(len(fragment.infos)):
+            frame: Union[os.PathLike, np.ndarray] = fragment.infos[i]["rendered_img"]
+            frames.append(frame)
         return frames
 
+    def _write(self, frames: List[Union[os.PathLike, np.ndarray]], output_path, progress_logger):
+        clip = ImageSequenceClip(frames, fps=self.frames_per_second)  # accepts list of image paths and numpy arrays
+        if output_path.endswith('.gif'):
+            clip.write_gif(output_path, program='ffmpeg', logger="bar" if progress_logger else None)
+        else:
+            clip.write_videofile(output_path, logger="bar" if progress_logger else None)
+
     def _query(self, query_id):
+        """Override this method in subclasses to specify query behavior."""
         pass
 
 
