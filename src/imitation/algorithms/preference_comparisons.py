@@ -880,12 +880,10 @@ class VideoBasedQuerent(PreferenceQuerent):
     def _get_frames(self, fragment):
         if self._rendered_image_of_observation_is_available(fragment):
             return self._get_frames_for_each_observation(fragment)
-        elif self._observation_type_allows_rendering(fragment.obs):
-            return self._render_frames_for_each_observation(fragment)
-        else:  # TODO add support for DictObs
+        else:
             raise ValueError(
-                "Unsupported observation type "
-                f"for writing fragment video: {type(fragment.obs)}",
+                "No rendered images contained in info dict. "
+                "Please apply `RenderImageWrapper` to your environment.",
             )
 
     @staticmethod
@@ -896,37 +894,7 @@ class VideoBasedQuerent(PreferenceQuerent):
         frames: List[Union[os.PathLike, np.ndarray]] = []
         for i in range(len(fragment.infos)):
             frame: Union[os.PathLike, np.ndarray] = fragment.infos[i]["rendered_img"]
-            if isinstance(frame, np.ndarray):
-                frame = self._maybe_add_missing_rgb_channels(frame)
             frames.append(frame)
-        return frames
-
-    @staticmethod
-    def _observation_type_allows_rendering(observation):
-        return isinstance(observation, np.ndarray)
-
-    def _render_frames_for_each_observation(self, fragment):
-        return [frame for frame in self._maybe_add_missing_rgb_channels(fragment.obs[1:])]
-
-    @staticmethod
-    def _maybe_add_missing_rgb_channels(frames: np.ndarray) -> np.ndarray:
-        """Add missing RGB channels if needed.
-        If less than three channels are present, multiplies the last channel
-        until all three channels exist.
-
-        Args:
-            frames: a stack of frames with potentially missing channels;
-                expected shape (batch, height, width, channels).
-
-        Returns:
-            a stack of frames with exactly three channels.
-        """
-        if frames.shape[-1] < 3:
-            missing_channels = 3 - frames.shape[-1]
-            frames = np.concatenate(
-                [frames] + missing_channels * [frames[..., -1][..., None]],
-                axis=-1,
-                )
         return frames
 
     def _write(self, frames: List[Union[os.PathLike, np.ndarray]], output_path, progress_logger):
