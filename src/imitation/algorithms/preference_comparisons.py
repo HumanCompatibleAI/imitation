@@ -853,19 +853,17 @@ class VideoBasedQuerent(PreferenceQuerent):
         identified_queries = super().__call__(queries)
         for query_id, query in identified_queries.items():
             self._write_query_videos(query_id, query)
-            self._query(query_id)
         return identified_queries
 
     def _write_query_videos(self, query_id, query):
-        output_file_name = os.path.join(
-            self.video_output_dir,
-            f"{query_id}" + "-{}" + f".{self.video_type}",
-        )
         for i, alternative in enumerate(("left", "right")):
             self._write_fragment_video(
                 fragment=query[i],
-                output_path=output_file_name.format(alternative),
+                output_path=self._create_query_video_path(query_id, alternative),
             )
+    
+    def _create_query_video_path(self, query_id: str, alternative: str):
+        return pathlib.Path(self.video_output_dir) / f"{query_id}-{alternative}.{self.video_type}"
 
     def _write_fragment_video(
             self,
@@ -904,10 +902,6 @@ class VideoBasedQuerent(PreferenceQuerent):
         else:
             clip.write_videofile(output_path, logger="bar" if progress_logger else None)
 
-    def _query(self, query_id):
-        """Override this method in subclasses to specify query behavior."""
-        pass
-
 
 class RESTQuerent(VideoBasedQuerent):
     """Sends queries to a REST web service."""
@@ -931,12 +925,32 @@ class RESTQuerent(VideoBasedQuerent):
         """
         super().__init__(video_output_dir, video_fps=video_fps, rng=rng, custom_logger=custom_logger)
         self.query_endpoint = collection_service_address + "/preferences/query/"
+    
+
+    def __call__(
+        self,
+        queries: Sequence[TrajectoryWithRewPair],
+    ) -> Dict[str, TrajectoryWithRewPair]:
+        identified_queries = super().__call__(queries)
+        for query_id, query in identified_queries.items():
+            self._query(query_id)
+        return identified_queries
 
     def _query(self, query_id):
+        video_data = self._load_video_data()
         requests.put(
             self.query_endpoint + query_id,
             json={"uuid": "{}".format(query_id)},
+            data=video_data,
         )
+
+    def _load_video_data(self, query_id):
+        video_data = []
+        for alternative in ("left", "right"):
+            video_path = self._create_query_video_path(query_id, alternative)
+            with open(video_path, 'rb') as video_file:
+                video_data.append(video_file.read())
+        return video_data
 
 
 class PreferenceGatherer(abc.ABC):
