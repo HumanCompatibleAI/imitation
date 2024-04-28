@@ -875,7 +875,7 @@ class VideoBasedQuerent(PreferenceQuerent):
         frames = self._get_frames(fragment)
         self._write(frames, output_path, progress_logger)
 
-    def _get_frames(self, fragment):
+    def _get_frames(self, fragment: TrajectoryWithRew) -> list[Union[os.PathLike, np.ndarray]]:
         if self._rendered_image_of_observation_is_available(fragment):
             return self._get_frames_for_each_observation(fragment)
         else:
@@ -885,22 +885,23 @@ class VideoBasedQuerent(PreferenceQuerent):
             )
 
     @staticmethod
-    def _rendered_image_of_observation_is_available(fragment):
+    def _rendered_image_of_observation_is_available(fragment: TrajectoryWithRew) -> bool:
         return fragment.infos is not None and "rendered_img" in fragment.infos[0]
 
-    def _get_frames_for_each_observation(self, fragment):
-        frames: List[Union[os.PathLike, np.ndarray]] = []
+    def _get_frames_for_each_observation(self, fragment: TrajectoryWithRew) -> list[Union[os.PathLike, np.ndarray]]:
+        frames: list[Union[os.PathLike, np.ndarray]] = []
         for i in range(len(fragment.infos)):
             frame: Union[os.PathLike, np.ndarray] = fragment.infos[i]["rendered_img"]
             frames.append(frame)
         return frames
 
-    def _write(self, frames: List[Union[os.PathLike, np.ndarray]], output_path, progress_logger):
+    def _write(self, frames: List[Union[os.PathLike, np.ndarray]], output_path: os.PathLike, progress_logger: bool):
         clip = ImageSequenceClip(frames, fps=self.frames_per_second)  # accepts list of image paths and numpy arrays
-        if output_path.endswith('.gif'):
-            clip.write_gif(output_path, program='ffmpeg', logger="bar" if progress_logger else None)
+        if output_path.suffix == '.gif':
+            clip.write_gif(str(output_path), program='ffmpeg', logger="bar" if progress_logger else None)
         else:
-            clip.write_videofile(output_path, logger="bar" if progress_logger else None)
+            print(output_path)
+            clip.write_videofile(str(output_path), logger="bar" if progress_logger else None)
 
 
 class RESTQuerent(VideoBasedQuerent):
@@ -936,20 +937,21 @@ class RESTQuerent(VideoBasedQuerent):
             self._query(query_id)
         return identified_queries
 
-    def _query(self, query_id):
-        video_data = self._load_video_data()
+    def _query(self, query_id: str):
+        video_data = self._load_video_data(query_id)
         requests.put(
             self.query_endpoint + query_id,
-            json={"uuid": "{}".format(query_id)},
-            data=video_data,
+            json={"uuid": "{}".format(query_id), **video_data},
         )
 
-    def _load_video_data(self, query_id):
-        video_data = []
+    def _load_video_data(self, query_id: str) -> dict[str, bytes]:
+        import base64
+        video_data = {}
         for alternative in ("left", "right"):
             video_path = self._create_query_video_path(query_id, alternative)
-            with open(video_path, 'rb') as video_file:
-                video_data.append(video_file.read())
+            if video_path.exists():
+                with open(video_path, 'rb') as video_file:
+                    video_data[alternative] = base64.b64encode(video_file.read()).decode('utf-8')
         return video_data
 
 

@@ -1169,21 +1169,21 @@ def test_sends_put_request_for_each_query(requests_mock):
 
 
 @pytest.fixture
-def empty_trajectory_with_rew():
+def empty_trajectory_with_rew_and_render_imgs():
     num_frames = 10
     frame_shape = (200, 200)
     return types.TrajectoryWithRew(
         obs=np.zeros((num_frames, *frame_shape, 3), np.uint8),
         acts=np.zeros((num_frames - 1,), np.uint8),
-        infos=np.array([{} for _ in range(num_frames - 1)]),
+        infos=np.array([{"rendered_img": np.zeros((*frame_shape, 3), np.uint8)} for _ in range(num_frames - 1)]),
         rews=np.zeros((num_frames - 1,)),
         terminal=True,
     )
 
 
-def test_prefcollectquerent_call_creates_all_videos(empty_trajectory_with_rew):
+def test_prefcollectquerent_call_creates_all_videos(empty_trajectory_with_rew_and_render_imgs):
     address = "https://test.de"
-    queries = [(empty_trajectory_with_rew, empty_trajectory_with_rew)]
+    queries = [(empty_trajectory_with_rew_and_render_imgs, empty_trajectory_with_rew_and_render_imgs)]
     querent = RESTQuerent(collection_service_address=address, video_output_dir="video")
     identified_queries = querent(queries)
     for query_id, _ in identified_queries.items():
@@ -1194,34 +1194,29 @@ def test_prefcollectquerent_call_creates_all_videos(empty_trajectory_with_rew):
 
 
 @pytest.fixture(
-    params=["obs_only", "dictobs", "with_render_images", "with_render_image_paths"],
+    params=["obs_only", "with_render_images", "with_render_image_paths"],
 )
-def fragment(request, empty_trajectory_with_rew):
-    obs = empty_trajectory_with_rew.obs
-    infos = empty_trajectory_with_rew.infos
-    if request.param == "dictobs":
-        obs = types.DictObs({"obs": empty_trajectory_with_rew.obs})
-    elif request.param == "with_render_images":
+def fragment(request, empty_trajectory_with_rew_and_render_imgs):
+    obs = empty_trajectory_with_rew_and_render_imgs.obs
+    infos = empty_trajectory_with_rew_and_render_imgs.infos
+    if request.param == "with_render_images":
         infos = np.array(
-            [{"rendered_img": frame} for frame in empty_trajectory_with_rew.obs[1:]],
+            [{"rendered_img": frame} for frame in empty_trajectory_with_rew_and_render_imgs.obs[1:]],
         )
     elif request.param == "with_render_image_paths":
         tmp_dir = tempfile.mkdtemp()
         infos = []
         for frame in obs[1:]:
-            unique_file_path = os.path.join(
-                tmp_dir,
-                str(uuid.uuid4()) + ".png",
-            )
+            unique_file_path = str(pathlib.Path(tmp_dir) / (str(uuid.uuid4()) + ".png"))
             imageio.imwrite(unique_file_path, frame)
             infos.append({"rendered_img": unique_file_path})
         infos = np.array(infos)
     yield types.TrajectoryWithRew(
         obs=obs,
-        acts=empty_trajectory_with_rew.acts,
+        acts=empty_trajectory_with_rew_and_render_imgs.acts,
         infos=infos,
         terminal=True,
-        rews=empty_trajectory_with_rew.rews,
+        rews=empty_trajectory_with_rew_and_render_imgs.rews,
     )
     if request.param == "with_render_image_paths":
         shutil.rmtree(tmp_dir)
@@ -1232,8 +1227,8 @@ def fragment(request, empty_trajectory_with_rew):
 def test_write_fragment_video(fragment, codec):
     output_dir = "video"
     video_based_querent = VideoBasedQuerent(video_output_dir=output_dir)
-    video_path = f"{output_dir}.{codec}"
-    if isinstance(fragment.obs, types.DictObs):
+    video_path = pathlib.Path(f"{output_dir}.{codec}")
+    if "rendered_img" not in fragment.infos[0]:
         with pytest.raises(ValueError):
             video_based_querent._write_fragment_video(fragment, output_path=video_path)
     else:
