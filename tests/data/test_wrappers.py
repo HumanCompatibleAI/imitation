@@ -1,10 +1,10 @@
 """Tests for `imitation.data.wrappers`."""
 
+from pathlib import Path
 from typing import List, Sequence, Type
 
-import imageio
-from pathlib import Path
 import gymnasium as gym
+import imageio
 import numpy as np
 import pytest
 from stable_baselines3.common.vec_env import DummyVecEnv
@@ -281,7 +281,8 @@ def test_n_transitions_and_empty_error(Env: Type[gym.Env]):
     with pytest.raises(RuntimeError, match=".* empty .*"):
         venv.pop_transitions()
 
-@pytest.mark.parametrize("scale_factor", [0.1, 0.5, 1.])
+
+@pytest.mark.parametrize("scale_factor", [0.1, 0.5, 1.0])
 def test_writes_rendered_img_to_info(scale_factor):
     env = gym.make("CartPole-v0", render_mode="rgb_array")
     wrapped_env = RenderImageInfoWrapper(env, scale_factor=scale_factor)
@@ -290,7 +291,7 @@ def test_writes_rendered_img_to_info(scale_factor):
     _, _, _, _, info = wrapped_env.step(wrapped_env.action_space.sample())
     assert "rendered_img" in info
     assert isinstance(info["rendered_img"], np.ndarray)
-    if scale_factor == 1.:
+    if scale_factor == 1.0:
         assert np.allclose(info["rendered_img"], rendered_img)
     assert int(scale_factor * rendered_img.shape[0]) == info["rendered_img"].shape[0]
     assert int(scale_factor * rendered_img.shape[1]) == info["rendered_img"].shape[1]
@@ -320,4 +321,3 @@ def test_rendered_img_file_cache():
     assert (imageio.imread(rendered_img_path) == wrapped_env.render()).all()
     wrapped_env.close()
     assert not Path(wrapped_env.file_cache).exists()
-
