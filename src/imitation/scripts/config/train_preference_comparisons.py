@@ -72,7 +72,7 @@ def train_defaults():
 
 @train_preference_comparisons_ex.named_config
 def synch_human_preferences():
-    gatherer_cls = preference_comparisons.SynchronousHumanGatherer
+    gatherer_cls = preference_comparisons.CommandLineGatherer
     gatherer_kwargs = dict(video_dir="videos")
     querent_cls = preference_comparisons.PreferenceQuerent
     querent_kwargs = dict()

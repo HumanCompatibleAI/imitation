@@ -1010,33 +1010,44 @@ class PreferenceGatherer(abc.ABC):
         self.logger = custom_logger or imit_logger.configure()
         self.pending_queries: Dict = {}
 
-    @abc.abstractmethod
     def gather(self) -> Tuple[Sequence[TrajectoryWithRewPair], np.ndarray]:
-        """Gathers the probabilities that fragment 1 is preferred in `queries`.
+        """Gathers preference probabilities for completed queries.
 
         Returns:
-            TODO return value
-            A numpy array with shape (b, ), where b is the length of the input
-            (i.e. batch size). Each item in the array is the probability that
-            fragment 1 is preferred over fragment 2 for the corresponding
-            pair of fragments.
+            * A list of length b with queries for which preferences have been gathered.
+             
+            * A numpy array with shape (b, ). 
+              Each item in the array is the probability that fragment 1 is preferred 
+              over fragment 2 for the corresponding query in the list above.
 
             Note that for human feedback, these probabilities are simply 0 or 1
             (or 0.5 in case of indifference), but synthetic models may yield other
             probabilities.
         """  # noqa: DAR202
 
+        gathered_queries = []
+        gathered_preferences = []
+
+        for query_id, query in list(self.pending_queries.items()):
+            preference = self._gather_preference(query_id)
+
+            if preference is not None:
+                # Preference for this query has been provided
+                if 0 <= preference <= 1:
+                    gathered_queries.append(query)
+                    gathered_preferences.append(preference)
+                # else: fragments were incomparable
+                del self.pending_queries[query_id]
+
+        return gathered_queries, np.array(gathered_preferences, dtype=np.float32)
+
+    @abc.abstractmethod
+    def _gather_preference(self, query_id: str) -> float:
+        raise NotImplementedError
+
     def query(self, queries: Sequence[TrajectoryWithRewPair]) -> None:
         identified_queries = self.querent(queries)
-        self._add(identified_queries)
-
-    def _add(self, new_queries: Dict[str, TrajectoryWithRewPair]) -> None:
-        """Adds queries to pending queries.
-
-        Args:
-            new_queries: pairs of trajectory fragments
-        """
-        self.pending_queries = {**self.pending_queries, **new_queries}
+        self.pending_queries = {**self.pending_queries, **identified_queries}
 
 
 class SyntheticGatherer(PreferenceGatherer):
@@ -1086,54 +1097,42 @@ class SyntheticGatherer(PreferenceGatherer):
         if self.sample and self.rng is None:
             raise ValueError("If `sample` is True, then `rng` must be provided.")
 
-    def gather(self) -> Tuple[Sequence[TrajectoryWithRewPair], np.ndarray]:
-        """Computes probability fragment 1 is preferred over fragment 2."""
-        queries = list(self.pending_queries.values())
-        # Clear pending queries because the oracle will have answered all
-        self.pending_queries.clear()
+    def _gather_preference(self, query_id):
+        query = self.pending_queries[query_id]
 
-        returns1, returns2 = self._reward_sums(queries)
+        return_1, return_2 = (
+            np.array(rollout.discounted_sum(query[0].rews, self.discount_factor), dtype=np.float32),
+            np.array(rollout.discounted_sum(query[1].rews, self.discount_factor), dtype=np.float32)
+        )
 
         if self.temperature == 0:
-            return queries, (np.sign(returns1 - returns2) + 1) / 2
+            return (np.sign(return_1 - return_2) + 1) / 2
 
-        returns1 /= self.temperature
-        returns2 /= self.temperature
+        return_1 /= self.temperature
+        return_2 /= self.temperature
 
         # clip the returns to avoid overflows in the softmax below
-        returns_diff = np.clip(returns2 - returns1, -self.threshold, self.threshold)
+        returns_diff = np.clip(return_2 - return_1, -self.threshold, self.threshold)
         # Instead of computing exp(rews1) / (exp(rews1) + exp(rews2)) directly,
         # we divide enumerator and denominator by exp(rews1) to prevent overflows:
-        choice_probs = 1 / (1 + np.exp(returns_diff))
+        choice_probability = 1 / (1 + np.exp(returns_diff))
         # Compute the mean binary entropy. This metric helps estimate
         # how good we can expect the performance of the learned reward
         # model to be at predicting preferences.
         entropy = -(
-            special.xlogy(choice_probs, choice_probs)
-            + special.xlogy(1 - choice_probs, 1 - choice_probs)
+            special.xlogy(choice_probability, choice_probability)
+            + special.xlogy(1 - choice_probability, 1 - choice_probability)
         ).mean()
         self.logger.record("entropy", entropy)
 
         if self.sample:
             assert self.rng is not None
-            return queries, self.rng.binomial(n=1, p=choice_probs).astype(np.float32)
+            return self.rng.binomial(n=1, p=choice_probability)
 
-        return queries, choice_probs
-
-    def _reward_sums(self, fragment_pairs) -> Tuple[np.ndarray, np.ndarray]:
-        rews1, rews2 = zip(
-            *[
-                (
-                    rollout.discounted_sum(f1.rews, self.discount_factor),
-                    rollout.discounted_sum(f2.rews, self.discount_factor),
-                )
-                for f1, f2 in fragment_pairs
-            ],
-        )
-        return np.array(rews1, dtype=np.float32), np.array(rews2, dtype=np.float32)
+        return choice_probability
 
 
-class SynchronousHumanGatherer(PreferenceGatherer):
+class CommandLineGatherer(PreferenceGatherer):
     """Queries for human preferences using the command line or a notebook."""
 
     def __init__(
@@ -1163,29 +1162,11 @@ class SynchronousHumanGatherer(PreferenceGatherer):
         self.video_width = video_width
         self.video_height = video_height
 
-    def gather(self) -> Tuple[Sequence[TrajectoryWithRewPair], np.ndarray]:
-        """Displays each pair of fragments and asks for a preference.
-
-        It iteratively requests user feedback for each pair of fragments. If in the
-        command line, it will pop out a video player for each fragment. If in a
-        notebook, it will display the videos. Either way, it will request 1 or 2 to
-        indicate which is preferred.
-
-        Returns:
-            A numpy array of 1 if fragment 1 is preferred and 0 otherwise, with shape
-            (b, ), where b is the length of `fragment_pairs`
-        """
-        queries = []
-        preferences = np.zeros(len(self.pending_queries), dtype=np.float32)
-        for i, (query_id, query) in enumerate(self.pending_queries.items()):
-            if self._display_videos_and_gather_preference(query_id):
-                queries.append(query)
-                preferences[i] = 1
-        self.pending_queries.clear()
-        return queries, preferences
-
-    def _display_videos_and_gather_preference(self, query_id: uuid.UUID) -> bool:
+    def _gather_preference(self, query_id):
         """Displays the videos of the two fragments.
+        If in the command line, it will pop out a video player for each fragment.
+        If in a notebook, it will display the videos.
+        Either way, it will request 1 or 2 to indicate which is preferred.
 
         Args:
             query_id: the id of the fragment pair to be displayed.
@@ -1210,11 +1191,11 @@ class SynchronousHumanGatherer(PreferenceGatherer):
                 pref = input("Please enter 1 or 2 or q or r: ")
 
             if pref == "q":
-                raise KeyboardInterrupt
+                return None
             elif pref == "1":
-                return True
+                return 1.
             elif pref == "2":
-                return False
+                return 0.
 
             # should never be hit
             assert False
@@ -1287,7 +1268,7 @@ class SynchronousHumanGatherer(PreferenceGatherer):
                 ret2, frame2 = cap2.read()
             elif key == "1" or key == "2":
                 cv2.destroyAllWindows()
-                return key == "1"
+                return 1.0 if key == "1" else 0.0
 
         cv2.destroyAllWindows()
         raise KeyboardInterrupt
@@ -1328,54 +1309,16 @@ class SynchronousHumanGatherer(PreferenceGatherer):
 
     def _in_ipython(self) -> bool:
         try:
-            return self.is_running_pytest_test() or get_ipython().__class__.__name__ == "ZMQInteractiveShell"  # type: ignore[name-defined] # noqa
+            return self._is_running_pytest_test() or get_ipython().__class__.__name__ == "ZMQInteractiveShell"  # type: ignore[name-defined] # noqa
         except NameError:
             return False
 
-    def is_running_pytest_test(self) -> bool:
+    @staticmethod
+    def _is_running_pytest_test() -> bool:
         return "PYTEST_CURRENT_TEST" in os.environ
 
 
-class AsynchronousHumanGatherer(PreferenceGatherer, abc.ABC):
-    def __init__(
-        self,
-        wait_for_user: bool = True,
-        rng: Optional[np.random.Generator] = None,
-        custom_logger: Optional[imit_logger.HierarchicalLogger] = None,
-        querent_kwargs: Optional[Mapping] = None,
-    ) -> None:
-        super().__init__(rng, custom_logger, querent_kwargs)
-        self.pending_queries = {}
-        self.wait_for_user = wait_for_user
-
-    def gather(self) -> Tuple[Sequence[TrajectoryWithRewPair], np.ndarray]:
-        # TODO: create user-independent (automated) waiting policy
-        if self.wait_for_user:
-            print("Waiting for user to provide preferences. Press enter to continue.")
-            input()
-
-        gathered_queries = []
-        gathered_preferences = []
-
-        for query_id, query in list(self.pending_queries.items()):
-            preference = self._gather_preference(query_id)
-
-            if preference is not None:
-                # Preference for this query has been provided
-                if 0 <= preference <= 1:
-                    gathered_queries.append(query)
-                    gathered_preferences.append(preference)
-                # else: fragments were incomparable
-                del self.pending_queries[query_id]
-
-        return gathered_queries, np.array(gathered_preferences, dtype=np.float32)
-
-    @abc.abstractmethod
-    def _gather_preference(self, query_id: str) -> float:
-        raise NotImplementedError
-
-
-class RESTGatherer(AsynchronousHumanGatherer):
+class RESTGatherer(PreferenceGatherer):
     """Gathers preferences from a REST interface."""
 
     def __init__(
