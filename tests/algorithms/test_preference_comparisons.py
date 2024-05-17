@@ -1238,9 +1238,9 @@ def test_write_fragment_video(fragment, codec):
 
 
 def test_remove_rendered_images(fragment):
-    trajs = [fragment]
-    remove_rendered_images(trajs)
-    assert not any("rendered_img" in info for traj in trajs for info in traj.infos)
+    trajectories = [fragment]
+    remove_rendered_images(trajectories)
+    assert not any("rendered_img" in info for trajectory in trajectories for info in trajectory.infos)
 
 
 # PreferenceGatherer
