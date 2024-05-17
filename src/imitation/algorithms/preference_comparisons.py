@@ -821,6 +821,8 @@ class PreferenceQuerent:
 
 
 class VideoBasedQuerent(PreferenceQuerent):
+    """Writes videos for each query to the local file system for later use by child querent (and gatherer) classes."""
+
     def __init__(
             self,
             video_output_dir: str,
