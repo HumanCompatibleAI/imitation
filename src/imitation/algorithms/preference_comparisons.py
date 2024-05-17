@@ -12,6 +12,7 @@ import pathlib
 import pickle
 import re
 import uuid
+from urllib.parse import urljoin
 from collections import defaultdict
 from typing import (
     Any,
@@ -825,12 +826,12 @@ class VideoBasedQuerent(PreferenceQuerent):
     """Writes videos for each query to the local file system for later use by child querent (and gatherer) classes."""
 
     def __init__(
-        self,
-        video_output_dir: Union[str, os.PathLike],
-        video_type="webm",
-        video_fps: int = 20,
-        rng: Optional[np.random.Generator] = None,
-        custom_logger: Optional[imit_logger.HierarchicalLogger] = None,
+            self,
+            video_output_dir: Union[str, os.PathLike],
+            video_type="webm",
+            video_fps: int = 20,
+            rng: Optional[np.random.Generator] = None,
+            custom_logger: Optional[imit_logger.HierarchicalLogger] = None,
     ):
         """Initializes the querent.
 
@@ -930,7 +931,18 @@ class VideoBasedQuerent(PreferenceQuerent):
 
 
 class RESTQuerent(VideoBasedQuerent):
-    """Sends queries to a REST web service."""
+    """Sends queries to a REST web service.
+
+    The queries are sent via PUT request as json payload to `collection_service_address`/`query_id`
+    in the following form:
+
+    {
+        "uuid": "1234",
+        "left": b64 encoded video,
+        "right" b64 encoded video
+    }
+
+    """
 
     def __init__(
         self,
@@ -952,7 +964,7 @@ class RESTQuerent(VideoBasedQuerent):
         super().__init__(
             video_output_dir, video_fps=video_fps, rng=rng, custom_logger=custom_logger,
         )
-        self.query_endpoint = collection_service_address + "/preferences/query/"
+        self.query_endpoint = collection_service_address
 
     def __call__(
         self,
@@ -966,7 +978,7 @@ class RESTQuerent(VideoBasedQuerent):
     def _query(self, query_id: str):
         video_data = self._load_video_data(query_id)
         requests.put(
-            self.query_endpoint + query_id,
+            urljoin(self.query_endpoint, query_id),
             json={"uuid": "{}".format(query_id), **video_data},
         )
 
@@ -1321,7 +1333,18 @@ class CommandLineGatherer(PreferenceGatherer):
 
 
 class RESTGatherer(PreferenceGatherer):
-    """Gathers preferences from a REST interface."""
+    """Gathers preferences from a REST web service.
+
+       The queries are gathered via GET request to `collection_service_address`/`query_id`
+       and returns a preference as json payload:
+
+       {
+           "label": float
+       }
+
+       The float value ranges from 0.0 (preferring left) to 1.0 (preferring right),
+       with 0.5 indicating indifference. -1.0 indicates that the query was incomparable.
+    """
 
     def __init__(
         self,
@@ -1346,10 +1369,11 @@ class RESTGatherer(PreferenceGatherer):
             collection_service_address=collection_service_address,
             **querent_kwargs,
         )
-        self.query_endpoint = collection_service_address + "/preferences/query/"
+        self.query_endpoint = collection_service_address
 
     def _gather_preference(self, query_id: str) -> float:
-        answered_query = requests.get(self.query_endpoint + query_id).json()
+        query_url = urljoin(self.query_endpoint, query_id)
+        answered_query = requests.get(query_url).json()
         return answered_query["label"]
 
 

@@ -97,7 +97,7 @@ def human_preferences():
         collection_service_address="http://127.0.0.1:8000",
         wait_for_user=True,
         querent_kwargs=dict(
-            video_output_dir="../pref_collect/videofiles",
+            video_output_dir="./videos",
             video_fps=20,
         ),
     )

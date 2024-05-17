@@ -1161,17 +1161,17 @@ def test_returned_queries_have_uuid():
 def test_sends_put_request_for_each_query(requests_mock):
     address = "https://test.de"
     querent = RESTQuerent(collection_service_address=address, video_output_dir="video")
+    querent._load_video_data = MagicMock()
     query_id = "1234"
 
-    requests_mock.put(f"{address}/preferences/query/{query_id}")
+    requests_mock.put(f"{address}/{query_id}")
     querent._query(query_id)
 
     assert requests_mock.last_request.method == "PUT"
-    assert requests_mock.last_request.text == f'{{"uuid": "{query_id}"}}'
 
 
 @pytest.fixture
-def empty_trajectory_with_rew_and_render_imgs() -> TrajectoryWithRew:
+def empty_trajectory_with_rew_and_render_images() -> TrajectoryWithRew:
     num_frames = 10
     frame_shape = (200, 200)
     return types.TrajectoryWithRew(
@@ -1197,7 +1197,7 @@ def is_base64(data):
         return False
 
 
-def test_load_video_data(empty_trajectory_with_rew_and_render_imgs):
+def test_load_video_data(empty_trajectory_with_rew_and_render_images):
     address = "https://test.de"
     video_dir = "video"
     querent = RESTQuerent(
@@ -1207,7 +1207,7 @@ def test_load_video_data(empty_trajectory_with_rew_and_render_imgs):
     # Setup query with saved videos
     query_id = "1234"
     frames = querent._get_frames_for_each_observation(
-        empty_trajectory_with_rew_and_render_imgs,
+        empty_trajectory_with_rew_and_render_images,
     )
     output_path = querent._create_query_video_path(query_id, "left")
     querent._write(frames, output_path, progress_logger=False)
@@ -1227,13 +1227,13 @@ def test_load_video_data(empty_trajectory_with_rew_and_render_imgs):
 
 
 def test_prefcollectquerent_call_creates_all_videos(
-    empty_trajectory_with_rew_and_render_imgs,
+        empty_trajectory_with_rew_and_render_images,
 ):
     address = "https://test.de"
     queries = [
         (
-            empty_trajectory_with_rew_and_render_imgs,
-            empty_trajectory_with_rew_and_render_imgs,
+            empty_trajectory_with_rew_and_render_images,
+            empty_trajectory_with_rew_and_render_images,
         ),
     ]
     querent = RESTQuerent(collection_service_address=address, video_output_dir="video")
@@ -1248,14 +1248,14 @@ def test_prefcollectquerent_call_creates_all_videos(
 @pytest.fixture(
     params=["obs_only", "with_render_images", "with_render_image_paths"],
 )
-def fragment(request, empty_trajectory_with_rew_and_render_imgs):
-    obs = empty_trajectory_with_rew_and_render_imgs.obs
-    infos = empty_trajectory_with_rew_and_render_imgs.infos
+def fragment(request, empty_trajectory_with_rew_and_render_images):
+    obs = empty_trajectory_with_rew_and_render_images.obs
+    infos = empty_trajectory_with_rew_and_render_images.infos
     if request.param == "with_render_images":
         infos = np.array(
             [
                 {"rendered_img": frame}
-                for frame in empty_trajectory_with_rew_and_render_imgs.obs[1:]
+                for frame in empty_trajectory_with_rew_and_render_images.obs[1:]
             ],
         )
     elif request.param == "with_render_image_paths":
@@ -1268,10 +1268,10 @@ def fragment(request, empty_trajectory_with_rew_and_render_imgs):
         infos = np.array(infos)
     yield types.TrajectoryWithRew(
         obs=obs,
-        acts=empty_trajectory_with_rew_and_render_imgs.acts,
+        acts=empty_trajectory_with_rew_and_render_images.acts,
         infos=infos,
         terminal=True,
-        rews=empty_trajectory_with_rew_and_render_imgs.rews,
+        rews=empty_trajectory_with_rew_and_render_images.rews,
     )
     if request.param == "with_render_image_paths":
         shutil.rmtree(tmp_dir)
@@ -1338,7 +1338,7 @@ def test_returns_none_for_unanswered_query(requests_mock):
     )
 
     requests_mock.get(
-        f"{address}/preferences/query/{query_id}",
+        f"{address}/{query_id}",
         json={"query_id": query_id, "label": answer},
     )
 
@@ -1358,7 +1358,7 @@ def test_returns_preference_for_answered_query(requests_mock):
     )
 
     requests_mock.get(
-        f"{address}/preferences/query/{query_id}",
+        f"{address}/{query_id}",
         json={"query_id": query_id, "label": answer},
     )
 

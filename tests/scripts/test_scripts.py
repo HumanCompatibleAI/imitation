@@ -187,7 +187,7 @@ def test_train_preference_comparisons_with_collected_preferences(tmpdir):
     )
 
     with requests_mock.Mocker() as m:
-        request_matcher = re.compile(f"{address}/preferences/query/")
+        request_matcher = re.compile(f"{address}/")
 
         m.put(url=request_matcher)
         m.get(
