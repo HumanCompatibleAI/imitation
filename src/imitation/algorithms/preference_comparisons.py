@@ -1098,7 +1098,7 @@ class SyntheticGatherer(PreferenceGatherer):
 
         if self.sample:
             assert self.rng is not None
-            return self.rng.binomial(n=1, p=choice_probability).astype(np.float32)
+            return self.rng.binomial(n=1, p=choice_probability)
 
         return choice_probability
 
