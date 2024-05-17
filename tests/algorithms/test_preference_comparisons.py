@@ -1,5 +1,7 @@
 """Tests for the preference comparisons reward learning implementation."""
 
+import base64
+import binascii
 import math
 import os
 import pathlib
@@ -25,12 +27,12 @@ from stable_baselines3.common.vec_env import DummyVecEnv
 import imitation.testing.reward_nets as testing_reward_nets
 from imitation.algorithms import preference_comparisons
 from imitation.algorithms.preference_comparisons import (
-    RESTGatherer,
-    RESTQuerent,
     PreferenceGatherer,
     PreferenceQuerent,
-    VideoBasedQuerent,
+    RESTGatherer,
+    RESTQuerent,
     SyntheticGatherer,
+    VideoBasedQuerent,
     remove_rendered_images,
 )
 from imitation.data import types
@@ -1169,21 +1171,71 @@ def test_sends_put_request_for_each_query(requests_mock):
 
 
 @pytest.fixture
-def empty_trajectory_with_rew_and_render_imgs():
+def empty_trajectory_with_rew_and_render_imgs() -> TrajectoryWithRew:
     num_frames = 10
     frame_shape = (200, 200)
     return types.TrajectoryWithRew(
         obs=np.zeros((num_frames, *frame_shape, 3), np.uint8),
         acts=np.zeros((num_frames - 1,), np.uint8),
-        infos=np.array([{"rendered_img": np.zeros((*frame_shape, 3), np.uint8)} for _ in range(num_frames - 1)]),
+        infos=np.array(
+            [
+                {"rendered_img": np.zeros((*frame_shape, 3), np.uint8)}
+                for _ in range(num_frames - 1)
+            ],
+        ),
         rews=np.zeros((num_frames - 1,)),
         terminal=True,
     )
 
 
-def test_prefcollectquerent_call_creates_all_videos(empty_trajectory_with_rew_and_render_imgs):
+def is_base64(data):
+    """Checks if the data is base64 encoded."""
+    try:
+        base64.b64decode(data)
+        return True
+    except binascii.Error:
+        return False
+
+
+def test_load_video_data(empty_trajectory_with_rew_and_render_imgs):
     address = "https://test.de"
-    queries = [(empty_trajectory_with_rew_and_render_imgs, empty_trajectory_with_rew_and_render_imgs)]
+    video_dir = "video"
+    querent = RESTQuerent(
+        collection_service_address=address, video_output_dir=video_dir,
+    )
+
+    # Setup query with saved videos
+    query_id = "1234"
+    frames = querent._get_frames_for_each_observation(
+        empty_trajectory_with_rew_and_render_imgs,
+    )
+    output_path = querent._create_query_video_path(query_id, "left")
+    querent._write(frames, output_path, progress_logger=False)
+    output_path = querent._create_query_video_path(query_id, "right")
+    querent._write(frames, output_path, progress_logger=False)
+
+    # Load videos and check their encoding
+    video_data = querent._load_video_data(query_id)
+    for alternative in ("left", "right"):
+        assert is_base64(video_data[alternative])
+
+    # Check that loading video data of non-existent query fails
+    with pytest.raises(RuntimeError):
+        querent._load_video_data("0")
+
+    shutil.rmtree(video_dir)
+
+
+def test_prefcollectquerent_call_creates_all_videos(
+    empty_trajectory_with_rew_and_render_imgs,
+):
+    address = "https://test.de"
+    queries = [
+        (
+            empty_trajectory_with_rew_and_render_imgs,
+            empty_trajectory_with_rew_and_render_imgs,
+        ),
+    ]
     querent = RESTQuerent(collection_service_address=address, video_output_dir="video")
     identified_queries = querent(queries)
     for query_id, _ in identified_queries.items():
@@ -1201,7 +1253,10 @@ def fragment(request, empty_trajectory_with_rew_and_render_imgs):
     infos = empty_trajectory_with_rew_and_render_imgs.infos
     if request.param == "with_render_images":
         infos = np.array(
-            [{"rendered_img": frame} for frame in empty_trajectory_with_rew_and_render_imgs.obs[1:]],
+            [
+                {"rendered_img": frame}
+                for frame in empty_trajectory_with_rew_and_render_imgs.obs[1:]
+            ],
         )
     elif request.param == "with_render_image_paths":
         tmp_dir = tempfile.mkdtemp()
@@ -1247,7 +1302,7 @@ def test_remove_rendered_images(fragment):
 class ConcretePreferenceGatherer(PreferenceGatherer):
     """A concrete preference gatherer for unit testing purposes only."""
 
-    def _gather_preference(self, query_id) -> Tuple[Sequence[TrajectoryWithRewPair], np.ndarray]:
+    def _gather_preference(self, query_id: str) -> float:
         return 0.
 
 

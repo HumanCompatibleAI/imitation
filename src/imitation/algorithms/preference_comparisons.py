@@ -5,6 +5,7 @@ between trajectory fragments.
 """
 
 import abc
+import base64
 import math
 import os
 import pathlib
@@ -824,12 +825,12 @@ class VideoBasedQuerent(PreferenceQuerent):
     """Writes videos for each query to the local file system for later use by child querent (and gatherer) classes."""
 
     def __init__(
-            self,
-            video_output_dir: str,
-            video_type="webm",
-            video_fps: int = 20,
-            rng: Optional[np.random.Generator] = None,
-            custom_logger: Optional[imit_logger.HierarchicalLogger] = None,
+        self,
+        video_output_dir: Union[str, os.PathLike],
+        video_type="webm",
+        video_fps: int = 20,
+        rng: Optional[np.random.Generator] = None,
+        custom_logger: Optional[imit_logger.HierarchicalLogger] = None,
     ):
         """Initializes the querent.
 
@@ -864,21 +865,26 @@ class VideoBasedQuerent(PreferenceQuerent):
                 fragment=query[i],
                 output_path=self._create_query_video_path(query_id, alternative),
             )
-    
+
     def _create_query_video_path(self, query_id: str, alternative: str):
-        return pathlib.Path(self.video_output_dir) / f"{query_id}-{alternative}.{self.video_type}"
+        return (
+            pathlib.Path(self.video_output_dir)
+            / f"{query_id}-{alternative}.{self.video_type}"
+        )
 
     def _write_fragment_video(
-            self,
-            fragment: TrajectoryWithRew,
-            output_path: AnyPath,
-            progress_logger: bool = True,
+        self,
+        fragment: TrajectoryWithRew,
+        output_path: AnyPath,
+        progress_logger: bool = True,
     ) -> None:
         """Write fragment video clip."""
         frames = self._get_frames(fragment)
         self._write(frames, output_path, progress_logger)
 
-    def _get_frames(self, fragment: TrajectoryWithRew) -> list[Union[os.PathLike, np.ndarray]]:
+    def _get_frames(
+        self, fragment: TrajectoryWithRew,
+    ) -> list[Union[os.PathLike, np.ndarray]]:
         if self._rendered_image_of_observation_is_available(fragment):
             return self._get_frames_for_each_observation(fragment)
         else:
@@ -888,7 +894,9 @@ class VideoBasedQuerent(PreferenceQuerent):
             )
 
     @staticmethod
-    def _rendered_image_of_observation_is_available(fragment: TrajectoryWithRew) -> bool:
+    def _rendered_image_of_observation_is_available(
+        fragment: TrajectoryWithRew,
+    ) -> bool:
         return fragment.infos is not None and "rendered_img" in fragment.infos[0]
 
     @staticmethod
@@ -899,13 +907,26 @@ class VideoBasedQuerent(PreferenceQuerent):
             frames.append(frame)
         return frames
 
-    def _write(self, frames: List[Union[os.PathLike, np.ndarray]], output_path: os.PathLike, progress_logger: bool):
-        clip = ImageSequenceClip(frames, fps=self.frames_per_second)  # accepts list of image paths and numpy arrays
-        if output_path.suffix == '.gif':
-            clip.write_gif(str(output_path), program='ffmpeg', logger="bar" if progress_logger else None)
+    def _write(
+        self,
+        frames: List[Union[os.PathLike, np.ndarray]],
+        output_path: Union[str, bytes, os.PathLike],
+        progress_logger: bool,
+    ):
+        clip = ImageSequenceClip(
+            frames, fps=self.frames_per_second,
+        )  # accepts list of image paths and numpy arrays
+        output_path = pathlib.Path(output_path)
+        if output_path.suffix == ".gif":
+            clip.write_gif(
+                str(output_path),
+                program="ffmpeg",
+                logger="bar" if progress_logger else None,
+            )
         else:
-            print(output_path)
-            clip.write_videofile(str(output_path), logger="bar" if progress_logger else None)
+            clip.write_videofile(
+                str(output_path), logger="bar" if progress_logger else None,
+            )
 
 
 class RESTQuerent(VideoBasedQuerent):
@@ -928,7 +949,9 @@ class RESTQuerent(VideoBasedQuerent):
             rng: random number generator, if applicable.
             custom_logger: Where to log to; if None (default), creates a new logger.
         """
-        super().__init__(video_output_dir, video_fps=video_fps, rng=rng, custom_logger=custom_logger)
+        super().__init__(
+            video_output_dir, video_fps=video_fps, rng=rng, custom_logger=custom_logger,
+        )
         self.query_endpoint = collection_service_address + "/preferences/query/"
 
     def __call__(
@@ -947,14 +970,19 @@ class RESTQuerent(VideoBasedQuerent):
             json={"uuid": "{}".format(query_id), **video_data},
         )
 
-    def _load_video_data(self, query_id: str) -> dict[str, bytes]:
-        import base64
+    def _load_video_data(self, query_id: str) -> dict[str, str]:
         video_data = {}
         for alternative in ("left", "right"):
             video_path = self._create_query_video_path(query_id, alternative)
             if video_path.exists():
-                with open(video_path, 'rb') as video_file:
-                    video_data[alternative] = base64.b64encode(video_file.read()).decode('utf-8')
+                with open(video_path, "rb") as video_file:
+                    video_data[alternative] = base64.b64encode(
+                        video_file.read(),
+                    ).decode("utf-8")
+            else:
+                raise RuntimeError(
+                    f"Video to be loaded does not exist at {video_path}.",
+                )
         return video_data
 
 
@@ -1111,7 +1139,7 @@ class CommandLineGatherer(PreferenceGatherer):
 
     def __init__(
         self,
-        video_dir: pathlib.Path,
+        video_dir: Union[str, os.PathLike],
         video_width: int = 500,
         video_height: int = 500,
         frames_per_second: int = 25,
@@ -1129,7 +1157,9 @@ class CommandLineGatherer(PreferenceGatherer):
             rng: random number generator
         """
         super().__init__(custom_logger=custom_logger, rng=rng)
-        self.querent = VideoBasedQuerent(video_output_dir=video_dir, video_fps=frames_per_second)
+        self.querent = VideoBasedQuerent(
+            video_output_dir=video_dir, video_fps=frames_per_second,
+        )
         self.video_dir = video_dir
         self.video_width = video_width
         self.video_height = video_height
@@ -1294,12 +1324,12 @@ class RESTGatherer(PreferenceGatherer):
     """Gathers preferences from a REST interface."""
 
     def __init__(
-            self,
-            collection_service_address: str,
-            wait_for_user: bool = True,
-            rng: Optional[np.random.Generator] = None,
-            custom_logger: Optional[imit_logger.HierarchicalLogger] = None,
-            querent_kwargs: Optional[Mapping] = None,
+        self,
+        collection_service_address: str,
+        wait_for_user: bool = True,
+        rng: Optional[np.random.Generator] = None,
+        custom_logger: Optional[imit_logger.HierarchicalLogger] = None,
+        querent_kwargs: Optional[Mapping] = None,
     ) -> None:
         """Initializes the preference gatherer.
 
