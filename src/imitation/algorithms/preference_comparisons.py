@@ -835,6 +835,7 @@ class VideoBasedQuerent(PreferenceQuerent):
 
         Args:
             video_output_dir: path to the video clip directory.
+            video_type: specifies the video format, e.g. 'webm' or 'mp4'
             video_fps: frames per second of the generated videos.
             rng: random number generator, if applicable.
             custom_logger: Where to log to; if None (default), creates a new logger.
