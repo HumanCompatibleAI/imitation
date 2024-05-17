@@ -1247,8 +1247,8 @@ def test_remove_rendered_images(fragment):
 class ConcretePreferenceGatherer(PreferenceGatherer):
     """A concrete preference gatherer for unit testing purposes only."""
 
-    def gather(self) -> Tuple[Sequence[TrajectoryWithRewPair], np.ndarray]:
-        return np.zeros(shape=(1,))
+    def _gather_preference(self, query_id) -> Tuple[Sequence[TrajectoryWithRewPair], np.ndarray]:
+        return 0.
 
 
 def test_adds_queries_to_pending_queries():
@@ -1365,7 +1365,6 @@ def test_ignores_incomparable_answer():
         wait_for_user=False,
         querent_kwargs={"video_output_dir": "videos"},
     )
-    # incomparable preference value = -1
     gatherer._gather_preference = MagicMock(return_value=-1.0)
     gatherer.pending_queries = {"1234": Mock()}
 
