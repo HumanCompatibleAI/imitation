@@ -930,7 +930,6 @@ class RESTQuerent(VideoBasedQuerent):
         """
         super().__init__(video_output_dir, video_fps=video_fps, rng=rng, custom_logger=custom_logger)
         self.query_endpoint = collection_service_address + "/preferences/query/"
-    
 
     def __call__(
         self,
