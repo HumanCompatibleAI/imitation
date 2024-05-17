@@ -891,7 +891,8 @@ class VideoBasedQuerent(PreferenceQuerent):
     def _rendered_image_of_observation_is_available(fragment: TrajectoryWithRew) -> bool:
         return fragment.infos is not None and "rendered_img" in fragment.infos[0]
 
-    def _get_frames_for_each_observation(self, fragment: TrajectoryWithRew) -> list[Union[os.PathLike, np.ndarray]]:
+    @staticmethod
+    def _get_frames_for_each_observation(fragment: TrajectoryWithRew) -> list[Union[os.PathLike, np.ndarray]]:
         frames: list[Union[os.PathLike, np.ndarray]] = []
         for i in range(len(fragment.infos)):
             frame: Union[os.PathLike, np.ndarray] = fragment.infos[i]["rendered_img"]
