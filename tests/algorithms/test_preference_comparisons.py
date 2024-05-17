@@ -1384,56 +1384,7 @@ def test_command_line_gatherer(mock_display, mock_input, fragment):
     )
 
     # these inputs are designed solely to pass the test. they aren't tested for anything
-    trajectory_pairs = [
-        (
-            types.TrajectoryWithRew(
-                np.zeros(
-                    (
-                        2,
-                        200,
-                        200,
-                        3,
-                    ),
-                    np.uint8,
-                ),
-                np.array([1]),
-                np.array(
-                    [
-                        {
-                            "video_path": pathlib.Path(
-                                "tests/algorithms/test_preference_comparisons.py",
-                            ),
-                        },
-                    ],
-                ),
-                True,
-                np.array([1.0]),
-            ),
-            types.TrajectoryWithRew(
-                np.zeros(
-                    (
-                        2,
-                        200,
-                        200,
-                        3,
-                    ),
-                    np.uint8,
-                ),
-                np.array([1]),  # act
-                np.array(  # info
-                    [
-                        {
-                            "video_path": pathlib.Path(
-                                "tests/algorithms/test_preference_comparisons.py",
-                            ),
-                        },
-                    ],
-                ),
-                True,  # done
-                np.array([1.0]),  # reward
-            ),
-        ),
-    ]
+    trajectory_pairs = [(fragment, fragment),]
     gatherer.query(trajectory_pairs)
 
     # this is the actual test
