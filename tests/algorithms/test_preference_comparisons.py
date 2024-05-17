@@ -1377,7 +1377,7 @@ def test_ignores_incomparable_answer():
 # SynchronousHumanGatherer
 @patch("builtins.input")
 @patch("IPython.display.display")
-def test_synchronous_human_gatherer(mock_display, mock_input):
+def test_command_line_gatherer(mock_display, mock_input, fragment):
     del mock_display  # unused
     gatherer = preference_comparisons.CommandLineGatherer(
         video_dir=pathlib.Path("."),
