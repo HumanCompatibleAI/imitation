@@ -1001,12 +1001,8 @@ class RESTQuerent(VideoBasedQuerent):
 class PreferenceGatherer(abc.ABC):
     """Base class for gathering preference comparisons between trajectory fragments."""
 
-    def __init__(
-        self,
-        rng: Optional[np.random.Generator] = None,
-        custom_logger: Optional[imit_logger.HierarchicalLogger] = None,
-        querent_kwargs: Optional[Mapping] = None,
-    ) -> None:
+    def __init__(self, rng: Optional[np.random.Generator] = None,
+                 custom_logger: Optional[imit_logger.HierarchicalLogger] = None) -> None:
         """Initializes the preference gatherer.
 
         Args:
@@ -1018,9 +1014,7 @@ class PreferenceGatherer(abc.ABC):
         # as an argument nevertheless because that means we can always
         # pass in a seed in training scripts (without worrying about whether
         # the PreferenceGatherer we use needs one).
-        del rng
-        querent_kwargs = querent_kwargs or {}
-        self.querent = PreferenceQuerent(**querent_kwargs)
+        self.querent = PreferenceQuerent(rng, custom_logger)
         self.logger = custom_logger or imit_logger.configure()
         self.pending_queries: Dict = {}
 
@@ -1168,7 +1162,7 @@ class CommandLineGatherer(PreferenceGatherer):
             custom_logger: Where to log to; if None (default), creates a new logger.
             rng: random number generator
         """
-        super().__init__(custom_logger=custom_logger, rng=rng)
+        super().__init__(rng=rng, custom_logger=custom_logger)
         self.querent = VideoBasedQuerent(
             video_output_dir=video_dir, video_fps=frames_per_second,
         )
@@ -1363,7 +1357,7 @@ class RESTGatherer(PreferenceGatherer):
             custom_logger: Where to log to; if None (default), creates a new logger.
             querent_kwargs: Keyword arguments passed to the querent.
         """
-        super().__init__(wait_for_user, rng, custom_logger)
+        super().__init__(rng, custom_logger)
         querent_kwargs = querent_kwargs if querent_kwargs else {}
         self.querent = RESTQuerent(
             collection_service_address=collection_service_address,

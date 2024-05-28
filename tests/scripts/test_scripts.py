@@ -182,7 +182,7 @@ def test_train_preference_comparisons_with_collected_preferences(tmpdir):
         gatherer_kwargs=dict(
             wait_for_user=False,
             querent_kwargs=dict(video_output_dir=tmpdir),
-            pref_collect_address=address,
+            collection_service_address=address,
         ),
     )
 
