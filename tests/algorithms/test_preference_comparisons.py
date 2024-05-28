@@ -1434,8 +1434,9 @@ def test_ignores_incomparable_answer():
 @patch("IPython.display.display")
 def test_command_line_gatherer(mock_display, mock_input, fragment):
     del mock_display  # unused
+    video_dir = "videos"
     gatherer = preference_comparisons.CommandLineGatherer(
-        video_dir=pathlib.Path("."),
+        video_dir=pathlib.Path(video_dir),
     )
 
     # these inputs are designed solely to pass the test. they aren't tested for anything
@@ -1449,3 +1450,5 @@ def test_command_line_gatherer(mock_display, mock_input, fragment):
     gatherer.query(trajectory_pairs)
     mock_input.return_value = "2"
     assert gatherer.gather()[1] == np.array([0.0])
+
+    shutil.rmtree(video_dir)
