@@ -1,5 +1,7 @@
 """Tests for the preference comparisons reward learning implementation."""
 
+import base64
+import binascii
 import math
 import os
 import pathlib
@@ -25,13 +27,13 @@ from stable_baselines3.common.vec_env import DummyVecEnv
 import imitation.testing.reward_nets as testing_reward_nets
 from imitation.algorithms import preference_comparisons
 from imitation.algorithms.preference_comparisons import (
-    PrefCollectGatherer,
-    PrefCollectQuerent,
     PreferenceGatherer,
     PreferenceQuerent,
+    RESTGatherer,
+    RESTQuerent,
     SyntheticGatherer,
+    VideoBasedQuerent,
     remove_rendered_images,
-    write_fragment_video,
 )
 from imitation.data import types
 from imitation.data.types import TrajectoryWithRew, TrajectoryWithRewPair
@@ -1158,33 +1160,83 @@ def test_returned_queries_have_uuid():
 # PrefCollectQuerent
 def test_sends_put_request_for_each_query(requests_mock):
     address = "https://test.de"
-    querent = PrefCollectQuerent(pref_collect_address=address, video_output_dir="video")
+    querent = RESTQuerent(collection_service_address=address, video_output_dir="video")
+    querent._load_video_data = MagicMock()
     query_id = "1234"
 
-    requests_mock.put(f"{address}/preferences/query/{query_id}")
+    requests_mock.put(f"{address}/{query_id}")
     querent._query(query_id)
 
     assert requests_mock.last_request.method == "PUT"
-    assert requests_mock.last_request.text == f'{{"uuid": "{query_id}"}}'
 
 
 @pytest.fixture
-def empty_trajectory_with_rew():
+def empty_trajectory_with_rew_and_render_images() -> TrajectoryWithRew:
     num_frames = 10
     frame_shape = (200, 200)
     return types.TrajectoryWithRew(
         obs=np.zeros((num_frames, *frame_shape, 3), np.uint8),
         acts=np.zeros((num_frames - 1,), np.uint8),
-        infos=np.array([{} for _ in range(num_frames - 1)]),
+        infos=np.array(
+            [
+                {"rendered_img": np.zeros((*frame_shape, 3), np.uint8)}
+                for _ in range(num_frames - 1)
+            ],
+        ),
         rews=np.zeros((num_frames - 1,)),
         terminal=True,
     )
 
 
-def test_prefcollectquerent_call_creates_all_videos(empty_trajectory_with_rew):
+def is_base64(data):
+    """Checks if the data is base64 encoded."""
+    try:
+        base64.b64decode(data)
+        return True
+    except binascii.Error:
+        return False
+
+
+def test_load_video_data(empty_trajectory_with_rew_and_render_images):
     address = "https://test.de"
-    queries = [(empty_trajectory_with_rew, empty_trajectory_with_rew)]
-    querent = PrefCollectQuerent(pref_collect_address=address, video_output_dir="video")
+    video_dir = "video"
+    querent = RESTQuerent(
+        collection_service_address=address, video_output_dir=video_dir,
+    )
+
+    # Setup query with saved videos
+    query_id = "1234"
+    frames = querent._get_frames_for_each_observation(
+        empty_trajectory_with_rew_and_render_images,
+    )
+    output_path = querent._create_query_video_path(query_id, "left")
+    querent._write(frames, output_path, progress_logger=False)
+    output_path = querent._create_query_video_path(query_id, "right")
+    querent._write(frames, output_path, progress_logger=False)
+
+    # Load videos and check their encoding
+    video_data = querent._load_video_data(query_id)
+    for alternative in ("left", "right"):
+        assert is_base64(video_data[alternative])
+
+    # Check that loading video data of non-existent query fails
+    with pytest.raises(RuntimeError):
+        querent._load_video_data("0")
+
+    shutil.rmtree(video_dir)
+
+
+def test_prefcollectquerent_call_creates_all_videos(
+        empty_trajectory_with_rew_and_render_images,
+):
+    address = "https://test.de"
+    queries = [
+        (
+            empty_trajectory_with_rew_and_render_images,
+            empty_trajectory_with_rew_and_render_images,
+        ),
+    ]
+    querent = RESTQuerent(collection_service_address=address, video_output_dir="video")
     identified_queries = querent(queries)
     for query_id, _ in identified_queries.items():
         file = os.path.join(querent.video_output_dir, query_id + "-{}.webm")
@@ -1194,34 +1246,32 @@ def test_prefcollectquerent_call_creates_all_videos(empty_trajectory_with_rew):
 
 
 @pytest.fixture(
-    params=["obs_only", "dictobs", "with_render_images", "with_render_image_paths"],
+    params=["obs_only", "with_render_images", "with_render_image_paths"],
 )
-def fragment(request, empty_trajectory_with_rew):
-    obs = empty_trajectory_with_rew.obs
-    infos = empty_trajectory_with_rew.infos
-    if request.param == "dictobs":
-        obs = types.DictObs({"obs": empty_trajectory_with_rew.obs})
-    elif request.param == "with_render_images":
+def fragment(request, empty_trajectory_with_rew_and_render_images):
+    obs = empty_trajectory_with_rew_and_render_images.obs
+    infos = empty_trajectory_with_rew_and_render_images.infos
+    if request.param == "with_render_images":
         infos = np.array(
-            [{"rendered_img": frame} for frame in empty_trajectory_with_rew.obs[1:]],
+            [
+                {"rendered_img": frame}
+                for frame in empty_trajectory_with_rew_and_render_images.obs[1:]
+            ],
         )
     elif request.param == "with_render_image_paths":
         tmp_dir = tempfile.mkdtemp()
         infos = []
         for frame in obs[1:]:
-            unique_file_path = os.path.join(
-                tmp_dir,
-                str(uuid.uuid4()) + ".png",
-            )
+            unique_file_path = str(pathlib.Path(tmp_dir) / (str(uuid.uuid4()) + ".png"))
             imageio.imwrite(unique_file_path, frame)
             infos.append({"rendered_img": unique_file_path})
         infos = np.array(infos)
     yield types.TrajectoryWithRew(
         obs=obs,
-        acts=empty_trajectory_with_rew.acts,
+        acts=empty_trajectory_with_rew_and_render_images.acts,
         infos=infos,
         terminal=True,
-        rews=empty_trajectory_with_rew.rews,
+        rews=empty_trajectory_with_rew_and_render_images.rews,
     )
     if request.param == "with_render_image_paths":
         shutil.rmtree(tmp_dir)
@@ -1230,28 +1280,30 @@ def fragment(request, empty_trajectory_with_rew):
 # utils
 @pytest.mark.parametrize("codec", ["webm", "mp4"])
 def test_write_fragment_video(fragment, codec):
-    video_path = f"video.{codec}"
-    if isinstance(fragment.obs, types.DictObs):
+    output_dir = "video"
+    video_based_querent = VideoBasedQuerent(video_output_dir=output_dir)
+    video_path = pathlib.Path(f"{output_dir}.{codec}")
+    if "rendered_img" not in fragment.infos[0]:
         with pytest.raises(ValueError):
-            write_fragment_video(fragment, frames_per_second=5, output_path=video_path)
+            video_based_querent._write_fragment_video(fragment, output_path=video_path)
     else:
-        write_fragment_video(fragment, frames_per_second=5, output_path=video_path)
+        video_based_querent._write_fragment_video(fragment, output_path=video_path)
         assert os.path.isfile(video_path)
         os.remove(video_path)
 
 
 def test_remove_rendered_images(fragment):
-    trajs = [fragment]
-    remove_rendered_images(trajs)
-    assert not any("rendered_img" in info for traj in trajs for info in traj.infos)
+    trajectories = [fragment]
+    remove_rendered_images(trajectories)
+    assert not any("rendered_img" in info for trajectory in trajectories for info in trajectory.infos)
 
 
 # PreferenceGatherer
 class ConcretePreferenceGatherer(PreferenceGatherer):
     """A concrete preference gatherer for unit testing purposes only."""
 
-    def gather(self) -> Tuple[Sequence[TrajectoryWithRewPair], np.ndarray]:
-        return np.zeros(shape=(1,))
+    def _gather_preference(self, query_id: str) -> float:
+        return 0.
 
 
 def test_adds_queries_to_pending_queries():
@@ -1280,13 +1332,13 @@ def test_returns_none_for_unanswered_query(requests_mock):
     query_id = "1234"
     answer = None
 
-    gatherer = PrefCollectGatherer(
-        pref_collect_address=address,
+    gatherer = RESTGatherer(
+        collection_service_address=address,
         querent_kwargs={"video_output_dir": "videos"},
     )
 
     requests_mock.get(
-        f"{address}/preferences/query/{query_id}",
+        f"{address}/{query_id}",
         json={"query_id": query_id, "label": answer},
     )
 
@@ -1300,13 +1352,13 @@ def test_returns_preference_for_answered_query(requests_mock):
     query_id = "1234"
     answer = 1.0
 
-    gatherer = PrefCollectGatherer(
-        pref_collect_address=address,
+    gatherer = RESTGatherer(
+        collection_service_address=address,
         querent_kwargs={"video_output_dir": "videos"},
     )
 
     requests_mock.get(
-        f"{address}/preferences/query/{query_id}",
+        f"{address}/{query_id}",
         json={"query_id": query_id, "label": answer},
     )
 
@@ -1316,8 +1368,8 @@ def test_returns_preference_for_answered_query(requests_mock):
 
 
 def test_keeps_pending_query_for_unanswered_query():
-    gatherer = PrefCollectGatherer(
-        pref_collect_address="https://test.de",
+    gatherer = RESTGatherer(
+        collection_service_address="https://test.de",
         wait_for_user=False,
         querent_kwargs={"video_output_dir": "videos"},
     )
@@ -1331,8 +1383,8 @@ def test_keeps_pending_query_for_unanswered_query():
 
 
 def test_deletes_pending_query_for_answered_query():
-    gatherer = PrefCollectGatherer(
-        pref_collect_address="https://test.de",
+    gatherer = RESTGatherer(
+        collection_service_address="https://test.de",
         wait_for_user=False,
         querent_kwargs={"video_output_dir": "videos"},
     )
@@ -1346,8 +1398,8 @@ def test_deletes_pending_query_for_answered_query():
 
 
 def test_gathers_valid_preference():
-    gatherer = PrefCollectGatherer(
-        pref_collect_address="https://test.de",
+    gatherer = RESTGatherer(
+        collection_service_address="https://test.de",
         wait_for_user=False,
         querent_kwargs={"video_output_dir": "videos"},
     )
@@ -1363,12 +1415,11 @@ def test_gathers_valid_preference():
 
 
 def test_ignores_incomparable_answer():
-    gatherer = PrefCollectGatherer(
-        pref_collect_address="https://test.de",
+    gatherer = RESTGatherer(
+        collection_service_address="https://test.de",
         wait_for_user=False,
         querent_kwargs={"video_output_dir": "videos"},
     )
-    # incomparable preference value = -1
     gatherer._gather_preference = MagicMock(return_value=-1.0)
     gatherer.pending_queries = {"1234": Mock()}
 
@@ -1381,63 +1432,15 @@ def test_ignores_incomparable_answer():
 # SynchronousHumanGatherer
 @patch("builtins.input")
 @patch("IPython.display.display")
-def test_synchronous_human_gatherer(mock_display, mock_input):
+def test_command_line_gatherer(mock_display, mock_input, fragment):
     del mock_display  # unused
-    gatherer = preference_comparisons.SynchronousHumanGatherer(
-        video_dir=pathlib.Path("."),
+    video_dir = "videos"
+    gatherer = preference_comparisons.CommandLineGatherer(
+        video_dir=pathlib.Path(video_dir),
     )
 
     # these inputs are designed solely to pass the test. they aren't tested for anything
-    trajectory_pairs = [
-        (
-            types.TrajectoryWithRew(
-                np.zeros(
-                    (
-                        2,
-                        200,
-                        200,
-                        3,
-                    ),
-                    np.uint8,
-                ),
-                np.array([1]),
-                np.array(
-                    [
-                        {
-                            "video_path": pathlib.Path(
-                                "tests/algorithms/test_preference_comparisons.py",
-                            ),
-                        },
-                    ],
-                ),
-                True,
-                np.array([1.0]),
-            ),
-            types.TrajectoryWithRew(
-                np.zeros(
-                    (
-                        2,
-                        200,
-                        200,
-                        3,
-                    ),
-                    np.uint8,
-                ),
-                np.array([1]),  # act
-                np.array(  # info
-                    [
-                        {
-                            "video_path": pathlib.Path(
-                                "tests/algorithms/test_preference_comparisons.py",
-                            ),
-                        },
-                    ],
-                ),
-                True,  # done
-                np.array([1.0]),  # reward
-            ),
-        ),
-    ]
+    trajectory_pairs = [(fragment, fragment),]
     gatherer.query(trajectory_pairs)
 
     # this is the actual test
@@ -1447,3 +1450,5 @@ def test_synchronous_human_gatherer(mock_display, mock_input):
     gatherer.query(trajectory_pairs)
     mock_input.return_value = "2"
     assert gatherer.gather()[1] == np.array([0.0])
+
+    shutil.rmtree(video_dir)
