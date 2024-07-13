@@ -15,56 +15,11 @@ import pytest
 from imitation.data import serialize, types
 from imitation.util import util
 
-SPACES = [
-    gym.spaces.Discrete(3),
-    gym.spaces.MultiDiscrete([3, 4]),
-    gym.spaces.Box(-1, 1, shape=(1,)),
-    gym.spaces.Box(-1, 1, shape=(2,)),
-    gym.spaces.Box(-np.inf, np.inf, shape=(2,)),
-]
-DICT_SPACE = gym.spaces.Dict(
-    {"a": gym.spaces.Discrete(3), "b": gym.spaces.Box(-1, 1, shape=(2,))},
-)
-
-OBS_SPACES = SPACES + [DICT_SPACE]
-ACT_SPACES = SPACES
-LENGTHS = [0, 1, 2, 10]
-
 
 def _check_1d_shape(fn: Callable[[np.ndarray], Any], length: int, expected_msg: str):
     for shape in [(), (length, 1), (length, 2), (length - 1,), (length + 1,)]:
         with pytest.raises(ValueError, match=expected_msg):
             fn(np.zeros(shape))
-
-
-@pytest.fixture
-def trajectory(
-    obs_space: gym.Space,
-    act_space: gym.Space,
-    length: int,
-) -> types.Trajectory:
-    """Fixture to generate trajectory of length `length` iid sampled from spaces."""
-    if length == 0:
-        pytest.skip()
-
-    raw_obs = [obs_space.sample() for _ in range(length + 1)]
-    if isinstance(obs_space, gym.spaces.Dict):
-        obs: types.Observation = types.DictObs.from_obs_list(raw_obs)
-    else:
-        obs = np.array(raw_obs)
-    acts = np.array([act_space.sample() for _ in range(length)])
-    infos = np.array([{f"key{i}": i} for i in range(length)])
-    return types.Trajectory(obs=obs, acts=acts, infos=infos, terminal=True)
-
-
-@pytest.fixture
-def trajectory_rew(trajectory: types.Trajectory) -> types.TrajectoryWithRew:
-    """Like `trajectory` but with reward randomly sampled from a Gaussian."""
-    rews = np.random.randn(len(trajectory))
-    return types.TrajectoryWithRew(
-        **types.dataclass_quick_asdict(trajectory),
-        rews=rews,
-    )
 
 
 @pytest.fixture
@@ -134,9 +89,6 @@ def pushd(dir_path):
         os.chdir(orig_dir)
 
 
-@pytest.mark.parametrize("obs_space", OBS_SPACES)
-@pytest.mark.parametrize("act_space", ACT_SPACES)
-@pytest.mark.parametrize("length", LENGTHS)
 class TestData:
     """Tests of imitation.util.data.
 

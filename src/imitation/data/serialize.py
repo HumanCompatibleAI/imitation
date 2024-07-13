@@ -19,7 +19,7 @@ def save(path: AnyPath, trajectories: Sequence[Trajectory]) -> None:
         path: Trajectories are saved to this path.
         trajectories: The trajectories to save.
     """
-    p = util.parse_path(path)
+    p = str(util.parse_path(path))
     huggingface_utils.trajectories_to_dataset(trajectories).save_to_disk(p)
     logging.info(f"Dumped demonstrations to {p}.")
 
