@@ -90,7 +90,7 @@ commands:
     steps:
       - run:
           name: install macOS packages
-          command: HOMEBREW_NO_AUTO_UPDATE=1 brew install coreutils parallel gnu-getopt virtualenv
+          command: HOMEBREW_NO_AUTO_UPDATE=1 brew install coreutils gnu-getopt parallel python@3.9 virtualenv
 
       - checkout
 
