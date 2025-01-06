@@ -138,7 +138,7 @@ commands:
       # Download and cache dependencies
       - restore_cache:
           keys:
-            - v12win-dependencies-{{ checksum "setup.py" }}-{{ checksum "ci/build_and_activate_venv.ps1" }}
+            - v13win-dependencies-{{ checksum "setup.py" }}-{{ checksum "ci/build_and_activate_venv.ps1" }}
 
       - run:
           name: install python
@@ -163,14 +163,20 @@ commands:
 
       - run:
           name: install dependencies
-          # Only create venv if it's not been restored from cache
-          command: if (-not (Test-Path venv)) { .\ci\build_and_activate_venv.ps1 -venv venv }
+          # Only create venv if it's not been restored from cache.
+          # Need to throw error explicitly on error or else {} will get rid of
+          # the exit code.
+          command: |
+            if (-not (Test-Path venv)) {
+                .\ci\build_and_activate_venv.ps1 -venv venv
+                if ($LASTEXITCODE -ne 0) { throw "Failed to create venv" }
+            }
           shell: powershell.exe
 
       - save_cache:
           paths:
             - .\venv
-          key: v12win-dependencies-{{ checksum "setup.py" }}-{{ checksum "ci/build_and_activate_venv.ps1" }}
+          key: v13win-dependencies-{{ checksum "setup.py" }}-{{ checksum "ci/build_and_activate_venv.ps1" }}
 
       - run:
           name: install imitation
