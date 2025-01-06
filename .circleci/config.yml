@@ -176,7 +176,7 @@ commands:
           name: install imitation
           command: |
             .\venv\Scripts\activate
-            pip install --upgrade --force-reinstall --no-deps .[test]
+            pip install --upgrade --force-reinstall --no-deps .
           shell: powershell.exe
 
       - run:
