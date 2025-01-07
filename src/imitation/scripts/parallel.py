@@ -188,13 +188,12 @@ def _ray_tune_sacred_wrapper(
         `ex.run`) and `reporter`. The function returns the run result.
     """
 
-    def inner(config: Mapping[str, Any], reporter) -> Mapping[str, Any]:
+    def inner(config: Mapping[str, Any]) -> Mapping[str, Any]:
         """Trainable function with the correct signature for `ray.tune`.
 
         Args:
             config: Keyword arguments for `ex.run()`, where `ex` is the
                 `sacred.Experiment` instance associated with `sacred_ex_name`.
-            reporter: Callback to report progress to Ray.
 
         Returns:
             Result from `ray.Run` object.
