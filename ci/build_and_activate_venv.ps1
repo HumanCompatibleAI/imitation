@@ -7,6 +7,6 @@ If ($venv -eq $null) {
    $venv = "venv"
 }
 
-virtualenv -p python3.8 $venv
+virtualenv -p python3.9 $venv
 & $venv\Scripts\activate
 pip install ".[docs,parallel,test]"

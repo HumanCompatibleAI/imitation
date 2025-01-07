@@ -142,7 +142,9 @@ commands:
 
       - run:
           name: install python
-          command: choco install --allow-downgrade -y python --version=3.8.10
+          # Use python3.9 in Windows instead of python3.8 because otherwise
+          # pytest-notebook's indirect dependency pywinpty will fail to build.
+          command: choco install --allow-downgrade -y python --version=3.9.13
           shell: powershell.exe
 
       - run:
