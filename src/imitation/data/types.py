@@ -94,7 +94,7 @@ class DictObs:
 
     def __getitem__(
         self,
-        key: Union[int, slice, Tuple[Union[int, slice], ...]],
+        key: Union[int, slice, Tuple[Union[int, slice], ...], np.ndarray],
     ) -> "DictObs":
         """Indexes or slices each array.
 
