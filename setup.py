@@ -55,6 +55,8 @@ TESTS_REQUIRE = (
         "wandb==0.12.21",
         "setuptools_scm~=7.0.5",
         "pre-commit>=2.20.0",
+        "types-requests~=2.31.0.1",
+        "requests-mock~=1.11.0",
     ]
     + PARALLEL_REQUIRE
     + ATARI_REQUIRE
@@ -209,6 +211,7 @@ setup(
         "huggingface_sb3~=3.0",
         "optuna>=3.0.1",
         "datasets>=2.8.0",
+        "opencv-python",  # TODO: specify version
     ],
     tests_require=TESTS_REQUIRE,
     extras_require={

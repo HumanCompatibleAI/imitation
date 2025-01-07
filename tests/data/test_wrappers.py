@@ -1,14 +1,16 @@
 """Tests for `imitation.data.wrappers`."""
 
+from pathlib import Path
 from typing import List, Sequence, Type
 
 import gymnasium as gym
+import imageio
 import numpy as np
 import pytest
 from stable_baselines3.common.vec_env import DummyVecEnv
 
 from imitation.data import types
-from imitation.data.wrappers import BufferingWrapper
+from imitation.data.wrappers import BufferingWrapper, RenderImageInfoWrapper
 
 
 class _CountingEnv(gym.Env):  # pragma: no cover
@@ -278,3 +280,44 @@ def test_n_transitions_and_empty_error(Env: Type[gym.Env]):
     assert venv.n_transitions == 0
     with pytest.raises(RuntimeError, match=".* empty .*"):
         venv.pop_transitions()
+
+
+@pytest.mark.parametrize("scale_factor", [0.1, 0.5, 1.0])
+def test_writes_rendered_img_to_info(scale_factor):
+    env = gym.make("CartPole-v0", render_mode="rgb_array")
+    wrapped_env = RenderImageInfoWrapper(env, scale_factor=scale_factor)
+    wrapped_env.reset()
+    rendered_img = wrapped_env.render()
+    _, _, _, _, info = wrapped_env.step(wrapped_env.action_space.sample())
+    assert "rendered_img" in info
+    assert isinstance(info["rendered_img"], np.ndarray)
+    if scale_factor == 1.0:
+        assert np.allclose(info["rendered_img"], rendered_img)
+    assert int(scale_factor * rendered_img.shape[0]) == info["rendered_img"].shape[0]
+    assert int(scale_factor * rendered_img.shape[1]) == info["rendered_img"].shape[1]
+
+
+def test_raises_assertion_error_if_env_not_in_correct_render_mode():
+    wrong_mode = "human"
+    env = gym.make("CartPole-v0", render_mode=wrong_mode)
+
+    with pytest.raises(
+        AssertionError,
+        match="The environment must be in render mode 'rgb_array' "
+        "in order to use this wrapper "
+        f"but render_mode is '{wrong_mode}'.",
+    ):
+        RenderImageInfoWrapper(env)
+
+
+def test_rendered_img_file_cache():
+    env = gym.make("CartPole-v0", render_mode="rgb_array")
+    wrapped_env = RenderImageInfoWrapper(env, use_file_cache=True)
+    assert Path(wrapped_env.file_cache).exists()
+    wrapped_env.reset()
+    _, _, _, _, info = wrapped_env.step(wrapped_env.action_space.sample())
+    rendered_img_path = info["rendered_img"]
+    assert Path(rendered_img_path).exists()
+    assert (imageio.imread(rendered_img_path) == wrapped_env.render()).all()
+    wrapped_env.close()
+    assert not Path(wrapped_env.file_cache).exists()

@@ -4,6 +4,7 @@ import sacred
 from torch import nn
 
 from imitation.algorithms import preference_comparisons
+from imitation.data.wrappers import RenderImageInfoWrapper
 from imitation.scripts.ingredients import environment
 from imitation.scripts.ingredients import logging as logging_ingredient
 from imitation.scripts.ingredients import policy_evaluation, reward, rl
@@ -67,6 +68,51 @@ def train_defaults():
 
     checkpoint_interval = 0  # Num epochs between saving (<0 disables, =0 final only)
     query_schedule = "hyperbolic"
+
+
+@train_preference_comparisons_ex.named_config
+def synch_human_preferences():
+    gatherer_cls = preference_comparisons.CommandLineGatherer
+    gatherer_kwargs = dict(video_dir="videos")
+    querent_cls = preference_comparisons.PreferenceQuerent
+    querent_kwargs = dict()
+    environment = dict(
+        post_wrappers=dict(
+            RenderImageInfoWrapper=lambda env, env_id, **kwargs: RenderImageInfoWrapper(
+                env,
+                **kwargs,
+            ),
+        ),
+        num_vec=2,
+        post_wrappers_kwargs=dict(
+            RenderImageInfoWrapper=dict(scale_factor=0.5, use_file_cache=True),
+        ),
+    )
+
+
+@train_preference_comparisons_ex.named_config
+def human_preferences():
+    gatherer_cls = preference_comparisons.RESTGatherer
+    gatherer_kwargs = dict(
+        collection_service_address="http://127.0.0.1:8000",
+        wait_for_user=True,
+        querent_kwargs=dict(
+            video_output_dir="./videos",
+            video_fps=20,
+        ),
+    )
+    environment = dict(
+        post_wrappers=dict(
+            RenderImageInfoWrapper=lambda env, env_id, **kwargs: RenderImageInfoWrapper(
+                env,
+                **kwargs,
+            ),
+        ),
+        post_wrappers_kwargs=dict(
+            RenderImageInfoWrapper=dict(scale_factor=0.5, use_file_cache=True),
+        ),
+        env_make_kwargs=dict(render_mode="rgb_array"),
+    )
 
 
 @train_preference_comparisons_ex.named_config

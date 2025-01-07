@@ -1,10 +1,19 @@
 """Tests for the preference comparisons reward learning implementation."""
 
+import base64
+import binascii
 import math
+import os
+import pathlib
 import re
-from typing import Any, Sequence
+import shutil
+import tempfile
+import uuid
+from typing import Any, Sequence, Tuple
+from unittest.mock import MagicMock, Mock, patch
 
 import gymnasium as gym
+import imageio
 import numpy as np
 import pytest
 import seals  # noqa: F401
@@ -17,8 +26,17 @@ from stable_baselines3.common.vec_env import DummyVecEnv
 
 import imitation.testing.reward_nets as testing_reward_nets
 from imitation.algorithms import preference_comparisons
+from imitation.algorithms.preference_comparisons import (
+    PreferenceGatherer,
+    PreferenceQuerent,
+    RESTGatherer,
+    RESTQuerent,
+    SyntheticGatherer,
+    VideoBasedQuerent,
+    remove_rendered_images,
+)
 from imitation.data import types
-from imitation.data.types import TrajectoryWithRew
+from imitation.data.types import TrajectoryWithRew, TrajectoryWithRewPair
 from imitation.regularization import regularizers, updaters
 from imitation.rewards import reward_nets
 from imitation.testing import reward_improvement
@@ -71,6 +89,24 @@ def random_fragmenter(rng):
 @pytest.fixture
 def agent_trainer(agent, reward_net, venv, rng):
     return preference_comparisons.AgentTrainer(agent, reward_net, venv, rng)
+
+
+@pytest.fixture
+def trajectory_with_rew(venv):
+    observations, rewards, _, infos, actions = [], [], [], [], []
+    observations.append(venv.observation_space.sample())
+    for _ in range(2):
+        observations.append(venv.observation_space.sample())
+        actions.append(venv.action_space.sample())
+        rewards.append(0.0)
+        infos.append({})
+    return TrajectoryWithRew(
+        obs=np.array(observations),
+        acts=np.array(actions),
+        rews=np.array(rewards),
+        infos=np.array(infos),
+        terminal=False,
+    )
 
 
 def assert_info_arrs_equal(arr1, arr2):  # pragma: no cover
@@ -239,14 +275,14 @@ def test_preference_comparisons_raises(
         loss,
         rng=rng,
     )
+
     gatherer = preference_comparisons.SyntheticGatherer(rng=rng)
-    # no rng, must provide fragmenter, preference gatherer, reward trainer
     no_rng_msg = (
         ".*don't provide.*random state.*provide.*fragmenter"
         ".*preference gatherer.*reward_trainer.*"
     )
 
-    def build_preference_comparsions(gatherer, reward_trainer, fragmenter, rng):
+    def build_preference_comparisons(gatherer, reward_trainer, fragmenter, rng):
         preference_comparisons.PreferenceComparisons(
             agent_trainer,
             reward_net,
@@ -261,16 +297,16 @@ def test_preference_comparisons_raises(
         )
 
     with pytest.raises(ValueError, match=no_rng_msg):
-        build_preference_comparsions(gatherer, None, None, rng=None)
+        build_preference_comparisons(gatherer, None, None, rng=None)
 
     with pytest.raises(ValueError, match=no_rng_msg):
-        build_preference_comparsions(None, reward_trainer, None, rng=None)
+        build_preference_comparisons(None, reward_trainer, None, rng=None)
 
     with pytest.raises(ValueError, match=no_rng_msg):
-        build_preference_comparsions(None, None, random_fragmenter, rng=None)
+        build_preference_comparisons(None, None, random_fragmenter, rng=None)
 
     # This should not raise
-    build_preference_comparsions(gatherer, reward_trainer, random_fragmenter, rng=None)
+    build_preference_comparisons(gatherer, reward_trainer, random_fragmenter, rng=None)
 
     # if providing fragmenter, preference gatherer, reward trainer, does not need rng.
     with_rng_msg = (
@@ -279,7 +315,7 @@ def test_preference_comparisons_raises(
     )
 
     with pytest.raises(ValueError, match=with_rng_msg):
-        build_preference_comparsions(
+        build_preference_comparisons(
             gatherer,
             reward_trainer,
             random_fragmenter,
@@ -287,10 +323,10 @@ def test_preference_comparisons_raises(
         )
 
     # This should not raise
-    build_preference_comparsions(None, None, None, rng=rng)
-    build_preference_comparsions(gatherer, None, None, rng=rng)
-    build_preference_comparsions(None, reward_trainer, None, rng=rng)
-    build_preference_comparsions(None, None, random_fragmenter, rng=rng)
+    build_preference_comparisons(None, None, None, rng=rng)
+    build_preference_comparisons(gatherer, None, None, rng=rng)
+    build_preference_comparisons(None, reward_trainer, None, rng=rng)
+    build_preference_comparisons(None, None, random_fragmenter, rng=rng)
 
 
 @pytest.mark.parametrize(
@@ -485,7 +521,8 @@ def test_gradient_accumulation(
     dataset = preference_comparisons.PreferenceDataset()
     trajectory = agent_trainer.sample(num_trajectories)
     fragments = random_fragmenter(trajectory, 1, num_trajectories)
-    preferences = preference_gatherer(fragments)
+    preference_gatherer.query(fragments)
+    fragments, preferences = preference_gatherer.gather()
     dataset.push(fragments, preferences)
 
     seed = rng.integers(2**32)
@@ -529,8 +566,10 @@ def test_synthetic_gatherer_deterministic(
     )
     trajectories = agent_trainer.sample(10)
     fragments = random_fragmenter(trajectories, fragment_length=2, num_pairs=2)
-    preferences1 = gatherer(fragments)
-    preferences2 = gatherer(fragments)
+    gatherer.query(fragments)
+    _, preferences1 = gatherer.gather()
+    gatherer.query(fragments)
+    _, preferences2 = gatherer.gather()
     assert np.all(preferences1 == preferences2)
 
 
@@ -608,7 +647,8 @@ def test_preference_dataset_queue(agent_trainer, random_fragmenter, rng):
     gatherer = preference_comparisons.SyntheticGatherer(rng=rng)
     for i in range(6):
         fragments = random_fragmenter(trajectories, fragment_length=2, num_pairs=1)
-        preferences = gatherer(fragments)
+        gatherer.query(fragments)
+        fragments, preferences = gatherer.gather()
         assert len(dataset) == min(i, 5)
         dataset.push(fragments, preferences)
         assert len(dataset) == min(i + 1, 5)
@@ -627,7 +667,8 @@ def test_store_and_load_preference_dataset(
     trajectories = agent_trainer.sample(10)
     fragments = random_fragmenter(trajectories, fragment_length=2, num_pairs=2)
     gatherer = preference_comparisons.SyntheticGatherer(rng=rng)
-    preferences = gatherer(fragments)
+    gatherer.query(fragments)
+    fragments, preferences = gatherer.gather()
     dataset.push(fragments, preferences)
 
     path = tmp_path / "preferences.pkl"
@@ -1095,3 +1136,319 @@ def test_that_trainer_improves(
         novice_agent_rewards,
         trained_agent_rewards,
     )
+
+
+# PreferenceQuerent
+def test_returns_query_dict_from_query_sequence_with_correct_length():
+    querent = PreferenceQuerent()
+    query_sequence = [Mock()]
+    query_dict = querent(query_sequence)
+    assert len(query_dict) == len(query_sequence)
+
+
+def test_returned_queries_have_uuid():
+    querent = PreferenceQuerent()
+    query_dict = querent([Mock()])
+
+    try:
+        key = list(query_dict.keys())[0]
+        uuid.UUID(key, version=4)
+    except ValueError:
+        pytest.fail()
+
+
+# PrefCollectQuerent
+def test_sends_put_request_for_each_query(requests_mock):
+    address = "https://test.de"
+    querent = RESTQuerent(collection_service_address=address, video_output_dir="video")
+    querent._load_video_data = MagicMock()
+    query_id = "1234"
+
+    requests_mock.put(f"{address}/{query_id}")
+    querent._query(query_id)
+
+    assert requests_mock.last_request.method == "PUT"
+
+
+@pytest.fixture
+def empty_trajectory_with_rew_and_render_images() -> TrajectoryWithRew:
+    num_frames = 10
+    frame_shape = (200, 200)
+    return types.TrajectoryWithRew(
+        obs=np.zeros((num_frames, *frame_shape, 3), np.uint8),
+        acts=np.zeros((num_frames - 1,), np.uint8),
+        infos=np.array(
+            [
+                {"rendered_img": np.zeros((*frame_shape, 3), np.uint8)}
+                for _ in range(num_frames - 1)
+            ],
+        ),
+        rews=np.zeros((num_frames - 1,)),
+        terminal=True,
+    )
+
+
+def is_base64(data):
+    """Checks if the data is base64 encoded."""
+    try:
+        base64.b64decode(data)
+        return True
+    except binascii.Error:
+        return False
+
+
+def test_load_video_data(empty_trajectory_with_rew_and_render_images):
+    address = "https://test.de"
+    video_dir = "video"
+    querent = RESTQuerent(
+        collection_service_address=address, video_output_dir=video_dir,
+    )
+
+    # Setup query with saved videos
+    query_id = "1234"
+    frames = querent._get_frames_for_each_observation(
+        empty_trajectory_with_rew_and_render_images,
+    )
+    output_path = querent._create_query_video_path(query_id, "left")
+    querent._write(frames, output_path, progress_logger=False)
+    output_path = querent._create_query_video_path(query_id, "right")
+    querent._write(frames, output_path, progress_logger=False)
+
+    # Load videos and check their encoding
+    video_data = querent._load_video_data(query_id)
+    for alternative in ("left", "right"):
+        assert is_base64(video_data[alternative])
+
+    # Check that loading video data of non-existent query fails
+    with pytest.raises(RuntimeError):
+        querent._load_video_data("0")
+
+    shutil.rmtree(video_dir)
+
+
+def test_prefcollectquerent_call_creates_all_videos(
+        empty_trajectory_with_rew_and_render_images,
+):
+    address = "https://test.de"
+    queries = [
+        (
+            empty_trajectory_with_rew_and_render_images,
+            empty_trajectory_with_rew_and_render_images,
+        ),
+    ]
+    querent = RESTQuerent(collection_service_address=address, video_output_dir="video")
+    identified_queries = querent(queries)
+    for query_id, _ in identified_queries.items():
+        file = os.path.join(querent.video_output_dir, query_id + "-{}.webm")
+        for part in ["left", "right"]:
+            assert os.path.isfile(file.format(part))
+            os.remove(file.format(part))
+
+
+@pytest.fixture(
+    params=["obs_only", "with_render_images", "with_render_image_paths"],
+)
+def fragment(request, empty_trajectory_with_rew_and_render_images):
+    obs = empty_trajectory_with_rew_and_render_images.obs
+    infos = empty_trajectory_with_rew_and_render_images.infos
+    if request.param == "with_render_images":
+        infos = np.array(
+            [
+                {"rendered_img": frame}
+                for frame in empty_trajectory_with_rew_and_render_images.obs[1:]
+            ],
+        )
+    elif request.param == "with_render_image_paths":
+        tmp_dir = tempfile.mkdtemp()
+        infos = []
+        for frame in obs[1:]:
+            unique_file_path = str(pathlib.Path(tmp_dir) / (str(uuid.uuid4()) + ".png"))
+            imageio.imwrite(unique_file_path, frame)
+            infos.append({"rendered_img": unique_file_path})
+        infos = np.array(infos)
+    yield types.TrajectoryWithRew(
+        obs=obs,
+        acts=empty_trajectory_with_rew_and_render_images.acts,
+        infos=infos,
+        terminal=True,
+        rews=empty_trajectory_with_rew_and_render_images.rews,
+    )
+    if request.param == "with_render_image_paths":
+        shutil.rmtree(tmp_dir)
+
+
+# utils
+@pytest.mark.parametrize("codec", ["webm", "mp4"])
+def test_write_fragment_video(fragment, codec):
+    output_dir = "video"
+    video_based_querent = VideoBasedQuerent(video_output_dir=output_dir)
+    video_path = pathlib.Path(f"{output_dir}.{codec}")
+    if "rendered_img" not in fragment.infos[0]:
+        with pytest.raises(ValueError):
+            video_based_querent._write_fragment_video(fragment, output_path=video_path)
+    else:
+        video_based_querent._write_fragment_video(fragment, output_path=video_path)
+        assert os.path.isfile(video_path)
+        os.remove(video_path)
+
+
+def test_remove_rendered_images(fragment):
+    trajectories = [fragment]
+    remove_rendered_images(trajectories)
+    assert not any("rendered_img" in info for trajectory in trajectories for info in trajectory.infos)
+
+
+# PreferenceGatherer
+class ConcretePreferenceGatherer(PreferenceGatherer):
+    """A concrete preference gatherer for unit testing purposes only."""
+
+    def _gather_preference(self, query_id: str) -> float:
+        return 0.
+
+
+def test_adds_queries_to_pending_queries():
+    gatherer = ConcretePreferenceGatherer()
+    query = Mock()
+    queries = [query]
+
+    gatherer.query(queries)
+    assert query in list(gatherer.pending_queries.values())
+
+
+def test_clears_pending_queries(trajectory_with_rew):
+    gatherer = SyntheticGatherer(sample=False)
+
+    queries = [(trajectory_with_rew, trajectory_with_rew)]
+    gatherer.query(queries)
+
+    gatherer.gather()
+
+    assert len(gatherer.pending_queries) == 0
+
+
+# PrefCollectGatherer
+def test_returns_none_for_unanswered_query(requests_mock):
+    address = "https://test.de"
+    query_id = "1234"
+    answer = None
+
+    gatherer = RESTGatherer(
+        collection_service_address=address,
+        querent_kwargs={"video_output_dir": "videos"},
+    )
+
+    requests_mock.get(
+        f"{address}/{query_id}",
+        json={"query_id": query_id, "label": answer},
+    )
+
+    preference = gatherer._gather_preference(query_id)
+
+    assert preference is answer
+
+
+def test_returns_preference_for_answered_query(requests_mock):
+    address = "https://test.de"
+    query_id = "1234"
+    answer = 1.0
+
+    gatherer = RESTGatherer(
+        collection_service_address=address,
+        querent_kwargs={"video_output_dir": "videos"},
+    )
+
+    requests_mock.get(
+        f"{address}/{query_id}",
+        json={"query_id": query_id, "label": answer},
+    )
+
+    preference = gatherer._gather_preference(query_id)
+
+    assert preference == answer
+
+
+def test_keeps_pending_query_for_unanswered_query():
+    gatherer = RESTGatherer(
+        collection_service_address="https://test.de",
+        wait_for_user=False,
+        querent_kwargs={"video_output_dir": "videos"},
+    )
+    gatherer._gather_preference = MagicMock(return_value=None)
+    gatherer.pending_queries = {"1234": Mock()}
+
+    pending_queries_pre = gatherer.pending_queries.copy()
+    gatherer.gather()
+
+    assert pending_queries_pre == gatherer.pending_queries
+
+
+def test_deletes_pending_query_for_answered_query():
+    gatherer = RESTGatherer(
+        collection_service_address="https://test.de",
+        wait_for_user=False,
+        querent_kwargs={"video_output_dir": "videos"},
+    )
+    preference = 0.5
+    gatherer._gather_preference = MagicMock(return_value=preference)
+    gatherer.pending_queries = {"1234": Mock()}
+
+    gatherer.gather()
+
+    assert len(gatherer.pending_queries) == 0
+
+
+def test_gathers_valid_preference():
+    gatherer = RESTGatherer(
+        collection_service_address="https://test.de",
+        wait_for_user=False,
+        querent_kwargs={"video_output_dir": "videos"},
+    )
+    preference = 0.5
+    gatherer._gather_preference = MagicMock(return_value=preference)
+    query = Mock()
+    gatherer.pending_queries = {"1234": query}
+
+    gathered_queries, gathered_preferences = gatherer.gather()
+
+    assert gathered_preferences[0] == preference
+    assert gathered_queries[0] == query
+
+
+def test_ignores_incomparable_answer():
+    gatherer = RESTGatherer(
+        collection_service_address="https://test.de",
+        wait_for_user=False,
+        querent_kwargs={"video_output_dir": "videos"},
+    )
+    gatherer._gather_preference = MagicMock(return_value=-1.0)
+    gatherer.pending_queries = {"1234": Mock()}
+
+    gathered_queries, gathered_preferences = gatherer.gather()
+
+    assert len(gathered_preferences) == 0
+    assert len(gathered_queries) == 0
+
+
+# SynchronousHumanGatherer
+@patch("builtins.input")
+@patch("IPython.display.display")
+def test_command_line_gatherer(mock_display, mock_input, fragment):
+    del mock_display  # unused
+    video_dir = "videos"
+    gatherer = preference_comparisons.CommandLineGatherer(
+        video_dir=pathlib.Path(video_dir),
+    )
+
+    # these inputs are designed solely to pass the test. they aren't tested for anything
+    trajectory_pairs = [(fragment, fragment),]
+    gatherer.query(trajectory_pairs)
+
+    # this is the actual test
+    mock_input.return_value = "1"
+    assert gatherer.gather()[1] == np.array([1.0])
+
+    gatherer.query(trajectory_pairs)
+    mock_input.return_value = "2"
+    assert gatherer.gather()[1] == np.array([0.0])
+
+    shutil.rmtree(video_dir)

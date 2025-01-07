@@ -3,10 +3,16 @@
 Trains a reward model and optionally a policy based on preferences
 between trajectory fragments.
 """
+
 import abc
+import base64
 import math
+import os
+import pathlib
 import pickle
 import re
+import uuid
+from urllib.parse import urljoin
 from collections import defaultdict
 from typing import (
     Any,
@@ -24,8 +30,11 @@ from typing import (
     overload,
 )
 
+import cv2
 import numpy as np
+import requests
 import torch as th
+from moviepy.editor import ImageSequenceClip
 from scipy import special
 from stable_baselines3.common import base_class, type_aliases, utils, vec_env
 from torch import nn
@@ -778,44 +787,275 @@ class ActiveSelectionFragmenter(Fragmenter):
         return var_estimate
 
 
-class PreferenceGatherer(abc.ABC):
-    """Base class for gathering preference comparisons between trajectory fragments."""
+class PreferenceQuerent:
+    """Dummy class for querying preferences between trajectory fragments."""
 
     def __init__(
         self,
         rng: Optional[np.random.Generator] = None,
         custom_logger: Optional[imit_logger.HierarchicalLogger] = None,
     ) -> None:
+        """Initializes the preference querent.
+
+        Args:
+            rng: random number generator
+            custom_logger: Where to log to; if None (default), creates a new logger.
+        """
+        self.logger = custom_logger or imit_logger.configure()
+        self.rng = rng
+
+    def __call__(
+        self,
+        queries: Sequence[TrajectoryWithRewPair],
+    ) -> Dict[str, TrajectoryWithRewPair]:
+        """Queries the user for their preferences.
+
+        This dummy implementation does nothing because by default the queries are
+        answered by an oracle.
+
+        Args:
+            queries: sequence of pairs of trajectory fragments
+
+        Returns:
+            dictionary with queries and their respective UUIDs
+        """
+        return {str(uuid.uuid4()): query for query in queries}
+
+
+class VideoBasedQuerent(PreferenceQuerent):
+    """Writes videos for each query to the local file system for later use by child querent (and gatherer) classes."""
+
+    def __init__(
+            self,
+            video_output_dir: Union[str, os.PathLike],
+            video_type="webm",
+            video_fps: int = 20,
+            rng: Optional[np.random.Generator] = None,
+            custom_logger: Optional[imit_logger.HierarchicalLogger] = None,
+    ):
+        """Initializes the querent.
+
+        Args:
+            video_output_dir: path to the video clip directory.
+            video_type: specifies the video format, e.g. 'webm' or 'mp4'
+            video_fps: frames per second of the generated videos.
+            rng: random number generator, if applicable.
+            custom_logger: Where to log to; if None (default), creates a new logger.
+        """
+        super().__init__(custom_logger=custom_logger)
+        self.rng = rng
+        self.video_output_dir = video_output_dir
+        self.video_type = video_type
+        self.frames_per_second = video_fps
+
+        # Create video directory
+        os.makedirs(self.video_output_dir, exist_ok=True)
+
+    def __call__(
+        self,
+        queries: Sequence[TrajectoryWithRewPair],
+    ) -> Dict[str, TrajectoryWithRewPair]:
+        identified_queries = super().__call__(queries)
+        for query_id, query in identified_queries.items():
+            self._write_query_videos(query_id, query)
+        return identified_queries
+
+    def _write_query_videos(self, query_id, query):
+        for i, alternative in enumerate(("left", "right")):
+            self._write_fragment_video(
+                fragment=query[i],
+                output_path=self._create_query_video_path(query_id, alternative),
+            )
+
+    def _create_query_video_path(self, query_id: str, alternative: str):
+        return (
+            pathlib.Path(self.video_output_dir)
+            / f"{query_id}-{alternative}.{self.video_type}"
+        )
+
+    def _write_fragment_video(
+        self,
+        fragment: TrajectoryWithRew,
+        output_path: AnyPath,
+        progress_logger: bool = True,
+    ) -> None:
+        """Write fragment video clip."""
+        frames = self._get_frames(fragment)
+        self._write(frames, output_path, progress_logger)
+
+    def _get_frames(
+        self, fragment: TrajectoryWithRew,
+    ) -> list[Union[os.PathLike, np.ndarray]]:
+        if self._rendered_image_of_observation_is_available(fragment):
+            return self._get_frames_for_each_observation(fragment)
+        else:
+            raise ValueError(
+                "No rendered images contained in info dict. "
+                "Please apply `RenderImageWrapper` to your environment.",
+            )
+
+    @staticmethod
+    def _rendered_image_of_observation_is_available(
+        fragment: TrajectoryWithRew,
+    ) -> bool:
+        return fragment.infos is not None and "rendered_img" in fragment.infos[0]
+
+    @staticmethod
+    def _get_frames_for_each_observation(fragment: TrajectoryWithRew) -> list[Union[os.PathLike, np.ndarray]]:
+        frames: list[Union[os.PathLike, np.ndarray]] = []
+        for i in range(len(fragment.infos)):
+            frame: Union[os.PathLike, np.ndarray] = fragment.infos[i]["rendered_img"]
+            frames.append(frame)
+        return frames
+
+    def _write(
+        self,
+        frames: List[Union[os.PathLike, np.ndarray]],
+        output_path: Union[str, bytes, os.PathLike],
+        progress_logger: bool,
+    ):
+        clip = ImageSequenceClip(
+            frames, fps=self.frames_per_second,
+        )  # accepts list of image paths and numpy arrays
+        output_path = pathlib.Path(output_path)
+        if output_path.suffix == ".gif":
+            clip.write_gif(
+                str(output_path),
+                program="ffmpeg",
+                logger="bar" if progress_logger else None,
+            )
+        else:
+            clip.write_videofile(
+                str(output_path), logger="bar" if progress_logger else None,
+            )
+
+
+class RESTQuerent(VideoBasedQuerent):
+    """Sends queries to a REST web service.
+
+    The queries are sent via PUT request as json payload to `collection_service_address`/`query_id`
+    in the following form:
+
+    {
+        "uuid": "1234",
+        "left": b64 encoded video,
+        "right" b64 encoded video
+    }
+
+    """
+
+    def __init__(
+        self,
+        collection_service_address: str,
+        video_output_dir: str,
+        video_fps: int = 20,
+        rng: Optional[np.random.Generator] = None,
+        custom_logger: Optional[imit_logger.HierarchicalLogger] = None,
+    ):
+        """Initializes the querent.
+
+        Args:
+            collection_service_address: Network address of the collection service's REST interface.
+            video_output_dir: path to the video clip directory.
+            video_fps: frames per second of the generated videos.
+            rng: random number generator, if applicable.
+            custom_logger: Where to log to; if None (default), creates a new logger.
+        """
+        super().__init__(
+            video_output_dir, video_fps=video_fps, rng=rng, custom_logger=custom_logger,
+        )
+        self.query_endpoint = collection_service_address
+
+    def __call__(
+        self,
+        queries: Sequence[TrajectoryWithRewPair],
+    ) -> Dict[str, TrajectoryWithRewPair]:
+        identified_queries = super().__call__(queries)
+        for query_id, query in identified_queries.items():
+            self._query(query_id)
+        return identified_queries
+
+    def _query(self, query_id: str):
+        video_data = self._load_video_data(query_id)
+        requests.put(
+            urljoin(self.query_endpoint, query_id),
+            json={"uuid": "{}".format(query_id), **video_data},
+        )
+
+    def _load_video_data(self, query_id: str) -> dict[str, str]:
+        video_data = {}
+        for alternative in ("left", "right"):
+            video_path = self._create_query_video_path(query_id, alternative)
+            if video_path.exists():
+                with open(video_path, "rb") as video_file:
+                    video_data[alternative] = base64.b64encode(
+                        video_file.read(),
+                    ).decode("utf-8")
+            else:
+                raise RuntimeError(
+                    f"Video to be loaded does not exist at {video_path}.",
+                )
+        return video_data
+
+
+class PreferenceGatherer(abc.ABC):
+    """Base class for gathering preference comparisons between trajectory fragments."""
+
+    def __init__(self, rng: Optional[np.random.Generator] = None,
+                 custom_logger: Optional[imit_logger.HierarchicalLogger] = None) -> None:
         """Initializes the preference gatherer.
 
         Args:
             rng: random number generator, if applicable.
             custom_logger: Where to log to; if None (default), creates a new logger.
+            querent_kwargs: Keyword arguments passed to the querent.
         """
         # The random seed isn't used here, but it's useful to have this
         # as an argument nevertheless because that means we can always
         # pass in a seed in training scripts (without worrying about whether
         # the PreferenceGatherer we use needs one).
-        del rng
+        self.querent = PreferenceQuerent(rng, custom_logger)
         self.logger = custom_logger or imit_logger.configure()
+        self.pending_queries: Dict = {}
 
-    @abc.abstractmethod
-    def __call__(self, fragment_pairs: Sequence[TrajectoryWithRewPair]) -> np.ndarray:
-        """Gathers the probabilities that fragment 1 is preferred in `fragment_pairs`.
-
-        Args:
-            fragment_pairs: sequence of pairs of trajectory fragments
+    def gather(self) -> Tuple[Sequence[TrajectoryWithRewPair], np.ndarray]:
+        """Gathers preference probabilities for completed queries.
 
         Returns:
-            A numpy array with shape (b, ), where b is the length of the input
-            (i.e. batch size). Each item in the array is the probability that
-            fragment 1 is preferred over fragment 2 for the corresponding
-            pair of fragments.
+            * A list of length b with queries for which preferences have been gathered.
+             
+            * A numpy array with shape (b, ). 
+              Each item in the array is the probability that fragment 1 is preferred 
+              over fragment 2 for the corresponding query in the list above.
 
             Note that for human feedback, these probabilities are simply 0 or 1
             (or 0.5 in case of indifference), but synthetic models may yield other
             probabilities.
         """  # noqa: DAR202
+
+        gathered_queries = []
+        gathered_preferences = []
+
+        for query_id, query in list(self.pending_queries.items()):
+            preference = self._gather_preference(query_id)
+
+            if preference is not None:
+                # Preference for this query has been provided
+                if 0 <= preference <= 1:
+                    gathered_queries.append(query)
+                    gathered_preferences.append(preference)
+                # else: fragments were incomparable
+                del self.pending_queries[query_id]
+
+        return gathered_queries, np.array(gathered_preferences, dtype=np.float32)
+
+    @abc.abstractmethod
+    def _gather_preference(self, query_id: str) -> float:
+        raise NotImplementedError
+
+    def query(self, queries: Sequence[TrajectoryWithRewPair]) -> None:
+        identified_queries = self.querent(queries)
+        self.pending_queries = {**self.pending_queries, **identified_queries}
 
 
 class SyntheticGatherer(PreferenceGatherer):
@@ -865,45 +1105,283 @@ class SyntheticGatherer(PreferenceGatherer):
         if self.sample and self.rng is None:
             raise ValueError("If `sample` is True, then `rng` must be provided.")
 
-    def __call__(self, fragment_pairs: Sequence[TrajectoryWithRewPair]) -> np.ndarray:
-        """Computes probability fragment 1 is preferred over fragment 2."""
-        returns1, returns2 = self._reward_sums(fragment_pairs)
-        if self.temperature == 0:
-            return (np.sign(returns1 - returns2) + 1) / 2
+    def _gather_preference(self, query_id):
+        query = self.pending_queries[query_id]
 
-        returns1 /= self.temperature
-        returns2 /= self.temperature
+        return_1, return_2 = (
+            np.array(rollout.discounted_sum(query[0].rews, self.discount_factor), dtype=np.float32),
+            np.array(rollout.discounted_sum(query[1].rews, self.discount_factor), dtype=np.float32)
+        )
+
+        if self.temperature == 0:
+            return (np.sign(return_1 - return_2) + 1) / 2
+
+        return_1 /= self.temperature
+        return_2 /= self.temperature
 
         # clip the returns to avoid overflows in the softmax below
-        returns_diff = np.clip(returns2 - returns1, -self.threshold, self.threshold)
+        returns_diff = np.clip(return_2 - return_1, -self.threshold, self.threshold)
         # Instead of computing exp(rews1) / (exp(rews1) + exp(rews2)) directly,
         # we divide enumerator and denominator by exp(rews1) to prevent overflows:
-        model_probs = 1 / (1 + np.exp(returns_diff))
+        choice_probability = 1 / (1 + np.exp(returns_diff))
         # Compute the mean binary entropy. This metric helps estimate
         # how good we can expect the performance of the learned reward
         # model to be at predicting preferences.
         entropy = -(
-            special.xlogy(model_probs, model_probs)
-            + special.xlogy(1 - model_probs, 1 - model_probs)
+            special.xlogy(choice_probability, choice_probability)
+            + special.xlogy(1 - choice_probability, 1 - choice_probability)
         ).mean()
         self.logger.record("entropy", entropy)
 
         if self.sample:
             assert self.rng is not None
-            return self.rng.binomial(n=1, p=model_probs).astype(np.float32)
-        return model_probs
+            return self.rng.binomial(n=1, p=choice_probability)
 
-    def _reward_sums(self, fragment_pairs) -> Tuple[np.ndarray, np.ndarray]:
-        rews1, rews2 = zip(
-            *[
-                (
-                    rollout.discounted_sum(f1.rews, self.discount_factor),
-                    rollout.discounted_sum(f2.rews, self.discount_factor),
-                )
-                for f1, f2 in fragment_pairs
-            ],
+        return choice_probability
+
+
+class CommandLineGatherer(PreferenceGatherer):
+    """Queries for human preferences using the command line or a notebook."""
+
+    def __init__(
+        self,
+        video_dir: Union[str, os.PathLike],
+        video_width: int = 500,
+        video_height: int = 500,
+        frames_per_second: int = 25,
+        custom_logger: Optional[imit_logger.HierarchicalLogger] = None,
+        rng: Optional[np.random.Generator] = None,
+    ) -> None:
+        """Initialize the human preference gatherer.
+
+        Args:
+            video_dir: directory where videos of the trajectories are saved.
+            video_width: width of the video in pixels.
+            video_height: height of the video in pixels.
+            frames_per_second: frames per second of the video.
+            custom_logger: Where to log to; if None (default), creates a new logger.
+            rng: random number generator
+        """
+        super().__init__(rng=rng, custom_logger=custom_logger)
+        self.querent = VideoBasedQuerent(
+            video_output_dir=video_dir, video_fps=frames_per_second,
         )
-        return np.array(rews1, dtype=np.float32), np.array(rews2, dtype=np.float32)
+        self.video_dir = video_dir
+        self.video_width = video_width
+        self.video_height = video_height
+
+    def _gather_preference(self, query_id):
+        """Displays the videos of the two fragments.
+        If in the command line, it will pop out a video player for each fragment.
+        If in a notebook, it will display the videos.
+        Either way, it will request 1 or 2 to indicate which is preferred.
+
+        Args:
+            query_id: the id of the fragment pair to be displayed.
+
+        Returns:
+            True if the first fragment is preferred, False if not.
+
+        Raises:
+            KeyboardInterrupt: if the user presses q to quit.
+        """
+        frag1_video_path = pathlib.Path(self.video_dir, f"{query_id}-left.webm")
+        frag2_video_path = pathlib.Path(self.video_dir, f"{query_id}-right.webm")
+        if self._in_ipython():
+            self._display_videos_in_notebook(frag1_video_path, frag2_video_path)
+
+            pref = input(
+                "Which video is preferred? (1 or 2, or q to quit, or r to replay): ",
+            )
+            while pref not in ["1", "2", "q"]:
+                if pref == "r":
+                    self._display_videos_in_notebook(frag1_video_path, frag2_video_path)
+                pref = input("Please enter 1 or 2 or q or r: ")
+
+            if pref == "q":
+                return None
+            elif pref == "1":
+                return 1.
+            elif pref == "2":
+                return 0.
+
+            # should never be hit
+            assert False
+        else:
+            return self._display_in_windows(frag1_video_path, frag2_video_path)
+
+    def _display_in_windows(
+        self,
+        frag1_video_path: pathlib.Path,
+        frag2_video_path: pathlib.Path,
+    ) -> bool:
+        """Displays the videos in separate windows.
+
+        The videos are displayed side by side and the user is asked to indicate
+        which one is preferred. The interaction is done in the window rather than
+        in the command line because the command line is not interactive when
+        the video is playing, and it's nice to allow the user to choose a video before
+        the videos are done playing. The downside is that the instructions appear on the
+        command line and the interaction happens in the video window.
+
+        Args:
+            frag1_video_path: path to the video file of the first fragment
+            frag2_video_path: path to the video file of the second fragment
+
+        Returns:
+            True if the first fragment is preferred, False if not.
+
+        Raises:
+            KeyboardInterrupt: if the user presses q to quit.
+            RuntimeError: if the video files cannot be opened.
+        """
+        print("Which video is preferred? (1 or 2, or q to quit, or r to replay):\n")
+
+        cap1 = cv2.VideoCapture(str(frag1_video_path))
+        cap2 = cv2.VideoCapture(str(frag2_video_path))
+        cv2.namedWindow("Video 1", cv2.WINDOW_NORMAL)
+        cv2.namedWindow("Video 2", cv2.WINDOW_NORMAL)
+
+        # set window sizes
+        cv2.resizeWindow("Video 1", self.video_width, self.video_height)
+        cv2.resizeWindow("Video 2", self.video_width, self.video_height)
+
+        # move windows side by side
+        cv2.moveWindow("Video 1", 0, 0)
+        cv2.moveWindow("Video 2", self.video_width, 0)
+
+        if not cap1.isOpened():
+            raise RuntimeError(f"Error opening video file {frag1_video_path}.")
+
+        if not cap2.isOpened():
+            raise RuntimeError(f"Error opening video file {frag2_video_path}.")
+
+        ret1, frame1 = cap1.read()
+        ret2, frame2 = cap2.read()
+        while cap1.isOpened() and cap2.isOpened():
+            if ret1 or ret2:
+                cv2.imshow("Video 1", frame1)
+                cv2.imshow("Video 2", frame2)
+                ret1, frame1 = cap1.read()
+                ret2, frame2 = cap2.read()
+
+            key = chr(cv2.waitKey(1) & 0xFF)
+            if key == "q":
+                cv2.destroyAllWindows()
+                raise KeyboardInterrupt
+            elif key == "r":
+                cap1.set(cv2.CAP_PROP_POS_FRAMES, 0)
+                cap2.set(cv2.CAP_PROP_POS_FRAMES, 0)
+                ret1, frame1 = cap1.read()
+                ret2, frame2 = cap2.read()
+            elif key == "1" or key == "2":
+                cv2.destroyAllWindows()
+                return 1.0 if key == "1" else 0.0
+
+        cv2.destroyAllWindows()
+        raise KeyboardInterrupt
+
+    def _display_videos_in_notebook(
+        self,
+        frag1_video_path: pathlib.Path,
+        frag2_video_path: pathlib.Path,
+    ) -> None:
+        """Displays the videos in a notebook.
+
+        Interaction can happen in the notebook while the videos are playing.
+
+        Args:
+            frag1_video_path: path to the video file of the first fragment
+            frag2_video_path: path to the video file of the second fragment
+
+        Raises:
+            RuntimeError: if the video files cannot be opened.
+        """
+        from IPython.display import HTML, Video, clear_output, display
+
+        clear_output(wait=True)
+
+        for i, path in enumerate([frag1_video_path, frag2_video_path]):
+            if not path.exists():
+                raise RuntimeError(f"Video file {path} does not exist.")
+            display(HTML(f"<h2>Video {i+1}</h2>"))
+            display(
+                Video(
+                    filename=str(path),
+                    height=self.video_height,
+                    width=self.video_width,
+                    html_attributes="controls autoplay muted",
+                    embed=False,
+                ),
+            )
+
+    def _in_ipython(self) -> bool:
+        try:
+            return self._is_running_pytest_test() or get_ipython().__class__.__name__ == "ZMQInteractiveShell"  # type: ignore[name-defined] # noqa
+        except NameError:
+            return False
+
+    @staticmethod
+    def _is_running_pytest_test() -> bool:
+        return "PYTEST_CURRENT_TEST" in os.environ
+
+
+class RESTGatherer(PreferenceGatherer):
+    """Gathers preferences from a REST web service.
+
+       The queries are gathered via GET request to `collection_service_address`/`query_id`
+       and returns a preference as json payload:
+
+       {
+           "label": float
+       }
+
+       The float value ranges from 0.0 (preferring left) to 1.0 (preferring right),
+       with 0.5 indicating indifference. -1.0 indicates that the query was incomparable.
+    """
+
+    def __init__(
+        self,
+        collection_service_address: str,
+        wait_for_user: bool = True,
+        rng: Optional[np.random.Generator] = None,
+        custom_logger: Optional[imit_logger.HierarchicalLogger] = None,
+        querent_kwargs: Optional[Mapping] = None,
+    ) -> None:
+        """Initializes the preference gatherer.
+
+        Args:
+            collection_service_address: Network address of the collection service's REST interface.
+            wait_for_user: Waits for user to input their preferences.
+            rng: random number generator, if applicable.
+            custom_logger: Where to log to; if None (default), creates a new logger.
+            querent_kwargs: Keyword arguments passed to the querent.
+        """
+        super().__init__(rng, custom_logger)
+        querent_kwargs = querent_kwargs if querent_kwargs else {}
+        self.querent = RESTQuerent(
+            collection_service_address=collection_service_address,
+            **querent_kwargs,
+        )
+        self.query_endpoint = collection_service_address
+
+    def _gather_preference(self, query_id: str) -> float:
+        query_url = urljoin(self.query_endpoint, query_id)
+        answered_query = requests.get(query_url).json()
+        return answered_query["label"]
+
+
+def remove_rendered_images(trajectories: Sequence[TrajectoryWithRew]) -> None:
+    """Removes rendered images of the provided trajectories list."""
+    for traj in trajectories:
+        if traj.infos is not None and "rendered_img" in traj.infos[0]:
+            for info in traj.infos:
+                rendered_img_info = info["rendered_img"]
+                if isinstance(rendered_img_info, (str, bytes, os.PathLike)):
+                    os.remove(rendered_img_info)
+                    del info["rendered_img"]
+                elif isinstance(rendered_img_info, np.ndarray):
+                    del info["rendered_img"]
 
 
 class PreferenceDataset(data_th.Dataset):
@@ -1516,7 +1994,7 @@ class PreferenceComparisons(base.BaseImitationAlgorithm):
                 for which preferences will be gathered. These fragments could be random,
                 or they could be selected more deliberately (active learning).
                 Default is a random fragmenter.
-            preference_gatherer: how to get preferences between trajectory fragments.
+            preference_gatherer: gathers preferences between trajectory fragments.
                 Default (and currently the only option) is to use synthetic preferences
                 based on ground-truth rewards. Human preferences could be implemented
                 here in the future.
@@ -1589,16 +2067,19 @@ class PreferenceComparisons(base.BaseImitationAlgorithm):
             reward_trainer,
         )
 
+        # TODO: update messages with preference querent
         if self.rng is None and has_any_rng_args_none:
             raise ValueError(
                 "If you don't provide a random state, you must provide your own "
-                "seeded fragmenter, preference gatherer, and reward_trainer. "
+                "seeded fragmenter, preference gatherer, "
+                "and reward_trainer. "
                 "You can initialize a random state with `np.random.default_rng(seed)`.",
             )
         elif self.rng is not None and not has_any_rng_args_none:
             raise ValueError(
                 "If you provide your own fragmenter, preference gatherer, "
-                "and reward trainer, you don't need to provide a random state.",
+                "and reward trainer, "
+                "you don't need to provide a random state.",
             )
 
         if reward_trainer is None:
@@ -1688,15 +2169,15 @@ class PreferenceComparisons(base.BaseImitationAlgorithm):
         reward_loss = None
         reward_accuracy = None
 
-        for i, num_pairs in enumerate(schedule):
+        for i, num_queries in enumerate(schedule):
             ##########################
             # Gather new preferences #
             ##########################
             num_steps = math.ceil(
-                self.transition_oversampling * 2 * num_pairs * self.fragment_length,
+                self.transition_oversampling * 2 * num_queries * self.fragment_length,
             )
             self.logger.log(
-                f"Collecting {2 * num_pairs} fragments ({num_steps} transitions)",
+                f"Collecting {2 * num_queries} fragments ({num_steps} transitions)",
             )
             trajectories = self.trajectory_generator.sample(num_steps)
             # This assumes there are no fragments missing initial timesteps
@@ -1704,12 +2185,24 @@ class PreferenceComparisons(base.BaseImitationAlgorithm):
             horizons = (len(traj) for traj in trajectories if traj.terminal)
             self._check_fixed_horizon(horizons)
             self.logger.log("Creating fragment pairs")
-            fragments = self.fragmenter(trajectories, self.fragment_length, num_pairs)
+
+            queries = self.fragmenter(trajectories, self.fragment_length, num_queries)
+
+            self.preference_gatherer.query(queries)
+
             with self.logger.accumulate_means("preferences"):
                 self.logger.log("Gathering preferences")
-                preferences = self.preference_gatherer(fragments)
-            self.dataset.push(fragments, preferences)
+                # Gather fragment pairs for which preferences have been provided
+                queries, preferences = self.preference_gatherer.gather()
+
+            # Free up RAM or disk space from keeping rendered images
+            remove_rendered_images(trajectories)
+
+            self.dataset.push(queries, preferences)
             self.logger.log(f"Dataset now contains {len(self.dataset)} comparisons")
+            # Skip training if dataset is empty
+            if len(self.dataset) == 0:
+                continue
 
             ##########################
             # Train the reward model #
