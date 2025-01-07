@@ -247,7 +247,7 @@ def test_sqil_performance_continuous(
     pytestconfig: pytest.Config,
     pendulum_single_venv: vec_env.VecEnv,
     rl_algo_class: Type[off_policy_algorithm.OffPolicyAlgorithm],
-):
+):  # pragma: no cover
     rl_kwargs = dict(
         learning_starts=500,
         learning_rate=0.001,

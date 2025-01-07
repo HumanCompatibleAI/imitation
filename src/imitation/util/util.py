@@ -255,10 +255,7 @@ def safe_to_tensor(array: Union[np.ndarray, th.Tensor], **kwargs) -> th.Tensor:
     Returns:
         A PyTorch tensor with the same content as `array`.
     """
-    if isinstance(array, th.Tensor):
-        return array
-
-    if not array.flags.writeable:
+    if isinstance(array, np.ndarray) and not array.flags.writeable:
         array = array.copy()
 
     return th.as_tensor(array, **kwargs)
@@ -476,6 +473,6 @@ def split_in_half(x: int) -> Tuple[int, int]:
 def clear_screen() -> None:
     """Clears the console screen."""
     if os.name == "nt":  # Windows
-        os.system("cls")
+        os.system("cls")  # pragma: no cover
     else:
         os.system("clear")
