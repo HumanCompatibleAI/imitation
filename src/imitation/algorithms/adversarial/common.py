@@ -207,7 +207,7 @@ class AdversarialTrainer(base.DemonstrationAlgorithm[types.Transitions]):
         self.debug_use_ground_truth = debug_use_ground_truth
         self.venv = venv
         self.gen_algo = gen_algo
-        self._reward_net = reward_net.to(gen_algo.device)
+        self._reward_net: reward_nets.RewardNet = reward_net.to(gen_algo.device)
         self._log_dir = util.parse_path(log_dir)
 
         # Create graph for optimising/recording stats on discriminator

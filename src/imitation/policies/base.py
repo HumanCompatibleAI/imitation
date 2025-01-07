@@ -31,7 +31,7 @@ class NonTrainablePolicy(policies.BasePolicy, abc.ABC):
     ):
         np_actions = []
         if isinstance(obs, dict):
-            np_obs = types.DictObs(
+            np_obs: Union[types.DictObs, np.ndarray] = types.DictObs(
                 {k: v.detach().cpu().numpy() for k, v in obs.items()},
             )
         else:
