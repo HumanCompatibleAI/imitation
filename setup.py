@@ -209,6 +209,7 @@ setup(
         "huggingface_sb3~=3.0",
         "optuna>=3.0.1",
         "datasets>=2.8.0",
+        "hydra-core>=1.3.2",
     ],
     tests_require=TESTS_REQUIRE,
     extras_require={
