@@ -73,7 +73,7 @@ There are two types of wrapper:
 
 * :class:`PredictProcessedWrapper <imitation.rewards.reward_nets.PredictProcessedWrapper>` modifies the predict_processed call to the reward network. Thus this type of reward network wrapper is designed to only modify the reward when it is being used to train/evaluate a policy but *not* when we are taking gradients on it. Thus it does not have to be differentiable.
 
-The most commonly used is the :class:`NormalizedRewardNet <imitating.rewards.reward_nets.NormalizedRewardNet>` which is a predict procssed wrapper. This class uses a normalization layer to standardize the *output* of the reward function using its running mean and variance, which is useful for stabilizing training. When a reward network is saved, its wrappers are saved along with it, so that the normalization fit during reward learning can be used during future policy learning or evaluation.
+The most commonly used is the :class:`NormalizedRewardNet <imitating.rewards.reward_nets.NormalizedRewardNet>` which is a predict processed wrapper. This class uses a normalization layer to standardize the *output* of the reward function using its running mean and variance, which is useful for stabilizing training. When a reward network is saved, its wrappers are saved along with it, so that the normalization fit during reward learning can be used during future policy learning or evaluation.
 
 .. testcode::
     :skipif: skip_doctests
@@ -86,7 +86,7 @@ The most commonly used is the :class:`NormalizedRewardNet <imitating.rewards.rew
     )
 
 .. note::
-    The reward normalization wrapper does _not_ function identically to stable baselines3's `VecNormalize <https://stable-baselines3.readthedocs.io/en/master/guide/vec_envs.html#stable_baselines3.common.vec_env.VecNormalize>`_ environment wrapper. First, it does not normalize the observations. Second, unlike ``VecNormalize``, it scales and centers the reward using the base rewards's mean and variance. The ``VecNormalizes`` scales the reward down using a running estimate of the _return_.
+    The reward normalization wrapper does _not_ function identically to stable baselines3's `VecNormalize <https://stable-baselines3.readthedocs.io/en/master/guide/vec_envs.html#stable_baselines3.common.vec_env.VecNormalize>`_ environment wrapper. First, it does not normalize the observations. Second, unlike ``VecNormalize``, it scales and centers the reward using the base rewards's mean and variance. The ``VecNormalize`` scales the reward down using a running estimate of the _return_.
 
 By default, the normalization wrapper updates the normalization on each call to ``predict_processed``. This behavior can be altered as shown below.
 
